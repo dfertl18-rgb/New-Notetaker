@@ -1,0 +1,4 @@
+# Original-Logos und Titelbilder nur lokal (geschützte Marken, private Nutzung)
+quotenturm/logos/*
+!quotenturm/logos/LIESMICH.md
+quotenturm/assets/

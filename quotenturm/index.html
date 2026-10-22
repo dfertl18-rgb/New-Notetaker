@@ -363,6 +363,8 @@ label { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .lage-col + .lage-col { border-left: 1px solid var(--line); }
 .lage .tile b { font-size: 22px; } .lage .tile b.lage-t { font-family: var(--font-body); font-size: 15px; font-weight: 600; line-height: 1.3; padding: 5px 0 3px; }
 @media (max-width: 900px) { .lage { grid-template-columns: minmax(0, 1fr); } .lage-col + .lage-col { border-left: 0; border-top: 1px solid var(--line); } }
+.timg { object-fit: contain; max-width: 130px; flex: 0 0 auto; vertical-align: middle; margin-right: 6px; position: relative; }
+.timg.poster { border-radius: 3px; }
 .pkgs { display: flex; gap: 4px; }
 .pkg { background: var(--panel-2); border: 1px solid var(--line); border-radius: 4px; padding: 4px 8px; display: grid; text-align: left; min-width: 74px; }
 .pkg b { font-family: var(--font-head); font-size: 15px; } .pkg span { font-size: 11px; color: var(--muted); }
@@ -694,6 +696,13 @@ const youthOk = (p, h) => !p.fsk || p.fsk < 16 || h < 6 || (p.fsk === 16 ? h >= 
 
 // Logos: Liegen eigene Logo-Dateien im Ordner logos/ (z. B. logos/zdf.png), werden sie statt der Wappen angezeigt.
 const LOGOS = {};
+// Titelbilder (Logos bzw. Poster von Filmen, Serien, Shows), lokal erzeugt von tools/logos_holen.py
+let TIMG = null, TIMG_DIR = "";
+const slugify = t => t.toLowerCase().replace(/ä/g, "ae").replace(/ö/g, "oe").replace(/ü/g, "ue").replace(/ß/g, "ss").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+function titleImg(title, h = 34) {
+  const e = TIMG && TIMG[slugify(title)];
+  return e ? `<img src="${TIMG_DIR}${e.file}" alt="" class="timg ${e.kind === "poster" ? "poster" : ""}" style="height:${h}px">` : "";
+}
 function probeLogos() {
   const ids = STATIONS.map(s => s.id).concat(STREAMERS.map(s => s.id));
   // Suchpfade: logos/ und assets/logos/, jeweils mit Spiel-ID und gängigen Dateinamen (z. B. prosieben.png)
@@ -702,6 +711,13 @@ function probeLogos() {
     const img = new Image();
     img.onload = () => { if (!LOGOS[id]) { LOGOS[id] = img.src; if (G) render(); } };
     img.src = `${dir}${name}.${ext}`;
+  }
+  for (const dir of ["logos/titel/", "assets/logos/titel/"]) {
+    const sc = document.createElement("script");
+    sc.src = dir + "liste.js";
+    sc.onload = () => { if (window.QT_TITLES && !TIMG) { TIMG = window.QT_TITLES; TIMG_DIR = dir; if (G) render(); } };
+    sc.onerror = () => sc.remove();
+    document.head.appendChild(sc);
   }
 }
 function crest(i, size = 34) {
@@ -2308,7 +2324,7 @@ function heroCard(P) {
   }
   const r = y.res[20].map((x, k) => ({ ...x, k })).sort((a, b) => b.v - a.v);
   const w = r[0], mine = y.res[20][G.me], myRank = r.findIndex(x => x.k === G.me) + 1;
-  return `<div class="hero"><div class="hero-img">${crest(w.k, 60)}<div class="score"><small>PRIMETIME 20:15</small>${mio(w.v)} Mio.<small style="margin-top:6px">${pct(w.ma)} MARKTANTEIL</small></div></div>
+  return `<div class="hero"><div class="hero-img">${titleImg(w.title, 96) || crest(w.k, 60)}<div class="score"><small>PRIMETIME 20:15</small>${mio(w.v)} Mio.<small style="margin-top:6px">${pct(w.ma)} MARKTANTEIL</small></div></div>
     <div class="hero-body"><h3>${esc(STATIONS[w.k].name)} gewinnt die Primetime mit „${esc(w.title)}“</h3>
     <p>${w.k === G.me ? `Ein starker Abend für ${esc(P.name)}: Die Konkurrenz hatte zur besten Sendezeit das Nachsehen.` : `${esc(P.name)} landete mit „${esc(mine.title)}“ auf Platz ${myRank} (${mio(mine.v)} Mio., ${pct(mine.ma)}).`}</p>
     <div class="hero-meta"><span>${dateShort(y.day)}</span><span>· Quoten</span><span>· Medienforschung</span></div></div></div>`;
@@ -2445,7 +2461,7 @@ function umfang(p) {
 function progTable(list, extra, head = "") {
   if (!list.length) return `<div class="pad"><p class="lead">Keine Programme vorhanden.</p></div>`;
   return `<div class="tbl"><table><thead><tr><th>Titel</th><th>Genre</th><th class="num">Qual.</th><th>Aktualität</th><th>Umfang</th><th>Beste Zeit</th><th class="num">${head}</th></tr></thead><tbody>
-    ${list.map(p => `<tr><td class="title">${esc(p.title)} ${p.fsk >= 16 ? `<span class="chip fsk">FSK ${p.fsk}</span>` : p.fsk ? `<span class="chip">FSK ${p.fsk}</span>` : ""}${p.own ? ' <span class="chip good">Eigenproduktion</span>' : p.home ? ' <span class="chip real">Eigenformat</span>' : p.kind === "serie" ? ' <span class="chip real">Serienlizenz</span>' : ""}${G.stream && G.stream.catalog.some(c => c.id === p.id) ? ' <span class="chip good">im Stream</span>' : ""}</td><td>${esc(p.genre)}</td><td class="num">${attr(p.q)}</td>
+    ${list.map(p => `<tr><td class="title">${titleImg(p.title, 22)}${esc(p.title)} ${p.fsk >= 16 ? `<span class="chip fsk">FSK ${p.fsk}</span>` : p.fsk ? `<span class="chip">FSK ${p.fsk}</span>` : ""}${p.own ? ' <span class="chip good">Eigenproduktion</span>' : p.home ? ' <span class="chip real">Eigenformat</span>' : p.kind === "serie" ? ' <span class="chip real">Serienlizenz</span>' : ""}${G.stream && G.stream.catalog.some(c => c.id === p.id) ? ' <span class="chip good">im Stream</span>' : ""}</td><td>${esc(p.genre)}</td><td class="num">${attr(p.q)}</td>
       <td><span class="mbar"><i style="width:${Math.round(p.topic * 100)}%"></i></span> <span class="muted">${Math.round(p.topic * 100)} %</span></td>
       <td class="muted">${umfang(p)}</td><td class="muted">${GENRES[p.genre].length > 6 ? "live" : GENRES[p.genre].map(h => h).join("/") + " Uhr"}</td><td class="num">${extra(p)}</td></tr>`).join("")}
   </tbody></table></div>`;
@@ -2459,7 +2475,7 @@ function eveningTimeline(P, wd, sc, isToday, lock) {
     const c = sc[i], p = c.p && progOf(P, c.p);
     return `<div class="tl-slot ${spyH === i ? "on" : ""} ${p ? "" : "empty"}">
       <div class="tl-wm" aria-hidden="true">${crest(P.i, 58)}</div>
-      <button class="tl-main" data-act="spyH" data-k="${i}"><small>${hh(i)}${c.live ? " · LIVE" : ""}</small><b>${p ? (c.cont ? "↳ " : "") + esc(p.title) : "Testbild"}</b>
+      ${p ? titleImg(p.title, 40) : ""}<button class="tl-main" data-act="spyH" data-k="${i}"><small>${hh(i)}${c.live ? " · LIVE" : ""}</small><b>${p ? (c.cont ? "↳ " : "") + esc(p.title) : "Testbild"}</b>
         <span>${p ? `${esc(p.genre)} · Q ${p.q}${p.fsk >= 16 ? ` · FSK ${p.fsk}` : ""}` : "Noch nicht belegt"}</span></button>
       ${p && inStream(p) ? `<span class="tl-stream">${STREAMERS.some(x => x.id === S.id) ? sbadge(S.id, 14) : esc(S.name)}</span>` : ""}
       <button class="btn small" data-act="pickProg" data-i="${i}" data-k="${wd}" ${lock || c.live ? "disabled" : ""}>${p ? "Ändern" : "Belegen"}</button></div>`;
