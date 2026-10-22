@@ -60,8 +60,9 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px s
 .histbtns button { width: 38px; height: 46px; border: 0; background: var(--panel-2); color: var(--text); font-size: 20px; font-weight: 700; }
 .histbtns button:first-child { border-radius: 6px 0 0 6px; } .histbtns button:last-child { border-radius: 0 6px 6px 0; }
 .histbtns button:disabled { opacity: .35; cursor: default; }
-#topCrest { display: grid; place-items: center; width: 58px; height: 46px; position: relative; border-radius: 3px;
+#topCrest { display: grid; place-items: center; min-width: 58px; height: 46px; padding: 0 8px; box-sizing: border-box; position: relative; border-radius: 3px;
   background: linear-gradient(135deg, var(--club), color-mix(in srgb, var(--club) 35%, #1b2a6b)); }
+#topCrest img.logo { max-height: 34px; max-width: 110px; object-fit: contain; }
 #topCrest::before, #topCrest::after { content: ""; position: absolute; width: 8px; height: 8px; border: 2px solid rgba(255,255,255,.75); }
 #topCrest::before { left: 3px; top: 3px; border-right: 0; border-bottom: 0; }
 #topCrest::after { right: 3px; bottom: 3px; border-left: 0; border-top: 0; }
@@ -343,6 +344,29 @@ label { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .btn.red:disabled { opacity: 1; }
 .btn.small { min-height: 30px; padding: 4px 10px; font-size: 13px; }
 .act2 { display: grid; gap: 4px; justify-items: end; }
+.tl { display: grid; grid-template-columns: 1fr 1.25fr 1fr; gap: 10px; padding: 0 14px 6px; }
+.tl-zone { display: grid; gap: 8px; align-content: start; }
+.tl-head { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 2px solid var(--line); padding-bottom: 4px; }
+.tl-head b { font-family: var(--font-head); font-size: 17px; } .tl-head span { font-size: 12px; color: var(--muted); }
+.tl-zone.prime .tl-head { border-color: var(--hot); } .tl-zone.prime .tl-head b { color: var(--hot); }
+.tl-slot { position: relative; overflow: hidden; background: var(--panel-2); border: 1px solid var(--line); border-radius: 4px; padding: 8px 10px; display: flex; align-items: center; gap: 8px; min-height: 64px; }
+.tl-slot.on { border-color: var(--hot); box-shadow: inset 3px 0 0 var(--hot); }
+.tl-slot.empty { border-style: dashed; }
+.tl-zone.prime .tl-slot:not(.empty) { background: linear-gradient(110deg, rgba(123,47,247,.28), var(--panel-2) 70%); }
+.tl-wm { position: absolute; right: -6px; bottom: -10px; opacity: .14; pointer-events: none; transform: rotate(-8deg); }
+.tl-main { flex: 1; min-width: 0; background: none; border: 0; text-align: left; display: grid; gap: 1px; padding: 0; position: relative; }
+.tl-main small { font-size: 11px; color: var(--muted); letter-spacing: .06em; } .tl-main b { font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .tl-main span { font-size: 12px; color: var(--muted); }
+.tl-stream { position: absolute; top: 6px; right: 8px; font-size: 11px; }
+.tl-slot .btn { position: relative; }
+@media (max-width: 760px) { .tl { grid-template-columns: minmax(0, 1fr); } }
+.lage { display: grid; grid-template-columns: 1fr 1fr; }
+.lage-col + .lage-col { border-left: 1px solid var(--line); }
+.lage .tile b { font-size: 22px; } .lage .tile b.lage-t { font-family: var(--font-body); font-size: 15px; font-weight: 600; line-height: 1.3; padding: 5px 0 3px; }
+@media (max-width: 900px) { .lage { grid-template-columns: minmax(0, 1fr); } .lage-col + .lage-col { border-left: 0; border-top: 1px solid var(--line); } }
+.pkgs { display: flex; gap: 4px; }
+.pkg { background: var(--panel-2); border: 1px solid var(--line); border-radius: 4px; padding: 4px 8px; display: grid; text-align: left; min-width: 74px; }
+.pkg b { font-family: var(--font-head); font-size: 15px; } .pkg span { font-size: 11px; color: var(--muted); }
+.pkg.on { background: var(--violet); border-color: var(--violet); } .pkg.on span { color: #e5dbff; }
 .nego-person { display: flex; align-items: center; gap: 12px; }
 .nego-person > div { display: grid; gap: 2px; } .nego-person .grow { flex: 1; min-width: 0; } .nego-person b { font-size: 18px; }
 .nego-msg { border-radius: 4px; padding: 10px 12px; border: 1px solid var(--line); background: var(--panel-2); }
@@ -672,10 +696,12 @@ const youthOk = (p, h) => !p.fsk || p.fsk < 16 || h < 6 || (p.fsk === 16 ? h >= 
 const LOGOS = {};
 function probeLogos() {
   const ids = STATIONS.map(s => s.id).concat(STREAMERS.map(s => s.id));
-  for (const id of ids) for (const ext of ["svg", "png"]) {
+  // Suchpfade: logos/ und assets/logos/, jeweils mit Spiel-ID und gängigen Dateinamen (z. B. prosieben.png)
+  const alias = { pro7: ["prosieben"], ard: ["daserste", "das_erste"], kabel1: ["kabeleins"], rtl2: ["rtlzwei"], dritte: ["dritten"], mediathek: ["ardmediathek"] };
+  for (const id of ids) for (const dir of ["logos/", "assets/logos/"]) for (const name of [id].concat(alias[id] || [])) for (const ext of ["svg", "png"]) {
     const img = new Image();
     img.onload = () => { if (!LOGOS[id]) { LOGOS[id] = img.src; if (G) render(); } };
-    img.src = `logos/${id}.${ext}`;
+    img.src = `${dir}${name}.${ext}`;
   }
 }
 function crest(i, size = 34) {
@@ -1039,6 +1065,99 @@ function streamItems() {
   return own.concat(catchup);
 }
 const WINDOW_F = { excl: 1.6, stream: 1.25, dd: 1.1, linear: 0.85, catchup: 0.7 };
+// =====================================================================
+// DACH: Abonnenten nach Ländern, Geo-Blocking und Rechte-Territorien
+// =====================================================================
+// Marktpotenzial (Mio. Nutzer) und Kaufkraft je Land; die Schweiz zahlt mehr, verlangt aber mehrsprachiges Angebot
+const REG = {
+  de: { name: "Deutschland", code: "DE", pot: 45, arpu: 1.0, adds: 1.0 },
+  at: { name: "Österreich", code: "AT", pot: 5, arpu: 0.95, adds: 1.0 },
+  ch: { name: "Schweiz", code: "CH", pot: 4.5, arpu: 1.3, adds: 0.85 },
+};
+const REG_KEYS = ["de", "at", "ch"];
+const GEO_MALUS = 8; // zusätzlicher Churn in % pro Monat in gesperrten Ländern
+const POT_SUM = REG_KEYS.reduce((a, k) => a + REG[k].pot, 0);
+// Paketoptionen bei Sportausschreibungen: Mindestgebote proportional zum Gesamtpaket
+const PKGS = {
+  dach: { name: "Gesamt-DACH", short: "DACH", terr: ["de", "at", "ch"], f: 1, desc: "Linear + Streaming in allen drei Ländern. Kein Geo-Blocking." },
+  de: { name: "Nur Deutschland", short: "DE", terr: ["de"], f: 0.63, desc: "Linear + Streaming DE. Am Spieltag Geo-Blocking in AT & CH." },
+  alp: { name: "Nur Österreich & Schweiz", short: "AT/CH", terr: ["at", "ch"], f: 0.37, desc: "Nur Streaming-Lizenz für AT & CH, keine Free-TV-Ausstrahlung." },
+};
+const pkgMin = (r, k) => r1000(r.price * PKGS[k].f);
+// KI-Bieter aus dem Streaming-Markt: globale Riesen greifen das Gesamtpaket an, lokale Anbieter nur die Alpenregion
+const DACH_BIDDERS = [
+  { name: "DAZN", pkg: "dach", chance: 0.3, lo: 1.05, hi: 1.5, sports: ["Fußball", "American Football", "Basketball"] },
+  { name: "Sky/WOW", pkg: "dach", chance: 0.2, lo: 0.95, hi: 1.3 },
+  { name: "Sky/WOW", pkg: "alp", chance: 0.35, lo: 0.98, hi: 1.3 },
+  { name: "Canal+ (AT)", pkg: "alp", chance: 0.55, lo: 0.98, hi: 1.35 },
+];
+// Länder-Aufteilung des Streamers; Änderungen an S.subs von anderer Stelle werden proportional übernommen
+function sRegions(S) {
+  if (!S.reg) S.reg = { de: S.subs * 0.83, at: S.subs * 0.08, ch: S.subs * 0.09 };
+  const sum = REG_KEYS.reduce((a, k) => a + S.reg[k], 0) || 1;
+  if (Math.abs(sum - S.subs) > 1e-6) for (const k of REG_KEYS) S.reg[k] *= S.subs / sum;
+  return S.reg;
+}
+const geoBlocked = (S, k) => !!(S.geo && S.geo[k] >= G.day);
+// Täglicher Abo-Lauf je Land (ersetzt die globale Formel): Churn + Geo-Malus, Neukunden nach Marktpotenzial
+function regionDay(S, churn, adds) {
+  const R = sRegions(S);
+  for (const k of REG_KEYS) {
+    const geo = geoBlocked(S, k) ? GEO_MALUS / 100 / 30 : 0;
+    R[k] = Math.max(0.001, R[k] * (1 + 0.001 - churn - geo) + adds * REG[k].pot / POT_SUM * REG[k].adds);
+  }
+  S.subs = REG_KEYS.reduce((a, k) => a + R[k], 0);
+}
+const arpuFactor = S => { const R = sRegions(S); return S.subs ? REG_KEYS.reduce((a, k) => a + R[k] * REG[k].arpu, 0) / S.subs : 1; };
+// Sportabend: Territorien prüfen – abgedeckte Länder bekommen Neukunden, fehlende werden geblockt
+function sportTerritories(S) {
+  const P = me(); S.geo = S.geo || {};
+  for (const { r, d } of eventsOn(G.day)) {
+    const terr = r.owner === P.id ? (r.terr || REG_KEYS) : r.alp === P.id ? PKGS.alp.terr : null;
+    if (!terr) continue;
+    const R = sRegions(S), blocked = [];
+    for (const k of REG_KEYS) {
+      if (terr.includes(k)) R[k] *= 1 + 0.004 * d.q / 80;
+      else if (r.owner === P.id) { if (!geoBlocked(S, k)) blocked.push(REG[k].name); S.geo[k] = G.day + 30; }
+    }
+    S.subs = REG_KEYS.reduce((a, k) => a + R[k], 0);
+    if (blocked.length) logMsg("Digitalvorstand", "Streaming", `Geo-Blocking aktiv: „${d.name}“ ist in ${blocked.join(" und ")} nicht lizenziert. Für 30 Tage +${GEO_MALUS} % Churn pro Monat in ${blocked.length > 1 ? "beiden Ländern" : "diesem Land"}.`, true);
+  }
+}
+// Trend je Land: Woche (7 Tage) und Monat (30 Tage bzw. ältester Datenpunkt)
+function regionTrend(S, k, days) {
+  const h = S.hist.filter(x => x.reg);
+  if (h.length < 2) return null;
+  const now = h[h.length - 1].reg[k], then = (h.find(x => x.day >= G.day - days) || h[0]).reg[k];
+  return then ? (now - then) / then * 100 : null;
+}
+const trendCell = v => v == null ? '<span class="muted">–</span>' : `<span class="${v > 0.05 ? "up" : v < -0.05 ? "down" : "muted"}">${v > 0.05 ? "▲" : v < -0.05 ? "▼" : "▶"} ${v > 0 ? "+" : ""}${v.toFixed(1).replace(".", ",")} %</span>`;
+function streamTrendPanel(S) {
+  if (!S || sFree(S)) return "";
+  const R = sRegions(S), base = S.subs ? S.hist.length && S.hist[S.hist.length - 1].svod ? S.hist[S.hist.length - 1].svod * 30 / arpuFactor(S) / (S.subs * 1e6) : avgPrice(S) : 0;
+  const rows = REG_KEYS.map(k => ({ k, n: R[k], w: regionTrend(S, k, 7), m: regionTrend(S, k, 30), rev: R[k] * 1e6 * base * REG[k].arpu }));
+  const tot = rows.reduce((a, r) => a + r.rev, 0);
+  return `<section class="panel"><div class="ph"><h2>Streaming-Trend DACH</h2><span class="aside">${esc(S.name)}</span></div><div class="tbl"><table>
+    <thead><tr><th>Land</th><th class="num">Abos · Umsatz/Monat</th><th class="num">Woche</th><th class="num">Monat</th></tr></thead><tbody>
+    ${rows.map(r => `<tr><td><b>${REG[r.k].code}</b>${geoBlocked(S, r.k) ? ' <span class="chip fsk">Geo-Block</span>' : ""}</td><td class="num">${Math.round(r.n * 1e6).toLocaleString("de-DE")}<div class="muted">${meur(r.rev)}</div></td><td class="num">${trendCell(r.w)}</td><td class="num">${trendCell(r.m)}</td></tr>`).join("")}
+    <tr><td><b>Gesamt</b></td><td class="num"><b>${Math.round(S.subs * 1e6).toLocaleString("de-DE")}</b><div><b>${meur(tot)}</b></div></td><td class="num">${trendCell(totalTrend(S, 7))}</td><td class="num">${trendCell(totalTrend(S, 30))}</td></tr>
+    </tbody></table></div></section>`;
+}
+function totalTrend(S, days) {
+  const h = S.hist; if (h.length < 2) return null;
+  const now = h[h.length - 1].subs, then = (h.find(x => x.day >= G.day - days) || h[0]).subs;
+  return then ? (now - then) / then * 100 : null;
+}
+// Gebote der Streaming-KI je Paket
+function dachBids(r, d) {
+  const out = { dach: [], de: [], alp: [] };
+  for (const b of DACH_BIDDERS) {
+    if (b.sports && !b.sports.includes(d.sport)) continue;
+    if (Math.random() > b.chance) continue;
+    out[b.pkg].push({ name: b.name, bid: r1000(pkgMin(r, b.pkg) * rnd(b.lo, b.hi)), ai: true });
+  }
+  return out;
+}
 function streamDay() {
   for (const s of G.streamers) if (!s.player) { s.trend = clamp(s.trend + rnd(-0.004, 0.004), -0.01, 0.012); s.subs = Math.max(0.2, s.subs * (1 + s.trend + 0.0008)); }
   const S = G.stream;
@@ -1066,7 +1185,8 @@ function streamDay() {
     const churn = S.churnM / 100 / 30;
     // Neukunden (Mio. pro Tag): Katalog, Bekanntheit, Preis, Kampagne, Umsteiger aus der Mediathek
     const adds = (0.02 * cat / 70 + newCount * 0.002) * (S.awareness / 60) * priceF * (campaign ? 2.5 : 1) + S.reach * 0.002;
-    S.subs = Math.max(0.01, S.subs * (1 + 0.001 - churn) + adds);
+    sportTerritories(S);
+    regionDay(S, churn, adds);
     S.churn = churn * 30 * 100;
     views = S.subs * 1e6 * 0.32 * (cat / 70);
   }
@@ -1077,7 +1197,7 @@ function streamDay() {
   for (const x of top) S.views[x.c.id] = Math.round(views * x.s / tot);
   const users = sFree(S) ? S.reach : S.subs;
   const shares = !sFree(S) ? tierShares(S) : null;
-  const svod = shares ? S.subs * 1e6 * shares.reduce((a, sh, k) => a + sh * S.tiers[k], 0) / 30 * (campaign ? 0.85 : 1) : 0;
+  const svod = shares ? S.subs * 1e6 * shares.reduce((a, sh, k) => a + sh * S.tiers[k], 0) / 30 * (campaign ? 0.85 : 1) * arpuFactor(S) : 0;
   const avod = S.model === "free" ? 0 : views * (shares ? shares[0] * 0.05 : 0.05); // Werbung je Abruf (Abo: nur Basis-Paket)
   const server = STAGES.slice(1, S.stage + 1).reduce((a, s) => a + s.server, 0) + (S.capacity - 1) * 20000;
   const cdn = views * 0.004;
@@ -1087,7 +1207,7 @@ function streamDay() {
   const result = svod + avod - server - cdn;
   S.cum += result;
   const arpu = users ? (svod + avod) * 30 / (users * 1e6) : 0;
-  const rec = { day: G.day, subs: S.subs, reach: S.reach, views, svod, avod, cdn: server + cdn, arpu, churn: S.churnM || 0, newCount, result };
+  const rec = { day: G.day, subs: S.subs, reach: S.reach, views, svod, avod, cdn: server + cdn, arpu, churn: S.churnM || 0, newCount, result, reg: !sFree(S) && S.reg ? { ...S.reg } : null };
   S.hist.push(rec); if (S.hist.length > 60) S.hist.shift();
   const mine = G.streamers.find(s => s.id === S.id); if (mine) mine.subs = sFree(S) ? 0 : S.subs;
   return rec;
@@ -1973,7 +2093,7 @@ function endDay() {
     st.conf = clamp(st.conf + dc + (st.money < 0 ? -2 : 0) + (ebitda < -1e6 ? -1 : 0), 0, 100);
     st.hist.push({ day: G.day, ma: st.dayMA, d, money: st.money, fin: { ...st.fin }, ebitda, views, conf: st.conf, stream: srec });
   }
-  for (const r of G.rights) if (r.owner) { r.days--; if (r.days <= 0) { const d = RDEF(r.id); logMsg("Rechteagentur", "Sport", `Die Rechte an „${d.name}“ (bisher ${holderName(r.owner)}) werden neu ausgeschrieben.`); r.owner = null; r.price = rightPrice(d); r.bid = 0; } }
+  for (const r of G.rights) if (r.owner || r.pay || r.alp) { r.days--; if (r.days <= 0) { const d = RDEF(r.id); logMsg("Rechteagentur", "Sport", `Die Rechte an „${d.name}“ (bisher ${rHolder(r)}) werden neu ausgeschrieben.`); r.owner = null; r.pay = null; r.alp = null; r.terr = null; r.price = rightPrice(d); r.bid = 0; } }
   G.yesterday = { day: G.day, res: G.today };
   const P = me();
   const avg = P.maSum / P.maDays;
@@ -1990,34 +2110,41 @@ function endDay() {
   render(); renderTop();
   showSummary(report);
 }
+const rHolder = r => r.owner ? holderName(r.owner) : r.pay ? r.pay : r.alp ? (r.alp === me().id ? me().name : r.alp) : "–";
+const terrTxt = r => r.owner ? (r.terr || REG_KEYS).map(k => REG[k].code).join(" · ") : "";
+// Verdeckte Auktion mit drei Paketen: Gesamt-DACH gewinnt nur, wenn es mindestens so viel bringt wie DE + AT/CH einzeln
 function resolveAuctions() {
+  const P = me();
   for (const r of G.rights) {
-    if (r.owner) continue;
-    const d = RDEF(r.id);
-    let best = null, bestBid = 0;
-    const env = [];
+    if (r.owner || r.pay || r.alp) continue;
+    const d = RDEF(r.id), bids = dachBids(r, d);
     for (const st of G.stations) {
       if (isMe(st)) continue;
       const interest = d.tags === "event" ? (st.type === "oer" ? 1.25 : 0.8) : d.tags === "oer" ? (st.type === "oer" ? 1.05 : 0.7) : (st.type === "oer" ? 0.7 : 1.05);
       if (Math.random() > 0.45) continue;
-      const bid = r1000(r.price * interest * rnd(0.75, 1.3));
+      const bid = r1000(pkgMin(r, "de") * interest * rnd(0.75, 1.3));
       if (bid > st.base * 9e5 + 1e6) continue;
-      env.push([st.name, bid]);
-      if (bid > bestBid) { bestBid = bid; best = st; }
+      bids.de.push({ name: st.name, bid, st });
     }
-    const P = me();
-    if (r.bid) {
-      const all = env.concat([[P.name + " (Sie)", r.bid]]).sort((a, b) => b[1] - a[1]);
-      logMsg("Rechteagentur", "Sport", `Umschläge geöffnet – „${d.name}“ (Mindestgebot ${meur(r.price)}): ${all.map(([n, b], k) => `${k + 1}. ${n} ${meur(b)}${b < r.price ? " (ungültig)" : ""}`).join(" · ")}`);
+    const pk = r.pkg || "dach";
+    if (r.bid) bids[pk].push({ name: P.name + " (Sie)", bid: r.bid, st: P, me: true });
+    const best = k => bids[k].filter(b => b.bid >= pkgMin(r, k) && (!b.me || P.money >= b.bid)).sort((a, b) => b.bid - a.bid)[0] || null;
+    const bD = best("dach"), bDE = best("de"), bA = best("alp");
+    if (r.bid) logMsg("Rechteagentur", "Sport", `Umschläge geöffnet – „${d.name}“: ${["dach", "de", "alp"].map(k => `${PKGS[k].short} (ab ${meur(pkgMin(r, k))}): ${bids[k].length ? bids[k].sort((a, b) => b.bid - a.bid).map(b => `${b.name} ${meur(b.bid)}`).join(", ") : "kein Gebot"}`).join(" · ")}`);
+    const dachWins = bD && bD.bid >= (bDE ? bDE.bid : 0) + (bA ? bA.bid : 0);
+    const winDE = dachWins ? bD : bDE, winA = dachWins ? bD : bA;
+    if (!winDE && !winA) { if (r.bid) logMsg("Rechteagentur", "Sport", `Ihr Gebot für „${d.name}“ lag unter dem Mindestgebot oder Ihr Konto war nicht gedeckt.`); r.bid = 0; r.pkg = null; continue; }
+    r.days = 28; r.terr = null;
+    if (winDE) { if (winDE.st) { r.owner = winDE.st.id; r.terr = dachWins ? REG_KEYS.slice() : ["de"]; } else r.pay = winDE.name; }
+    if (winA) r.alp = winA.st ? winA.st.id : winA.name;
+    for (const w of new Set([winDE, winA])) if (w && w.me) book(P, "Sportrechte", -w.bid);
+    const mine = [winDE, winA].some(w => w && w.me);
+    if (mine) logMsg("Rechteagentur", "Sport", `Zuschlag! ${P.name} erhält „${d.name}“ – ${PKGS[pk].name} für ${meur(r.bid)} (28 Tage).${pk === "de" ? " Achtung: Am Spieltag gilt Geo-Blocking in Österreich und der Schweiz." : pk === "alp" ? " Nur Streaming-Lizenz für Österreich und die Schweiz." : ""}`, true);
+    else {
+      const who = dachWins ? `${bD.name} sichert sich das Gesamt-DACH-Paket für ${meur(bD.bid)}` : [bDE && `${bDE.name} erhält Deutschland für ${meur(bDE.bid)}`, bA && `${bA.name} die Alpenregion für ${meur(bA.bid)}`].filter(Boolean).join(", ");
+      logMsg("Rechteagentur", "Sport", `${r.bid ? "Überboten" : "Vergeben"}: „${d.name}“ – ${who}.${r.pay ? " Das Recht wandert ins Pay-TV." : ""}${r.bid ? ` Ihr Gebot: ${meur(r.bid)} (${PKGS[pk].short}).` : ""}`, !!r.bid);
     }
-    if (r.bid >= r.price && r.bid > bestBid && P.money >= r.bid) {
-      book(P, "Sportrechte", -r.bid); r.owner = P.id; r.days = 28;
-      logMsg("Rechteagentur", "Sport", `Zuschlag! ${P.name} erhält „${d.name}“ für ${meur(r.bid)} (28 Tage).`, true);
-    } else if (best && bestBid >= r.price) {
-      logMsg("Rechteagentur", "Sport", r.bid ? `Überboten: ${best.name} erhält „${d.name}“ für ${meur(bestBid)}. Ihr Gebot: ${meur(r.bid)}.` : `${best.name} sichert sich „${d.name}“ für ${meur(bestBid)}.`, !!r.bid);
-      r.owner = best.id; r.days = 28;
-    } else if (r.bid) logMsg("Rechteagentur", "Sport", `Ihr Gebot für „${d.name}“ lag unter dem Mindestgebot oder Ihr Konto war nicht gedeckt.`);
-    r.bid = 0;
+    r.bid = 0; r.pkg = null;
   }
 }
 function nextDay() {
@@ -2244,6 +2371,29 @@ function nextEvents(P, n) {
   }
   return out.slice(0, n);
 }
+// Lagebild: lineares TV und Streaming auf einen Blick
+function lagebild(P) {
+  const S = G.stream, sl = S && S.hist[S.hist.length - 1];
+  const prime = P.sched[20], pp = prime.p && progOf(P, prime.p);
+  const holesToday = P.sched.filter(c => !c.p).length, holesWeek = P.week.reduce((a, d) => a + d.filter(c => !c.p || !progOf(P, c.p)).length, 0); // auch abgelaufene Lizenzen
+  const tile = (l, v, s, cls = "") => `<div class="tile"><small>${l}</small><b class="${cls}">${v}</b><span>${s}</span></div>`;
+  const lin = [
+    tile("Marktanteil gestern", P.maDays ? pct(P.dayMA) : "–", `Ziel ${pct(P.target)}`, P.maDays ? (P.dayMA >= P.target ? "up" : "down") : ""),
+    tile("Primetime heute", pp ? esc(pp.title) : "Testbild", pp ? `20:00 · erwartet ${mio(expected(P, 20))} Mio.` : "20:00 noch nicht belegt", pp ? "lage-t" : "lage-t down"),
+    tile("Sendelöcher", holesToday ? `${holesToday} heute` : "keine", holesWeek ? `${holesWeek} Stunden im Wochenplan offen` : "Wochenplan vollständig", holesToday ? "down" : "up"),
+  ];
+  let str;
+  if (!S) str = [tile("Eigener Streamer", "–", G.project ? `Im Bau: noch ${G.project.left} Tage` : "Noch nicht gestartet")];
+  else if (sFree(S)) str = [tile("Reichweite", `${mio(S.reach)} Mio.`, "Nutzer pro Tag"), tile("Katalog", S.catalog.length, sl ? `${sl.newCount} neue Titel in 7 Tagen` : "Titel")];
+  else {
+    const w = totalTrend(S, 7), geo = REG_KEYS.filter(k => geoBlocked(S, k)).map(k => REG[k].code);
+    str = [tile("Abonnenten DACH", `${mio(S.subs)} Mio.`, w == null ? "Trend ab Tag 2" : `${w >= 0 ? "▲ +" : "▼ "}${w.toFixed(1).replace(".", ",")} % in 7 Tagen`, w == null ? "" : w >= 0 ? "up" : "down"),
+      tile("Churn", `${pct(S.churnM || 0)}`, "pro Monat", (S.churnM || 0) > 4 ? "down" : ""),
+      tile("Geo-Blocking", geo.length ? geo.join(" · ") : "keins", geo.length ? `+${GEO_MALUS} % Churn dort` : "alle Länder lizenziert", geo.length ? "down" : "up")];
+  }
+  return `<section class="panel lage mb"><div class="lage-col"><div class="ph"><h2>Lineares TV</h2><span class="aside">${esc(P.name)} · ${dateLabel(G.day)}</span><button class="btn small" data-page="plan">Wochenplan</button></div><div class="tiles pad">${lin.join("")}</div></div>
+    <div class="lage-col"><div class="ph"><h2>Streaming</h2><span class="aside">${S ? esc(S.name) : "kein Streamer"}</span><button class="btn small" data-page="stream">Plattform</button></div><div class="tiles pad">${str.join("")}</div></div></section>`;
+}
 function overview(P) {
   const prime = P.sched[20], pp = prime.p && progOf(P, prime.p);
   const avg = P.maDays ? P.maSum / P.maDays : 0;
@@ -2254,12 +2404,12 @@ function overview(P) {
   const holes = P.sched.filter(c => !c.p).length;
   const S = G.stream, sl = S && S.hist[S.hist.length - 1];
   const lastFin = P.hist.length ? P.hist[P.hist.length - 1] : null;
-  return `<div class="grid dash">
+  return `${lagebild(P)}<div class="grid dash">
     <div class="col">${messagesPanel(9)}</div>
     <div class="col"><section class="panel"><div class="st-wrap"><h2 class="st">News</h2></div>${heroCard(P)}<div style="margin-top:6px">${newsItems()}</div>
       <div class="st-wrap" style="padding-top:14px"><h2 class="st">Abendprogramm heute</h2></div>${eveningTable(P)}</section></div>
     <div class="col"><section class="panel"><div class="st-wrap"><h2 class="st">Quotentabelle</h2></div>${quotaTable(true)}
-      <div class="st-wrap"><h2 class="st">Statistiken</h2></div>${statsList(P)}</section></div>
+      <div class="st-wrap"><h2 class="st">Statistiken</h2></div>${statsList(P)}</section>${streamTrendPanel(S)}</div>
     <div class="col">
       <section class="panel"><div class="ph"><h2>Senderleitung</h2><span class="aside">Tag ${G.day} / ${SEASON}</span></div>
         <div class="goal"><div class="row"><b>Vertrauen</b><span class="${P.conf < 30 ? "down" : "muted"}">${P.conf} / 100</span></div><div class="track"><i style="width:${P.conf}%;background:${P.conf < 30 ? "#ef4444" : P.conf < 55 ? "#eab308" : "#22c55e"}"></i></div></div>
@@ -2300,6 +2450,30 @@ function progTable(list, extra, head = "") {
       <td class="muted">${umfang(p)}</td><td class="muted">${GENRES[p.genre].length > 6 ? "live" : GENRES[p.genre].map(h => h).join("/") + " Uhr"}</td><td class="num">${extra(p)}</td></tr>`).join("")}
   </tbody></table></div>`;
 }
+// Abend-Zeitleiste: drei Zeitzonen mit Senderlogo als Wasserzeichen und Konkurrenz-Spionage für den gewählten Sendeplatz
+const ZONES = [["Vorabend", "18–20 Uhr", [18, 19]], ["Primetime", "20:15–22:15 Uhr", [20, 21]], ["Spätprogramm", "ab 22:15 Uhr", [22, 23]]];
+let spyH = 20;
+function eveningTimeline(P, wd, sc, isToday, lock) {
+  const S = G.stream, inStream = p => S && S.catalog.some(c => c.id === p.id);
+  const slot = i => {
+    const c = sc[i], p = c.p && progOf(P, c.p);
+    return `<div class="tl-slot ${spyH === i ? "on" : ""} ${p ? "" : "empty"}">
+      <div class="tl-wm" aria-hidden="true">${crest(P.i, 58)}</div>
+      <button class="tl-main" data-act="spyH" data-k="${i}"><small>${hh(i)}${c.live ? " · LIVE" : ""}</small><b>${p ? (c.cont ? "↳ " : "") + esc(p.title) : "Testbild"}</b>
+        <span>${p ? `${esc(p.genre)} · Q ${p.q}${p.fsk >= 16 ? ` · FSK ${p.fsk}` : ""}` : "Noch nicht belegt"}</span></button>
+      ${p && inStream(p) ? `<span class="tl-stream">${STREAMERS.some(x => x.id === S.id) ? sbadge(S.id, 14) : esc(S.name)}</span>` : ""}
+      <button class="btn small" data-act="pickProg" data-i="${i}" data-k="${wd}" ${lock || c.live ? "disabled" : ""}>${p ? "Ändern" : "Belegen"}</button></div>`;
+  };
+  const mine = sc[spyH].p && progOf(P, sc[spyH].p);
+  const rivals = G.stations.filter(s => !isMe(s)).sort((a, b) => b.base - a.base).slice(0, 6).map(st => {
+    const c = (isToday ? st.sched : st.week[wd])[spyH], p = c && c.p && progOf(st, c.p);
+    const risk = !p ? ["Kein Programm", "muted"] : p.q >= 85 ? ["Hype-Gegner", "down"] : mine && p.q > mine.q ? ["Stärker als Ihr Programm", "down"] : mine ? ["Schwächer als Ihr Programm", "up"] : ["Gegenprogramm", "muted"];
+    return `<tr><td>${sname(st.i)}</td><td class="title">${p ? esc(p.title) : "–"}${p ? `<div class="muted">${esc(p.genre)}</div>` : ""}</td><td class="num">${p ? attr(p.q) : ""}</td><td class="${risk[1]}">${risk[0]}</td></tr>`;
+  }).join("");
+  return `<section class="panel mb"><div class="ph"><h2>Abend-Zeitleiste · ${WDL[wd]}</h2><span class="aside">Sendeplatz antippen für den Konkurrenz-Check</span></div>
+    <div class="tl">${ZONES.map(([n, t, hs]) => `<div class="tl-zone ${n === "Primetime" ? "prime" : ""}"><div class="tl-head"><b>${n}</b><span>${t}</span></div>${hs.map(slot).join("")}</div>`).join("")}</div>
+    <div class="st-wrap"><h2 class="st">Konkurrenz um ${hh(spyH)}</h2></div><div class="tbl"><table><thead><tr><th>Sender</th><th>Programm</th><th class="num">Qual.</th><th>Einschätzung</th></tr></thead><tbody>${rivals}</tbody></table></div></section>`;
+}
 function planPage(P) {
   const today = weekday(G.day);
   const wd = planDay == null ? today : planDay;
@@ -2313,6 +2487,7 @@ function planPage(P) {
   if (P.type === "oer") notes.push("Werbung nur werktags vor 20 Uhr");
   notes.push("FSK 16 ab 22 Uhr, FSK 18 ab 23 Uhr");
   if (isToday && P.live.length) notes.push("Live-Events sind heute fest eingeplant");
+  h += eveningTimeline(P, wd, sc, isToday, lock);
   h += `<p class="lead mb">${notes.join(" · ")}. ${isToday ? "Ergebnisse von heute erscheinen nach der Ausstrahlung." : `Dieser Plan gilt für jeden ${WDL[wd]}.`}</p>`;
   h += `<section class="panel"><div class="tbl"><table class="plan"><thead><tr><th>Zeit</th><th>Programm</th><th>Werbung</th><th class="num">Erwartet</th><th class="num">${isToday ? "Ergebnis" : "Zuletzt"}</th></tr></thead><tbody>`;
   let lastPart = "";
@@ -2428,24 +2603,25 @@ function smarket(P) {
 // Seiten: Sport, Werbung, Nachrichten
 // =====================================================================
 function rightsPage(P) {
-  const avail = G.rights.filter(r => !r.owner), held = G.rights.filter(r => r.owner);
+  const avail = G.rights.filter(r => !r.owner && !r.pay && !r.alp), held = G.rights.filter(r => r.owner || r.pay || r.alp);
   return title("Rechtemarkt", `<span class="muted">Auktionen werden über Nacht entschieden</span>`) +
-    `<p class="lead mb">Bieten Sie mindestens das Mindestgebot; die Konkurrenz bietet verdeckt mit. Öffentlich-Rechtliche halten bei Großereignissen mit, Private bei Liga- und US-Sport. Ein teures Recht muss sich über Quote und Werbung refinanzieren.</p>
-    <section class="panel mb"><div class="ph"><h2>In der Ausschreibung</h2><span class="aside">Laufzeit nach Zuschlag: 28 Tage</span></div>${avail.length ? `<div class="tbl"><table><thead><tr><th>Paket</th><th>Termin</th><th class="num">Zugkraft</th><th class="num">Mindestgebot</th><th>Ihr Gebot</th></tr></thead><tbody>
-      ${avail.map(r => { const d = RDEF(r.id); return `<tr><td class="title"><b>${esc(d.name)}</b><div class="muted">${esc(d.sport)}${d.from > G.day ? ` · Saisonstart ${dateShort(d.from)}` : ""}</div></td><td>${WDL[d.wd]} ${hh(d.h)}${d.every > 1 ? ` · alle ${d.every} Wo.` : ""}</td><td class="num">${attr(d.q)}</td><td class="num">${meur(r.price)}</td>
-        <td><div class="actions"><input type="number" id="bid-${r.id}" min="${r.price}" step="100000" value="${r.bid || r.price}" ${planLocked() ? "disabled" : ""}><button class="btn hot" data-act="bid" data-k="${r.id}" ${planLocked() ? "disabled" : ""}>${r.bid ? "Ändern" : "Bieten"}</button>${r.bid ? `<span class="chip good">${meur(r.bid)}</span>` : ""}</div></td></tr>`; }).join("")}
+    `<p class="lead mb">Wählen Sie je Ausschreibung ein Paket – Gesamt-DACH, nur Deutschland oder nur Österreich & Schweiz – und bieten Sie mindestens das Mindestgebot. DAZN und Sky/WOW greifen das Gesamtpaket an, lokale Anbieter wie Canal+ (AT) nur die Alpenregion. Wer nur Deutschland hält, muss am Spieltag den Stream in AT und CH sperren (Geo-Blocking, mehr Kündigungen). Öffentlich-Rechtliche halten bei Großereignissen mit, Private bei Liga- und US-Sport. Ein teures Recht muss sich über Quote und Werbung refinanzieren.</p>
+    <section class="panel mb"><div class="ph"><h2>In der Ausschreibung</h2><span class="aside">Laufzeit nach Zuschlag: 28 Tage</span></div>${avail.length ? `<div class="tbl"><table><thead><tr><th>Paket</th><th>Termin</th><th class="num">Zugkraft</th><th>Territorium</th><th>Ihr Gebot</th></tr></thead><tbody>
+      ${avail.map(r => { const d = RDEF(r.id); return `<tr><td class="title"><b>${esc(d.name)}</b><div class="muted">${esc(d.sport)}${d.from > G.day ? ` · Saisonstart ${dateShort(d.from)}` : ""}</div></td><td>${WDL[d.wd]} ${hh(d.h)}${d.every > 1 ? ` · alle ${d.every} Wo.` : ""}</td><td class="num">${attr(d.q)}</td>
+        <td><div class="pkgs">${Object.entries(PKGS).map(([k, pk]) => `<button class="pkg ${(r.pkgSel || r.pkg || "dach") === k ? "on" : ""}" data-act="pkg" data-k="${r.id}" data-v="${k}" title="${esc(pk.desc)}" ${planLocked() ? "disabled" : ""}><b>${pk.short}</b><span>ab ${meur(pkgMin(r, k))}</span></button>`).join("")}</div></td>
+        <td><div class="actions"><input type="number" id="bid-${r.id}" min="${pkgMin(r, r.pkgSel || r.pkg || "dach")}" step="100000" value="${r.bid && (r.pkgSel || r.pkg) === r.pkg ? r.bid : pkgMin(r, r.pkgSel || r.pkg || "dach")}" ${planLocked() ? "disabled" : ""}><button class="btn hot" data-act="bid" data-k="${r.id}" ${planLocked() ? "disabled" : ""}>${r.bid ? "Ändern" : "Bieten"}</button>${r.bid ? `<span class="chip good">${PKGS[r.pkg].short} · ${meur(r.bid)}</span>` : ""}</div></td></tr>`; }).join("")}
     </tbody></table></div>` : '<div class="pad"><p class="lead">Derzeit läuft keine Ausschreibung.</p></div>'}</section>
-    <section class="panel mb"><div class="ph"><h2>Vergebene Free-TV-Rechte</h2></div><div class="tbl"><table><thead><tr><th>Paket</th><th>Inhaber</th><th>Termin</th><th class="num">Zugkraft</th><th class="num">Restlaufzeit</th></tr></thead><tbody>
-      ${held.map(r => { const d = RDEF(r.id); return `<tr class="${r.owner === P.id ? "mine" : ""}"><td class="title">${esc(d.name)}</td><td>${sname(SIDX[r.owner])}</td><td>${WDL[d.wd]} ${hh(d.h)}</td><td class="num">${attr(d.q)}</td><td class="num">${r.days} T.</td></tr>`; }).join("")}
+    <section class="panel mb"><div class="ph"><h2>Vergebene Rechte</h2></div><div class="tbl"><table><thead><tr><th>Paket</th><th>Free-TV / DE</th><th>AT & CH</th><th>Termin</th><th class="num">Zugkraft</th><th class="num">Restlaufzeit</th></tr></thead><tbody>
+      ${held.map(r => { const d = RDEF(r.id); return `<tr class="${r.owner === P.id || r.alp === P.id ? "mine" : ""}"><td class="title">${esc(d.name)}</td><td>${r.owner ? sname(SIDX[r.owner]) : r.pay ? `<span class="muted">${esc(r.pay)} · Pay-TV</span>` : '<span class="muted">–</span>'}</td><td class="muted">${r.alp ? esc(r.alp === P.id ? P.name : SIDX[r.alp] !== undefined ? holderName(r.alp) : r.alp) : r.owner && r.terr && r.terr.length < 3 ? '<span class="chip fsk">Geo-Block</span>' : r.owner && r.terr ? "im DACH-Paket" : "–"}</td><td>${WDL[d.wd]} ${hh(d.h)}</td><td class="num">${attr(d.q)}</td><td class="num">${r.days} T.</td></tr>`; }).join("")}
     </tbody></table></div></section>
     <section class="panel"><div class="ph"><h2>Exklusiv bei Pay-TV & Streaming</h2><span class="aside">für Free-TV-Sender nicht erwerbbar</span></div><div class="tbl"><table><thead><tr><th>Sportart</th><th>Wettbewerb</th><th>Anbieter</th></tr></thead><tbody>
       ${EXCLUSIVE.map(([s, c, a]) => `<tr><td>${esc(s)}</td><td class="title">${esc(c)}</td><td class="muted">${esc(a)}</td></tr>`).join("")}</tbody></table></div></section>`;
 }
 function myrights(P) {
-  const own = G.rights.filter(r => r.owner === P.id);
+  const own = G.rights.filter(r => r.owner === P.id || r.alp === P.id);
   const ev = nextEvents(P, 10);
   return title("Meine Rechte") + `<div class="grid two">
-    <section class="panel"><div class="ph"><h2>Rechtepakete</h2></div>${own.length ? `<div class="tbl"><table><thead><tr><th>Paket</th><th>Termin</th><th class="num">Restlaufzeit</th></tr></thead><tbody>${own.map(r => { const d = RDEF(r.id); return `<tr><td class="title">${esc(d.name)}</td><td>${WDL[d.wd]} ${hh(d.h)}</td><td class="num">${r.days} T.</td></tr>`; }).join("")}</tbody></table></div>` : '<div class="pad"><p class="lead">Sie besitzen keine Sportrechte.</p></div>'}</section>
+    <section class="panel"><div class="ph"><h2>Rechtepakete</h2></div>${own.length ? `<div class="tbl"><table><thead><tr><th>Paket</th><th>Territorium</th><th>Termin</th><th class="num">Restlaufzeit</th></tr></thead><tbody>${own.map(r => { const d = RDEF(r.id); return `<tr><td class="title">${esc(d.name)}</td><td>${r.owner === P.id ? terrTxt(r) : "AT · CH (nur Streaming)"}${r.owner === P.id && r.terr && r.terr.length < 3 ? ' <span class="chip fsk">Geo-Block AT/CH</span>' : ""}</td><td>${WDL[d.wd]} ${hh(d.h)}</td><td class="num">${r.days} T.</td></tr>`; }).join("")}</tbody></table></div>` : '<div class="pad"><p class="lead">Sie besitzen keine Sportrechte.</p></div>'}</section>
     <section class="panel"><div class="ph"><h2>Live-Termine</h2><span class="aside">nächste 14 Tage</span></div>${ev.length ? `<div class="tbl"><table><tbody>${ev.map(e => `<tr><td>${dateShort(e.d)}</td><td>${hh(e.def.h)}</td><td class="title">${esc(e.def.name)}</td></tr>`).join("")}</tbody></table></div>` : '<div class="pad"><p class="lead">Keine Termine.</p></div>'}</section></div>`;
 }
 function adTable(list, extra) {
@@ -2689,6 +2865,7 @@ function act(b) {
   const wd = b.dataset.k !== undefined ? +b.dataset.k : null;
   switch (k) {
     case "close": closeModal(); return;
+    case "spyH": spyH = +b.dataset.k; break;
     case "filter": msgFilter = b.dataset.k; break;
     case "forceStart": closeModal(); startBroadcast(); return;
     case "toPlan": closeModal(); planDay = null; go("plan"); return;
@@ -2753,10 +2930,12 @@ function act(b) {
     case "unstream": if (G.stream) { G.stream.catalog = G.stream.catalog.filter(c => c.id !== id); const p = P.progs.find(x => x.id === id); if (p) p.exclusive = false; } break;
     case "bid": {
       const r = G.rights.find(x => x.id === b.dataset.k);
-      const v = Math.round(+($("bid-" + r.id).value || 0) / 1000) * 1000;
-      if (v < r.price) { toast(`Das Mindestgebot liegt bei ${meur(r.price)}.`); return; }
+      const v = Math.round(+($("bid-" + r.id).value || 0) / 1000) * 1000, pk = r.pkgSel || r.pkg || "dach";
+      if (v < pkgMin(r, pk)) { toast(`Das Mindestgebot für ${PKGS[pk].name} liegt bei ${meur(pkgMin(r, pk))}.`); return; }
       if (v > P.money + 15e6 - P.credit) { toast("So viel Geld steht Ihnen nicht zur Verfügung."); return; }
-      r.bid = v; toast(`Gebot über ${meur(v)} abgegeben. Entscheidung über Nacht.`); break;
+      r.bid = v; r.pkg = pk; toast(`Gebot über ${meur(v)} für ${PKGS[pk].name} abgegeben. Entscheidung über Nacht.`); break;
+    }
+    case "pkg": { const r = G.rights.find(x => x.id === b.dataset.k); if (r) r.pkgSel = b.dataset.v; break;
     }
     case "pickProg": openPicker("prog", i, wd); return;
     case "pickAd": openPicker("ad", i, wd); return;

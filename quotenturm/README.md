@@ -23,6 +23,13 @@ Ein TV- und Streaming-Manager für das iPad. Spielprinzip inspiriert von *Mad TV
 - **Medien-Insider:** Ereignisse am Morgen mit Entscheidungen – Markttrends und Gerüchte, Skandale (mit verzögertem Risiko beim Vertuschen) und Vorschläge aus dem Team.
 - **Finanzen nach Segmenten** (TV-Werbung, Teleshopping, Distribution, Rundfunkbeitrag, Abos, AVoD; Programm, Sportrechte, Personal, Technik/CDN, Strafen) mit EBITDA.
 - **Regeln:** ÖRR-Werbeverbot ab 20 Uhr und sonntags; Jugendschutz (FSK 16 ab 22 Uhr, FSK 18 ab 23 Uhr) mit Bußgeld.
+- **Optik im Stil moderner Fußball-Manager:** dunkles Navy, violette Akzente, Inter + Barlow Condensed, Senderfarbe nur im Wappenblock.
+- **Lagebild auf der Übersicht:** lineares TV (Marktanteil, Primetime, Sendelöcher) und Streaming (Abos DACH, Churn, Geo-Blocking) nebeneinander.
+- **Vertragsverhandlung:** Projektgage oder Exklusivvertrag (4/8/12 Wochen, Wochengage), Sonderklauseln (Trash-TV-Verbot, Streaming-Bonus, Lieblingsautoren), verborgenes Geduld-Barometer (80–99 % der Schmerzgrenze: −30, darunter −55; bei 0 vier Wochen Sperre, oft wechselt der Star dann zu RTL oder ProSieben). Abwerben: erst Ablöse, dann Gagen-Poker.
+- **Krisen am Set:** Klausel-Bruch, Star-Allüren (je nach Zuverlässigkeit), Streik im Autorenzimmer (Nachwuchsteams) – jeweils mit drei Entscheidungen.
+- **DACH-Streaming:** Abos getrennt nach DE/AT/CH mit Marktpotenzial und Kaufkraft (CH × 1,3), Trend-Panel mit Woche/Monat. Sportrechte-Auktion in drei Paketen (Gesamt-DACH, nur DE, nur AT/CH); DAZN und Sky/WOW bieten aufs Gesamtpaket, Canal+ (AT) nur auf die Alpenregion. Wer nur DE hält, löst am Spieltag Geo-Blocking aus (+8 % Churn für 30 Tage in AT/CH).
+- **Abend-Zeitleiste im Wochenplan:** Vorabend, Primetime, Spätprogramm mit Senderlogo als Wasserzeichen und Konkurrenz-Check für den gewählten Sendeplatz.
+- **Editor & Datenimport (Hauptmenü):** Darsteller-Tabellen als CSV/JSON per Upsert über `eindeutige_id` (keine Duplikate), Regler für Talent, Charisma, Skandalfaktor und Gage mit Live-Auswirkungen; TMDb-Titellisten (bis 5.000 Titel) werden nach Genre an ÖRR (Krimi, Drama, Doku) bzw. Private (Unterhaltung) verteilt. Alles bleibt lokal im Browser.
 
 Alle Quoten, Preise, Abozahlen und Bewertungen sind simuliert. Sender-, Film- und Serientitel dienen als Kulisse einer privaten Spielversion.
 
