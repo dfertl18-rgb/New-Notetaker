@@ -383,6 +383,22 @@ label { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
   padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
 .dialog { background: var(--panel); border: 1px solid var(--line); border-radius: 4px; width: min(860px, 100%); margin: auto; box-shadow: 0 30px 80px rgba(0,0,0,.6); overflow: hidden; }
 .dialog.narrow { width: min(580px, 100%); }
+.dialog.wide { width: min(1240px, 100%); }
+.ed-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.ed-bar label.btn { display: inline-flex; align-items: center; cursor: pointer; }
+.ed { display: grid; grid-template-columns: minmax(220px, 1fr) minmax(280px, 1.3fr) minmax(240px, 1fr); gap: 12px; align-items: start; }
+.ed > .card { display: grid; gap: 10px; align-content: start; min-width: 0; }
+.ed-rows { display: grid; gap: 4px; max-height: 52vh; overflow-y: auto; }
+.ed-row { background: var(--panel-2); border: 1px solid var(--line); border-radius: 4px; text-align: left; padding: 8px 10px; display: grid; gap: 1px; }
+.ed-row span { font-size: 12px; color: var(--muted); }
+.ed-row.on { background: var(--violet); border-color: var(--violet); } .ed-row.on span { color: #e5dbff; }
+.ed-slider { display: grid; gap: 6px; }
+.ed-slider input[type=range] { width: 100%; accent-color: var(--hot); }
+.ed-slider input[type=number] { width: 100%; box-sizing: border-box; }
+.fgrid-l { display: grid; gap: 4px; font-size: 13px; color: var(--muted); }
+.fgrid-l select { width: 100%; }
+.imp { display: grid; gap: 4px; }
+@media (max-width: 900px) { .ed { grid-template-columns: minmax(0, 1fr); } }
 .dialog > header { display: flex; align-items: center; gap: 10px; padding: 12px 16px; background: var(--top); color: var(--text); border-bottom: 2px solid var(--violet); }
 .dialog > header h2 { margin: 0; flex: 1; font-family: var(--font-head); font-weight: 700; font-size: 23px; color: var(--hot); }
 .dialog > header .btn { background: var(--panel-2); }
@@ -748,6 +764,9 @@ function newGame(stationId) {
   G.rights.forEach(r => { if (!r.owner) r.price = rightPrice(RDEF(r.id)); });
   G.project = null; G.mods = {}; G.event = null; G.eventLog = [];
   initPeople();
+  applyEditorPeople();
+  const nImp = seedImportedTitles();
+  if (nImp) logMsg("Branchendienst", "Konkurrenz", `Importierte Titeldatenbank: ${nImp} Filme und Serien laufen ab sofort bei der Konkurrenz – Krimi und Anspruch bei den Öffentlich-Rechtlichen, Unterhaltung bei den Privaten.`);
   for (const st of G.stations) { for (const wd of WEEK) planDayFor(st, wd); }
   refreshOffers(true);
   logMsg("Senderleitung", "Vertrag", `Willkommen als Programmdirektion von ${P.name}! Saisonziel: Ø ${pct(P.target)} Marktanteil über den ganzen Tag. Bilanz nach ${SEASON} Tagen.`);
@@ -763,8 +782,8 @@ const RDEF = id => RIGHTS.find(r => r.id === id);
 function refreshOffers(first) {
   if (!first) { shuffle(G.market); G.market.splice(0, Math.min(6, G.market.length)); }
   const owned = new Set(G.stations.flatMap(s => s.progs.map(p => p.title)).concat(G.market.map(p => p.title)));
-  const spool = shuffle(SERIES_DB.filter(r => !r[4] && !owned.has(r[0])));
-  const fpool = shuffle(FILM_DB.filter(r => !owned.has(r[0])));
+  const spool = shuffle(SERIES_DB.concat(shuffle(importedSeries()).slice(0, 30)).filter(r => !r[4] && !owned.has(r[0])));
+  const fpool = shuffle(FILM_DB.concat(shuffle(importedFilms()).slice(0, 60)).filter(r => !owned.has(r[0])));
   while (G.market.filter(p => p.kind === "serie").length < 6 && spool.length) G.market.push(fromDB(spool.pop()));
   const filmMax = G.mods && G.mods.filmShortage >= G.day ? 9 : 14;
   while (G.market.length < filmMax && fpool.length) G.market.push(realFilm(fpool.pop()));
@@ -2606,7 +2625,7 @@ function showStart() {
         <li><b>Senderleitung</b>Erreichen Sie Ihr Marktanteil-Ziel nach ${SEASON} Tagen. Sinkt das Vertrauen auf 0, sind Sie raus.</li>
         <li><b>Regeln</b>ÖRR: Beitrag statt Werbung nach 20 Uhr. Jugendschutz: FSK 16 ab 22, FSK 18 ab 23 Uhr.</li>
       </ul>
-      <div class="actions">${has ? '<button class="btn hot" data-act="load">Spielstand fortsetzen</button>' : ""}<button class="btn ${has ? "" : "hot"}" data-act="choose">Neues Spiel – Sender wählen</button></div>
+      <div class="actions">${has ? '<button class="btn hot" data-act="load">Spielstand fortsetzen</button>' : ""}<button class="btn ${has ? "" : "hot"}" data-act="choose">Neues Spiel – Sender wählen</button><button class="btn" data-act="editor">Editor & Datenimport</button></div>
       <p class="fine">Private Spielversion. Sender-, Film- und Serientitel dienen als Kulisse; Quoten, Preise, Abozahlen und Bewertungen sind simuliert. Eigene Logo-Dateien können im Ordner logos/ abgelegt werden. Der Spielstand bleibt nur lokal auf diesem Gerät.</p>
     </div>`);
 }
@@ -2660,6 +2679,8 @@ function act(b) {
   const k = b.dataset.act;
   if (k === "choose") { showChoose(); return; }
   if (k === "back") { showStart(); return; }
+  if (k === "editor") { showEditor(); return; }
+  if (["edClose", "edRole", "edPick", "edNew", "edSave", "edDelete", "edClearTitles", "edClearPeople"].includes(k)) { edAct(k, b); return; }
   if (k === "pickStation") { closeModal(); hist = []; fut = []; planDay = null; newGame(b.dataset.k); go("overview", true); return; }
   if (k === "load") { if (load()) { closeModal(); hist = []; fut = []; planDay = null; startDay(); go("overview", true); } return; }
   if (!G) return;
@@ -2765,6 +2786,224 @@ function act(b) {
 }
 
 // =====================================================================
+// Editor & Datenimport (Hauptmenü): eigene Darsteller-Tabellen und TMDb-Titellisten
+// Alles bleibt lokal im Browser. Abgleich per Upsert über „eindeutige_id“ – keine Duplikate.
+// =====================================================================
+const DB_KEY = "quotenturm-db-v1", TITLE_KEY = "quotenturm-titles-v1", TITLE_MAX = 5000;
+const ROLE_ALIASES = { schauspiel: "Schauspiel", schauspieler: "Schauspiel", schauspielerin: "Schauspiel", actor: "Schauspiel", moderation: "Moderation", moderator: "Moderation", moderatorin: "Moderation", entertainer: "Moderation", host: "Moderation",
+  reality: "Reality", nachrichten: "Nachrichten", nachrichtensprecher: "Nachrichten", nachrichtensprecherin: "Nachrichten", news: "Nachrichten", journalismus: "Journalismus", journalist: "Journalismus", journalistin: "Journalismus" };
+const TMDB_GENRES = { crime: "Krimi", mystery: "Krimi", krimi: "Krimi", comedy: "Komödie", family: "Komödie", animation: "Komödie", komödie: "Komödie", drama: "Drama", history: "Drama", romance: "Liebesfilm", liebesfilm: "Liebesfilm",
+  action: "Action", adventure: "Action", thriller: "Action", war: "Action", western: "Action", horror: "Action", "action & adventure": "Action", "war & politics": "Drama", "science fiction": "Science-Fiction", "sci-fi & fantasy": "Science-Fiction", fantasy: "Science-Fiction",
+  documentary: "Doku", dokumentation: "Doku", reality: "Reality", talk: "Talk", news: "Nachrichten", soap: "Soap", kids: "Komödie", music: "Kultur" };
+// Senderzuordnung: Krimi & Anspruch an die Öffentlich-Rechtlichen, Unterhaltung an die Privaten
+const OER_GENRES = ["Krimi", "Drama", "Doku", "Kultur"];
+let EDB = null, TITLES = null, edSel = null, edQuery = "", edRole = "alle", edMsg = null;
+function loadDB() {
+  if (EDB) return EDB;
+  try { EDB = JSON.parse(localStorage.getItem(DB_KEY) || "null"); } catch (e) { EDB = null; }
+  if (!EDB || !Array.isArray(EDB.people)) EDB = { people: [] };
+  return EDB;
+}
+function loadTitles() {
+  if (TITLES) return TITLES;
+  try { TITLES = JSON.parse(localStorage.getItem(TITLE_KEY) || "null"); } catch (e) { TITLES = null; }
+  if (!Array.isArray(TITLES)) TITLES = [];
+  return TITLES;
+}
+function storeDB() { try { localStorage.setItem(DB_KEY, JSON.stringify(EDB)); return true; } catch (e) { return false; } }
+function storeTitles() { try { localStorage.setItem(TITLE_KEY, JSON.stringify(TITLES)); return true; } catch (e) { return false; } }
+// Upsert: vorhandene IDs werden aktualisiert, nur unbekannte angehängt (auch Doppelte innerhalb einer Datei fallen zusammen)
+function upsert(list, rows, key) {
+  const idx = new Map(list.map((r, k) => [r[key], k]));
+  let upd = 0, add = 0;
+  for (const r of rows) {
+    if (idx.has(r[key])) { Object.assign(list[idx.get(r[key])], r); upd++; }
+    else { idx.set(r[key], list.length); list.push(r); add++; }
+  }
+  return { upd, add };
+}
+// Einfacher CSV-Parser mit Anführungszeichen; Trennzeichen , oder ; wird automatisch erkannt
+function parseCSV(text) {
+  const first = text.split(/\r?\n/, 1)[0], sep = (first.match(/;/g) || []).length > (first.match(/,/g) || []).length ? ";" : ",";
+  const rows = []; let row = [], cell = "", q = false;
+  for (let k = 0; k < text.length; k++) {
+    const ch = text[k];
+    if (q) { if (ch === '"') { if (text[k + 1] === '"') { cell += '"'; k++; } else q = false; } else cell += ch; }
+    else if (ch === '"') q = true;
+    else if (ch === sep) { row.push(cell); cell = ""; }
+    else if (ch === "\n" || ch === "\r") { if (ch === "\r" && text[k + 1] === "\n") k++; row.push(cell); rows.push(row); row = []; cell = ""; }
+    else cell += ch;
+  }
+  if (cell || row.length) { row.push(cell); rows.push(row); }
+  const head = (rows.shift() || []).map(h => h.trim().toLowerCase());
+  return rows.filter(r => r.some(c => c.trim())).map(r => Object.fromEntries(head.map((h, k) => [h, (r[k] || "").trim()])));
+}
+function parseFile(text, name) {
+  if (/\.json$/i.test(name) || /^\s*[[{]/.test(text)) {
+    const j = JSON.parse(text);
+    return Array.isArray(j) ? j : j.people || j.darsteller || j.results || j.titles || [];
+  }
+  return parseCSV(text);
+}
+const num = (v, d) => { const n = parseFloat(String(v ?? "").replace(",", ".")); return Number.isFinite(n) ? n : d; };
+const pickKey = (o, keys) => { for (const k of keys) { if (o[k] !== undefined && o[k] !== "") return o[k]; const K = Object.keys(o).find(x => x.toLowerCase() === k); if (K && o[K] !== "") return o[K]; } return undefined; };
+const autoGage = (talent, charisma) => baseGage(talent, charisma);
+function cleanPerson(o) {
+  const eid = String(pickKey(o, ["eindeutige_id", "id"]) ?? "").trim().slice(0, 40), name = String(pickKey(o, ["name"]) ?? "").trim().slice(0, 60);
+  if (!eid || !name) return null;
+  const role = ROLE_ALIASES[String(pickKey(o, ["rolle", "role", "kategorie"]) ?? "").trim().toLowerCase()] || "Schauspiel";
+  const talent = clamp(Math.round(num(pickKey(o, ["talent"]), 50)), 10, 100), charisma = clamp(Math.round(num(pickKey(o, ["charisma", "buzz"]), 50)), 10, 100);
+  const skandal = clamp(Math.round(num(pickKey(o, ["skandal", "skandalfaktor", "scandal"]), 40)), 10, 100);
+  const g = num(pickKey(o, ["basis_gage", "gage"]), NaN);
+  return { eindeutige_id: eid, name, rolle: role, talent, charisma, skandal, gage: Number.isFinite(g) ? clamp(r1000(g), 10000, 20e6) : autoGage(talent, charisma), manual: Number.isFinite(g) };
+}
+function cleanTitle(o) {
+  const title = String(pickKey(o, ["title", "name", "titel", "original_title", "original_name"]) ?? "").trim().slice(0, 80);
+  if (!title) return null;
+  let gs = pickKey(o, ["genres", "genre", "genre_names"]);
+  if (Array.isArray(gs)) gs = gs.map(g => typeof g === "string" ? g : g.name).join(",");
+  const genre = String(gs || "").split(/[,|/]/).map(g => TMDB_GENRES[g.trim().toLowerCase()]).find(Boolean) || "Drama";
+  const vote = num(pickKey(o, ["vote_average", "rating", "bewertung"]), 6);
+  const pop = num(pickKey(o, ["popularity", "popularität"]), 1);
+  const tv = String(pickKey(o, ["media_type", "typ"]) ?? "").toLowerCase() === "tv" || pickKey(o, ["number_of_episodes", "number_of_seasons", "first_air_date"]) !== undefined;
+  const adult = String(pickKey(o, ["adult"]) ?? "").toLowerCase() === "true";
+  const raw = String(pickKey(o, ["genres", "genre"]) ?? "").toLowerCase();
+  const fsk = adult ? 18 : /horror/.test(raw) ? 16 : ["Krimi", "Action"].includes(genre) ? 12 : 0;
+  const tid = String(pickKey(o, ["eindeutige_id", "id", "tmdb_id"]) ?? title).trim();
+  return { eindeutige_id: "tmdb_" + tid, title, genre, q: clamp(Math.round(28 + vote * 6.4), 20, 92), tv, eps: tv ? clamp(Math.round(num(pickKey(o, ["number_of_episodes"]), 13)), 6, 40) : 0, fsk, pop };
+}
+// Importierte Titel im Format der eingebauten Listen (FILM_DB bzw. SERIES_DB)
+const importedFilms = () => loadTitles().filter(t => !t.tv).map(t => [t.title, t.genre, t.q, t.q >= 80 ? 3 : 2, t.fsk]);
+const importedSeries = () => loadTitles().filter(t => t.tv).map(t => [t.title, t.genre === "Komödie" ? "Sitcom" : t.genre === "Drama" ? "Serie" : t.genre, t.q, t.eps, null]);
+// Beim Spielstart: importierte Titel nach Genre in die Programmstöcke der KI-Sender verteilen
+function seedImportedTitles() {
+  const T = loadTitles(); if (!T.length) return 0;
+  const pool = T.slice().sort((a, b) => b.pop - a.pop), used = new Set(G.stations.flatMap(s => s.progs.map(p => p.title)));
+  let n = 0;
+  for (const st of G.stations.filter(s => !isMe(s))) {
+    const oer = st.type === "oer", take = pool.filter(t => !used.has(t.title) && OER_GENRES.includes(t.genre) === oer).slice(0, 10);
+    for (const t of take) { used.add(t.title); st.progs.push(t.tv ? fromDB([t.title, t.genre === "Komödie" ? "Sitcom" : t.genre === "Drama" ? "Serie" : t.genre, t.q, t.eps, st.id]) : realFilm([t.title, t.genre, t.q, t.q >= 80 ? 3 : 2, t.fsk])); n++; }
+  }
+  return n;
+}
+// Eigene Darsteller-Tabelle per Upsert in die Casting-Kartei des Spiels schreiben (Spielstart und Laden)
+function applyEditorPeople() {
+  const D = loadDB(); if (!D.people.length || !G || !G.people) return;
+  const rows = D.people.map(e => {
+    const old = G.people.find(p => p.id === "x_" + e.eindeutige_id);
+    return Object.assign(old ? {} : { genres: e.rolle === "Schauspiel" ? ["Drama", "Krimi"] : e.rolle === "Moderation" ? ["Show"] : e.rolle === "Reality" ? ["Reality"] : e.rolle === "Nachrichten" ? ["Nachrichten"] : ["Doku"],
+      trait: pick(TRAITS[e.rolle]), lean: 0, holder: null, until: 0, busy: 0, ban: 0 },
+      { id: "x_" + e.eindeutige_id, name: e.name, role: e.rolle, talent: e.talent, buzz: e.charisma, rel: 110 - e.skandal, gage: e.gage, custom: true });
+  });
+  upsert(G.people, rows, "id");
+}
+function readUpload(input, kind) {
+  const f = input.files && input.files[0]; if (!f) return;
+  if (f.size > 60e6) { edMsg = ["Datei ist größer als 60 MB.", "bad"]; renderEditor(); return; }
+  const rd = new FileReader();
+  rd.onload = () => {
+    try {
+      const rows = parseFile(String(rd.result), f.name);
+      if (kind === "people") {
+        // Bestehende IDs: nur die gelieferten Felder überschreiben, der Rest bleibt erhalten
+        const have = new Map(loadDB().people.map(e => [e.eindeutige_id, e]));
+        const clean = rows.map(o => { const eid = String(pickKey(o, ["eindeutige_id", "id"]) ?? "").trim(), e = have.get(eid);
+          return cleanPerson(e ? { eindeutige_id: e.eindeutige_id, name: e.name, rolle: e.rolle, talent: e.talent, charisma: e.charisma, skandal: e.skandal, basis_gage: e.manual ? e.gage : undefined, ...o } : o); }), ok = clean.filter(Boolean);
+        const r = upsert(loadDB().people, ok, "eindeutige_id");
+        edMsg = [`Upload „${f.name}“: ${r.upd} Einträge aktualisiert, ${r.add} neu hinzugefügt, ${clean.length - ok.length} ohne ID/Name übersprungen. 0 Duplikate. ${storeDB() ? "Gespeichert." : "Speichern im Browser nicht möglich – gilt nur für diese Sitzung."}`, "good"];
+      } else {
+        const ok = rows.map(cleanTitle).filter(Boolean).sort((a, b) => b.pop - a.pop).slice(0, TITLE_MAX);
+        const T = loadTitles(), r = upsert(T, ok, "eindeutige_id");
+        if (T.length > TITLE_MAX) { T.sort((a, b) => b.pop - a.pop); T.length = TITLE_MAX; }
+        edMsg = [`Titelimport „${f.name}“: ${rows.length.toLocaleString("de-DE")} Zeilen gelesen, ${r.add} neu, ${r.upd} aktualisiert. Im Speicher: ${T.length.toLocaleString("de-DE")} Titel (max. ${TITLE_MAX.toLocaleString("de-DE")}). ${storeTitles() ? "Gespeichert." : "Speichern im Browser nicht möglich – gilt nur für diese Sitzung."}`, "good"];
+      }
+    } catch (e) { edMsg = [`Datei konnte nicht gelesen werden: ${e.message}`, "bad"]; }
+    renderEditor();
+  };
+  rd.readAsText(f);
+}
+function edEntry() { return edSel ? loadDB().people.find(e => e.eindeutige_id === edSel.eindeutige_id) : null; }
+function showEditor() { loadDB(); loadTitles(); edSel = null; edMsg = null; renderEditor(); }
+function renderEditor() {
+  const D = loadDB(), T = loadTitles(), ql = edQuery.trim().toLowerCase();
+  const list = D.people.filter(e => (edRole === "alle" || e.rolle === edRole) && (!ql || e.name.toLowerCase().includes(ql) || e.eindeutige_id.toLowerCase().includes(ql)));
+  const roles = [["alle", "Alle"], ["Schauspiel", "Schauspiel"], ["Moderation", "Entertainer"], ["Reality", "Reality"], ["Nachrichten", "News"], ["Journalismus", "Journalismus"]];
+  const d = $("dialog"); d.className = "dialog wide"; $("modal").hidden = false;
+  d.innerHTML = `<header><h2>Editor & Datenimport</h2><button class="btn" data-act="edClose">Schließen</button></header><div class="dbody">
+    <div class="ed-bar">
+      <label class="btn hot">Darsteller-Tabelle hochladen<input type="file" accept=".csv,.json,text/csv,application/json" data-upload="people" hidden></label>
+      <label class="btn">Filme & Serien (TMDb) hochladen<input type="file" accept=".csv,.json,text/csv,application/json" data-upload="titles" hidden></label>
+      <button class="btn" data-act="edNew">Neuer Eintrag</button>
+      <span class="chip good">Duplikat-Check aktiv · Upsert über eindeutige_id</span>
+      <span class="muted">${D.people.length} eigene Personen · ${T.length.toLocaleString("de-DE")} Titel</span>
+      ${T.length ? '<button class="btn small" data-act="edClearTitles">Titel löschen</button>' : ""}${D.people.length ? '<button class="btn small" data-act="edClearPeople">Personen löschen</button>' : ""}
+    </div>
+    ${edMsg ? `<div class="nego-msg ${edMsg[1]}">${esc(edMsg[0])}</div>` : ""}
+    <div class="ed">
+      <section class="card ed-list"><div class="card-h"><h3>Master-Liste</h3></div>
+        <input type="search" id="edSearch" class="search" placeholder="Name oder ID suchen" value="${esc(edQuery)}" aria-label="Name oder ID suchen">
+        <div class="pills">${roles.map(([k, n]) => `<button data-act="edRole" data-k="${k}" class="${edRole === k ? "on" : ""}">${n}</button>`).join("")}</div>
+        <div class="ed-rows">${list.slice(0, 300).map(e => `<button class="ed-row ${edSel && edSel.eindeutige_id === e.eindeutige_id ? "on" : ""}" data-act="edPick" data-k="${esc(e.eindeutige_id)}"><b>${esc(e.name)}</b><span>${esc(e.eindeutige_id)} · ${SPEC_NAME[e.rolle]}</span></button>`).join("") ||
+          `<p class="fine">Noch keine eigenen Personen. Laden Sie eine CSV- oder JSON-Tabelle hoch oder legen Sie einen Eintrag an.</p>`}</div></section>
+      <section class="card ed-mid">${edSel ? edForm() : `<div class="card-h"><h3>Attribute</h3></div><p class="lead">Wählen Sie links eine Person aus.</p>
+        <details class="fine"><summary>Dateiformat</summary><p>CSV (Komma oder Semikolon) oder JSON-Liste mit den Feldern <code>eindeutige_id, name, rolle, talent, charisma, skandal, basis_gage</code>. Rollen: Schauspieler, Moderator, Reality, Nachrichtensprecher, Journalist. Titellisten im TMDb-Format: <code>id, title/name, genres, vote_average, popularity, media_type</code> – höchstens ${TITLE_MAX.toLocaleString("de-DE")} Titel werden übernommen, die beliebtesten zuerst.</p></details>`}</section>
+      <aside class="card ed-impact" id="edImpact">${edImpact()}</aside>
+    </div>
+    <p class="fine">Alle Daten bleiben ausschließlich lokal in diesem Browser. Wenn Sie Tabellen mit realen Personen hochladen: Werte wie Talent, Gage oder Skandalfaktor sind dann Ihre eigenen Zuschreibungen – bitte nur privat nutzen und nicht weitergeben (Persönlichkeitsrecht). Änderungen gelten für neue Spiele und beim Laden eines Spielstands.</p>
+  </div>`;
+}
+function edForm() {
+  const e = edSel;
+  return `<div class="card-h"><h3>${esc(e.name)}</h3><span class="chip">${esc(e.eindeutige_id)}</span></div>
+    <label class="fgrid-l">Name<input type="text" class="search" data-ed="name" value="${esc(e.name)}" maxlength="60"></label>
+    <label class="fgrid-l">Spezialisierung<select data-ed="rolle">${Object.keys(SPEC_NAME).map(r => `<option value="${r}" ${e.rolle === r ? "selected" : ""}>${SPEC_NAME[r]}</option>`).join("")}</select></label>
+    ${[["talent", "Talent"], ["charisma", "Charisma & Buzz"], ["skandal", "Skandalfaktor"]].map(([k, l]) => `<div class="ed-slider"><div class="kv"><span>${l}</span><b id="edv_${k}">${e[k]}</b></div><input type="range" min="10" max="100" step="1" value="${e[k]}" data-ed="${k}" aria-label="${l}"></div>`).join("")}
+    <div class="ed-slider"><div class="kv"><span>Basis-Gage</span><b id="edv_gage">${eur(e.gage)}</b></div>
+      <input type="number" min="10000" max="20000000" step="1000" value="${e.gage}" data-ed="gage" aria-label="Basis-Gage in Euro">
+      <label class="fine"><input type="checkbox" data-ed="manual" ${e.manual ? "checked" : ""}> Gage manuell festlegen (sonst folgt sie Talent und Charisma)</label></div>
+    <div class="actions"><button class="btn hot" data-act="edSave">Änderungen übernehmen</button><button class="btn" data-act="edDelete">Eintrag löschen</button></div>`;
+}
+function edImpact() {
+  const e = edSel;
+  if (!e) return `<div class="card-h"><h3>Auswirkung im Spiel</h3></div><p class="fine">Die Vorschau erscheint, sobald eine Person ausgewählt ist.</p>`;
+  const boost = Math.round(e.talent * 0.3), hype = Math.round((e.talent + e.charisma) / 2), budget = r1000(e.gage * 1.8), magnet = Math.round(e.charisma * 0.6 + (e.skandal > 60 ? 10 : 0)), risk = Math.round(clamp((e.skandal - 45) / 2.5 * 10, 0, 100));
+  const row = (l, v, max, txt, c) => `<div class="imp"><div class="kv"><span>${l}</span><b>${txt}</b></div>${bar(Math.round(v / max * 100), c)}</div>`;
+  return `<div class="card-h"><h3>Auswirkung im Spiel</h3></div><p class="fine" style="margin-top:0">Wenn ${esc(e.name)} besetzt wird:</p>
+    ${row("Film-Rating-Boost", boost, 30, `+${boost}`, "#22c55e")}${row("Hype-Faktor", hype, 100, `+${hype} %`, "#b265ff")}${row("Streaming-Abo-Magnet", magnet, 70, `+${magnet}`, "#e0218a")}${row("Krisenrisiko am Set", risk, 100, `${risk} %`, "#ef4444")}
+    <div class="kv"><span>Mindest-Budget für den Dreh</span><b>${eur(budget)}</b></div>`;
+}
+function edUpdateField(t) {
+  const k = t.dataset.ed, e = edSel; if (!e) return;
+  if (k === "manual") { e.manual = t.checked; if (!e.manual) e.gage = autoGage(e.talent, e.charisma); }
+  else if (k === "name") e.name = t.value.slice(0, 60);
+  else if (k === "rolle") e.rolle = t.value;
+  else if (k === "gage") { e.gage = clamp(r1000(num(t.value, e.gage)), 10000, 20e6); e.manual = true; }
+  else { e[k] = +t.value; if (!e.manual && k !== "skandal") e.gage = autoGage(e.talent, e.charisma); }
+  for (const f of ["talent", "charisma", "skandal"]) if ($("edv_" + f)) $("edv_" + f).textContent = e[f];
+  if ($("edv_gage")) $("edv_gage").textContent = eur(e.gage);
+  const gi = document.querySelector('[data-ed="gage"]'); if (gi && k !== "gage") gi.value = e.gage;
+  const mi = document.querySelector('[data-ed="manual"]'); if (mi) mi.checked = e.manual;
+  $("edImpact").innerHTML = edImpact();
+}
+function edAct(k, b) {
+  const D = loadDB();
+  if (k === "edClose") { if (G) closeModal(); else showStart(); return; }
+  if (k === "edRole") edRole = b.dataset.k;
+  if (k === "edPick") { const e = D.people.find(x => x.eindeutige_id === b.dataset.k); edSel = e ? { ...e } : null; edMsg = null; }
+  if (k === "edNew") { let n = D.people.length + 1, id; do id = "DE_ACT_" + String(n++).padStart(3, "0"); while (D.people.some(e => e.eindeutige_id === id)); edSel = { eindeutige_id: id, name: "Neue Person", rolle: "Schauspiel", talent: 50, charisma: 50, skandal: 40, gage: autoGage(50, 50), manual: false }; }
+  if (k === "edSave" && edSel) { const r = upsert(D.people, [{ ...edSel }], "eindeutige_id"); edMsg = [`${edSel.name}: ${r.upd ? "aktualisiert" : "neu angelegt"} (Upsert, keine Duplikate). ${storeDB() ? "Gespeichert." : "Nur für diese Sitzung."}`, "good"]; if (G) applyEditorPeople(); }
+  if (k === "edDelete" && edSel) { D.people = D.people.filter(e => e.eindeutige_id !== edSel.eindeutige_id); edSel = null; storeDB(); }
+  if (k === "edClearTitles") { TITLES = []; storeTitles(); edMsg = ["Importierte Titel gelöscht.", "good"]; }
+  if (k === "edClearPeople") { D.people = []; edSel = null; storeDB(); edMsg = ["Eigene Personen gelöscht.", "good"]; }
+  renderEditor();
+}
+document.addEventListener("change", e => { const u = e.target.dataset && e.target.dataset.upload; if (u) readUpload(e.target, u); else if (e.target.dataset && e.target.dataset.ed) edUpdateField(e.target); });
+document.addEventListener("input", e => {
+  if (e.target.id === "edSearch") { edQuery = e.target.value; const pos = e.target.selectionStart; renderEditor(); const s = $("edSearch"); s.focus(); s.setSelectionRange(pos, pos); return; }
+  if (e.target.dataset && e.target.dataset.ed && e.target.type === "range") edUpdateField(e.target);
+});
+
+// =====================================================================
 // Speichern (nur lokal im Browser)
 // =====================================================================
 const KEY = "quotenturm-v7";
@@ -2775,6 +3014,7 @@ function load() {
     const s = localStorage.getItem(KEY); if (!s) return false; G = JSON.parse(s);
     G.mods = G.mods || {}; G.eventLog = G.eventLog || [];
     if (!G.people) initPeople();
+    applyEditorPeople();
     return true;
   } catch (e) { return false; }
 }
