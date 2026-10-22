@@ -8,8 +8,8 @@ Ein TV- und Streaming-Manager für das iPad. Spielprinzip inspiriert von *Mad TV
 
 ## Was drin ist
 
-- **12 deutsche Sender** zur Auswahl (ÖRR und privat) mit Saisonziel, Vertrauen der Senderleitung und Bilanz nach 28 Tagen.
-- **Wochenplan 0–24 Uhr, Montag bis Sonntag**, mit Planungsassistent und Kopierfunktion.
+- **12 deutsche Sender** zur Auswahl (ÖRR und privat) mit Saisonziel, Vertrauen der Senderleitung und Bilanz nach 84 Tagen (12 Wochen).
+- **Sendekalender mit Langzeitplanung:** konkrete Sendetage 0–24 Uhr, 6 Wochen Pflicht-Vorlauf – erst dann startet der nächste Tag. Prüfung auf Lücken und bis dahin ausgeschöpfte Lizenzen, Assistent für einzelne Tage oder alle Lücken, Kopieren auf gleiche Wochentage, Sendungen verschieben (einmalig oder dauerhaft auf neue Uhrzeit). Premieren im Kalender; Kampagnen wirken am besten 3–14 Tage vor der Premiere.
 - **Zwei-Phasen-Tag:** Planung (Zeit steht) → „Weiter“: 0–18 Uhr wird ausgewertet, der Abend läuft in der **Live-Regie** (Monitorwand, Quotenkurve, Zusatz-Werbeblock, Notfall-Wiederholung).
 - **Programmhandel** mit echten Film- und Serientiteln, Eigenformaten der Sender (z. B. Tatort, Wer wird Millionär?), Lizenzlaufzeiten.
 - **Sportrechte-Auktionen** (Free-TV-Pakete) mit verdeckten Geboten der Konkurrenz; Pay-/Streaming-exklusive Rechte als Marktübersicht.

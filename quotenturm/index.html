@@ -363,6 +363,17 @@ label { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .lage-col + .lage-col { border-left: 1px solid var(--line); }
 .lage .tile b { font-size: 22px; } .lage .tile b.lage-t { font-family: var(--font-body); font-size: 15px; font-weight: 600; line-height: 1.3; padding: 5px 0 3px; }
 @media (max-width: 900px) { .lage { grid-template-columns: minmax(0, 1fr); } .lage-col + .lage-col { border-left: 0; border-top: 1px solid var(--line); } }
+.cal-head, .cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+.cal-head { margin: 12px 0 4px; } .cal-head span { font-size: 12px; color: var(--muted); text-align: center; }
+.cal-d { background: var(--panel-2); border: 1px solid var(--line); border-radius: 4px; padding: 5px 6px; display: grid; gap: 1px; text-align: left; min-height: 56px; min-width: 0; }
+.cal-d.past { background: transparent; border-color: transparent; }
+.cal-d small { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; }
+.cal-d b { font-family: var(--font-head); font-size: 15px; }
+.cal-d.ok b { color: var(--good); } .cal-d.bad { border-color: rgba(239,68,68,.6); } .cal-d.bad b { color: var(--bad); }
+.cal-d.on { border-color: var(--hot); box-shadow: inset 0 0 0 1px var(--hot); }
+.cal-d span { font-size: 11px; color: var(--muted); display: flex; gap: 4px; align-items: center; min-height: 12px; }
+.dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; vertical-align: middle; }
+.dot.live { background: var(--hot-2); } .dot.pre { background: var(--mid); }
 .pkgs { display: flex; gap: 4px; }
 .pkg { background: var(--panel-2); border: 1px solid var(--line); border-radius: 4px; padding: 4px 8px; display: grid; text-align: left; min-width: 74px; }
 .pkg b { font-family: var(--font-head); font-size: 15px; } .pkg span { font-size: 11px; color: var(--muted); }
@@ -503,7 +514,7 @@ const HOURS = Array.from({ length: 24 }, (_, h) => h);
 const BASE = [3.5, 2, 1.2, 0.8, 0.7, 1, 2, 3, 3.5, 4, 4.5, 5, 6, 6, 6, 7, 8, 10, 13, 17, 28, 29, 21, 12];
 const LIVE_FROM = 18; // ab hier läuft der Abend in der Live-Regie
 const START_DATE = new Date(2026, 9, 22);
-const SEASON = 28; // Tage bis zur Bilanz der Senderleitung
+const SEASON = 84; // Tage bis zur Bilanz der Senderleitung
 const MAX_ADS = 10;
 
 // Senderlandschaft. Startmarktanteile grob an reale Größenordnungen angelehnt; alle Quoten im Spiel sind simuliert.
@@ -644,7 +655,7 @@ const HEADLINES = [
 // Menüführung: Hauptpunkt → Aufklappmenü mit allen Unterseiten [Seite, Name, Erklärung]
 const MENU = [
   { id: "portal", name: "Portal", subs: [["overview", "Übersicht", "Dashboard mit Nachrichten, Tabelle und Kennzahlen"], ["inbox", "Posteingang", "Alle Meldungen aus dem Haus"]] },
-  { id: "programm", name: "Programm", subs: [["plan", "Wochenplan", "Programm 0–24 Uhr, Montag bis Sonntag"], ["archiv", "Archiv", "Eigene Filme, Serien und Formate"], ["market", "Programmhandel", "Filme und Serienlizenzen kaufen"], ["ticker", "Nachrichten", "Meldungen von Ticker24 einkaufen"]] },
+  { id: "programm", name: "Programm", subs: [["plan", "Sendekalender", "Programm 0–24 Uhr, 6 Wochen im Voraus"], ["archiv", "Archiv", "Eigene Filme, Serien und Formate"], ["market", "Programmhandel", "Filme und Serienlizenzen kaufen"], ["ticker", "Nachrichten", "Meldungen von Ticker24 einkaufen"]] },
   { id: "produktion", name: "Produktion", subs: [["studio", "Studio", "Eigene Filme, Serien, Shows und Dokus"], ["casting", "Casting", "Stars, Moderation, Nachrichtengesichter"], ["newsroom", "Nachrichtenredaktion", "Blattlinie, Stil, Etat und Sprecher*in"], ["export", "Rechtemarkt international", "Formate und Produktionen ins Ausland verkaufen"]] },
   { id: "streaming", name: "Streaming", subs: [["stream", "Plattform", "Abos, Churn, ARPU und Preismodell"], ["catalog", "Katalog", "Titel und Verwertungsfenster"], ["smarket", "Wettbewerb", "Streamer im Vergleich und Top 10"]] },
   { id: "sport", name: "Sport", subs: [["rights", "Rechtemarkt", "Ausschreibungen und Gebote"], ["myrights", "Meine Rechte", "Pakete und Live-Termine"]] },
@@ -654,7 +665,7 @@ const MENU = [
 let openMenu = null;
 const PAGE_SECTION = Object.fromEntries(MENU.flatMap(m => m.subs.map(([k]) => [k, m.id])));
 PAGE_SECTION.newprod = "produktion";
-const QUICK = [["inbox", "Posteingang", '<path d="M3 13l3-8h12l3 8v6H3z"/><path d="M3 13h5l1 2h6l1-2h5"/>'], ["plan", "Wochenplan", '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>'], ["market", "Programmhandel", '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 5v14M17 5v14"/>'], ["stream", "Streamer", '<rect x="3" y="5" width="18" height="12" rx="2"/><path d="M10 9l5 2-5 2z"/>'], ["table", "Tabelle", '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>']];
+const QUICK = [["inbox", "Posteingang", '<path d="M3 13l3-8h12l3 8v6H3z"/><path d="M3 13h5l1 2h6l1-2h5"/>'], ["plan", "Kalender", '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>'], ["market", "Programmhandel", '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 5v14M17 5v14"/>'], ["stream", "Streamer", '<rect x="3" y="5" width="18" height="12" rx="2"/><path d="M10 9l5 2-5 2z"/>'], ["table", "Tabelle", '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>']];
 
 // =====================================================================
 // Hilfsfunktionen
@@ -857,17 +868,126 @@ function expectedPrime(st) { return BASE[20] * (1 - (G ? otherShare() : 0.16)) *
 function expected(st, i) { return st.last[i] || BASE[i] * 0.84 * st.brand / 100; }
 function plannedSpots(st, adId) { return st.sched.filter((c, i) => c.ad === adId && (G.phase === "plan" || i * 60 > G.min)).length; }
 const adAllowed = (st, i, wd = weekday(G.day)) => st.type !== "oer" || (i < 20 && wd !== 0);
-// Planungsassistent für einen Wochentag
-function planDayFor(st, wd) {
-  const sc = st.week[wd];
-  sc.forEach(c => { c.p = null; c.cont = false; c.ad = null; c.live = false; });
+// =====================================================================
+// Langzeitplanung: Sendekalender mit konkreten Tagen, Pflicht-Vorlauf von 6 Wochen
+// =====================================================================
+const HORIZON = 42;
+// Kalendertag des eigenen Senders; neue Tage starten als Kopie der Wochenvorlage des Vorgängers
+function calDay(P, d) {
+  P.cal = P.cal || {};
+  if (!P.cal[d]) P.cal[d] = P.week[weekday(d)].map(c => ({ p: c.p, ad: c.ad, cont: c.cont, live: false }));
+  return P.cal[d];
+}
+const schedFor = (P, d) => d === G.day ? P.sched : calDay(P, d);
+const allPlans = P => P.week.concat(Object.values(P.cal || {}));
+function calPrune(P) { for (const k of Object.keys(P.cal || {})) if (+k < G.day) delete P.cal[k]; }
+// Verbleibende Ausstrahlungen einer Lizenz (Eigenproduktionen und Dauerformate: unbegrenzt)
+const budgetOf = p => p.kind === "film" ? p.maxRuns - (p.runs || 0) : p.kind === "serie" && !p.own ? p.eps * 2 - p.ep : Infinity;
+function liveHours(P, d) {
+  const out = new Set();
+  for (const { r, d: def } of eventsOn(d)) if (r.owner === P.id) for (let k = 0; k < def.len; k++) out.add(def.h + k);
+  return out;
+}
+// Prüft den Planungszeitraum der Reihe nach: leere Stunden, fehlende Programme, erschöpfte Lizenzen
+function planCheck(P) {
+  const left = new Map(), bad = {}, premieres = {};
+  let firstBad = null, holes = 0;
+  const seen = new Set();
+  for (let d = G.day; d < G.day + HORIZON; d++) {
+    const sc = schedFor(P, d), live = d === G.day ? new Set() : liveHours(P, d);
+    let prevOk = true, n = 0;
+    sc.forEach((c, i) => {
+      if (live.has(i) || c.live) { prevOk = true; return; }
+      const p = c.p && progOf(P, c.p);
+      let ok = !!p;
+      if (p && c.cont) ok = prevOk;
+      else if (p) {
+        if (!left.has(p.id)) left.set(p.id, budgetOf(p));
+        const r = left.get(p.id);
+        if (r <= 0) ok = false; else left.set(p.id, r - 1);
+        if (!p.aired && !p.filler && p.kind !== "sport" && !seen.has(p.id)) { seen.add(p.id); (premieres[d] = premieres[d] || []).push(p); }
+      }
+      prevOk = ok;
+      if (!ok) { (bad[d] = bad[d] || []).push(i); n++; }
+    });
+    if (n && firstBad == null) firstBad = d;
+    holes += n;
+  }
+  return { bad, firstBad, holes, premieres, until: firstBad == null ? G.day + HORIZON - 1 : firstBad - 1 };
+}
+// Restbudget je Programm nach allen geplanten Ausstrahlungen (optional ohne einen Tag)
+function remMap(P, skipDay) {
+  const uses = new Map();
+  for (let d = G.day; d < G.day + HORIZON; d++) {
+    if (d === skipDay) continue;
+    for (const c of schedFor(P, d)) if (c.p && !c.cont && !c.live) uses.set(c.p, (uses.get(c.p) || 0) + 1);
+  }
+  const m = new Map();
+  return { get: p => (m.has(p.id) ? m.get(p.id) : budgetOf(p) - (uses.get(p.id) || 0)), take: p => m.set(p.id, (m.has(p.id) ? m.get(p.id) : budgetOf(p) - (uses.get(p.id) || 0)) - 1) };
+}
+// Assistent: alle Lücken und ungültigen Plätze im Planungszeitraum füllen – Lizenzen werden nicht überzogen
+function fillHorizon(P) {
+  for (let guard = 0; guard < 4; guard++) {
+    const chk = planCheck(P);
+    if (chk.firstBad == null) break;
+    for (const [d, hs] of Object.entries(chk.bad)) { const sc = calDay(P, +d); for (const i of hs) clearAt(P, sc, i); }
+    const rem = remMap(P, null);
+    for (let d = G.day; d < G.day + HORIZON; d++) {
+      const sc = calDay(P, d);
+      if (sc.some(c => !c.p)) planDayFor(P, weekday(d), sc, { rem, keep: true });
+    }
+    buildToday(P);
+  }
+}
+// Verschieben: ein Programm auf einen anderen Sendeplatz, wahlweise im ganzen Planungszeitraum
+let moveSrc = null;
+function moveProg(P, to, i) {
+  const m = moveSrc; moveSrc = null;
+  if (!m) return;
+  const days = m.all ? Array.from({ length: HORIZON }, (_, k) => G.day + k).filter(d => !(d === G.day && planLocked())) : [m.d];
+  let n = 0;
+  for (const d of days) {
+    const sc = calDay(P, d), from = m.all ? sc.findIndex((c, h) => h === m.i && c.p === m.p && !c.cont) : m.i;
+    if (from < 0 || sc[from].p !== m.p) continue;
+    const p = progOf(P, m.p), target = m.all ? sc : calDay(P, to);
+    clearAt(P, sc, from);
+    if (canPlace(P, target, p, i)) { placeAt(P, sc, from, p); continue; }
+    placeAt(P, target, i, p); n++;
+    if (!m.all) break;
+  }
+  buildToday(P);
+  toast(n ? `„${progOf(P, m.p).title}“ verschoben${m.all ? ` – ${n} Sendetage auf ${hh(i)}` : ""}. Freie Plätze bitte neu belegen.` : "Verschieben nicht möglich.");
+}
+// Premierentermin eines Titels im Planungszeitraum
+function premiereDay(P, p) {
+  for (let d = G.day; d < G.day + HORIZON; d++) if (schedFor(P, d).some(c => c.p === p.id && !c.cont)) return d;
+  return null;
+}
+const promoTiming = days => days == null ? [0.4, "keine Premiere geplant"] : days <= 2 ? [0.6, "zu kurzfristig"] : days <= 14 ? [1, "ideal"] : days <= 28 ? [0.75, "etwas früh"] : [0.5, "zu früh"];
+function calendarGrid(P, sel, chk) {
+  const start = G.day - ((weekday(G.day) + 6) % 7), end = G.day + HORIZON - 1, cells = [];
+  for (let d = start; d <= end; d++) {
+    if (d < G.day) { cells.push('<div class="cal-d past"></div>'); continue; }
+    const bad = (chk.bad[d] || []).length, live = d === G.day ? P.live.length : liveHours(P, d).size, pre = chk.premieres[d] || [];
+    const dt = dateOf(d);
+    cells.push(`<button class="cal-d ${d === sel ? "on" : ""} ${bad ? "bad" : "ok"}" data-act="planDay" data-k="${d}">
+      <small>${WDL[weekday(d)].slice(0, 2)} ${dt.getDate()}.${dt.getMonth() + 1}.</small>
+      <b>${bad ? `${bad} offen` : "voll"}</b>
+      <span>${live ? '<i class="dot live" title="Live-Sport"></i>' : ""}${pre.length ? `<i class="dot pre" title="Premiere: ${esc(pre.map(p => p.title).join(", "))}"></i>` : ""}${d === G.day ? "heute" : ""}</span></button>`);
+  }
+  return `<div class="cal-head">${["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"].map(x => `<span>${x}</span>`).join("")}</div><div class="cal">${cells.join("")}</div>`;
+}
+// Planungsassistent für einen Tag (Wochenvorlage der KI oder Kalendertag des Spielers)
+function planDayFor(st, wd, sc = st.week[wd], opts = {}) {
+  const rem = opts.rem;
+  if (!opts.keep) sc.forEach(c => { c.p = null; c.cont = false; c.ad = null; c.live = false; });
   const used = {};
   const order = HOURS.slice().sort((a, b) => BASE[b] - BASE[a]);
   for (const i of order) {
     if (sc[i].p) continue;
     let best = null, bestS = 0;
     for (const p of st.progs) {
-      if (canPlace(st, sc, p, i) || !youthOk(p, i)) continue;
+      if (canPlace(st, sc, p, i) || !youthOk(p, i) || (rem && rem.get(p) <= 0)) continue;
       let blocked = false; for (let k = 1; k < p.len; k++) if (sc[i + k].p) blocked = true;
       if (blocked) continue;
       let s = p.q * fit(p.genre, i) * (0.35 + 0.65 * p.topic);
@@ -875,12 +995,12 @@ function planDayFor(st, wd) {
       if (used[p.id]) s *= p.kind === "show" ? 0.8 : 0.3;
       if (s > bestS) { bestS = s; best = p; }
     }
-    if (best) { placeAt(st, sc, i, best); used[best.id] = (used[best.id] || 0) + 1; }
+    if (best) { placeAt(st, sc, i, best); used[best.id] = (used[best.id] || 0) + 1; if (rem) rem.take(best); }
   }
   if (!isMe(st)) return;
   const exp = HOURS.map(i => expected(st, i) * 0.9);
   for (const i of HOURS.slice().sort((a, b) => BASE[b] - BASE[a])) {
-    if (!sc[i].p || !adAllowed(st, i, wd) || progOf(st, sc[i].p).genre === "Teleshopping") continue;
+    if (!sc[i].p || sc[i].ad || !adAllowed(st, i, wd) || progOf(st, sc[i].p).genre === "Teleshopping") continue;
     let best = null;
     for (const c of st.contracts) {
       const n = sc.filter(x => x.ad === c.id).length;
@@ -904,7 +1024,7 @@ function eventsOn(day) {
 }
 function buildToday(st) {
   const wd = weekday(G.day);
-  st.sched = st.week[wd].map(c => ({ ...c, live: false }));
+  st.sched = (isMe(st) ? calDay(st, G.day) : st.week[wd]).map(c => ({ ...c, live: false }));
   for (const ev of st.live) {
     for (let k = 0; k < ev.len; k++) { const i = ev.h + k; clearAt(st, st.sched, i); st.sched[i] = { p: ev.id, ad: st.sched[i].ad, cont: k > 0, live: true }; }
   }
@@ -919,11 +1039,11 @@ function placeEvents() {
     if (isMe(st)) logMsg("Sportredaktion", "Sport", `Heute live um ${hh(d.h)}: ${ev.title} (${d.name}).`);
   }
 }
-// Bearbeiten im Wochenplan: Änderungen am heutigen Wochentag gelten sofort auch für heute
-function editPlan(wd, fn) {
+// Bearbeiten im Kalender: Änderungen am heutigen Tag gelten sofort
+function editPlan(d, fn) {
   const P = me();
-  fn(P.week[wd]);
-  if (wd === weekday(G.day)) buildToday(P);
+  fn(calDay(P, d));
+  if (d === G.day) buildToday(P);
 }
 
 // =====================================================================
@@ -982,7 +1102,7 @@ function airHour(i) {
         if (ad.done >= ad.spots) {
           st.contracts = st.contracts.filter(x => x !== ad);
           st.sched.forEach(s => { if (s.ad === ad.id) s.ad = null; });
-          st.week.forEach(d => d.forEach(s => { if (s.ad === ad.id) s.ad = null; }));
+          (isMe(st) ? allPlans(st) : st.week).forEach(d => d.forEach(s => { if (s.ad === ad.id) s.ad = null; }));
           logMsg("Werbezeitenvermarktung", "Werbung", `Vertrag „${ad.brand}“ vollständig erfüllt.`, i >= LIVE_FROM);
         }
       } else logMsg("Werbezeitenvermarktung", "Werbung", `${hh(i)} – Spot „${ad.brand}“ verfehlt: ${mio(r.v)} statt ${mio(ad.min)} Mio.`, i >= LIVE_FROM);
@@ -1221,7 +1341,7 @@ function addToStream(id, window) {
   if (window === "stream") { p.streamFirst = true; logMsg("Digitalvorstand", "Streaming", `„${p.title}“ startet exklusiv zuerst auf ${S.name} (Streaming-First). Die spätere TV-Ausstrahlung bringt etwas weniger Quote.`); }
   if (window === "excl") {
     p.exclusive = true;
-    P.week.forEach(d => { for (let i = 0; i < 24; i++) if (d[i].p === p.id) { d[i].p = null; d[i].cont = false; d[i].ad = null; } });
+    allPlans(P).forEach(d => { for (let i = 0; i < 24; i++) if (d[i].p === p.id) { d[i].p = null; d[i].cont = false; d[i].ad = null; } });
     if (!planLocked()) buildToday(P);
     P.brand = Math.max(0.5, P.brand - 0.05);
     logMsg("Zuschauerservice", "Streaming", `„${p.title}“ läuft nur noch auf ${S.name}. Erste TV-Zuschauer beschweren sich – die Sendeplätze sind jetzt frei.`, true);
@@ -1247,7 +1367,7 @@ function liveStream(v, title) {
 // =====================================================================
 // Medien-Ticker: Ereignisse mit Entscheidungen
 // =====================================================================
-const myProg = filter => { const P = me(); const used = new Set(P.week.flatMap(d => d.map(c => c.p))); return shuffle(P.progs.filter(p => used.has(p.id) && !p.filler && filter(p)))[0]; };
+const myProg = filter => { const P = me(); const used = new Set(allPlans(P).flatMap(d => d.map(c => c.p))); return shuffle(P.progs.filter(p => used.has(p.id) && !p.filler && filter(p)))[0]; };
 const EVENTS = [
   { id: "hollywood", type: "Markt", when: () => !(G.mods.filmShortage >= G.day),
     make: () => ({ title: "Gerücht: US-Studio startet eigenen Streamer in Deutschland", text: "Ein Hollywood-Major will seine Blockbuster künftig nur noch selbst streamen und zieht Filmlizenzen vom Markt ab. Branchenkenner rechnen mit knappen Kinofilmen im Free-TV.",
@@ -1289,7 +1409,7 @@ const EVENTS = [
       if (k === 0 && p) { p.q = Math.max(20, p.q - 10); P.favor += 3; P.conf = clamp(P.conf + 1, 0, 100); }
       if (k === 1) P.conf = clamp(P.conf - 2, 0, 100);
       if (k === 2 && p && p.host && person(p.host)) { const h = person(p.host); h.ban = G.day + 10; logMsg("Landesmedienanstalt", "Personal", `${h.name} ist nach der Empörung 10 Tage für das Free-TV gesperrt.`); }
-      if (k === 2) { const c = [...P.contracts].sort((a, b) => b.pay - a.pay)[0]; if (c) { P.contracts = P.contracts.filter(x => x !== c); P.week.forEach(d => d.forEach(s => { if (s.ad === c.id) s.ad = null; })); buildToday(P); logMsg("Werbezeitenvermarktung", "Werbung", `${c.brand} kündigt den Vertrag mit sofortiger Wirkung.`); } P.brand = Math.max(0.5, P.brand - 0.3); P.favor = Math.max(0, P.favor - 4); }
+      if (k === 2) { const c = [...P.contracts].sort((a, b) => b.pay - a.pay)[0]; if (c) { P.contracts = P.contracts.filter(x => x !== c); allPlans(P).forEach(d => d.forEach(s => { if (s.ad === c.id) s.ad = null; })); buildToday(P); logMsg("Werbezeitenvermarktung", "Werbung", `${c.brand} kündigt den Vertrag mit sofortiger Wirkung.`); } P.brand = Math.max(0.5, P.brand - 0.3); P.favor = Math.max(0, P.favor - 4); }
     } },
   { id: "studio", type: "Team", when: () => !G.mods.studioOk && !(G.mods.studioRisk >= G.day),
     make: () => ({ title: "Chefredaktion warnt: Studiotechnik veraltet", text: "Bei Live-Schalten drohen Bildausfälle. Die Technik bittet um ein Upgrade, bevor beim nächsten großen Abend der Bildschirm schwarz bleibt.",
@@ -1716,7 +1836,7 @@ function newsroomDay() {
   if (c.extreme === 2 && Math.random() < 0.15) {
     const k = [...P.contracts].sort((a, b) => b.pay - a.pay)[0];
     logMsg("Medien-Insider", "Nachrichten", `Kritik an ${P.name}: Die Nachrichten verlassen nach Ansicht vieler Beobachter den Boden der Ausgewogenheit.${k ? ` ${k.brand} zieht sein Werbebudget zurück.` : ""}`, true);
-    if (k) { P.contracts = P.contracts.filter(x => x !== k); P.week.forEach(d => d.forEach(s => { if (s.ad === k.id) s.ad = null; })); buildToday(P); }
+    if (k) { P.contracts = P.contracts.filter(x => x !== k); allPlans(P).forEach(d => d.forEach(s => { if (s.ad === k.id) s.ad = null; })); buildToday(P); }
     P.conf = clamp(P.conf - 1, 0, 100);
   }
 }
@@ -1931,14 +2051,15 @@ function promote(pid, cid) {
   if (!p || !c || P.money < c.cost || (p.promos || []).includes(cid)) return;
   book(P, "Marketing", -c.cost);
   p.promos = (p.promos || []).concat(cid);
-  p.hypeTv = Math.min(100, (p.hypeTv || 0) + c.tv);
-  p.hypeStream = Math.min(100, (p.hypeStream || 0) + c.stream);
+  const pd = premiereDay(P, p), [tf, tl] = promoTiming(pd == null ? null : pd - G.day);
+  p.hypeTv = Math.min(100, (p.hypeTv || 0) + Math.round(c.tv * tf));
+  p.hypeStream = Math.min(100, (p.hypeStream || 0) + Math.round(c.stream * tf));
   if (cid === "leak") P.favor = Math.max(0, P.favor - 2);
   if (cid === "cross") {
     G.crossLog = (G.crossLog || []).filter(d => d > G.day - 7).concat(G.day);
     if (G.crossLog.length > 2) { P.brand = Math.max(0.5, P.brand - 0.05); logMsg("Zuschauerservice", "Kritik", "Zu viel Eigenwerbung: Zuschauer beschweren sich über ständige Trailer im Programm."); }
   }
-  toast(`${c.name} für „${p.title}“ gestartet. Hype TV ${p.hypeTv}, Stream ${p.hypeStream}.`);
+  toast(`${c.name} für „${p.title}“ gestartet (Timing: ${tl}). Hype TV ${p.hypeTv}, Stream ${p.hypeStream}.`);
 }
 // Globale Genre-Trends wechseln wöchentlich
 const TREND_GENRES = ["Krimi", "Drama", "Komödie", "Science-Fiction", "Reality", "Show", "Doku", "Serie", "Sitcom"];
@@ -1984,10 +2105,10 @@ function exportPage(P) {
     ${(G.royalties || []).length ? `<section class="panel"><div class="ph"><h2>Laufende Tantiemen</h2></div><div class="tbl"><table><tbody>${G.royalties.map(r => `<tr><td class="title">${esc(r.title)}</td><td class="num">${eur(r.perDay)} / Tag</td><td class="num">noch ${r.left} T.</td></tr>`).join("")}</tbody></table></div></section>` : ""}`;
 }
 function promoPanel(P) {
-  const own = P.progs.filter(p => p.own && !p.aired);
-  if (!own.length) return "";
-  return `<section class="panel mb"><div class="ph"><h2>Promotion vor dem Start</h2><span class="aside">Hype multipliziert die Erstausstrahlung bzw. die erste Streaming-Woche</span></div><div class="tbl"><table><thead><tr><th>Titel</th><th class="num">Hype TV</th><th class="num">Hype Stream</th>${PROMO.map(c => `<th class="num" title="${esc(c.desc)}">${c.name}</th>`).join("")}</tr></thead><tbody>
-    ${own.map(p => `<tr><td class="title">${esc(p.title)}</td><td class="num">${p.hypeTv || 0}</td><td class="num">${p.hypeStream || 0}</td>${PROMO.map(c => `<td class="num">${(p.promos || []).includes(c.id) ? '<span class="chip good">läuft</span>' : `<button class="btn" data-act="promo" data-id="${p.id}" data-k="${c.id}" ${P.money < c.cost || planLocked() ? "disabled" : ""}>${c.cost ? eur(c.cost) : "gratis"}</button>`}</td>`).join("")}</tr>`).join("")}
+  const list = P.progs.filter(p => !p.aired && !p.filler && p.kind !== "sport" && (p.own || premiereDay(P, p) != null)).map(p => ({ p, d: premiereDay(P, p) })).sort((a, b) => (a.d ?? 1e9) - (b.d ?? 1e9));
+  if (!list.length) return "";
+  return `<section class="panel mb"><div class="ph"><h2>Premieren & Kampagnen</h2><span class="aside">Kampagnen wirken am besten 3–14 Tage vor der geplanten Premiere</span></div><div class="tbl"><table><thead><tr><th>Titel</th><th>Premiere</th><th>Timing heute</th><th class="num">Hype TV</th><th class="num">Hype Stream</th>${PROMO.map(c => `<th class="num" title="${esc(c.desc)}">${c.name}</th>`).join("")}</tr></thead><tbody>
+    ${list.map(({ p, d }) => { const [tf, tl] = promoTiming(d == null ? null : d - G.day); return `<tr><td class="title">${esc(p.title)}${p.own ? ' <span class="chip good">Eigenproduktion</span>' : ""}</td><td>${d == null ? '<span class="muted">nicht geplant</span>' : `${dateShort(d)} <span class="muted">(in ${d - G.day} T.)</span>`}</td><td><span class="chip ${tf === 1 ? "good" : tf >= 0.75 ? "warn" : "fsk"}">${tl} · ${Math.round(tf * 100)} %</span></td><td class="num">${p.hypeTv || 0}</td><td class="num">${p.hypeStream || 0}</td>${PROMO.map(c => `<td class="num">${(p.promos || []).includes(c.id) ? '<span class="chip good">läuft</span>' : `<button class="btn" data-act="promo" data-id="${p.id}" data-k="${c.id}" ${P.money < c.cost || planLocked() ? "disabled" : ""}>${c.cost ? eur(c.cost) : "gratis"}</button>`}</td>`).join("")}</tr>`; }).join("")}
   </tbody></table></div><p class="fine pad">${PROMO.map(c => `<b>${c.name}:</b> ${c.desc}`).join(" ")}</p></section>`;
 }
 
@@ -2163,8 +2284,9 @@ function nextDay() {
   const due = P.contracts.filter(c => c.days <= 1 && c.done < c.spots);
   if (due.length) logMsg("Werbezeitenvermarktung", "Frist", `Achtung: ${due.length} Werbevertrag${due.length > 1 ? "e laufen" : " läuft"} heute ab.`);
   if (P.conf < 30) logMsg("Senderleitung", "Vertrauen", `Das Vertrauen der Senderleitung ist auf ${P.conf} gesunken. Wir erwarten bessere Quoten.`);
-  const holes = P.week[weekday(G.day)].filter(c => !c.p).length;
-  if (holes) logMsg("Programmplanung", "Warnung", `Der heutige ${WDL[weekday(G.day)]} hat ${holes} leere Stunde${holes > 1 ? "n" : ""} im Wochenplan.`);
+  calPrune(P);
+  const chk = planCheck(P);
+  if (chk.firstBad != null) logMsg("Programmplanung", "Warnung", `Planungsvorlauf: Das Programm ist nur bis ${chk.until >= G.day ? dateShort(chk.until) : "heute"} lückenlos – ${chk.holes} Stunde${chk.holes > 1 ? "n" : ""} offen oder ohne gültige Lizenz. Vor dem nächsten Sendetag müssen ${HORIZON / 7} Wochen geplant sein.`);
   logMsg("Programmhandel", "Programm", "Neue Filme und Serienlizenzen sind eingetroffen.");
   startDay();
   pickEvent();
@@ -2189,6 +2311,8 @@ $("cont").addEventListener("click", () => {
   if (!G || !$("modal").hidden) return;
   if (G.event) { showEvent(); return; }
   if (G.phase === "plan") {
+    const chk = planCheck(me());
+    if (chk.firstBad != null) { showPlanGate(chk); return; }
     const empty = me().sched.filter(c => !c.p).length;
     if (empty) {
       openModal(`<header><h2>Programmlöcher</h2></header><div class="dbody"><p class="lead">Heute ${empty === 1 ? "ist 1 Stunde" : `sind ${empty} Stunden`} ohne Programm. Dort läuft ein Testbild.</p>
@@ -2376,12 +2500,12 @@ function nextEvents(P, n) {
 function lagebild(P) {
   const S = G.stream, sl = S && S.hist[S.hist.length - 1];
   const prime = P.sched[20], pp = prime.p && progOf(P, prime.p);
-  const holesToday = P.sched.filter(c => !c.p).length, holesWeek = P.week.reduce((a, d) => a + d.filter(c => !c.p || !progOf(P, c.p)).length, 0); // auch abgelaufene Lizenzen
+  const holesToday = P.sched.filter(c => !c.p).length, chk = planCheck(P), secured = Math.max(0, chk.until - G.day + 1);
   const tile = (l, v, s, cls = "") => `<div class="tile"><small>${l}</small><b class="${cls}">${v}</b><span>${s}</span></div>`;
   const lin = [
     tile("Marktanteil gestern", P.maDays ? pct(P.dayMA) : "–", `Ziel ${pct(P.target)}`, P.maDays ? (P.dayMA >= P.target ? "up" : "down") : ""),
     tile("Primetime heute", pp ? esc(pp.title) : "Testbild", pp ? `20:00 · erwartet ${mio(expected(P, 20))} Mio.` : "20:00 noch nicht belegt", pp ? "lage-t" : "lage-t down"),
-    tile("Sendelöcher", holesToday ? `${holesToday} heute` : "keine", holesWeek ? `${holesWeek} Stunden im Wochenplan offen` : "Wochenplan vollständig", holesToday ? "down" : "up"),
+    tile("Planungsvorlauf", `${secured} / ${HORIZON} Tage`, chk.holes ? `${chk.holes} Stunden offen${holesToday ? ` · ${holesToday} heute` : ""}` : "6 Wochen lückenlos geplant", secured >= HORIZON ? "up" : "down"),
   ];
   let str;
   if (!S) str = [tile("Eigener Streamer", "–", G.project ? `Im Bau: noch ${G.project.left} Tage` : "Noch nicht gestartet")];
@@ -2392,7 +2516,7 @@ function lagebild(P) {
       tile("Churn", `${pct(S.churnM || 0)}`, "pro Monat", (S.churnM || 0) > 4 ? "down" : ""),
       tile("Geo-Blocking", geo.length ? geo.join(" · ") : "keins", geo.length ? `+${GEO_MALUS} % Churn dort` : "alle Länder lizenziert", geo.length ? "down" : "up")];
   }
-  return `<section class="panel lage mb"><div class="lage-col"><div class="ph"><h2>Lineares TV</h2><span class="aside">${esc(P.name)} · ${dateLabel(G.day)}</span><button class="btn small" data-page="plan">Wochenplan</button></div><div class="tiles pad">${lin.join("")}</div></div>
+  return `<section class="panel lage mb"><div class="lage-col"><div class="ph"><h2>Lineares TV</h2><span class="aside">${esc(P.name)} · ${dateLabel(G.day)}</span><button class="btn small" data-page="plan">Kalender</button></div><div class="tiles pad">${lin.join("")}</div></div>
     <div class="lage-col"><div class="ph"><h2>Streaming</h2><span class="aside">${S ? esc(S.name) : "kein Streamer"}</span><button class="btn small" data-page="stream">Plattform</button></div><div class="tiles pad">${str.join("")}</div></div></section>`;
 }
 function overview(P) {
@@ -2454,7 +2578,7 @@ function progTable(list, extra, head = "") {
 // Abend-Zeitleiste: drei Zeitzonen mit Senderlogo als Wasserzeichen und Konkurrenz-Spionage für den gewählten Sendeplatz
 const ZONES = [["Vorabend", "18–20 Uhr", [18, 19]], ["Primetime", "20:15–22:15 Uhr", [20, 21]], ["Spätprogramm", "ab 22:15 Uhr", [22, 23]]];
 let spyH = 20;
-function eveningTimeline(P, wd, sc, isToday, lock) {
+function eveningTimeline(P, wd, sc, isToday, lock, d) {
   const S = G.stream, inStream = p => S && S.catalog.some(c => c.id === p.id);
   const slot = i => {
     const c = sc[i], p = c.p && progOf(P, c.p);
@@ -2463,7 +2587,7 @@ function eveningTimeline(P, wd, sc, isToday, lock) {
       <button class="tl-main" data-act="spyH" data-k="${i}"><small>${hh(i)}${c.live ? " · LIVE" : ""}</small><b>${p ? (c.cont ? "↳ " : "") + esc(p.title) : "Testbild"}</b>
         <span>${p ? `${esc(p.genre)} · Q ${p.q}${p.fsk >= 16 ? ` · FSK ${p.fsk}` : ""}` : "Noch nicht belegt"}</span></button>
       ${p && inStream(p) ? `<span class="tl-stream">${STREAMERS.some(x => x.id === S.id) ? sbadge(S.id, 14) : esc(S.name)}</span>` : ""}
-      <button class="btn small" data-act="pickProg" data-i="${i}" data-k="${wd}" ${lock || c.live ? "disabled" : ""}>${p ? "Ändern" : "Belegen"}</button></div>`;
+      <button class="btn small" data-act="pickProg" data-i="${i}" data-k="${d}" ${lock || c.live ? "disabled" : ""}>${p ? "Ändern" : "Belegen"}</button></div>`;
   };
   const mine = sc[spyH].p && progOf(P, sc[spyH].p);
   const rivals = G.stations.filter(s => !isMe(s)).sort((a, b) => b.base - a.base).slice(0, 6).map(st => {
@@ -2471,25 +2595,27 @@ function eveningTimeline(P, wd, sc, isToday, lock) {
     const risk = !p ? ["Kein Programm", "muted"] : p.q >= 85 ? ["Hype-Gegner", "down"] : mine && p.q > mine.q ? ["Stärker als Ihr Programm", "down"] : mine ? ["Schwächer als Ihr Programm", "up"] : ["Gegenprogramm", "muted"];
     return `<tr><td>${sname(st.i)}</td><td class="title">${p ? esc(p.title) : "–"}${p ? `<div class="muted">${esc(p.genre)}</div>` : ""}</td><td class="num">${p ? attr(p.q) : ""}</td><td class="${risk[1]}">${risk[0]}</td></tr>`;
   }).join("");
-  return `<section class="panel mb"><div class="ph"><h2>Abend-Zeitleiste · ${WDL[wd]}</h2><span class="aside">Sendeplatz antippen für den Konkurrenz-Check</span></div>
+  return `<section class="panel mb"><div class="ph"><h2>Abend-Zeitleiste · ${dateLabel(d)}</h2><span class="aside">Sendeplatz antippen für den Konkurrenz-Check</span></div>
     <div class="tl">${ZONES.map(([n, t, hs]) => `<div class="tl-zone ${n === "Primetime" ? "prime" : ""}"><div class="tl-head"><b>${n}</b><span>${t}</span></div>${hs.map(slot).join("")}</div>`).join("")}</div>
     <div class="st-wrap"><h2 class="st">Konkurrenz um ${hh(spyH)}</h2></div><div class="tbl"><table><thead><tr><th>Sender</th><th>Programm</th><th class="num">Qual.</th><th>Einschätzung</th></tr></thead><tbody>${rivals}</tbody></table></div></section>`;
 }
 function planPage(P) {
-  const today = weekday(G.day);
-  const wd = planDay == null ? today : planDay;
-  const isToday = wd === today;
-  const sc = isToday ? P.sched : P.week[wd];
-  const lock = isToday && planLocked();
-  let h = title("Wochenplan", `<div class="actions">${lock ? "" : `<button class="btn" data-act="autoDay" data-k="${wd}">Assistent für ${WDL[wd]}</button><button class="btn" data-act="copyDay" data-k="${wd}">${WDL[wd]} auf alle Tage kopieren</button>`}</div>`);
-  h += `<div class="daytabs mb">${WEEK.map(d => `<button data-act="planDay" data-k="${d}" class="${d === wd ? "on" : ""}">${WDL[d].slice(0, 2)}${d === today ? " · heute" : ""}<span>${P.week[d].filter(c => !c.p).length ? P.week[d].filter(c => !c.p).length + " Lücken" : "voll"}</span></button>`).join("")}</div>`;
+  if (planDay == null || planDay < G.day || planDay >= G.day + HORIZON) planDay = G.day;
+  const d = planDay, wd = weekday(d), isToday = d === G.day;
+  const sc = schedFor(P, d), lock = isToday && planLocked(), chk = planCheck(P), badSet = new Set(chk.bad[d] || []);
+  const secured = Math.max(0, chk.until - G.day + 1);
+  let h = title("Sendekalender", `<div class="actions">${lock ? "" : `<button class="btn" data-act="autoDay" data-k="${d}">Assistent für ${dateShort(d)}</button><button class="btn" data-act="copyDay" data-k="${d}">Auf alle ${WDL[wd]}e kopieren</button>`}<button class="btn hot" data-act="fillAll" ${planLocked() ? "disabled" : ""}>Alle Lücken füllen</button></div>`);
+  h += `<section class="panel mb"><div class="ph"><h2>Planungsvorlauf</h2><span class="aside">Die Senderleitung verlangt ${HORIZON / 7} Wochen lückenlos geplantes Programm, bevor der nächste Sendetag startet.</span></div>
+    <div class="pad"><div class="goal"><div class="row"><b>Gesichert bis ${secured ? dateShort(chk.until) : "–"}</b><span class="${secured >= HORIZON ? "up" : "down"}">${secured} / ${HORIZON} Tage${chk.holes ? ` · ${chk.holes} Stunden offen` : ""}</span></div><div class="track"><i style="width:${secured / HORIZON * 100}%;background:${secured >= HORIZON ? "#22c55e" : "#ef4444"}"></i></div></div>
+    ${calendarGrid(P, d, chk)}<p class="fine"><i class="dot live"></i> Live-Sport · <i class="dot pre"></i> Premiere · Rot: offene Stunden oder Lizenz bis dahin ausgeschöpft</p></div></section>`;
+  if (moveSrc) h += `<div class="nego-msg warn mb">Verschieben: „${esc(progOf(P, moveSrc.p).title)}“ – tippen Sie auf den Ziel-Sendeplatz${moveSrc.all ? " (gilt für alle Tage im Planungszeitraum)" : " (auch an einem anderen Tag)"}. <button class="btn small" data-act="moveCancel">Abbrechen</button></div>`;
   if (lock) h += lockNote();
   const notes = [];
   if (P.type === "oer") notes.push("Werbung nur werktags vor 20 Uhr");
   notes.push("FSK 16 ab 22 Uhr, FSK 18 ab 23 Uhr");
   if (isToday && P.live.length) notes.push("Live-Events sind heute fest eingeplant");
-  h += eveningTimeline(P, wd, sc, isToday, lock);
-  h += `<p class="lead mb">${notes.join(" · ")}. ${isToday ? "Ergebnisse von heute erscheinen nach der Ausstrahlung." : `Dieser Plan gilt für jeden ${WDL[wd]}.`}</p>`;
+  h += eveningTimeline(P, wd, sc, isToday, lock, d);
+  h += `<p class="lead mb">${notes.join(" · ")}. ${isToday ? "Ergebnisse von heute erscheinen nach der Ausstrahlung." : `Planung für ${WDL[wd]}, ${dateShort(d)}.`}</p>`;
   h += `<section class="panel"><div class="tbl"><table class="plan"><thead><tr><th>Zeit</th><th>Programm</th><th>Werbung</th><th class="num">Erwartet</th><th class="num">${isToday ? "Ergebnis" : "Zuletzt"}</th></tr></thead><tbody>`;
   let lastPart = "";
   sc.forEach((c, i) => {
@@ -2500,16 +2626,16 @@ function planPage(P) {
     const allowed = adAllowed(P, i, wd);
     const youth = p && !c.cont && !youthOk(p, i);
     h += `<tr class="${i === 20 || i === 21 ? "prime" : ""}"><td class="hr">${hh(i)}</td>
-      <td><button class="cell ${c.cont ? "cont" : ""} ${!p || youth ? "bad" : ""}" data-act="pickProg" data-i="${i}" data-k="${wd}" ${lock || c.live ? "disabled" : ""}><span class="t">${c.live && !c.cont ? "● LIVE · " : ""}${p ? (c.cont ? "↳ " : "") + esc(p.title) : "Testbild – nichts geplant"}</span>
-        <span class="s">${youth ? `Jugendschutz: FSK ${p.fsk} zu früh!` : p ? (p.kind === "sport" ? esc(p.comp) : esc(p.genre) + ` · <span class="stars">${stars(fit(p.genre, i))}</span> · Q ${p.q} · Akt. ${Math.round(p.topic * 100)} %`) : "Kaum Zuschauer"}</span></button></td>
-      <td><button class="cell ${ad && ad.min > exp ? "bad" : ""}" data-act="pickAd" data-i="${i}" data-k="${wd}" ${lock || !p || !allowed || (p && p.genre === "Teleshopping") ? "disabled" : ""}><span class="t">${!allowed ? '<span class="muted">Werbeverbot</span>' : p && p.genre === "Teleshopping" ? '<span class="muted">Dauerwerbung</span>' : ad ? esc(ad.brand) : '<span class="muted">Keine Werbung</span>'}</span><span class="s">${!allowed ? "ÖRR" : ad ? "mind. " + mio(ad.min) + " Mio. · " + eur(ad.pay) : ""}</span></button></td>
+      <td><button class="cell ${c.cont ? "cont" : ""} ${!p || youth || badSet.has(i) ? "bad" : ""}" data-act="pickProg" data-i="${i}" data-k="${d}" ${lock || c.live ? "disabled" : ""}><span class="t">${c.live && !c.cont ? "● LIVE · " : ""}${p ? (c.cont ? "↳ " : "") + esc(p.title) : "Testbild – nichts geplant"}</span>
+        <span class="s">${p && badSet.has(i) && !c.cont ? "Lizenz bis dahin ausgeschöpft – bitte ersetzen" : youth ? `Jugendschutz: FSK ${p.fsk} zu früh!` : p ? (p.kind === "sport" ? esc(p.comp) : esc(p.genre) + ` · <span class="stars">${stars(fit(p.genre, i))}</span> · Q ${p.q} · Akt. ${Math.round(p.topic * 100)} %`) : "Kaum Zuschauer"}</span></button></td>
+      <td><button class="cell ${ad && ad.min > exp ? "bad" : ""}" data-act="pickAd" data-i="${i}" data-k="${d}" ${lock || !p || !allowed || (p && p.genre === "Teleshopping") ? "disabled" : ""}><span class="t">${!allowed ? '<span class="muted">Werbeverbot</span>' : p && p.genre === "Teleshopping" ? '<span class="muted">Dauerwerbung</span>' : ad ? esc(ad.brand) : '<span class="muted">Keine Werbung</span>'}</span><span class="s">${!allowed ? "ÖRR" : ad ? "mind. " + mio(ad.min) + " Mio. · " + eur(ad.pay) : ""}</span></button></td>
       <td class="r muted">${mio(exp)}</td><td class="r">${r ? resDot(r) : P.last[i] && !isToday ? `<span class="muted">${mio(P.last[i])}</span>` : '<span class="muted">–</span>'}</td></tr>`;
   });
-  return h + `</tbody></table></div></section>`;
+  return h + `</tbody></table></div></section>` + promoPanel(P);
 }
 function archiv(P) {
   return title("Archiv", `<span class="muted">${P.progs.length} Programme</span>`) + `<p class="lead mb">Filme und Serienlizenzen lassen sich für 40 % des Einkaufspreises weiterverkaufen – nicht, solange sie im Wochenplan stehen. Filmlizenzen erlauben 3 Ausstrahlungen, Serienlizenzen 2 je Folge.</p>
-    <section class="panel">${progTable(P.progs, p => { const inPlan = P.week.some(d => d.some(c => c.p === p.id)); const can = p.price > 0 && !p.home && !inPlan; return p.price ? `<span class="muted">${eur(p.price * 0.4)}</span> <button class="btn" data-act="sell" data-id="${p.id}" ${!can || planLocked() ? "disabled" : ""}>${inPlan ? "Im Plan" : "Verkaufen"}</button>` : '<span class="muted">Eigenformat</span>'; }, "Verkauf")}</section>`;
+    <section class="panel">${progTable(P.progs, p => { const inPlan = allPlans(P).some(d => d.some(c => c.p === p.id)); const can = p.price > 0 && !p.home && !inPlan; return p.price ? `<span class="muted">${eur(p.price * 0.4)}</span> <button class="btn" data-act="sell" data-id="${p.id}" ${!can || planLocked() ? "disabled" : ""}>${inPlan ? "Im Plan" : "Verkaufen"}</button>` : '<span class="muted">Eigenformat</span>'; }, "Verkauf")}</section>`;
 }
 function market(P) {
   return title("Programmhandel", `<span class="muted">${G.market.length} Angebote · Konto ${meur(P.money)}</span>`) + lockNote() + `<p class="lead mb">Sie haben jeden Morgen den ersten Zugriff, zum Sendestart greift die Konkurrenz zu. Täglich kommt neue Ware.</p>
@@ -2632,7 +2758,7 @@ function adTable(list, extra) {
       <td class="num ${a.days <= 1 ? "down" : ""}">${a.days} T.</td><td class="num">${eur(a.pay)}</td><td class="num muted">${eur(a.penalty)}</td><td class="num">${extra(a)}</td></tr>`).join("")}
   </tbody></table></div>`;
 }
-function contracts(P) { return title("Werbeverträge", `<span class="muted">${P.contracts.length} / ${MAX_ADS} aktiv</span>`) + `<p class="lead mb">Spots planen Sie im Wochenplan pro Stunde ein. Der Assistent verteilt sie automatisch.</p><section class="panel">${adTable(P.contracts, a => `<span class="muted">${P.week.reduce((n, d) => n + d.filter(c => c.ad === a.id).length, 0)} im Wochenplan</span>`)}</section>`; }
+function contracts(P) { return title("Werbeverträge", `<span class="muted">${P.contracts.length} / ${MAX_ADS} aktiv</span>`) + `<p class="lead mb">Spots planen Sie im Sendekalender pro Stunde ein. Der Assistent verteilt sie automatisch.</p><section class="panel">${adTable(P.contracts, a => `<span class="muted">${Array.from({ length: HORIZON }, (_, k) => schedFor(P, G.day + k)).reduce((n, d) => n + d.filter(c => c.ad === a.id).length, 0)} im Kalender</span>`)}</section>`; }
 function agency(P) {
   return title("Werbeagentur", `<span class="muted">Spotfabrik</span>`) + lockNote() + `<p class="lead mb">${P.type === "oer" ? "Öffentlich-rechtlich: Werbung nur werktags vor 20 Uhr. " : "Werbung ist Ihre Haupteinnahmequelle. "}Ein Spot wird nur bezahlt, wenn die Sendung die Mindestreichweite erreicht. Wer bis zur Frist nicht alle Spots sendet, zahlt eine Strafe. Höchstens ${MAX_ADS} Verträge.</p>
     <section class="panel"><div class="ph"><h2>Angebote heute</h2></div>${adTable(G.adOffers, a => `<button class="btn hot" data-act="ad" data-id="${a.id}" ${P.contracts.length >= MAX_ADS || planLocked() ? "disabled" : ""}>Annehmen</button>`)}</section>`;
@@ -2765,14 +2891,17 @@ function openModal(html, narrow) {
   d.innerHTML = html; $("modal").hidden = false;
 }
 function closeModal() { $("modal").hidden = true; }
-function pickerSched(wd) { const P = me(); return wd === weekday(G.day) ? P.sched : P.week[wd]; }
+function pickerSched(d) { return schedFor(me(), d); }
 function openPicker(kind, i, wd, live) {
   const P = me();
   const sc = live ? P.sched : pickerSched(wd);
   let list = "";
   if (kind === "prog") {
     const sorted = [...P.progs].sort((a, b) => b.q * fit(b.genre, i) * (0.35 + 0.65 * b.topic) - a.q * fit(a.genre, i) * (0.35 + 0.65 * a.topic));
+    const cur = !live && sc[i].p && progOf(P, sc[i].p);
     list = (live ? "" : `<button class="pick" data-act="setProg" data-i="${i}" data-k="${wd}" data-id=""><b>Sendeplatz leeren</b><span class="meta">Achtung: Testbild</span></button>`) +
+      (cur ? `<button class="pick" data-act="moveStart" data-i="${i}" data-k="${wd}" data-v="one"><b>„${esc(cur.title)}“ verschieben</b><span class="meta">Nur an diesem Tag – danach Ziel-Sendeplatz antippen, auch an einem anderen Tag</span></button>
+        <button class="pick" data-act="moveStart" data-i="${i}" data-k="${wd}" data-v="all"><b>Sendeplatz von „${esc(cur.title)}“ dauerhaft verlegen</b><span class="meta">An allen Tagen im Planungszeitraum auf eine neue Uhrzeit</span></button>` : "") +
       sorted.map(p => {
         const why = canPlace(P, sc, p, i) || (live && p.len > 1 ? "Nur einstündige Programme" : "");
         const used = sc.filter(c => c.p === p.id && !c.cont).length;
@@ -2789,7 +2918,7 @@ function openPicker(kind, i, wd, live) {
           <span class="meta"><span class="chip ${a.min <= exp * 0.95 ? "good" : "warn"}">mind. ${mio(a.min)} Mio.</span><span>${a.done}/${a.spots} gesendet</span><span>noch ${Math.max(0, left)} an diesem Tag einplanbar</span><span>Frist ${a.days} T.</span></span></button>`;
       }).join("");
   }
-  openModal(`<header><h2>${WDL[wd] || ""} ${hh(i)} · ${kind === "prog" ? (live ? "Notfall-Wiederholung" : "Programm wählen") : "Werbespot wählen"}</h2><button class="btn" data-act="close">Abbrechen</button></header><div class="dbody"><div class="picklist">${list}</div></div>`, true);
+  openModal(`<header><h2>${live ? "" : dateShort(wd)} ${hh(i)} · ${kind === "prog" ? (live ? "Notfall-Wiederholung" : "Programm wählen") : "Werbespot wählen"}</h2><button class="btn" data-act="close">Abbrechen</button></header><div class="dbody"><div class="picklist">${list}</div></div>`, true);
 }
 function showStart() {
   const has = hasSave();
@@ -2813,6 +2942,13 @@ function showChoose() {
       ${STATIONS.map((s, i) => `<tr><td>${sname(i)}</td><td class="muted">${s.type === "oer" ? "ÖRR" : "privat"}</td><td class="num">${pct(s.share)}</td><td class="num">${meur(8e6 + s.share * 6e5)}</td><td class="muted">${s.streamer ? esc(STREAMERS.find(x => x.id === s.streamer).name.split(" ")[0]) : "–"}</td>
         <td class="muted title">${RIGHTS.filter(r => r.holder === s.id).map(r => r.sport).filter((v, k, a) => a.indexOf(v) === k).join(", ") || "–"}</td><td class="num"><button class="btn hot" data-act="pickStation" data-k="${s.id}">Übernehmen</button></td></tr>`).join("")}
     </tbody></table></div></div>`);
+}
+function showPlanGate(chk) {
+  const days = Object.keys(chk.bad).map(Number).sort((a, b) => a - b);
+  openModal(`<header><h2>Planungsvorlauf zu kurz</h2></header><div class="dbody">
+    <p class="lead">Die Senderleitung verlangt ${HORIZON / 7} Wochen lückenlos geplantes Programm. Gesichert ist es nur bis ${chk.until >= G.day ? dateShort(chk.until) : "–"}: ${chk.holes} Stunde${chk.holes > 1 ? "n sind" : " ist"} offen oder mit einer Lizenz belegt, die bis dahin ausgeschöpft ist.</p>
+    <div class="tbl"><table><tbody>${days.slice(0, 6).map(d => `<tr><td>${dateLabel(d)}</td><td class="num down">${chk.bad[d].length} Std.</td><td class="num"><button class="btn small" data-act="toPlanDay" data-k="${d}">Öffnen</button></td></tr>`).join("")}${days.length > 6 ? `<tr><td colspan="3" class="muted">… und ${days.length - 6} weitere Tage</td></tr>` : ""}</tbody></table></div>
+    <div class="actions"><button class="btn hot" data-act="fillAll">Assistent füllt alle Lücken</button><button class="btn" data-act="toPlanDay" data-k="${days[0]}">Zum Kalender</button></div></div>`, true);
 }
 function showSummary(report) {
   const P = me();
@@ -2874,11 +3010,11 @@ function act(b) {
     case "finish": finishEvening(); return;
     case "next": closeModal(); if (G.over) showEnd(); else { planDay = null; nextDay(); } return;
     case "planDay": planDay = wd; break;
-    case "autoDay": if (!(wd === weekday(G.day) && planLocked())) { planDayFor(P, wd); if (wd === weekday(G.day)) buildToday(P); toast(`Der Assistent hat den ${WDL[wd]} geplant.`); } break;
+    case "autoDay": if (!(wd === G.day && planLocked())) { planDayFor(P, weekday(wd), calDay(P, wd), { rem: remMap(P, wd) }); if (wd === G.day) buildToday(P); toast(`Der Assistent hat ${dateShort(wd)} geplant.`); } break;
     case "copyDay": {
-      const src = P.week[wd];
-      for (const d of WEEK) if (d !== wd && !(d === weekday(G.day) && planLocked())) { P.week[d] = src.map(c => ({ ...c, live: false })); }
-      buildToday(P); toast(`${WDL[wd]} wurde auf alle Wochentage kopiert.`); break;
+      const src = calDay(P, wd);
+      for (let d = G.day; d < G.day + HORIZON; d++) if (d !== wd && weekday(d) === weekday(wd) && !(d === G.day && planLocked())) P.cal[d] = src.map(c => ({ ...c, live: false }));
+      buildToday(P); toast(`${dateShort(wd)} wurde auf alle ${WDL[weekday(wd)]}e im Planungszeitraum kopiert.`); break;
     }
     case "buy": { const p = G.market.find(x => x.id === id); if (p && p.price <= P.money && !planLocked()) { book(P, "Programmkäufe", -p.price); P.progs.push(p); G.market = G.market.filter(x => x !== p); toast(`„${p.title}“ gekauft.`); } break; }
     case "ad": { const a = G.adOffers.find(x => x.id === id); if (a && P.contracts.length < MAX_ADS && !planLocked()) { P.contracts.push(a); G.adOffers = G.adOffers.filter(x => x !== a); toast(`Vertrag mit ${a.brand} geschlossen.`); } break; }
@@ -2938,9 +3074,13 @@ function act(b) {
     }
     case "pkg": { const r = G.rights.find(x => x.id === b.dataset.k); if (r) r.pkgSel = b.dataset.v; break;
     }
-    case "pickProg": openPicker("prog", i, wd); return;
+    case "pickProg": if (moveSrc) { moveProg(P, wd, i); break; } openPicker("prog", i, wd); return;
+    case "moveStart": { const sc = schedFor(P, wd); let st = i; while (st > 0 && sc[st].cont && sc[st - 1].p === sc[i].p) st--; if (sc[st].p && !(wd === G.day && planLocked())) moveSrc = { d: wd, i: st, p: sc[st].p, all: b.dataset.v === "all" }; closeModal(); break; }
+    case "moveCancel": moveSrc = null; break;
+    case "fillAll": if (!planLocked()) { fillHorizon(P); const c = planCheck(P); toast(c.firstBad == null ? `Der Assistent hat den Kalender bis ${dateShort(c.until)} lückenlos gefüllt.` : `Noch ${c.holes} Stunden offen.`); } break;
+    case "toPlanDay": closeModal(); planDay = wd; go("plan"); return;
     case "pickAd": openPicker("ad", i, wd); return;
-    case "swap": openPicker("prog", i, weekday(G.day), true); return;
+    case "swap": openPicker("prog", i, G.day, true); return;
     case "swapTo": {
       const p = progOf(P, id);
       if (G.phase === "live" && G.min < i * 60 && p && p.len === 1 && !canPlace(P, P.sched, p, i)) {
@@ -2951,7 +3091,7 @@ function act(b) {
     }
     case "adbreak": if (G.phase === "live" && G.min < i * 60) G.adBreak[i] = !G.adBreak[i]; break;
     case "setProg": {
-      if (wd === weekday(G.day) && planLocked()) break;
+      if (wd === G.day && planLocked()) break;
       const p = id ? progOf(P, id) : null;
       editPlan(wd, sc => {
         if (p && canPlace(P, sc, p, i)) return;
@@ -2960,7 +3100,7 @@ function act(b) {
       });
       closeModal(); break;
     }
-    case "setAd": if (!(wd === weekday(G.day) && planLocked())) editPlan(wd, sc => { sc[i].ad = id; }); closeModal(); break;
+    case "setAd": if (!(wd === G.day && planLocked())) editPlan(wd, sc => { sc[i].ad = id; }); closeModal(); break;
   }
   render();
 }
