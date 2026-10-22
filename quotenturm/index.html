@@ -258,6 +258,13 @@ label { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .event-head .chip { justify-self: start; }
 .event-head h3 { margin: 0; font-size: 22px; line-height: 1.2; text-wrap: balance; }
 .event-card { border-color: var(--hot); }
+.fgrid { display: grid; gap: 12px; }
+.field { display: grid; gap: 4px; }
+.field > span { font-size: 13px; color: var(--muted); }
+.field select, .field input[type=text] { width: 100%; background: var(--panel-2); color: var(--text); border: 1px solid #353b45; border-radius: 4px; padding: 8px 10px; font: inherit; min-height: 40px; }
+.field input[type=range] { width: 100%; accent-color: var(--hot); }
+.scale { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; font-size: 12px; color: var(--muted); text-align: center; }
+.scale span.on { color: var(--text); font-weight: 600; }
 /* Dialoge */
 .modal { position: fixed; inset: 0; z-index: 50; background: rgba(4, 5, 7, .75); display: flex; align-items: center; justify-content: center; overflow-y: auto;
   padding-block: max(16px, env(safe-area-inset-top, 0px));
@@ -486,14 +493,15 @@ const HEADLINES = [
 const MENU = [
   { id: "portal", name: "Portal", subs: [["overview", "Übersicht", "Dashboard mit Nachrichten, Tabelle und Kennzahlen"], ["inbox", "Posteingang", "Alle Meldungen aus dem Haus"]] },
   { id: "programm", name: "Programm", subs: [["plan", "Wochenplan", "Programm 0–24 Uhr, Montag bis Sonntag"], ["archiv", "Archiv", "Eigene Filme, Serien und Formate"], ["market", "Programmhandel", "Filme und Serienlizenzen kaufen"], ["ticker", "Nachrichten", "Meldungen von Ticker24 einkaufen"]] },
+  { id: "produktion", name: "Produktion", subs: [["studio", "Studio", "Eigene Filme, Serien, Shows und Dokus"], ["casting", "Casting", "Stars, Moderation, Nachrichtengesichter"], ["newsroom", "Nachrichtenredaktion", "Blattlinie, Stil, Etat und Sprecher*in"], ["export", "Rechtemarkt international", "Formate und Produktionen ins Ausland verkaufen"]] },
   { id: "streaming", name: "Streaming", subs: [["stream", "Plattform", "Abos, Churn, ARPU und Preismodell"], ["catalog", "Katalog", "Titel und Verwertungsfenster"], ["smarket", "Wettbewerb", "Streamer im Vergleich und Top 10"]] },
   { id: "sport", name: "Sport", subs: [["rights", "Rechtemarkt", "Ausschreibungen und Gebote"], ["myrights", "Meine Rechte", "Pakete und Live-Termine"]] },
-  { id: "werbung", name: "Werbung", subs: [["contracts", "Verträge", "Laufende Werbeverträge"], ["agency", "Werbeagentur", "Neue Kunden gewinnen"]] },
   { id: "quoten", name: "Quoten", subs: [["table", "Quotentabelle", "Senderranking nach Marktanteil"], ["ratings", "Einschaltquoten", "Jede Stunde, jeder Sender"], ["rivals", "Konkurrenz", "Tagesplan der anderen Sender"], ["landscape", "Markt", "Sendergruppen und Streamer"]] },
-  { id: "sender", name: "Sender", subs: [["board", "Senderleitung", "Erwartungen, Vertrauen, Kredit"], ["finance", "Finanzen", "Erlöse, Kosten, EBITDA"], ["jury", "Goldene Antenne", "Rennen um den Qualitätspreis"]] },
+  { id: "sender", name: "Sender", subs: [["board", "Senderleitung", "Erwartungen, Vertrauen, Kredit"], ["finance", "Finanzen", "Erlöse, Kosten, EBITDA"], ["contracts", "Werbeverträge", "Laufende Werbeverträge"], ["agency", "Werbeagentur", "Neue Werbekunden gewinnen"], ["jury", "Goldene Antenne", "Rennen um den Qualitätspreis"]] },
 ];
 let openMenu = null;
 const PAGE_SECTION = Object.fromEntries(MENU.flatMap(m => m.subs.map(([k]) => [k, m.id])));
+PAGE_SECTION.newprod = "produktion";
 const QUICK = [["inbox", "Posteingang", '<path d="M3 13l3-8h12l3 8v6H3z"/><path d="M3 13h5l1 2h6l1-2h5"/>'], ["plan", "Wochenplan", '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>'], ["market", "Programmhandel", '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 5v14M17 5v14"/>'], ["stream", "Streamer", '<rect x="3" y="5" width="18" height="12" rx="2"/><path d="M10 9l5 2-5 2z"/>'], ["table", "Tabelle", '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>']];
 
 // =====================================================================
@@ -626,6 +634,7 @@ function newGame(stationId) {
   G.rights = RIGHTS.map(r => ({ id: r.id, owner: r.holder || null, days: r.holder ? ri(6, 34) : 0, price: 0, bid: 0 }));
   G.rights.forEach(r => { if (!r.owner) r.price = rightPrice(RDEF(r.id)); });
   G.project = null; G.mods = {}; G.event = null; G.eventLog = [];
+  initPeople();
   for (const st of G.stations) { for (const wd of WEEK) planDayFor(st, wd); }
   refreshOffers(true);
   logMsg("Senderleitung", "Vertrag", `Willkommen als Programmdirektion von ${P.name}! Saisonziel: Ø ${pct(P.target)} Marktanteil über den ganzen Tag. Bilanz nach ${SEASON} Tagen.`);
@@ -675,7 +684,7 @@ function canPlace(st, sc, p, i) {
   if (p.exclusive) return "Exklusiv im Stream";
   if (i + p.len > 24) return "Passt nicht mehr in den Tag";
   for (let k = 1; k < p.len; k++) if (sc[i + k].live) return "Kollidiert mit Live-Event";
-  if (p.kind === "serie" && p.ep >= p.eps * 2) return "Lizenz ausgeschöpft";
+  if (p.kind === "serie" && !p.own && p.ep >= p.eps * 2) return "Lizenz ausgeschöpft";
   if (p.kind === "film" && p.runs >= p.maxRuns) return "Lizenz ausgeschöpft";
   return "";
 }
@@ -773,6 +782,7 @@ function attractiveness(st, i) {
     if (c.cont && p.kind !== "sport") A *= 0.96;
   }
   if (isMe(st) && G.adBreak[i]) A *= 0.85;
+  if (isMe(st) && p && p.hypeTv && (p.aired === 0 || (c.cont && p.aired === 1 && p.lastAired === G.day))) A *= 1 + p.hypeTv / 100;
   if (isMe(st) && p && p.kind === "sport" && G.mods.split) A *= 0.95;
   if (isMe(st) && i >= LIVE_FROM && !G.mods.studioOk && G.mods.studioRisk >= G.day && Math.random() < 0.05) { A *= 0.3; G.blackout = i; }
   return { p, c, A };
@@ -790,12 +800,13 @@ function airHour(i) {
     if (r.p && !r.c.cont) {
       r.p.aired = (r.p.aired || 0) + 1;
       if (r.p.kind === "serie") { r.p.ep++; r.p.topic = Math.max(0.15, r.p.topic - (r.p.ep % r.p.eps === 0 ? 0.4 : 0.04)); }
-      else if (r.p.kind === "show") r.p.topic = Math.max(0.4, r.p.topic * (r.p.genre === "Nachrichten" ? 0.98 : 0.92));
+      else if (r.p.kind === "show") r.p.topic = Math.max(0.4, r.p.topic * (r.p.wear || (r.p.genre === "Nachrichten" ? 0.98 : 0.92)));
       else if (r.p.kind === "film") { r.p.runs++; r.p.topic = Math.max(0.1, r.p.topic * 0.6); }
       if ((r.p.genre === "Kultur" || r.p.genre === "Doku") && i >= 20) st.favor = Math.min(100, st.favor + 0.3 + r.p.q / 100);
     }
     if (!isMe(st)) continue;
-    if (r.p && !r.c.cont) r.p.lastAired = G.day;
+    if (r.p) r.p.maxMA = Math.max(r.p.maxMA || 0, r.v / BASE[i] * 100);
+    if (r.p && !r.c.cont) { r.p.lastAired = G.day; if (r.p.live) livePanne(r.p, i); }
     if (G.blackout === i) { G.blackout = null; logMsg("Sendetechnik", "Warnung", `${hh(i)} – Bildausfall im Studio! Minutenlang schwarzer Bildschirm, die Zuschauer schalten weg.`, true); }
     if (r.p && r.p.kind === "sport" && !r.c.cont) { liveStream(r.v, r.p.title); if (G.mods.split) book(st, "TV-Werbung", r1000(r.v * 20000)); }
     if (r.p && !r.c.cont && !youthOk(r.p, i)) {
@@ -807,7 +818,7 @@ function airHour(i) {
     const ad = r.c.ad ? adOf(st, r.c.ad) : null;
     if (ad && ad.done < ad.spots && adAllowed(st, i)) {
       if (r.v >= ad.min) {
-        ad.done++; book(st, "TV-Werbung", ad.pay);
+        ad.done++; book(st, "TV-Werbung", r1000(ad.pay * newsroomCalc().adF));
         if (i >= LIVE_FROM) logMsg("Werbezeitenvermarktung", "Werbung", `${hh(i)} – Spot „${ad.brand}“ gesendet: +${eur(ad.pay)}`);
         if (ad.done >= ad.spots) {
           st.contracts = st.contracts.filter(x => x !== ad);
@@ -836,6 +847,30 @@ const STAGES = [
   { n: 2, name: "Premium-Abo", cost: 8e6, days: 7, server: 120000, desc: "Eigener Abo-Dienst: Katalog, Exklusivtitel, Preismodell, Marketing-Kampagnen." },
   { n: 3, name: "Live-Sport im Stream", cost: 5e6, days: 5, server: 60000, desc: "Live-Events laufen parallel im Stream. Die Spitzenlast braucht genug Serverkapazität." },
 ];
+// Abo-Pakete: Anteil der Abonnenten je Paket reagiert auf die Preise
+const TIER_DEF = [
+  { id: "basis", name: "Basis · SD mit Werbung", ref: 4.99, w: 45, ads: true },
+  { id: "hd", name: "Standard · HD", ref: 9.99, w: 40, ads: false },
+  { id: "uhd", name: "Premium · 4K", ref: 14.99, w: 15, ads: false },
+];
+const defaultTiers = () => TIER_DEF.map(t => t.ref);
+function tierShares(S) {
+  const w = TIER_DEF.map((t, k) => t.w * Math.pow(t.ref / S.tiers[k], 1.5));
+  const sum = w.reduce((a, b) => a + b, 0);
+  return w.map(x => x / sum);
+}
+const avgPrice = S => tierShares(S).reduce((a, sh, k) => a + sh * S.tiers[k], 0);
+// Preisänderung: mehr als +15 % löst sofort eine Kündigungswelle im betroffenen Paket aus
+function setTierPrice(k, v) {
+  const S = G.stream, old = S.tiers[k];
+  v = clamp(Math.round(v * 100) / 100, 0.99, 39.99);
+  if (v > old * 1.15) {
+    const lost = S.subs * tierShares(S)[k] * rnd(0.08, 0.12);
+    S.subs = Math.max(0.01, S.subs - lost);
+    logMsg("Digitalvorstand", "Streaming", `Preisschock: ${TIER_DEF[k].name} steigt von ${old.toFixed(2).replace(".", ",")} € auf ${v.toFixed(2).replace(".", ",")} €. ${Math.round(lost * 1e6).toLocaleString("de-DE")} Abonnenten kündigen sofort, in den sozialen Medien hagelt es Kritik.`, true);
+  }
+  S.tiers[k] = v;
+}
 const stageAllowed = n => n !== 2 || STATIONS[G.me].type !== "oer";
 const sFree = S => S.stage < 2 || S.model === "free";
 function streamBrand() {
@@ -860,7 +895,7 @@ function projectDay() {
     const ai = G.streamers.find(x => x.id === sid);
     if (ai) { ai.player = true; ai.subs = 0; }
   } else G.stream.stage = n;
-  if (n === 2) { G.stream.model = "hybrid"; G.stream.price = 6.99; G.stream.subs = 0.04; G.stream.awareness = Math.max(G.stream.awareness, 35); }
+  if (n === 2) { G.stream.model = "abo"; G.stream.tiers = defaultTiers(); G.stream.subs = 0.04; G.stream.lastHit = G.day; G.stream.awareness = Math.max(G.stream.awareness, 35); }
   logMsg("Digitalvorstand", "Streaming", `${G.stream.name}: Ausbaustufe „${STAGES[n].name}“ ist online!`, true);
 }
 // Katalog: Stufe 1 = automatische Mediathek (zuletzt gesendet), ab Stufe 2 eigener Katalog
@@ -880,7 +915,7 @@ function streamDay() {
   const items = streamItems();
   const scored = items.map(({ c, p }) => {
     const age = G.day - c.added;
-    return { c, p, s: p.q * Math.max(0.25, 1 - age * 0.02) * WINDOW_F[c.window] * (p.kind === "serie" ? 1.2 : 1) };
+    return { c, p, s: p.q * Math.max(0.25, 1 - age * 0.02) * WINDOW_F[c.window] * (p.kind === "serie" ? 1.2 : 1) * (p.streamF || 1) * (age < 7 && p.hypeStream ? 1 + p.hypeStream / 100 : 1) };
   }).sort((a, b) => b.s - a.s);
   const top = scored.slice(0, 25);
   const cat = top.reduce((a, x) => a + x.s, 0) / Math.max(10, top.length);
@@ -891,8 +926,12 @@ function streamDay() {
     S.reach = clamp(S.reach * 0.97 + cat / 40 * 0.05 + items.length * 0.004, 0.1, 12);
     views = S.reach * 1e6 * 0.3 * (cat / 70);
   } else {
-    const priceF = S.model === "avod" ? 1.2 : clamp(1.35 - S.price / 25, 0.5, 1.15);
-    const churn = clamp(0.0025 + (newCount === 0 ? 0.0015 : 0) + (S.price > 12 ? (S.price - 12) * 0.0004 : 0) - cat / 70 * 0.0012 + (G.mods.churnUp >= G.day ? 0.002 : 0), 0.0008, 0.012);
+    const priceF = clamp(1.35 - avgPrice(S) / 25, 0.5, 1.15);
+    // Churn (pro Monat): 2 % Basis + Content-Mangel (je 14 Spieltage ohne Titel mit Rating ≥ 70: +4 %) + Preiskampf
+    if (items.some(x => x.p.q >= 70 && G.day - x.c.added <= 1)) S.lastHit = G.day;
+    const dry = Math.floor((G.day - (S.lastHit || G.day)) / 14);
+    S.churnM = 2 + dry * 4 + (G.mods.churnUp >= G.day ? 2 : 0);
+    const churn = S.churnM / 100 / 30;
     // Neukunden (Mio. pro Tag): Katalog, Bekanntheit, Preis, Kampagne, Umsteiger aus der Mediathek
     const adds = (0.02 * cat / 70 + newCount * 0.002) * (S.awareness / 60) * priceF * (campaign ? 2.5 : 1) + S.reach * 0.002;
     S.subs = Math.max(0.01, S.subs * (1 + 0.001 - churn) + adds);
@@ -905,8 +944,9 @@ function streamDay() {
   S.views = {};
   for (const x of top) S.views[x.c.id] = Math.round(views * x.s / tot);
   const users = sFree(S) ? S.reach : S.subs;
-  const svod = !sFree(S) && S.model !== "avod" ? S.subs * 1e6 * S.price * (S.model === "hybrid" ? 0.8 : 1) / 30 * (campaign ? 0.85 : 1) : 0;
-  const avod = S.model === "free" ? 0 : views * (S.model === "hybrid" ? 0.025 : 0.05); // Werbung je Abruf
+  const shares = !sFree(S) ? tierShares(S) : null;
+  const svod = shares ? S.subs * 1e6 * shares.reduce((a, sh, k) => a + sh * S.tiers[k], 0) / 30 * (campaign ? 0.85 : 1) : 0;
+  const avod = S.model === "free" ? 0 : views * (shares ? shares[0] * 0.05 : 0.05); // Werbung je Abruf (Abo: nur Basis-Paket)
   const server = STAGES.slice(1, S.stage + 1).reduce((a, s) => a + s.server, 0) + (S.capacity - 1) * 20000;
   const cdn = views * 0.004;
   if (svod) book(P, "Streaming-Abos", r1000(svod));
@@ -915,7 +955,7 @@ function streamDay() {
   const result = svod + avod - server - cdn;
   S.cum += result;
   const arpu = users ? (svod + avod) * 30 / (users * 1e6) : 0;
-  const rec = { day: G.day, subs: S.subs, reach: S.reach, views, svod, avod, cdn: server + cdn, arpu, churn: S.churn || 0, newCount, result };
+  const rec = { day: G.day, subs: S.subs, reach: S.reach, views, svod, avod, cdn: server + cdn, arpu, churn: S.churnM || 0, newCount, result };
   S.hist.push(rec); if (S.hist.length > 60) S.hist.shift();
   const mine = G.streamers.find(s => s.id === S.id); if (mine) mine.subs = sFree(S) ? 0 : S.subs;
   return rec;
@@ -971,10 +1011,10 @@ const EVENTS = [
     make: () => ({ title: "Werbemarkt schwächelt: Agenturen kürzen Budgets", text: "Mehrere große Werbekunden frieren ihre TV-Etats ein. Die Spotfabrik fragt, wie Sie reagieren wollen.",
       opts: [["Rabatte anbieten", "7 Tage mehr Angebote, aber 10 % weniger Geld je Spot."], ["Preise halten", "7 Tage nur halb so viele Angebote."]] }),
     fn: (k) => { G.mods.adCut = k === 0 ? { until: G.day + 7, f: 0.9, n: 10 } : { until: G.day + 7, f: 1, n: 4 }; refreshAds(); } },
-  { id: "pricewar", type: "Markt", when: () => G.stream && G.stream.stage >= 2 && G.stream.model !== "avod" && G.stream.model !== "free",
+  { id: "pricewar", type: "Markt", when: () => G.stream && G.stream.stage >= 2 && G.stream.tiers,
     make: () => ({ title: "Preiskampf: Konkurrenz-Streamer senkt Abo-Preis", text: "Ein großer Streamingdienst lockt mit einem dauerhaft günstigeren Abo. Ihre Abonnenten vergleichen bereits.",
-      opts: [["Mitziehen", "Abo-Preis sinkt um 2 €."], ["Preis halten", "7 Tage erhöhte Kündigungsquote."]] }),
-    fn: (k) => { if (k === 0) G.stream.price = Math.max(2.99, Math.round((G.stream.price - 2) * 100) / 100); else G.mods.churnUp = G.day + 7; } },
+      opts: [["Mitziehen", "Alle Pakete werden 1 € günstiger."], ["Preis halten", "7 Tage +2 % Churn pro Monat."]] }),
+    fn: (k) => { if (k === 0) G.stream.tiers = G.stream.tiers.map(p => Math.max(0.99, Math.round((p - 1) * 100) / 100)); else G.mods.churnUp = G.day + 7; } },
   { id: "earlyrights", type: "Markt", when: () => G.rights.some(r => r.owner && r.owner !== me().id && r.days > 5),
     make: () => { const r = pick(G.rights.filter(x => x.owner && x.owner !== me().id && x.days > 5)); return { data: r.id, title: `Exklusiv: „${RDEF(r.id).name}“ wird vorzeitig neu vergeben`, text: `Der Rechteinhaber ${holderName(r.owner)} steckt in Finanznöten. Die Rechteagentur fragt diskret nach Interesse.`,
       opts: [["Interesse anmelden", "Das Paket kommt sofort in die Ausschreibung."], ["Kein Interesse", "Alles bleibt, wie es ist."]] }; },
@@ -1049,6 +1089,348 @@ function refreshAds() {
 }
 
 // =====================================================================
+// Produktion: Eigenproduktionen, Casting, Nachrichtenredaktion
+// =====================================================================
+// Frei erfundene Medienpersönlichkeiten (keine Parodien echter Personen).
+// [id, Name, Rolle, Talent, Buzz, Zuverlässigkeit, Gage je Projekt, Lieblingsgenres, Spezialität, Blattlinie (nur Nachrichten, −2…2)]
+const PEOPLE_DB = [
+  ["p1", "Lena Marquardt", "Schauspiel", 88, 70, 85, 600000, ["Drama", "Krimi"], "Charakterdarstellerin", 0],
+  ["p2", "Can Yılmaz", "Schauspiel", 82, 78, 70, 450000, ["Action", "Krimi"], "Actionstar", 0],
+  ["p3", "Johanna Brecht", "Schauspiel", 76, 55, 92, 300000, ["Liebesfilm", "Drama"], "Verlässlich am Set", 0],
+  ["p4", "Mats Hoffmann", "Schauspiel", 90, 85, 45, 900000, ["Drama", "Science-Fiction"], "Diva-Allüren", 0],
+  ["p5", "Amara Okafor", "Schauspiel", 80, 82, 80, 500000, ["Komödie", "Sitcom"], "Comedy-Timing", 0],
+  ["p6", "Felix Brandner", "Schauspiel", 65, 40, 95, 150000, ["Krimi", "Soap"], "Routinier", 0],
+  ["p7", "Sophie Lindqvist", "Schauspiel", 72, 90, 55, 400000, ["Liebesfilm", "Komödie"], "Social-Media-Liebling", 0],
+  ["p8", "Dragan Petrović", "Schauspiel", 84, 60, 75, 550000, ["Krimi", "Drama"], "Charakterdarsteller", 0],
+  ["p9", "Greta Wolff", "Schauspiel", 58, 35, 90, 90000, ["Soap", "Serie"], "Nachwuchstalent", 0],
+  ["p10", "Tom Albers", "Schauspiel", 70, 72, 60, 250000, ["Sitcom", "Komödie"], "Improvisation", 0],
+  ["p11", "Henning Lorenz", "Moderation", 92, 75, 95, 800000, ["Show"], "Live-Sicherheit", 0],
+  ["p12", "Mira Schäfer", "Moderation", 80, 92, 50, 500000, ["Show", "Reality"], "Improvisation", 0],
+  ["p13", "Ben Ostermann", "Moderation", 78, 90, 48, 450000, ["Show", "Reality"], "Improvisation", 0],
+  ["p14", "Nadine Vogt", "Moderation", 75, 65, 88, 300000, ["Talk", "Show"], "Empathie", 0],
+  ["p15", "Yusuf Demir", "Moderation", 70, 85, 72, 280000, ["Reality", "Show"], "Publikumsnähe", 0],
+  ["p16", "Carla Engel", "Moderation", 62, 95, 30, 350000, ["Reality"], "Skandalnudel", 0],
+  ["p17", "Rolf Bachmann", "Moderation", 68, 40, 90, 150000, ["Show"], "Quiz-Routinier", 0],
+  ["p18", "Katharina Neumann", "Nachrichten", 94, 30, 98, 400000, ["Nachrichten"], "Seriosität", 0],
+  ["p19", "Elif Kaya", "Nachrichten", 88, 60, 92, 350000, ["Nachrichten"], "Glaubwürdigkeit", 0],
+  ["p20", "Jonas Petersen", "Nachrichten", 85, 45, 90, 300000, ["Nachrichten"], "Stressresistenz", -1],
+  ["p21", "Bernd Kröger", "Nachrichten", 72, 55, 80, 200000, ["Nachrichten"], "Meinungsstark", 1],
+  ["p22", "Svenja Albrecht", "Nachrichten", 62, 80, 70, 220000, ["Nachrichten"], "Boulevard-Profi", 0],
+  ["p23", "Lukas Reinholt", "Nachrichten", 74, 58, 82, 180000, ["Nachrichten"], "Kommentator", -2],
+  ["p24", "Helmut Sander", "Nachrichten", 74, 58, 82, 180000, ["Nachrichten"], "Kommentator", 2],
+  ["p25", "Paula Fink", "Journalismus", 90, 50, 90, 250000, ["Doku"], "Investigativ", 0],
+  ["p26", "Ole Brandt", "Journalismus", 75, 55, 88, 150000, ["Doku"], "Natur & Expedition", 0],
+  ["p27", "Aylin Çelik", "Journalismus", 82, 65, 85, 220000, ["Doku"], "Auslandsreportage", 0],
+];
+const BLUEPRINTS = [
+  { id: "gala", name: "Samstagabend-Gala", genre: "Show", cost: 2.5e6, live: 0.3, wear: 0.96, stream: 0.8, fit: ["Live-Sicherheit", "Improvisation"], desc: "Große Live-Show mit Musik, Spielen und Prominenz. Teuer, altert langsam." },
+  { id: "quiz", name: "Quizshow", genre: "Show", cost: 0.8e6, live: 0, wear: 0.95, stream: 0.7, fit: ["Quiz-Routinier", "Live-Sicherheit"], desc: "Solides Vorabend- oder Primetime-Quiz. Günstig und verlässlich." },
+  { id: "dating", name: "Reality-Dating", genre: "Reality", cost: 0.6e6, live: 0, wear: 0.85, stream: 1.4, fit: ["Skandalnudel", "Publikumsnähe", "Improvisation"], desc: "Trash mit Herz: schneller Hype bei Jüngeren, nutzt sich rasant ab, stark im Stream." },
+  { id: "talent", name: "Talentshow", genre: "Show", cost: 1.6e6, live: 0.15, wear: 0.93, stream: 1.0, fit: ["Empathie", "Publikumsnähe"], desc: "Castingshow mit Jury und Finale. Mittleres Live-Risiko." },
+  { id: "late", name: "Late-Night-Talk", genre: "Talk", cost: 0.5e6, live: 0, wear: 0.94, stream: 1.1, fit: ["Improvisation", "Empathie"], desc: "Gäste, Gags, Gespräche ab 22 Uhr." },
+  { id: "cook", name: "Koch-Duell", genre: "Reality", cost: 0.4e6, live: 0, wear: 0.9, stream: 0.9, fit: ["Publikumsnähe", "Empathie"], desc: "Wettkochen am Nachmittag oder Vorabend." },
+];
+const FORMATS = {
+  film: { name: "Spielfilm", roles: ["Schauspiel", "Schauspiel"], days: 10, base: 1.6e6, genres: ["Krimi", "Komödie", "Drama", "Liebesfilm", "Action", "Science-Fiction"] },
+  serie: { name: "Serie (10 Folgen)", roles: ["Schauspiel", "Schauspiel"], days: 8, base: 2.5e6, genres: ["Krimi", "Serie", "Sitcom", "Soap"] },
+  show: { name: "Show / Reality", roles: ["Moderation", "Moderation?"], days: 4, base: 0, genres: [] },
+  doku: { name: "Dokumentation", roles: ["Journalismus"], days: 5, base: 0.5e6, genres: ["Doku"] },
+};
+const CLASSES = { C: { m: 0.6, bonus: 25 }, B: { m: 1, bonus: 50 }, A: { m: 1.7, bonus: 75 }, AAA: { m: 3, bonus: 100 } };
+const WRITERS = { jung: { name: "Nachwuchs-Autoren", cost: 2e5, lo: 10, hi: 60 }, profi: { name: "Erfahrenes Team", cost: 8e5, lo: 40, hi: 80 }, top: { name: "Top-Autoren", cost: 2e6, lo: 70, hi: 98 } };
+const LINES = ["Links-alternativ", "Mitte-links", "Mittig-seriös", "Mitte-rechts", "Rechts-konservativ"];
+const STYLES = ["Investigativ & Hard News", "Ausgewogen", "Boulevard & Sensation"];
+let draft = null, castFilter = "alle";
+
+function initPeople() {
+  G.people = PEOPLE_DB.map(([id, name, role, talent, buzz, rel, gage, genres, trait, lean]) => ({ id, name, role, talent, buzz, rel, gage, genres, trait, lean, holder: null, until: 0, busy: 0 }));
+  // Ein Teil der Stars steht bei der Konkurrenz unter Exklusivvertrag
+  for (const p of shuffle(G.people.slice()).slice(0, 9)) {
+    const cands = G.stations.filter(s => !isMe(s) && (p.role !== "Nachrichten" || true));
+    p.holder = pick(cands).id; p.until = ri(10, 40);
+  }
+  G.prods = []; G.newsroom = { line: 2, style: 1, budget: 1, anchor: null };
+}
+const person = id => G.people.find(x => x.id === id);
+const pStatus = p => p.busy > G.day ? `Im Dreh bis ${dateShort(p.busy)}` : p.holder === me().id ? "Exklusiv bei Ihnen" : p.holder ? `Exklusiv bei ${holderName(p.holder)}` : "Frei";
+const pAvail = p => p.busy <= G.day && (!p.holder || p.holder === me().id);
+const projectGage = p => p.holder === me().id ? 0 : p.gage;
+// Kostenvoranschlag und Machbarkeit eines Entwurfs
+function draftCalc(d) {
+  const F = FORMATS[d.kind], cls = CLASSES[d.cls], bp = d.kind === "show" ? BLUEPRINTS.find(b => b.id === d.bp) : null;
+  const base = d.kind === "show" ? bp.cost : F.base;
+  const prod = base * cls.m;
+  const writers = WRITERS[d.writers].cost * (d.kind === "show" || d.kind === "doku" ? 0.5 : 1);
+  const cast = d.cast.filter(Boolean).map(person);
+  const gages = cast.reduce((a, p) => a + projectGage(p), 0);
+  const need = F.roles.filter(r => !r.endsWith("?")).length;
+  const missing = d.cast.slice(0, need).some(x => !x);
+  const days = F.days + (d.cls === "AAA" ? 2 : 0);
+  return { prod, writers, gages, total: r1000(prod + writers + gages), cast, missing, days, bp };
+}
+function startProduction() {
+  const P = me(), d = draft, c = draftCalc(d);
+  if (c.missing || P.money < c.total || planLocked()) return;
+  const W = WRITERS[d.writers];
+  let script = ri(W.lo, W.hi);
+  if (d.writers === "jung" && Math.random() < 0.12) script = Math.min(99, script + 35); // Überraschungshit
+  const cast = c.cast;
+  // Star-Power
+  let star = d.kind === "show" ? cast.reduce((a, p) => a + p.talent * 0.5 + p.buzz * 0.5, 0) / cast.length : cast.reduce((a, p) => a + p.talent * 0.75 + p.buzz * 0.25, 0) / cast.length;
+  // Format-Match: Spezialität passt zum Show-Konzept / Lieblingsgenre passt
+  const genre = d.kind === "show" ? c.bp.genre : d.genre;
+  if (d.kind === "show" && cast.some(p => c.bp.fit.includes(p.trait))) script = Math.min(100, script + 15);
+  if (d.kind !== "show" && cast.some(p => p.genres.includes(genre))) script = Math.min(100, script + 5);
+  // Chemie
+  let chem = cast.length > 1 ? ri(45, 85) : 55 + Math.round(cast[0].rel / 5);
+  if (cast.length > 1 && cast[0].genres.some(g => cast[1].genres.includes(g))) chem += 10;
+  if (cast.length > 1 && cast.every(p => p.rel < 55)) chem -= 15;
+  if (cast.some(p => p.trait === "Diva-Allüren")) chem -= 10;
+  chem = clamp(chem, 0, 100);
+  const R = Math.round(clamp(script * 0.4 + star * 0.4 + chem * 0.1 + CLASSES[d.cls].bonus * 0.1, 1, 99));
+  book(P, "Eigenproduktion", -c.total);
+  cast.forEach(p => { p.busy = G.day + c.days; });
+  const prod = { id: uid(), kind: d.kind, title: d.title.trim() || "Ohne Titel", genre, bp: d.bp, cls: d.cls, cast: cast.map(p => p.id), script, star: Math.round(star), chem, R, days: c.days, left: c.days, cost: c.total };
+  G.prods.push(prod);
+  logMsg("Produktion", "Produktion", `Drehstart für „${prod.title}“ (${FORMATS[d.kind].name}, Klasse ${d.cls}). Fertigstellung in ${c.days} Tagen.`, true);
+  draft = null;
+  go("studio");
+}
+function prodDay() {
+  const P = me();
+  for (const pr of G.prods.filter(x => x.left > 0)) {
+    // Unzuverlässige Stars verzögern den Dreh
+    for (const id of pr.cast) {
+      const p = person(id);
+      if (p.rel < 55 && Math.random() < 0.08) {
+        pr.left += ri(1, 2); p.busy = G.day + pr.left; const extra = r1000(pr.cost * 0.05); book(P, "Eigenproduktion", -extra); pr.cost += extra;
+        logMsg("Produktion", "Produktion", `Drehverzug bei „${pr.title}“: ${p.name} erscheint nicht am Set. Mehrkosten ${eur(extra)}.`, true);
+      }
+    }
+    if (--pr.left > 0) continue;
+    const bp = pr.bp ? BLUEPRINTS.find(b => b.id === pr.bp) : null;
+    const prog = { id: uid(), title: pr.title, genre: pr.genre, q: pr.R, len: pr.kind === "film" ? 2 : 1, topic: 1, fsk: pr.genre === "Action" || pr.genre === "Krimi" ? 12 : 0, real: false, own: true, aired: 0, price: 0,
+      kind: pr.kind === "film" ? "film" : pr.kind === "serie" ? "serie" : "show", eps: pr.kind === "serie" ? 10 : 0, ep: 0, runs: 0, maxRuns: 99,
+      wear: bp ? bp.wear : undefined, streamF: bp ? bp.stream : pr.kind === "serie" ? 1.2 : 1, live: bp ? bp.live : 0, host: pr.kind === "show" ? pr.cast[0] : null, prod: pr.id };
+    P.progs.push(prog);
+    pr.prog = prog.id;
+    logMsg("Produktion", "Produktion", `Fertig: „${pr.title}“ – Rating ${pr.R}/100 (Drehbuch ${pr.script}, Star-Power ${pr.star}, Chemie ${pr.chem}). Jetzt im Archiv und im Wochenplan einsetzbar.`, true);
+    reviews(pr);
+  }
+}
+// Kritiken: Feuilleton, Publikumspresse, Online-Blogs
+function reviews(pr) {
+  const P = me();
+  const arty = ["Drama", "Doku", "Kultur", "Krimi"].includes(pr.genre);
+  const feuil = pr.script * 0.7 + (arty ? 20 : -10) + (pr.genre === "Reality" ? -25 : 0);
+  const pub = pr.R;
+  const blog = pr.star * 0.6 + (pr.genre === "Reality" || pr.genre === "Sitcom" ? 20 : 0) + rnd(-10, 10);
+  const verdict = v => v >= 75 ? "begeistert" : v >= 55 ? "wohlwollend" : v >= 40 ? "durchwachsen" : "vernichtend";
+  P.favor = Math.max(0, P.favor + (feuil >= 70 ? 3 : feuil < 40 ? -1 : 0));
+  const prog = P.progs.find(x => x.prod === pr.id);
+  if (prog && pub >= 75) prog.q = Math.min(99, prog.q + 2);
+  logMsg("Medien-Insider", "Kritik", `Kritiken zu „${pr.title}“ – Feuilleton: ${verdict(feuil)}, Publikumspresse: ${verdict(pub)}, Online-Blogs: ${verdict(blog)}.${pr.star > 80 && pr.script < 50 ? " Tenor: Starke Besetzung rettet eine vorhersehbare Geschichte." : pr.script > 80 && pr.star < 60 ? " Tenor: Kluges Buch, aber die Besetzung bleibt blass." : ""}`);
+}
+function peopleDay() {
+  for (const p of G.people) {
+    if (p.holder && p.until <= G.day) { if (p.holder === me().id) { logMsg("Casting", "Personal", `Der Exklusivvertrag mit ${p.name} ist ausgelaufen.`); if (G.newsroom.anchor === p.id) G.newsroom.anchor = null; } p.holder = null; }
+    if (p.holder && p.holder !== me().id && p.busy <= G.day && Math.random() < 0.12) p.busy = G.day + ri(3, 8); // Konkurrenz dreht
+    if (!p.holder && Math.random() < 0.03) { p.holder = pick(G.stations.filter(s => !isMe(s))).id; p.until = G.day + ri(14, 40); logMsg("Branchendienst", "Konkurrenz", `${holderName(p.holder)} nimmt ${p.name} exklusiv unter Vertrag.`); }
+  }
+}
+// Nachrichtenredaktion
+function newsroomCalc() {
+  const N = G.newsroom, a = N.anchor ? person(N.anchor) : null;
+  const ser = a ? a.talent : 45;
+  const budgetF = [0, 33, 66, 100][N.budget];
+  const match = a ? Math.max(0, 100 - Math.abs(a.lean - (N.line - 2)) * 35) : 60;
+  const cred = Math.round(ser * 0.5 + budgetF * 0.3 + match * 0.2 - (N.style === 2 ? 12 : N.style === 0 ? -5 : 0));
+  const extreme = Math.abs(N.line - 2);
+  const adF = Math.round((1 - 0.1 * extreme - (N.style === 2 ? 0.05 : 0) + (N.style === 0 && extreme === 0 ? 0.05 : 0)) * 100) / 100;
+  const q = clamp(Math.round(35 + cred * 0.5 + (N.style === 2 ? 8 : 0) + (a ? a.buzz * 0.05 : 0)), 20, 99);
+  const cost = [0, 60000, 150000, 300000][N.budget] + (N.style === 0 ? 50000 : 0);
+  return { a, cred, adF, q, cost, extreme, match };
+}
+function newsroomDay() {
+  const P = me(), c = newsroomCalc(), N = G.newsroom;
+  P.progs.filter(p => p.genre === "Nachrichten").forEach(p => { p.q = c.q; p.topic = Math.max(p.topic, 0.5 + 0.1 * c.extreme); });
+  if (N.style === 0 && c.cred >= 70) P.favor += 0.3;
+  if (N.style === 2) { P.favor = Math.max(0, P.favor - 0.3); if (Math.random() < 0.06) { const fine = r1000(rnd(30000, 90000)); book(P, "Strafen", -fine); P.conf = clamp(P.conf - 1, 0, 100); logMsg("Landesmedienanstalt", "Nachrichten", `Prüfverfahren wegen verletzter Sorgfaltspflicht: Ein Boulevard-Beitrag fiel auf eine Falschmeldung herein. Bußgeld ${eur(fine)}.`, true); } }
+  if (c.extreme === 2 && Math.random() < 0.15) {
+    const k = [...P.contracts].sort((a, b) => b.pay - a.pay)[0];
+    logMsg("Medien-Insider", "Nachrichten", `Kritik an ${P.name}: Die Nachrichten verlassen nach Ansicht vieler Beobachter den Boden der Ausgewogenheit.${k ? ` ${k.brand} zieht sein Werbebudget zurück.` : ""}`, true);
+    if (k) { P.contracts = P.contracts.filter(x => x !== k); P.week.forEach(d => d.forEach(s => { if (s.ad === k.id) s.ad = null; })); buildToday(P); }
+    P.conf = clamp(P.conf - 1, 0, 100);
+  }
+}
+function staffCosts(P) {
+  const c = newsroomCalc();
+  book(P, "Redaktion & Gagen", -c.cost);
+  const ex = G.people.filter(p => p.holder === P.id).reduce((a, p) => a + p.gage / 20, 0);
+  if (ex) book(P, "Redaktion & Gagen", -r1000(ex));
+}
+function livePanne(prog, h) {
+  if (!prog.live || !prog.host) return;
+  const host = person(prog.host);
+  if (Math.random() < prog.live * (1 - host.rel / 100) * 1.5) {
+    prog.q = Math.max(20, prog.q - 4); me().brand = Math.max(0.5, me().brand - 0.1);
+    logMsg("Medien-Insider", "Kritik", `Live-Panne um ${hh(h)} in „${prog.title}“: ${host.name} verliert den Faden, Sendung überzieht. Die Netzgemeinde lacht.`, true);
+  }
+}
+
+// --- Seiten: Produktion ---
+function studio(P) {
+  const running = G.prods.filter(x => x.left > 0), done = G.prods.filter(x => x.left <= 0);
+  return title("Studio", `<button class="btn hot" data-act="newProd" ${planLocked() ? "disabled" : ""}>Neues Projekt</button>`) +
+    `<p class="lead mb">Eigenproduktionen entstehen aus Format, Drehbuch, Besetzung und Budget. Das Rating berechnet sich aus Drehbuch × 0,4 + Star-Power × 0,4 + Chemie × 0,1 + Budget × 0,1. Die Drehbuchqualität bleibt bis zur Fertigstellung verdeckt.</p>
+    ${promoPanel(P)}
+    <section class="panel mb"><div class="ph"><h2>In Produktion</h2><span class="aside">${running.length} Projekte</span></div>${running.length ? `<div class="tbl"><table><thead><tr><th>Titel</th><th>Format</th><th>Besetzung</th><th>Fortschritt</th><th class="num">Kosten</th></tr></thead><tbody>
+      ${running.map(pr => `<tr><td class="title"><b>${esc(pr.title)}</b><div class="muted">${esc(pr.genre)} · Klasse ${pr.cls}</div></td><td>${FORMATS[pr.kind].name}</td><td class="title muted">${pr.cast.map(id => esc(person(id).name)).join(", ")}</td><td><span class="mbar" style="width:110px"><i style="width:${Math.round((pr.days - pr.left) / pr.days * 100)}%;background:var(--hot)"></i></span> <span class="muted">noch ${pr.left} T.</span></td><td class="num">${meur(pr.cost)}</td></tr>`).join("")}
+    </tbody></table></div>` : '<div class="pad"><p class="lead">Keine laufenden Produktionen.</p></div>'}</section>
+    <section class="panel"><div class="ph"><h2>Fertige Eigenproduktionen</h2></div>${done.length ? `<div class="tbl"><table><thead><tr><th>Titel</th><th>Format</th><th class="num">Rating</th><th class="num">Drehbuch</th><th class="num">Star-Power</th><th class="num">Chemie</th><th class="num">Kosten</th></tr></thead><tbody>
+      ${done.map(pr => `<tr><td class="title">${esc(pr.title)}</td><td>${FORMATS[pr.kind].name}</td><td class="num">${attr(pr.R)}</td><td class="num">${pr.script}</td><td class="num">${pr.star}</td><td class="num">${pr.chem}</td><td class="num muted">${meur(pr.cost)}</td></tr>`).join("")}
+    </tbody></table></div>` : '<div class="pad"><p class="lead">Noch keine Eigenproduktion abgeschlossen.</p></div>'}</section>`;
+}
+function newProdPage(P) {
+  if (!draft) draft = { kind: "show", bp: "quiz", genre: "Krimi", cls: "B", writers: "profi", cast: [null, null], title: "" };
+  const d = draft, F = FORMATS[d.kind], c = draftCalc(d);
+  const opt = (v, cur, label) => `<option value="${v}" ${v === cur ? "selected" : ""}>${label}</option>`;
+  const castSel = (role, k) => {
+    const optional = role.endsWith("?"), r = role.replace("?", "");
+    const list = G.people.filter(p => p.role === r);
+    return `<label class="field"><span>${r === "Schauspiel" ? (k === 0 ? "Hauptrolle" : "Zweite Hauptrolle") : r === "Moderation" ? (k === 0 ? "Moderation" : "Co-Moderation (optional)") : "Journalist*in"}</span><select data-draft="cast${k}"><option value="">${optional ? "– keine –" : "– bitte wählen –"}</option>${list.map(p => `<option value="${p.id}" ${d.cast[k] === p.id ? "selected" : ""} ${pAvail(p) && !(d.cast.includes(p.id) && d.cast[k] !== p.id) ? "" : "disabled"}>${esc(p.name)} · Talent ${p.talent} · Buzz ${p.buzz} · ${projectGage(p) ? meur(projectGage(p)) : "unter Vertrag"}${pAvail(p) ? "" : " – " + pStatus(p)}</option>`).join("")}</select></label>`;
+  };
+  const bp = c.bp;
+  return title("Neues Projekt", `<button class="btn" data-page="studio">Abbrechen</button>`) +
+    `<div class="grid two"><section class="panel"><div class="ph"><h2>1. Format & Konzept</h2></div><div class="pad fgrid">
+      <label class="field"><span>Format</span><select data-draft="kind">${Object.entries(FORMATS).map(([k, f]) => opt(k, d.kind, f.name)).join("")}</select></label>
+      ${d.kind === "show" ? `<label class="field"><span>Konzept-Vorlage</span><select data-draft="bp">${BLUEPRINTS.map(b => opt(b.id, d.bp, `${b.name} (${b.genre})`)).join("")}</select></label><p class="fine">${esc(bp.desc)} Passende Moderation: ${bp.fit.join(", ")}.${bp.live ? ` Live-Risiko ${Math.round(bp.live * 100)} %.` : ""}</p>`
+        : d.kind !== "doku" ? `<label class="field"><span>Genre</span><select data-draft="genre">${F.genres.map(g => opt(g, d.genre, g)).join("")}</select></label>` : ""}
+      <label class="field"><span>Arbeitstitel</span><input type="text" data-draft="title" maxlength="60" value="${esc(d.title)}" placeholder="z. B. Mord am Isarufer"></label>
+    </div></section>
+    <section class="panel"><div class="ph"><h2>2. Drehbuch & Budget</h2></div><div class="pad fgrid">
+      <label class="field"><span>${d.kind === "show" ? "Konzept-Team" : "Autoren"}</span><select data-draft="writers">${Object.entries(WRITERS).map(([k, w]) => opt(k, d.writers, `${w.name} · Qualität ${w.lo}–${w.hi}`)).join("")}</select></label>
+      <label class="field"><span>Budgetklasse</span><select data-draft="cls">${Object.keys(CLASSES).map(k => opt(k, d.cls, `${k} · Budget-Bonus ${CLASSES[k].bonus}`)).join("")}</select></label>
+      <p class="fine">Nachwuchs-Autoren sind ein Risiko, können aber Überraschungshits liefern. Die echte Drehbuchqualität sehen Sie erst bei Fertigstellung.</p>
+    </div></section>
+    <section class="panel"><div class="ph"><h2>3. Besetzung</h2><button class="btn" data-page="casting">Casting-Kartei</button></div><div class="pad fgrid">${F.roles.map((r, k) => castSel(r, k)).join("")}
+      <p class="fine">Gleiche Lieblingsgenres bringen Chemie, zwei unzuverlässige Stars kosten Chemie und riskieren Drehverzug. Ausgegraute Namen sind bei der Konkurrenz unter Vertrag oder gerade im Dreh.</p></div></section>
+    <section class="panel"><div class="ph"><h2>4. Kalkulation</h2></div><div class="slist">
+      <div class="srow"><b>Produktion</b><em>${meur(c.prod)}</em><span>${d.kind === "show" ? esc(bp.name) : F.name} · Klasse ${d.cls}</span></div>
+      <div class="srow"><b>${d.kind === "show" ? "Konzept-Team" : "Autoren"}</b><em>${meur(c.writers)}</em><span>${WRITERS[d.writers].name}</span></div>
+      <div class="srow"><b>Gagen</b><em>${meur(c.gages)}</em><span>${c.cast.map(p => esc(p.name)).join(", ") || "noch niemand besetzt"}</span></div>
+      <div class="srow"><b>Gesamt</b><em class="${c.total > P.money ? "down" : ""}">${meur(c.total)}</em><span>Produktionszeit ${c.days} Tage · Konto ${meur(P.money)}</span></div></div>
+      <div class="pad actions" style="padding-top:12px"><button class="btn hot" data-act="startProd" ${c.missing || c.total > P.money || planLocked() ? "disabled" : ""}>Produktion starten</button>${c.missing ? '<span class="muted">Besetzung unvollständig</span>' : ""}</div></section></div>`;
+}
+function casting(P) {
+  const roles = ["alle", "Schauspiel", "Moderation", "Nachrichten", "Journalismus"];
+  const list = G.people.filter(p => castFilter === "alle" || p.role === castFilter);
+  return title("Casting-Kartei", `<span class="muted">${G.people.filter(p => p.holder === P.id).length} exklusiv bei Ihnen</span>`) +
+    `<p class="lead mb">Alle Personen sind frei erfunden. Exklusivverträge laufen 28 Tage und kosten täglich Gage, dafür entfällt die Projektgage. Stars der Konkurrenz lassen sich gegen eine Ablöse abwerben.</p>
+    <div class="pills mb">${roles.map(r => `<button data-act="castFilter" data-k="${r}" class="${castFilter === r ? "on" : ""}">${r === "alle" ? "Alle" : r}</button>`).join("")}</div>
+    <section class="panel"><div class="tbl"><table><thead><tr><th>Name</th><th>Rolle</th><th class="num">Talent</th><th class="num">Buzz</th><th class="num">Zuverl.</th><th>Spezialität</th><th class="num">Projektgage</th><th>Status</th><th></th></tr></thead><tbody>
+      ${list.map(p => { const mine = p.holder === P.id, rival = p.holder && !mine; const fee = r1000(p.gage * 1.5);
+        return `<tr class="${mine ? "mine" : ""}"><td class="title"><b>${esc(p.name)}</b><div class="muted">${p.genres.join(", ")}${p.role === "Nachrichten" ? ` · Blattlinie: ${LINES[p.lean + 2]}` : ""}</div></td><td>${p.role}</td><td class="num">${attr(p.talent)}</td><td class="num">${attr(p.buzz)}</td><td class="num">${attr(p.rel)}</td><td class="muted">${esc(p.trait)}</td><td class="num">${meur(p.gage)}</td><td class="muted">${pStatus(p)}</td>
+          <td class="num">${mine ? `<span class="chip good">bis ${dateShort(p.until)}</span>` : rival ? `<button class="btn" data-act="poach" data-k="${p.id}" ${P.money < fee || planLocked() ? "disabled" : ""}>Abwerben · ${meur(fee)}</button>` : `<button class="btn hot" data-act="sign" data-k="${p.id}" ${planLocked() ? "disabled" : ""}>Exklusiv · ${eur(r1000(p.gage / 20))}/Tag</button>`}</td></tr>`; }).join("")}
+    </tbody></table></div></section>`;
+}
+function newsroom(P) {
+  const N = G.newsroom, c = newsroomCalc();
+  const anchors = G.people.filter(p => p.role === "Nachrichten");
+  const opt = (v, cur, label, dis) => `<option value="${v}" ${v === cur ? "selected" : ""} ${dis ? "disabled" : ""}>${label}</option>`;
+  return title("Nachrichtenredaktion", `<span class="muted">wirkt auf alle Nachrichtensendungen von ${esc(P.name)}</span>`) +
+    `<div class="grid two"><section class="panel"><div class="ph"><h2>Blattlinie & Stil</h2></div><div class="pad fgrid">
+      <label class="field"><span>Politische Ausrichtung</span><input type="range" min="0" max="4" step="1" value="${N.line}" data-news="line" aria-valuetext="${LINES[N.line]}"></label>
+      <div class="scale">${LINES.map((l, k) => `<span class="${k === N.line ? "on" : ""}">${l}</span>`).join("")}</div>
+      <label class="field"><span>Redaktionsstil</span><select data-news="style">${STYLES.map((s, k) => opt(k, N.style, s)).join("")}</select></label>
+      <label class="field"><span>Redaktionsetat</span><select data-news="budget">${[1, 2, 3].map(k => opt(k, N.budget, ["", "Basis", "Ausgebaut (Korrespondenten)", "Premium (Auslandsbüros, Recherche)"][k])).join("")}</select></label>
+      <label class="field"><span>Nachrichtensprecher*in</span><select data-news="anchor"><option value="">– Redaktion ohne festes Gesicht –</option>${anchors.map(p => opt(p.id, N.anchor, `${esc(p.name)} · Seriosität ${p.talent} · ${LINES[p.lean + 2]}${p.holder === P.id ? "" : " – erst exklusiv verpflichten"}`, p.holder !== P.id)).join("")}</select></label>
+      <p class="fine">Eine ausgewogene, gut ausgestattete Redaktion stärkt Vertrauen und zieht Premium-Werbekunden an. Eine deutliche politische Schlagseite – egal in welche Richtung – bindet eine treue Kernzuschauerschaft, schreckt aber große Werbekunden ab und sorgt für Kritik. Boulevard bringt schnelle Quote, kostet Prestige und riskiert Rügen der Landesmedienanstalt.</p>
+    </div></section>
+    <section class="panel"><div class="ph"><h2>Auswirkungen</h2></div><div class="slist">
+      <div class="srow"><b>Glaubwürdigkeit</b><em>${c.cred}</em><span>Seriosität × 0,5 + Etat × 0,3 + Blattlinien-Passung × 0,2</span></div>
+      <div class="srow"><b>Qualität der Nachrichten</b><em>${c.q}</em><span>gilt für alle Nachrichtensendungen</span></div>
+      <div class="srow"><b>Werbe-Attraktivität</b><em class="${c.adF < 1 ? "down" : "up"}">×${c.adF.toLocaleString("de-DE")}</em><span>Faktor auf alle Werbeerlöse</span></div>
+      <div class="srow"><b>Treue Kernzuschauer</b><em>${c.extreme ? "+" + c.extreme * 10 + " %" : "–"}</em><span>Nachrichten nutzen sich langsamer ab</span></div>
+      <div class="srow"><b>Kosten</b><em>${eur(c.cost)}</em><span>pro Tag</span></div>
+      <div class="srow"><b>Blattlinien-Passung</b><em>${c.a ? c.match : "–"}</em><span>${c.a ? `${esc(c.a.name)} steht für ${LINES[c.a.lean + 2]}` : "kein festes Gesicht"}</span></div></div></section></div>`;
+}
+
+// =====================================================================
+// Promotion & internationaler Rechtehandel
+// =====================================================================
+const PROMO = [
+  { id: "print", name: "Plakate & Print", cost: 400000, tv: 30, stream: 10, desc: "Ältere Zuschauer und Familien – pusht die TV-Quote." },
+  { id: "social", name: "Social-Media-Kampagne", cost: 150000, tv: 10, stream: 30, desc: "Gen Z und Millennials – treibt Streaming-Abrufe." },
+  { id: "leak", name: "Boulevard-Leak", cost: 40000, tv: 20, stream: 20, desc: "Sehr günstig, viel Buzz – kostet Prestige." },
+  { id: "cross", name: "Cross-Promotion", cost: 0, tv: 15, stream: 10, desc: "Eigenwerbung im Programm – kostenlos, nervt bei Übertreibung." },
+];
+function promote(pid, cid) {
+  const P = me(), p = P.progs.find(x => x.id === pid), c = PROMO.find(x => x.id === cid);
+  if (!p || !c || P.money < c.cost || (p.promos || []).includes(cid)) return;
+  book(P, "Marketing", -c.cost);
+  p.promos = (p.promos || []).concat(cid);
+  p.hypeTv = Math.min(100, (p.hypeTv || 0) + c.tv);
+  p.hypeStream = Math.min(100, (p.hypeStream || 0) + c.stream);
+  if (cid === "leak") P.favor = Math.max(0, P.favor - 2);
+  if (cid === "cross") {
+    G.crossLog = (G.crossLog || []).filter(d => d > G.day - 7).concat(G.day);
+    if (G.crossLog.length > 2) { P.brand = Math.max(0.5, P.brand - 0.05); logMsg("Zuschauerservice", "Kritik", "Zu viel Eigenwerbung: Zuschauer beschweren sich über ständige Trailer im Programm."); }
+  }
+  toast(`${c.name} für „${p.title}“ gestartet. Hype TV ${p.hypeTv}, Stream ${p.hypeStream}.`);
+}
+// Globale Genre-Trends wechseln wöchentlich
+const TREND_GENRES = ["Krimi", "Drama", "Komödie", "Science-Fiction", "Reality", "Show", "Doku", "Serie", "Sitcom"];
+function trendDay() {
+  if (!G.trend || G.day >= G.trend.until) {
+    G.trend = { genre: pick(TREND_GENRES.filter(g => !G.trend || g !== G.trend.genre)), until: G.day + 7 };
+    logMsg("MIPCOM-Report", "Markt", `Weltmarkt-Trend der Woche: Internationale Sender suchen nach ${G.trend.genre}-Formaten. Passende Lizenzen bringen 40 % mehr.`);
+  }
+  for (const r of (G.royalties || [])) if (r.left > 0) { r.left--; book(me(), "Lizenzerlöse", r.perDay); }
+  G.royalties = (G.royalties || []).filter(r => r.left > 0);
+}
+function exportInterest(p) {
+  const trend = G.trend && G.trend.genre === p.genre ? 100 : 50;
+  return Math.round(p.q * 0.5 + Math.min(100, (p.maxMA || 0) * 3) * 0.3 + trend * 0.2);
+}
+function exportOffer(p, way) {
+  const i = exportInterest(p), tf = G.trend && G.trend.genre === p.genre ? 1.4 : 1;
+  if (way === "format") return { upfront: r1000(i * 12000 * tf), perDay: r1000(i * 900 * tf), days: 20 };
+  return { upfront: r1000(i * (p.kind === "serie" ? 60000 : 40000) * tf) };
+}
+function sellExport(pid, way) {
+  const P = me(), p = P.progs.find(x => x.id === pid);
+  if (!p || !p.own || !p.aired || exportInterest(p) < 55 || (p.sold || []).includes(way)) return;
+  if (way === "format" && p.kind !== "show") return;
+  if (way === "tape" && p.kind === "show") return;
+  const o = exportOffer(p, way);
+  book(P, "Lizenzerlöse", o.upfront);
+  p.sold = (p.sold || []).concat(way);
+  P.favor += way === "tape" ? 2 : 1;
+  if (way === "format") { (G.royalties = G.royalties || []).push({ title: p.title, perDay: o.perDay, left: o.days }); logMsg("MIPCOM-Report", "Markt", `Deal: Ein US-Network kauft die Formatrechte an „${p.title}“ für ${meur(o.upfront)} plus ${eur(o.perDay)} Tantiemen pro Tag (20 Tage).`, true); }
+  else logMsg("MIPCOM-Report", "Markt", `Deal: Ein internationaler Streamer kauft „${p.title}“ als fertige Produktion für ${meur(o.upfront)}.`, true);
+}
+function exportPage(P) {
+  const own = P.progs.filter(p => p.own);
+  return title("Rechtemarkt international", `<span class="muted">MIPCOM · Trend: ${G.trend ? esc(G.trend.genre) : "–"}</span>`) +
+    `<p class="lead mb">Erfolgreiche Eigenproduktionen lassen sich ins Ausland verkaufen: Shows als <b>Format-Lizenz</b> (Vorauszahlung plus 20 Tage Tantiemen), Filme und Serien als <b>fertige Produktion</b> (einmalige Zahlung). Interesse = Rating × 0,5 + bester deutscher Marktanteil × 0,3 + Genre-Trend × 0,2. Ab 55 Punkten wird verhandelt, gesendet sein muss der Titel bereits.</p>
+    <section class="panel mb"><div class="ph"><h2>Ihre Eigenproduktionen</h2></div>${own.length ? `<div class="tbl"><table><thead><tr><th>Titel</th><th>Genre</th><th class="num">Rating</th><th class="num">Bester MA</th><th class="num">Interesse</th><th>Angebot</th><th></th></tr></thead><tbody>
+      ${own.map(p => { const i = exportInterest(p), way = p.kind === "show" ? "format" : "tape", o = exportOffer(p, way), done = (p.sold || []).includes(way);
+        return `<tr><td class="title">${esc(p.title)}${G.trend && G.trend.genre === p.genre ? ' <span class="chip good">Trend</span>' : ""}</td><td>${esc(p.genre)}</td><td class="num">${attr(p.q)}</td><td class="num">${p.maxMA ? pct(p.maxMA) : "–"}</td><td class="num">${attr(i)}</td>
+          <td class="muted">${way === "format" ? `${meur(o.upfront)} + ${eur(o.perDay)}/Tag` : meur(o.upfront)}</td>
+          <td class="num">${done ? '<span class="chip good">verkauft</span>' : `<button class="btn hot" data-act="export" data-id="${p.id}" data-k="${way}" ${!p.aired || i < 55 ? "disabled" : ""}>${!p.aired ? "Erst senden" : i < 55 ? "Kein Interesse" : way === "format" ? "Format verkaufen" : "Exportieren"}</button>`}</td></tr>`; }).join("")}
+    </tbody></table></div>` : '<div class="pad"><p class="lead">Noch keine Eigenproduktionen. Starten Sie ein Projekt im Studio.</p></div>'}</section>
+    ${(G.royalties || []).length ? `<section class="panel"><div class="ph"><h2>Laufende Tantiemen</h2></div><div class="tbl"><table><tbody>${G.royalties.map(r => `<tr><td class="title">${esc(r.title)}</td><td class="num">${eur(r.perDay)} / Tag</td><td class="num">noch ${r.left} T.</td></tr>`).join("")}</tbody></table></div></section>` : ""}`;
+}
+function promoPanel(P) {
+  const own = P.progs.filter(p => p.own && !p.aired);
+  if (!own.length) return "";
+  return `<section class="panel mb"><div class="ph"><h2>Promotion vor dem Start</h2><span class="aside">Hype multipliziert die Erstausstrahlung bzw. die erste Streaming-Woche</span></div><div class="tbl"><table><thead><tr><th>Titel</th><th class="num">Hype TV</th><th class="num">Hype Stream</th>${PROMO.map(c => `<th class="num" title="${esc(c.desc)}">${c.name}</th>`).join("")}</tr></thead><tbody>
+    ${own.map(p => `<tr><td class="title">${esc(p.title)}</td><td class="num">${p.hypeTv || 0}</td><td class="num">${p.hypeStream || 0}</td>${PROMO.map(c => `<td class="num">${(p.promos || []).includes(c.id) ? '<span class="chip good">läuft</span>' : `<button class="btn" data-act="promo" data-id="${p.id}" data-k="${c.id}" ${P.money < c.cost || planLocked() ? "disabled" : ""}>${c.cost ? eur(c.cost) : "gratis"}</button>`}</td>`).join("")}</tr>`).join("")}
+  </tbody></table></div><p class="fine pad">${PROMO.map(c => `<b>${c.name}:</b> ${c.desc}`).join(" ")}</p></section>`;
+}
+
+// =====================================================================
 // Tagesablauf
 // =====================================================================
 function startDay() {
@@ -1064,7 +1446,7 @@ function aiTurn(st) {
     const cands = G.market.filter(p => STATIONS[st.i].profile.includes(p.genre)).sort((a, b) => b.q - a.q);
     if (cands[0]) { G.market = G.market.filter(x => x !== cands[0]); st.progs.push(cands[0]); logMsg("Branchendienst", "Konkurrenz", `${st.name} sichert sich ${cands[0].kind === "film" ? "den Film" : "die Lizenz für"} „${cands[0].title}“.`); }
   }
-  st.progs = st.progs.filter(p => !(p.kind === "film" && p.runs >= p.maxRuns) && !(p.kind === "serie" && p.ep >= p.eps * 2));
+  st.progs = st.progs.filter(p => !(p.kind === "film" && p.runs >= p.maxRuns) && !(p.kind === "serie" && !p.own && p.ep >= p.eps * 2));
   if (st.progs.length < 20) st.progs.push(makeFiller(pick(STATIONS[st.i].profile), st));
   st.news = Math.random() < 0.6 ? [{ q: ri(30, 80) }, { q: ri(30, 80) }] : [];
   const wd = weekday(G.day);
@@ -1126,6 +1508,7 @@ function endDay() {
     st.progs.forEach(p => { p.topic = Math.min(1, p.topic + (p.kind === "show" ? 0.1 : 0.05)); });
     if (!isMe(st)) continue;
     book(st, "Personal & Verwaltung", -r1000(120000 + st.base * 22000));
+    staffCosts(st);
     book(st, "Sendetechnik & Verbreitung", -r1000(60000 + st.base * 8000));
     if (st.type === "oer") book(st, "Rundfunkbeitrag", r1000(150000 + st.base * 52000));
     else book(st, "Distribution (HD/Kabel)", r1000(30000 + st.base * 9000));
@@ -1140,7 +1523,7 @@ function endDay() {
       }
     }
     // ausgelaufene Lizenzen
-    const gone = st.progs.filter(p => (p.kind === "film" && p.runs >= p.maxRuns) || (p.kind === "serie" && p.ep >= p.eps * 2));
+    const gone = st.progs.filter(p => (p.kind === "film" && p.runs >= p.maxRuns) || (p.kind === "serie" && !p.own && p.ep >= p.eps * 2));
     for (const p of gone) logMsg("Lizenzabteilung", "Programm", `Lizenz für „${p.title}“ ausgeschöpft – der Titel fällt aus dem Archiv.`);
     st.progs = st.progs.filter(p => !gone.includes(p));
     if (G.stream) G.stream.catalog = G.stream.catalog.filter(c => st.progs.some(p => p.id === c.id));
@@ -1172,15 +1555,21 @@ function resolveAuctions() {
     if (r.owner) continue;
     const d = RDEF(r.id);
     let best = null, bestBid = 0;
+    const env = [];
     for (const st of G.stations) {
       if (isMe(st)) continue;
       const interest = d.tags === "event" ? (st.type === "oer" ? 1.25 : 0.8) : d.tags === "oer" ? (st.type === "oer" ? 1.05 : 0.7) : (st.type === "oer" ? 0.7 : 1.05);
       if (Math.random() > 0.45) continue;
       const bid = r1000(r.price * interest * rnd(0.75, 1.3));
       if (bid > st.base * 9e5 + 1e6) continue;
+      env.push([st.name, bid]);
       if (bid > bestBid) { bestBid = bid; best = st; }
     }
     const P = me();
+    if (r.bid) {
+      const all = env.concat([[P.name + " (Sie)", r.bid]]).sort((a, b) => b[1] - a[1]);
+      logMsg("Rechteagentur", "Sport", `Umschläge geöffnet – „${d.name}“ (Mindestgebot ${meur(r.price)}): ${all.map(([n, b], k) => `${k + 1}. ${n} ${meur(b)}${b < r.price ? " (ungültig)" : ""}`).join(" · ")}`);
+    }
     if (r.bid >= r.price && r.bid > bestBid && P.money >= r.bid) {
       book(P, "Sportrechte", -r.bid); r.owner = P.id; r.days = 28;
       logMsg("Rechteagentur", "Sport", `Zuschlag! ${P.name} erhält „${d.name}“ für ${meur(r.bid)} (28 Tage).`, true);
@@ -1195,6 +1584,7 @@ function nextDay() {
   G.day++;
   for (const st of G.stations) st.fin = {};
   projectDay();
+  prodDay(); peopleDay(); newsroomDay(); trendDay();
   if (G.mods.coverup && G.day >= G.mods.coverup.day) {
     const c = G.mods.coverup; G.mods.coverup = null;
     if (Math.random() < 0.6) { const P = me(); P.conf = clamp(P.conf - 8, 0, 100); P.brand = Math.max(0.5, P.brand - 0.4); logMsg("Medien-Insider", "Skandal", `Vertuschung aufgeflogen: Die Boulevardpresse enthüllt den Vorfall bei „${c.title}“ – und dass der Sender Schweigegeld gezahlt hat.`, true); }
@@ -1271,10 +1661,21 @@ document.addEventListener("click", e => {
   const b = e.target.closest("[data-act]");
   if (b && !b.disabled) act(b);
 });
+document.addEventListener("input", e => {
+  if (e.target.dataset.draft === "title" && draft) draft.title = e.target.value.slice(0, 60);
+});
 document.addEventListener("change", e => {
+  const dk = e.target.dataset.draft;
+  if (dk && draft && dk !== "title") {
+    const v = e.target.value;
+    if (dk.startsWith("cast")) draft.cast[+dk.slice(4)] = v || null;
+    else { draft[dk] = v; if (dk === "kind") { draft.cast = [null, null]; if (FORMATS[v].genres.length) draft.genre = FORMATS[v].genres[0]; } }
+    render(); return;
+  }
+  const nk = e.target.dataset.news;
+  if (nk && G) { const v = e.target.value; G.newsroom[nk] = nk === "anchor" ? (v || null) : +v; render(); return; }
   if (e.target.id === "rivalSel") { rivalSel = +e.target.value; render(); }
-  if (e.target.id === "sModel" && G.stream) { G.stream.model = e.target.value; render(); }
-  if (e.target.id === "sPrice" && G.stream) { G.stream.price = clamp(+e.target.value || 0, 2.99, 29.99); render(); }
+  if (e.target.dataset.tier !== undefined && G.stream && G.stream.tiers && !planLocked()) { setTierPrice(+e.target.dataset.tier, +e.target.value || 0.99); render(); }
 });
 // Aufklappmenü unter dem Hauptpunkt (wie im Fußball-Manager)
 function renderDropdown() {
@@ -1304,7 +1705,7 @@ function applyClubColors() {
 function render(top) {
   if (!G) return;
   renderNav(); renderTop();
-  const pages = { overview, inbox, plan: planPage, archiv, market, stream: streamPage, catalog, smarket, rights: rightsPage, myrights, contracts, agency, ticker, table: tablePage, ratings, landscape, board, finance, jury, rivals, live: livePage };
+  const pages = { overview, inbox, plan: planPage, archiv, market, stream: streamPage, catalog, smarket, rights: rightsPage, myrights, contracts, agency, ticker, table: tablePage, ratings, landscape, board, finance, jury, rivals, live: livePage, studio, newprod: newProdPage, casting, newsroom, export: exportPage };
   const sc = $("content").scrollTop;
   $("content").innerHTML = (pages[page] || overview)(me());
   if (!top) $("content").scrollTop = sc;
@@ -1443,6 +1844,7 @@ function inbox() { return title("Posteingang", `<span class="muted">${G.log.leng
 // Seiten: Programm
 // =====================================================================
 function umfang(p) {
+  if (p.own) return p.kind === "serie" ? `Eigenproduktion · Folge ${(p.ep % p.eps) + 1}/${p.eps}` : p.kind === "film" ? `Eigenproduktion · ${p.len} Std.` : "Eigenproduktion";
   if (p.kind === "serie") return `${Math.min(p.ep, p.eps * 2)}/${p.eps * 2} Ausstr.`;
   if (p.kind === "film") return `${p.len} Std. · ${p.runs || 0}/${p.maxRuns} Ausstr.`;
   if (p.kind === "sport") return "live";
@@ -1451,7 +1853,7 @@ function umfang(p) {
 function progTable(list, extra, head = "") {
   if (!list.length) return `<div class="pad"><p class="lead">Keine Programme vorhanden.</p></div>`;
   return `<div class="tbl"><table><thead><tr><th>Titel</th><th>Genre</th><th class="num">Qual.</th><th>Aktualität</th><th>Umfang</th><th>Beste Zeit</th><th class="num">${head}</th></tr></thead><tbody>
-    ${list.map(p => `<tr><td class="title">${esc(p.title)} ${p.fsk >= 16 ? `<span class="chip fsk">FSK ${p.fsk}</span>` : p.fsk ? `<span class="chip">FSK ${p.fsk}</span>` : ""}${p.home ? ' <span class="chip real">Eigenformat</span>' : p.kind === "serie" ? ' <span class="chip real">Serienlizenz</span>' : ""}${G.stream && G.stream.catalog.some(c => c.id === p.id) ? ' <span class="chip good">im Stream</span>' : ""}</td><td>${esc(p.genre)}</td><td class="num">${attr(p.q)}</td>
+    ${list.map(p => `<tr><td class="title">${esc(p.title)} ${p.fsk >= 16 ? `<span class="chip fsk">FSK ${p.fsk}</span>` : p.fsk ? `<span class="chip">FSK ${p.fsk}</span>` : ""}${p.own ? ' <span class="chip good">Eigenproduktion</span>' : p.home ? ' <span class="chip real">Eigenformat</span>' : p.kind === "serie" ? ' <span class="chip real">Serienlizenz</span>' : ""}${G.stream && G.stream.catalog.some(c => c.id === p.id) ? ' <span class="chip good">im Stream</span>' : ""}</td><td>${esc(p.genre)}</td><td class="num">${attr(p.q)}</td>
       <td><span class="mbar"><i style="width:${Math.round(p.topic * 100)}%"></i></span> <span class="muted">${Math.round(p.topic * 100)} %</span></td>
       <td class="muted">${umfang(p)}</td><td class="muted">${GENRES[p.genre].length > 6 ? "live" : GENRES[p.genre].map(h => h).join("/") + " Uhr"}</td><td class="num">${extra(p)}</td></tr>`).join("")}
   </tbody></table></div>`;
@@ -1532,9 +1934,11 @@ function streamPage(P) {
     <div class="grid two">
       <section class="panel"><div class="ph"><h2>Geschäftsmodell</h2></div><div class="pad" style="display:grid;gap:12px">
         ${S.stage < 2 ? `<p class="lead">${S.model === "free" ? "Die Mediathek ist kostenlos und werbefrei. Ziel ist Reichweite." : "Die Mediathek finanziert sich über Werbung vor und während der Abrufe."} Ein Abo-Modell gibt es ab Stufe 2.</p>` : `
-        <label>Modell <select id="sModel"><option value="svod" ${S.model === "svod" ? "selected" : ""}>SVoD – reines Abo</option><option value="hybrid" ${S.model === "hybrid" ? "selected" : ""}>Hybrid – günstiger mit Werbung</option><option value="avod" ${S.model === "avod" ? "selected" : ""}>AVoD – kostenlos mit Werbung</option></select></label>
-        ${S.model !== "avod" ? `<label>Monatspreis <input type="number" id="sPrice" min="2.99" max="29.99" step="1" value="${S.price}"> €</label>` : ""}
-        <p class="fine">Höhere Preise bringen mehr Umsatz je Abo, treiben aber die Kündigungen. Ohne neue Titel steigt der Churn.</p>
+        <div class="tbl"><table><thead><tr><th>Paket</th><th class="num">Preis / Monat</th><th class="num">Anteil</th><th class="num">Abos</th></tr></thead><tbody>
+          ${TIER_DEF.map((t, k) => { const sh = tierShares(S)[k]; return `<tr><td>${t.name}</td><td class="num"><input type="number" data-tier="${k}" min="0.99" max="39.99" step="0.5" value="${S.tiers[k]}" style="width:96px" ${planLocked() ? "disabled" : ""}> €</td><td class="num">${pct(sh * 100)}</td><td class="num">${Math.round(S.subs * sh * 1e6).toLocaleString("de-DE")}</td></tr>`; }).join("")}
+        </tbody></table></div>
+        <div class="slist"><div class="srow"><b>Churn</b><em class="${S.churnM > 2 ? "down" : ""}">${pct(S.churnM || 2)}</em><span>pro Monat: 2 % Basis${S.churnM > 2 ? " + Content-Mangel/Preiskampf" : ""} · letzter Hit (Rating ≥ 70) vor ${G.day - (S.lastHit || G.day)} Tagen</span></div></div>
+        <p class="fine">Erhöhen Sie ein Paket um mehr als 15 %, kündigen sofort 8–12 % seiner Abonnenten. Ohne neuen Titel mit Rating ≥ 70 steigt der Churn alle 14 Spieltage um 4 Prozentpunkte.</p>
         <div class="actions"><button class="btn hot" data-act="campaign" ${S.campaign > 0 || P.money < 1.5e6 || planLocked() ? "disabled" : ""}>${S.campaign > 0 ? `Kampagne läuft · ${S.campaign} T.` : "Kampagne „Erster Monat gratis“ · 1,5 Mio. €"}</button></div>`}
       </div></section>
       <section class="panel"><div class="ph"><h2>Infrastruktur</h2></div><div class="slist">
@@ -1571,7 +1975,7 @@ function smarket(P) {
   chart.sort((a, b) => b.v - a.v);
   return title("Streaming-Wettbewerb", `<span class="muted">Spielwerte, grob an Größenordnungen angelehnt</span>`) +
     `<div class="grid two"><section class="panel"><div class="ph"><h2>Abonnenten</h2><span class="aside">Deutschland, Mio.</span></div><div class="tbl"><table><thead><tr><th>Pos</th><th>Dienst</th><th>Modell</th><th class="num">Preis</th><th class="num">Abos</th></tr></thead><tbody>
-      ${list.map((s, k) => `<tr class="${s.player ? "mine" : ""}"><td>${k + 1}</td><td><span class="sn">${sbadge(s.id)}${esc(s.player && S ? S.name : s.name)}</span></td><td class="muted">${esc(s.player && S ? ({ svod: "Abo", hybrid: "Hybrid", avod: "Werbung", free: "kostenlos" })[S.model] : s.model)}</td><td class="num">${(s.player && S ? S.price : s.price).toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</td><td class="num"><b>${mio(s.subs)}</b></td></tr>`).join("")}
+      ${list.map((s, k) => `<tr class="${s.player ? "mine" : ""}"><td>${k + 1}</td><td><span class="sn">${sbadge(s.id)}${esc(s.player && S ? S.name : s.name)}</span></td><td class="muted">${esc(s.player && S ? (S.tiers ? "3 Pakete" : "Mediathek") : s.model)}</td><td class="num">${(s.player && S && S.tiers ? avgPrice(S) : s.price).toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</td><td class="num"><b>${mio(s.subs)}</b></td></tr>`).join("")}
     </tbody></table></div></section>
     <section class="panel"><div class="ph"><h2>Top 10 der Woche</h2><span class="aside">nach Abrufen</span></div><div class="tbl"><table><tbody>
       ${chart.slice(0, 10).map((x, k) => `<tr class="${x.mine ? "mine" : ""}"><td>${k + 1}</td><td class="title">${esc(x.t)}</td><td><span class="sn">${sbadge(x.who)}</span></td></tr>`).join("")}
@@ -1656,7 +2060,7 @@ function board(P) {
 }
 function finance(P) {
   const hist = P.hist.slice(-14);
-  const keys = ["TV-Werbung", "Teleshopping", "Distribution (HD/Kabel)", "Rundfunkbeitrag", "Streaming-Abos", "Streaming-Werbung", "Programmkäufe", "Sportrechte", "Personal & Verwaltung", "Sendetechnik & Verbreitung", "Streaming-Technik", "Streaming-Aufbau", "PR & Krisen", "Strafen", "Zinsen"];
+  const keys = ["TV-Werbung", "Teleshopping", "Distribution (HD/Kabel)", "Rundfunkbeitrag", "Streaming-Abos", "Streaming-Werbung", "Programmkäufe", "Sportrechte", "Personal & Verwaltung", "Sendetechnik & Verbreitung", "Lizenzerlöse", "Eigenproduktion", "Redaktion & Gagen", "Marketing", "Streaming-Technik", "Streaming-Aufbau", "PR & Krisen", "Strafen", "Zinsen"];
   const sum = {}; for (const d of P.hist) for (const [k, v] of Object.entries(d.fin)) sum[k] = (sum[k] || 0) + v;
   const rev = keys.filter(k => (sum[k] || 0) > 0), cost = keys.filter(k => (sum[k] || 0) < 0);
   const tot = arr => arr.reduce((a, k) => a + (sum[k] || 0), 0);
@@ -1864,6 +2268,13 @@ function act(b) {
     case "capacity": if (G.stream && P.money >= 1.5e6 && !planLocked()) { book(P, "Streaming-Aufbau", -1.5e6); G.stream.capacity++; toast("Serverkapazität ausgebaut."); } break;
     case "campaign": if (G.stream && G.stream.stage >= 2 && !G.stream.campaign && P.money >= 1.5e6 && !planLocked()) { book(P, "Streaming-Aufbau", -1.5e6); G.stream.campaign = 7; logMsg("Marketing", "Streaming", `Kampagne „Erster Monat gratis“ für ${G.stream.name} läuft 7 Tage: deutlich mehr Neukunden, aber weniger Umsatz je Abo.`, true); } break;
     case "showEvent": showEvent(); return;
+    case "newProd": draft = null; go("newprod"); return;
+    case "startProd": startProduction(); return;
+    case "promo": if (!planLocked()) promote(id, b.dataset.k); break;
+    case "export": sellExport(id, b.dataset.k); break;
+    case "castFilter": castFilter = b.dataset.k; break;
+    case "sign": { const p = person(b.dataset.k); if (p && !p.holder && !planLocked()) { p.holder = P.id; p.until = G.day + 28; logMsg("Casting", "Personal", `${p.name} ist jetzt exklusiv bei ${P.name} unter Vertrag (28 Tage, ${eur(r1000(p.gage / 20))} pro Tag).`, true); } break; }
+    case "poach": { const p = person(b.dataset.k); const fee = r1000(p.gage * 1.5); if (p && p.holder && p.holder !== P.id && P.money >= fee && !planLocked()) { const old = holderName(p.holder); book(P, "Redaktion & Gagen", -fee); p.holder = P.id; p.until = G.day + 28; logMsg("Branchendienst", "Konkurrenz", `Coup: ${P.name} wirbt ${p.name} von ${old} ab (Ablöse ${meur(fee)}).`, true); } break; }
     case "decide": decide(+b.dataset.k); return;
     case "stream": if (G.stream && G.stream.stage >= 2) { addToStream(id, b.dataset.k); toast(b.dataset.k === "excl" ? "Titel läuft jetzt exklusiv im Stream." : "Titel zum Katalog hinzugefügt."); } break;
     case "unstream": if (G.stream) { G.stream.catalog = G.stream.catalog.filter(c => c.id !== id); const p = P.progs.find(x => x.id === id); if (p) p.exclusive = false; } break;
@@ -1904,13 +2315,14 @@ function act(b) {
 // =====================================================================
 // Speichern (nur lokal im Browser)
 // =====================================================================
-const KEY = "quotenturm-v5";
+const KEY = "quotenturm-v6";
 function save() { try { localStorage.setItem(KEY, JSON.stringify(G)); } catch (e) { /* ohne Speicher spielbar */ } }
 function hasSave() { try { return !!localStorage.getItem(KEY); } catch (e) { return false; } }
 function load() {
   try {
     const s = localStorage.getItem(KEY); if (!s) return false; G = JSON.parse(s);
     G.mods = G.mods || {}; G.eventLog = G.eventLog || [];
+    if (!G.people) initPeople();
     return true;
   } catch (e) { return false; }
 }
