@@ -11,242 +11,246 @@
 <meta name="apple-mobile-web-app-title" content="Quotenturm">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=Barlow+Condensed:wght@400;500;600;700&family=VT323&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Semi+Condensed:wght@500;600;700&display=swap">
 <style>
-/* Layout: HUD oben, Hochhaus (Canvas) in der Mitte, Live-Quotenleiste unten; Räume öffnen sich als Seitenblatt. Bewusst ein dunkles „Sendeturm bei Nacht“-Design. */
+/* Layout: Manager-Oberfläche – Kopfleiste mit „Weiter“, Navigationsleiste links, Inhalt rechts (Hochhaus, Räume, Tabellen).
+   Bewusst ein einziges dunkles Erscheinungsbild wie moderne Manager-Simulationen. */
 :root {
-  --night: #0d1330;
-  --deep: #141b3d;
-  --panel: #19214a;
-  --line: #2c3668;
-  --ink: #f3efe4;
-  --muted: #a3abd0;
-  --amber: #ffb21a;
-  --cyan: #3ad1e6;
-  --pink: #ff5d8f;
-  --onair: #ff3b3b;
-  --good: #5ee08a;
-  --warn: #ffcc4d;
-  --font-display: "Bungee", "Arial Black", Impact, sans-serif;
-  --font-body: "Barlow Condensed", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
-  --font-screen: "VT323", "Courier New", monospace;
+  --bg: #0e1116;
+  --rail: #12161c;
+  --surface: #171c24;
+  --surface-2: #1f2631;
+  --line: #2a3340;
+  --text: #e9eef5;
+  --muted: #8a96a8;
+  --accent: #4c8dff;
+  --club: #f0a818;
+  --good: #3fcf7f;
+  --mid: #e6c34a;
+  --bad: #ef5b5b;
+  --font-head: "Barlow Semi Condensed", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+  --font-body: "Barlow", "Helvetica Neue", Arial, sans-serif;
   color-scheme: dark;
 }
 html, body { height: 100%; }
 [hidden] { display: none !important; }
 body {
-  margin: 0;
-  background: var(--night);
-  color: var(--ink);
-  font-family: var(--font-body);
-  font-size: 17px;
-  overflow: hidden;
-  -webkit-user-select: none; user-select: none;
-  -webkit-tap-highlight-color: transparent;
-  touch-action: manipulation;
+  margin: 0; background: var(--bg); color: var(--text);
+  font-family: var(--font-body); font-size: 15px; line-height: 1.35;
+  overflow: hidden; -webkit-tap-highlight-color: transparent; touch-action: manipulation;
 }
 button { font: inherit; color: inherit; cursor: pointer; }
-button:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
-#app { height: 100%; display: flex; flex-direction: column; }
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+#app { height: 100%; display: grid; grid-template-rows: auto minmax(0, 1fr); }
 
-/* HUD */
-#hud {
-  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+/* Kopfleiste */
+#top {
+  display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
   padding-block: 8px;
   padding-left: max(16px, env(safe-area-inset-left, 0px));
   padding-right: max(16px, env(safe-area-inset-right, 0px));
-  background: var(--deep); border-bottom: 1px solid var(--line);
+  background: linear-gradient(90deg, #2a1f08 0, var(--rail) 320px); border-bottom: 1px solid var(--line);
 }
-.logo { font-family: var(--font-display); color: var(--amber); font-size: 20px; letter-spacing: .02em; line-height: 1; }
-.logo small { display: block; font-family: var(--font-body); color: var(--muted); font-size: 13px; letter-spacing: .08em; text-transform: uppercase; margin-top: 3px; }
-.clock { font-family: var(--font-screen); font-size: 40px; line-height: .8; color: var(--ink); min-width: 4ch; }
-.onair { font-family: var(--font-display); font-size: 11px; padding: 3px 6px; border-radius: 3px; background: var(--line); color: var(--muted); letter-spacing: .06em; }
-.onair.live { background: var(--onair); color: #fff; animation: pulse 1.6s infinite; }
-@keyframes pulse { 50% { opacity: .55; } }
-.money { font-variant-numeric: tabular-nums; font-weight: 700; font-size: 22px; }
-.money.neg { color: var(--onair); }
-.stat-label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .1em; }
-.imagebar { flex: 1 1 200px; min-width: 160px; display: grid; gap: 3px; }
-.bar3 { display: flex; height: 14px; border-radius: 3px; overflow: hidden; background: var(--line); }
-.bar3 span { display: block; height: 100%; transition: width .6s; }
-.bar3-legend { display: flex; justify-content: space-between; font-size: 13px; font-variant-numeric: tabular-nums; }
-.speed { display: flex; gap: 4px; }
-.speed button { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; min-width: 44px; height: 40px; font-weight: 700; }
-.speed button.on { background: var(--amber); color: var(--night); border-color: var(--amber); }
+.club { display: flex; align-items: center; gap: 10px; }
+.badge { width: 40px; height: 40px; border-radius: 8px; background: var(--club); color: #1a1406; display: grid; place-items: center; font-family: var(--font-head); font-weight: 700; font-size: 20px; }
+.club b { display: block; font-family: var(--font-head); font-size: 19px; letter-spacing: .02em; line-height: 1.05; }
+.club small { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .08em; }
+.spacer { flex: 1; }
+.stat { display: grid; gap: 1px; }
+.stat small { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; }
+.stat b { font-family: var(--font-head); font-weight: 600; font-size: 20px; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.stat b.neg { color: var(--bad); }
+.pill { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; padding: 3px 8px; border-radius: 999px; background: var(--surface-2); color: var(--muted); }
+.pill.live { background: var(--bad); color: #fff; }
+.imgmini { display: grid; gap: 4px; width: 170px; }
+.bar3 { display: flex; height: 6px; border-radius: 3px; overflow: hidden; background: var(--surface-2); }
+.bar3 span { height: 100%; transition: width .5s; }
+.seg { display: flex; background: var(--surface-2); border-radius: 8px; padding: 3px; gap: 2px; }
+.seg button { background: transparent; border: 0; border-radius: 6px; min-width: 40px; height: 34px; font-weight: 600; color: var(--muted); }
+.seg button.on { background: var(--line); color: var(--text); }
+.go { background: var(--accent); color: #fff; border: 0; border-radius: 8px; height: 42px; padding: 0 20px; font-family: var(--font-head); font-weight: 700; font-size: 17px; letter-spacing: .04em; text-transform: uppercase; display: flex; align-items: center; gap: 8px; }
+.go.running { background: var(--surface-2); color: var(--text); }
 
-/* Bühne */
+/* Seitenleiste + Inhalt */
+#body { display: grid; grid-template-columns: 210px minmax(0, 1fr); min-height: 0; }
+#nav { background: var(--rail); border-right: 1px solid var(--line); padding: 12px 8px; display: flex; flex-direction: column; gap: 2px; overflow-y: auto; padding-left: max(8px, env(safe-area-inset-left, 0px)); }
+#nav button { display: flex; align-items: center; gap: 10px; width: 100%; background: transparent; border: 0; border-radius: 8px; padding: 10px 12px; text-align: left; font-weight: 500; color: var(--muted); min-height: 44px; }
+#nav button svg { width: 18px; height: 18px; flex: 0 0 auto; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+#nav button:hover { background: var(--surface); color: var(--text); }
+#nav button.on { background: var(--surface-2); color: var(--text); box-shadow: inset 3px 0 0 var(--club); }
+#nav button .cnt { margin-left: auto; background: var(--accent); color: #fff; font-size: 11px; font-weight: 600; border-radius: 999px; padding: 1px 7px; }
+#nav .room-now { color: var(--club); }
+.nav-sep { height: 1px; background: var(--line); margin: 8px 6px; }
+.nav-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .1em; padding: 6px 12px 2px; }
+#main { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.vhead { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; padding: 14px 20px 12px; border-bottom: 1px solid var(--line); background: var(--surface); padding-right: max(20px, env(safe-area-inset-right, 0px)); }
+.vhead .crumb { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .08em; }
+.vhead h1 { margin: 2px 0 0; font-family: var(--font-head); font-weight: 700; font-size: 26px; line-height: 1.05; text-wrap: balance; }
+.vhead .grow { flex: 1; min-width: 0; }
+.vbody { flex: 1; min-height: 0; overflow-y: auto; padding: 16px 20px 28px; display: grid; gap: 16px; align-content: start; -webkit-overflow-scrolling: touch; padding-right: max(20px, env(safe-area-inset-right, 0px)); }
+
+/* Hochhaus */
+#towerView { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 #stage { position: relative; flex: 1; min-height: 0; }
 #tower { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
-#toast {
-  position: absolute; left: 50%; top: 14px; transform: translateX(-50%);
-  background: var(--panel); border: 1px solid var(--amber); color: var(--ink);
-  padding: 8px 14px; border-radius: 8px; font-weight: 600; max-width: min(90%, 520px); text-align: center;
-  pointer-events: none; opacity: 0; transition: opacity .25s;
-}
+#toast { position: absolute; left: 50%; top: 14px; transform: translateX(-50%); background: var(--surface-2); border: 1px solid var(--line); border-left: 4px solid var(--accent); padding: 10px 14px; border-radius: 8px; max-width: min(90%, 520px); pointer-events: none; opacity: 0; transition: opacity .2s; box-shadow: 0 10px 30px rgba(0,0,0,.4); z-index: 30; }
 #toast.show { opacity: 1; }
+#live { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; padding: 10px 20px; border-top: 1px solid var(--line); background: var(--surface); padding-right: max(20px, env(safe-area-inset-right, 0px)); }
+.lv { min-width: 0; display: grid; gap: 4px; }
+.lv-top { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.dot { width: 10px; height: 10px; border-radius: 3px; flex: 0 0 auto; }
+.lv-top b { font-family: var(--font-head); font-size: 14px; letter-spacing: .04em; }
+.lv-top span { margin-left: auto; font-family: var(--font-head); font-weight: 600; font-variant-numeric: tabular-nums; }
+.lv-t { color: var(--muted); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.share { height: 4px; background: var(--surface-2); border-radius: 2px; overflow: hidden; }
+.share i { display: block; height: 100%; }
 
-/* Live-Leiste */
-#live {
-  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px;
-  padding-block: 8px;
-  padding-left: max(16px, env(safe-area-inset-left, 0px));
-  padding-right: max(16px, env(safe-area-inset-right, 0px));
-  background: var(--deep); border-top: 1px solid var(--line);
-}
-.live-cell { min-width: 0; border-left: 4px solid var(--c); padding-left: 8px; }
-.live-cell b { font-family: var(--font-display); font-size: 12px; color: var(--c); font-weight: 400; }
-.live-cell div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 15px; }
-.live-cell .v { font-variant-numeric: tabular-nums; color: var(--muted); }
-
-/* Raum-Blatt */
-#panel {
-  position: fixed; top: 0; right: 0; bottom: 0; width: min(640px, 100%);
-  background: var(--panel); border-left: 1px solid var(--line);
-  display: flex; flex-direction: column; z-index: 20;
-  box-shadow: -20px 0 40px rgba(0,0,0,.45);
-  padding-top: env(safe-area-inset-top, 0px);
-  padding-bottom: env(safe-area-inset-bottom, 0px);
-  padding-right: env(safe-area-inset-right, 0px);
-}
-.panel-head { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-bottom: 1px solid var(--line); }
-.panel-head h2 { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: 22px; line-height: 1.05; text-wrap: balance; }
-.panel-head p { margin: 2px 0 0; color: var(--muted); font-size: 14px; letter-spacing: .06em; text-transform: uppercase; }
-.panel-head .grow { flex: 1; min-width: 0; }
-.panel-clock { font-family: var(--font-screen); font-size: 28px; color: var(--muted); }
-.btn { background: var(--deep); border: 1px solid var(--line); border-radius: 8px; padding: 9px 14px; font-weight: 600; min-height: 44px; }
-.btn.primary { background: var(--amber); color: var(--night); border-color: var(--amber); }
-.btn.danger { border-color: var(--onair); color: var(--onair); }
+/* Bausteine */
+.btn { background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px; padding: 8px 14px; min-height: 40px; font-weight: 600; }
+.btn:hover:not(:disabled) { border-color: var(--muted); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn.club { background: var(--club); border-color: var(--club); color: #1a1406; }
+.btn.sm { min-height: 34px; padding: 5px 10px; font-size: 14px; }
 .btn:disabled { opacity: .4; cursor: not-allowed; }
-.panel-body { flex: 1; overflow-y: auto; padding: 14px 16px 24px; -webkit-overflow-scrolling: touch; display: grid; gap: 14px; align-content: start; }
-.intro { margin: 0; color: var(--muted); line-height: 1.35; max-width: 62ch; }
-.tabs { display: flex; gap: 6px; flex-wrap: wrap; }
-.tabs button { background: transparent; border: 1px solid var(--line); border-radius: 999px; padding: 6px 14px; min-height: 40px; font-weight: 600; }
-.tabs button.on { background: var(--ink); color: var(--night); border-color: var(--ink); }
-.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 10px; }
-.card { background: var(--deep); border: 1px solid var(--line); border-radius: 10px; padding: 12px; display: grid; gap: 6px; align-content: start; min-width: 0; }
-.card h3 { margin: 0; font-size: 19px; line-height: 1.1; text-wrap: balance; }
-.meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 14px; color: var(--muted); }
-.chip { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; padding: 2px 7px; border-radius: 4px; background: var(--line); color: var(--ink); font-weight: 600; }
-.chip.fsk { background: var(--onair); color: #fff; }
-.chip.good { background: var(--good); color: var(--night); }
-.chip.warn { background: var(--warn); color: var(--night); }
-.qbar { height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; }
-.qbar span { display: block; height: 100%; background: var(--amber); }
-.row-end { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-.price { font-variant-numeric: tabular-nums; font-weight: 700; font-size: 18px; }
-.empty { color: var(--muted); font-style: italic; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; min-width: 0; }
+.panel > header { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-bottom: 1px solid var(--line); }
+.panel > header h2 { margin: 0; font-family: var(--font-head); font-weight: 600; font-size: 17px; flex: 1; }
+.panel > .pad { padding: 12px 14px; }
+.lead { margin: 0; color: var(--muted); max-width: 70ch; }
+.note { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; background: rgba(76,141,255,.1); border: 1px solid rgba(76,141,255,.35); border-radius: 10px; padding: 10px 14px; }
+.note p { margin: 0; flex: 1; min-width: 200px; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
+.tile { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; display: grid; gap: 2px; }
+.tile small { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .08em; }
+.tile b { font-family: var(--font-head); font-size: 26px; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.tile span { color: var(--muted); font-size: 13px; }
+.tbl { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+th { text-align: left; font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; padding: 8px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; background: var(--surface); position: sticky; top: 0; }
+td { padding: 8px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; vertical-align: middle; }
+tr:last-child td { border-bottom: 0; }
+tbody tr:hover { background: rgba(255,255,255,.025); }
+td.num, th.num { text-align: right; }
+td.title { white-space: normal; min-width: 180px; font-weight: 500; }
+.attr { display: inline-grid; place-items: center; min-width: 30px; height: 24px; border-radius: 5px; font-family: var(--font-head); font-weight: 700; font-size: 15px; color: #10141a; }
+.a4 { background: var(--good); } .a3 { background: #9bd65a; } .a2 { background: var(--mid); } .a1 { background: #f08c4a; } .a0 { background: var(--bad); }
+.chip { display: inline-block; font-size: 11px; font-weight: 600; letter-spacing: .04em; padding: 2px 7px; border-radius: 4px; background: var(--surface-2); border: 1px solid var(--line); color: var(--text); }
+.chip.fsk { background: var(--bad); border-color: var(--bad); color: #fff; }
+.chip.good { background: rgba(63,207,127,.15); border-color: rgba(63,207,127,.5); color: var(--good); }
+.chip.warn { background: rgba(230,195,74,.12); border-color: rgba(230,195,74,.5); color: var(--mid); }
+.mbar { width: 80px; height: 6px; border-radius: 3px; background: var(--surface-2); overflow: hidden; display: inline-block; vertical-align: middle; }
+.mbar i { display: block; height: 100%; background: var(--accent); }
+.muted { color: var(--muted); }
+.stars { color: var(--club); letter-spacing: 1px; }
+.win { color: var(--good); font-weight: 600; }
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); }
+.tabs button { background: transparent; border: 0; padding: 10px 14px; color: var(--muted); font-weight: 600; border-bottom: 2px solid transparent; }
+.tabs button.on { color: var(--text); border-bottom-color: var(--club); }
 
 /* Sendeplan */
-.plan { display: grid; gap: 6px; }
-.slot { display: grid; grid-template-columns: 58px minmax(0, 1fr) minmax(0, .8fr); gap: 6px; align-items: stretch; }
-.slot .hour { font-family: var(--font-screen); font-size: 28px; line-height: 1; display: flex; flex-direction: column; justify-content: center; }
-.slot .hour small { font-family: var(--font-body); font-size: 11px; color: var(--muted); letter-spacing: .05em; text-transform: uppercase; }
-.cell { text-align: left; background: var(--deep); border: 1px solid var(--line); border-radius: 8px; padding: 7px 9px; min-height: 52px; min-width: 0; display: grid; gap: 2px; align-content: center; }
+.plan { display: grid; }
+.slot { display: grid; grid-template-columns: 70px minmax(0, 1.3fr) minmax(0, 1fr) 90px; align-items: stretch; border-bottom: 1px solid var(--line); }
+.slot:last-child { border-bottom: 0; }
+.slot .hr { font-family: var(--font-head); font-size: 22px; font-weight: 600; display: grid; align-content: center; padding: 0 14px; }
+.slot .hr small { font-family: var(--font-body); font-size: 10px; color: var(--muted); letter-spacing: .1em; text-transform: uppercase; }
+.slot.prime .hr { color: var(--club); }
+.slot.aired { background: rgba(255,255,255,.02); }
+.cell { background: transparent; border: 0; border-left: 1px solid var(--line); text-align: left; padding: 9px 12px; min-width: 0; display: grid; gap: 2px; align-content: center; min-height: 56px; }
+.cell:not(:disabled):hover { background: rgba(76,141,255,.08); }
 .cell .t { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cell .s { font-size: 13px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.cell.locked { opacity: .55; cursor: default; }
-.cell.cont { border-style: dashed; }
-.cell.bad { border-color: var(--onair); }
-.slot.prime .hour { color: var(--amber); }
-.tbl-wrap { overflow-x: auto; }
-table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; font-size: 15px; }
-th, td { padding: 6px 8px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
-th:first-child, td:first-child { text-align: left; }
-th { color: var(--muted); font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: .06em; }
-td.win { color: var(--good); font-weight: 700; }
+.cell:disabled { cursor: default; }
+.cell.bad .t { color: var(--bad); }
+.cell.cont .t { color: var(--muted); }
+.slot .res { border-left: 1px solid var(--line); display: grid; align-content: center; justify-items: end; padding: 0 12px; font-family: var(--font-head); font-weight: 600; font-variant-numeric: tabular-nums; }
+.slot .res small { font-family: var(--font-body); font-weight: 400; font-size: 11px; color: var(--muted); }
 
-/* Auswahl */
-#picker { position: absolute; inset: 0; background: rgba(8, 11, 28, .78); display: flex; align-items: flex-end; justify-content: center; z-index: 5; }
-.picker-box { background: var(--panel); border-top: 2px solid var(--amber); width: 100%; max-height: 82%; display: flex; flex-direction: column; }
-.picker-box header { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--line); }
-.picker-box header h3 { margin: 0; flex: 1; font-size: 20px; }
-.picker-list { overflow-y: auto; padding: 10px 16px 20px; display: grid; gap: 8px; }
-.pick { text-align: left; background: var(--deep); border: 1px solid var(--line); border-radius: 8px; padding: 9px 11px; display: grid; gap: 3px; }
-.pick:disabled { opacity: .35; }
+/* Posteingang */
+.inbox { display: grid; }
+.msg { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 11px 14px; border-bottom: 1px solid var(--line); }
+.msg:last-child { border-bottom: 0; }
+.msg i { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+.msg.ok i { background: var(--good); } .msg.warn i { background: var(--bad); } .msg.info i { background: var(--muted); }
+.msg.new { background: rgba(76,141,255,.06); }
+.msg span { min-width: 0; }
+.msg time { color: var(--muted); font-size: 13px; white-space: nowrap; }
 
-/* Vollbild-Overlays */
-.overlay {
-  position: fixed; inset: 0; z-index: 40; background: rgba(8, 11, 28, .9);
-  display: flex; align-items: center; justify-content: center; overflow-y: auto;
-  padding-block: max(20px, env(safe-area-inset-top, 0px));
+/* Dialoge */
+.modal { position: fixed; inset: 0; z-index: 50; background: rgba(5, 7, 10, .72); display: flex; align-items: center; justify-content: center; overflow-y: auto;
+  padding-block: max(16px, env(safe-area-inset-top, 0px));
   padding-left: max(16px, env(safe-area-inset-left, 0px));
-  padding-right: max(16px, env(safe-area-inset-right, 0px));
-}
-.sheet { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; width: min(760px, 100%); padding: 22px; display: grid; gap: 14px; margin: auto; }
-.sheet h1 { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: clamp(34px, 7vw, 64px); line-height: .95; color: var(--amber); text-wrap: balance; }
-.sheet h2 { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: 26px; text-wrap: balance; }
-.sheet p, .sheet li { line-height: 1.4; max-width: 66ch; }
-.sheet ul { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
-.sheet .actions { display: flex; gap: 10px; flex-wrap: wrap; }
-.testcard { height: 14px; border-radius: 3px; background: linear-gradient(90deg, #fff 0 14%, #ffe600 14% 28%, #19e3ff 28% 42%, #19d35a 42% 57%, #ff3bd4 57% 71%, #ff2b2b 71% 85%, #2a3cff 85%); }
-.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
-.kpi { background: var(--deep); border-radius: 10px; padding: 10px 12px; border-top: 3px solid var(--c, var(--line)); }
-.kpi b { display: block; font-size: 24px; font-variant-numeric: tabular-nums; }
-.kpi span { font-size: 13px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
-.feed { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; font-size: 15px; max-height: 180px; overflow-y: auto; }
-.feed li { border-left: 3px solid var(--line); padding-left: 8px; }
-.meter { height: 12px; background: var(--line); border-radius: 6px; overflow: hidden; position: relative; }
-.meter span { display: block; height: 100%; background: var(--amber); }
-.meter i { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--ink); }
+  padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.dialog { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; width: min(760px, 100%); margin: auto; box-shadow: 0 30px 80px rgba(0,0,0,.5); overflow: hidden; }
+.dialog > header { display: flex; align-items: center; gap: 10px; padding: 14px 18px; border-bottom: 1px solid var(--line); }
+.dialog > header h2 { margin: 0; flex: 1; font-family: var(--font-head); font-weight: 700; font-size: 20px; }
+.dialog .dbody { padding: 16px 18px 20px; display: grid; gap: 14px; }
+.dialog.narrow { width: min(560px, 100%); }
+.hero { padding: 26px 18px 20px; background: radial-gradient(circle at 85% 0%, rgba(240,168,24,.25), transparent 55%), linear-gradient(180deg, #1c222c, var(--surface)); border-bottom: 1px solid var(--line); display: grid; gap: 8px; }
+.hero h1 { margin: 0; font-family: var(--font-head); font-weight: 700; font-size: clamp(36px, 7vw, 60px); line-height: .95; letter-spacing: .01em; text-wrap: balance; }
+.hero h1 em { font-style: normal; color: var(--club); }
+.hero p { margin: 0; color: var(--muted); max-width: 60ch; }
+.rules { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+.rules li { background: var(--surface-2); border-radius: 10px; padding: 10px 12px; }
+.rules b { display: block; font-family: var(--font-head); font-size: 15px; color: var(--club); text-transform: uppercase; letter-spacing: .06em; }
+.actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.pick { width: 100%; background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px; padding: 9px 12px; text-align: left; display: grid; gap: 4px; }
+.pick:hover:not(:disabled) { border-color: var(--accent); }
+.pick:disabled { opacity: .4; cursor: not-allowed; }
+.pick .meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; color: var(--muted); font-size: 13px; }
+.picklist { display: grid; gap: 6px; max-height: 60vh; overflow-y: auto; }
+.meter { height: 10px; background: var(--surface-2); border-radius: 5px; overflow: hidden; position: relative; }
+.meter span { display: block; height: 100%; background: var(--club); }
+.meter i { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--bad); }
 
-@media (max-width: 640px) {
-  body { font-size: 16px; }
-  .clock { font-size: 32px; }
-  .logo { font-size: 16px; }
-  #live { grid-template-columns: 1fr; gap: 4px; }
-  .slot { grid-template-columns: 48px minmax(0, 1fr); }
-  .slot .cell.ad { grid-column: 2; }
+@media (max-width: 860px) {
+  #body { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
+  #nav { flex-direction: row; overflow-x: auto; border-right: 0; border-bottom: 1px solid var(--line); padding: 6px; padding-left: max(8px, env(safe-area-inset-left, 0px)); }
+  #nav button { width: auto; white-space: nowrap; padding: 8px 10px; }
+  .nav-sep, .nav-label { display: none; }
+  .imgmini { width: 120px; }
+  #live { grid-template-columns: minmax(0, 1fr); gap: 6px; padding-left: max(16px, env(safe-area-inset-left, 0px)); }
+  .slot { grid-template-columns: 54px minmax(0, 1fr) 70px; }
+  .slot .cell.ad { grid-column: 2; border-top: 1px dashed var(--line); }
+  .slot .res { grid-row: 1; grid-column: 3; }
+  .vhead, .vbody { padding-left: max(16px, env(safe-area-inset-left, 0px)); }
 }
-@media (prefers-reduced-motion: reduce) {
-  .onair.live { animation: none; }
-  .bar3 span { transition: none; }
+@media (max-width: 520px) {
+  .club small, .imgmini, .hide-s { display: none; }
 }
+@media (prefers-reduced-motion: reduce) { .bar3 span { transition: none; } #toast { transition: none; } }
 </style>
 </head>
 <body>
 
 <div id="app">
-  <header id="hud">
-    <div class="logo">KANAL 13<small id="hudDay">Tag 1</small></div>
-    <div style="display:flex;align-items:center;gap:8px">
-      <div class="clock" id="hudClock">08:00</div>
-      <span class="onair" id="hudAir">Sendepause</span>
+  <header id="top">
+    <div class="club"><div class="badge">13</div><div><b>KANAL 13</b><small>Programmdirektion</small></div></div>
+    <div class="spacer"></div>
+    <div class="stat"><small id="hudDay">Tag 1</small><b id="hudClock">08:00</b></div>
+    <span class="pill" id="hudAir">Sendestart 16:00</span>
+    <div class="stat"><small>Kontostand</small><b id="hudMoney">0 €</b></div>
+    <div class="stat imgmini"><small id="hudImg">Image</small><div class="bar3" id="hudBar"></div></div>
+    <div class="seg" role="group" aria-label="Spieltempo">
+      <button data-speed="1" class="on">1×</button><button data-speed="2">2×</button><button data-speed="3">3×</button>
     </div>
-    <div>
-      <div class="stat-label">Kontostand</div>
-      <div class="money" id="hudMoney">0 €</div>
-    </div>
-    <div class="imagebar">
-      <div class="stat-label">Senderimage (100 Punkte)</div>
-      <div class="bar3" id="hudBar"></div>
-      <div class="bar3-legend" id="hudLegend"></div>
-    </div>
-    <div class="speed" role="group" aria-label="Spieltempo">
-      <button id="spPause" aria-label="Pause">II</button>
-      <button data-speed="1" class="on">1×</button>
-      <button data-speed="2">2×</button>
-      <button data-speed="3">3×</button>
-    </div>
+    <button class="go" id="goBtn">Weiter ▸</button>
   </header>
-  <div id="stage">
-    <canvas id="tower" aria-label="Das Sender-Hochhaus. Tippen Sie auf eine Tür, um dorthin zu gehen."></canvas>
-    <div id="toast" role="status" aria-live="polite"></div>
+  <div id="body">
+    <nav id="nav" aria-label="Navigation"></nav>
+    <main id="main">
+      <div class="vhead" id="vhead"></div>
+      <div id="towerView">
+        <div id="stage">
+          <canvas id="tower" aria-label="Das Sender-Hochhaus. Tippen Sie auf eine Tür, um dorthin zu gehen."></canvas>
+          <div id="toast" role="status" aria-live="polite"></div>
+        </div>
+        <div id="live"></div>
+      </div>
+      <div class="vbody" id="vbody" hidden></div>
+    </main>
   </div>
-  <footer id="live"></footer>
 </div>
-
-<aside id="panel" hidden>
-  <div class="panel-head">
-    <div class="grow"><h2 id="pTitle">Raum</h2><p id="pSub"></p></div>
-    <span class="panel-clock" id="pClock">08:00</span>
-    <button class="btn" id="pPause" aria-label="Pause">II</button>
-    <button class="btn primary" id="pLeave">Raum verlassen</button>
-  </div>
-  <div class="panel-body" id="pBody"></div>
-  <div id="picker" hidden></div>
-</aside>
-
-<div class="overlay" id="ovl" hidden><div class="sheet" id="ovlSheet"></div></div>
+<div class="modal" id="modal" hidden><div class="dialog" id="dialog"></div></div>
 
 <script>
 "use strict";
@@ -257,9 +261,9 @@ const OUTSIDE = 34; // „Abschalten“ als vierte Option
 const MS_PER_MIN = 170; // Echtzeit pro Spielminute bei 1×
 const DAY_START = 8 * 60, DAY_END = 24 * 60;
 const STATION_DEF = [
-  { name: "KANAL 13", color: "#ffb21a", skin: "#c68a5c" },
-  { name: "FLIMMER TV", color: "#3ad1e6", skin: "#f0c8a2" },
-  { name: "SONNENKANAL", color: "#ff5d8f", skin: "#8d5a3b" },
+  { name: "KANAL 13", color: "#f0a818", skin: "#c68a5c" },
+  { name: "FLIMMER TV", color: "#28b8d0", skin: "#f0c8a2" },
+  { name: "SONNENKANAL", color: "#e8487c", skin: "#8d5a3b" },
 ];
 const GENRES = {
   "Liebesfilm": [20], "Action": [21, 22], "Monumental": [20], "Komödie": [20],
@@ -290,8 +294,8 @@ const FLOORS = 6, FH = 130, TOP = 120, W = 1000, H = TOP + FLOORS * FH + 34, LIF
 const ROOMS = [
   { id: "boss", f: 5, side: "L", name: "Intendanz", sub: "Chefetage · Kredite" },
   { id: "jury", f: 5, side: "R", name: "Goldene Antenne", sub: "Jury & Kulturstiftung" },
-  { id: "r1", f: 4, side: "L", name: "FLIMMER TV", sub: "Büro der Konkurrenz", owner: 1 },
-  { id: "r2", f: 4, side: "R", name: "SONNENKANAL", sub: "Büro der Konkurrenz", owner: 2 },
+  { id: "r1", f: 4, side: "L", name: "FLIMMER TV", sub: "Konkurrenz", owner: 1 },
+  { id: "r2", f: 4, side: "R", name: "SONNENKANAL", sub: "Konkurrenz", owner: 2 },
   { id: "office", f: 3, side: "L", name: "KANAL 13", sub: "Ihr Büro · Sendeplan", owner: 0 },
   { id: "archiv", f: 3, side: "R", name: "Archiv", sub: "Programme verkaufen" },
   { id: "ads", f: 2, side: "L", name: "Spotfabrik", sub: "Werbeagentur" },
@@ -301,6 +305,7 @@ const ROOMS = [
 ];
 ROOMS.forEach(r => { r.x = r.side === "L" ? 250 : 750; });
 const RM = Object.fromEntries(ROOMS.map(r => [r.id, r]));
+const floorName = f => f === 0 ? "Erdgeschoss" : f + ". OG";
 
 // ---------- Hilfsfunktionen ----------
 const $ = id => document.getElementById(id);
@@ -318,12 +323,13 @@ function fit(genre, h) {
   return Math.max(0.45, 1 - 0.13 * d);
 }
 const stars = f => f >= 0.9 ? "★★★" : f >= 0.7 ? "★★☆" : "★☆☆";
+const attr = q => `<span class="attr a${q >= 80 ? 4 : q >= 65 ? 3 : q >= 50 ? 2 : q >= 35 ? 1 : 0}">${q}</span>`;
 function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
 
 // ---------- Spielzustand ----------
 let G = null;           // speicherbarer Zustand
 let actors = [], lift = null, player = null;
-let paused = true, speed = 1, openRoom = null, officeTab = "plan";
+let paused = true, speed = 1, openRoom = null, view = "tower", officeTab = "plan";
 
 function uid() { return ++G.idc; }
 function newTitle(genre) {
@@ -362,7 +368,7 @@ function makeNews() {
 function emptySched() { return HOURS.map(() => ({ p: null, ad: null, cont: false })); }
 
 function newGame() {
-  G = { day: 1, min: DAY_START, idc: 0, used: [], market: [], adOffers: [], newsOffers: [], log: [], over: null, today: HOURS.map(() => null), stations: [] };
+  G = { day: 1, min: DAY_START, idc: 0, used: [], market: [], adOffers: [], newsOffers: [], log: [], unread: 0, over: null, today: HOURS.map(() => null), stations: [] };
   G.stations = STATION_DEF.map((d, i) => ({
     i, name: d.name, color: d.color, money: 400000, credit: 0, image: i === 0 ? 34 : 33, favor: 0,
     progs: [], contracts: [], sched: emptySched(), news: [], last: HOURS.map(() => 0), hist: [],
@@ -374,7 +380,7 @@ function newGame() {
     autoPlan(st, 0);
   }
   refreshOffers(true);
-  logMsg("Willkommen bei KANAL 13! Ihr Vorgänger hat einen Sendeplan hinterlassen. Ab 16:00 Uhr wird gesendet.");
+  logMsg("Willkommen bei KANAL 13! Ihr Vorgänger hat einen Sendeplan hinterlassen. Ab 16:00 Uhr wird gesendet.", false, "ok");
   startDay();
 }
 
@@ -390,10 +396,13 @@ function refreshOffers(first) {
   for (let k = 0; k < 5; k++) G.newsOffers.push(makeNews());
 }
 
-function logMsg(msg, toastIt) {
-  G.log.unshift({ day: G.day, t: hhmm(G.min), msg });
-  G.log.length = Math.min(G.log.length, 60);
+function logMsg(msg, toastIt, kind = "info") {
+  G.log.unshift({ day: G.day, t: hhmm(G.min), msg, kind });
+  G.log.length = Math.min(G.log.length, 80);
+  G.unread = (G.unread || 0) + 1;
   if (toastIt) toast(msg);
+  if (view === "inbox") G.unread = 0;
+  renderNav();
 }
 
 // ---------- Sendeplan-Logik ----------
@@ -494,15 +503,15 @@ function airHour(i) {
     if (ad && ad.done < ad.spots) {
       if (r.v >= ad.min) {
         ad.done++; st.money += ad.pay; st.income += ad.pay;
-        if (st.i === 0) logMsg(`${HOURS[i]}:00 Spot „${ad.brand}“ gesendet: +${eur(ad.pay)}`);
+        if (st.i === 0) logMsg(`${HOURS[i]}:00 Spot „${ad.brand}“ gesendet: +${eur(ad.pay)}`, false, "ok");
         if (ad.done >= ad.spots) {
           st.contracts = st.contracts.filter(x => x !== ad);
           st.sched.forEach(s => { if (s.ad === ad.id) s.ad = null; });
-          if (st.i === 0) logMsg(`Vertrag „${ad.brand}“ erfüllt.`, true);
+          if (st.i === 0) logMsg(`Vertrag „${ad.brand}“ erfüllt.`, true, "ok");
         }
-      } else if (st.i === 0) logMsg(`${HOURS[i]}:00 Spot „${ad.brand}“ verfehlt: ${mio(r.v)} statt ${mio(ad.min)}`, true);
+      } else if (st.i === 0) logMsg(`${HOURS[i]}:00 Spot „${ad.brand}“ verfehlt: ${mio(r.v)} statt ${mio(ad.min)}`, true, "warn");
     }
-    if (!r.p) { st.image = Math.max(0, st.image - 1); if (st.i === 0) logMsg(`${HOURS[i]}:00 Sendepause! Testbild kostet Image.`, true); }
+    if (!r.p) { st.image = Math.max(0, st.image - 1); if (st.i === 0) logMsg(`${HOURS[i]}:00 Sendepause! Testbild kostet Image.`, true, "warn"); }
   }
   // Imagepunkt vom schwächsten zum stärksten Sender
   const sorted = [...res].sort((a, b) => b.v - a.v);
@@ -512,9 +521,9 @@ function airHour(i) {
   sorted[0].st.image += 100 - total;
   G.stations.forEach(s => { s.image = clamp(s.image, 0, 100); s.favor = Math.min(s.favor, s.image * 2); });
   G.today[i] = res.map(r => ({ v: r.v, title: r.title }));
-  if (sorted[0].st.i === 0) logMsg(`${HOURS[i]}:00 Quotensieg mit ${mio(sorted[0].v)}!`);
+  if (sorted[0].st.i === 0) logMsg(`${HOURS[i]}:00 Quotensieg mit ${mio(sorted[0].v)}!`, false, "ok");
   renderLive(); renderHud();
-  if (openRoom) renderPanel();
+  if (view !== "tower") renderView();
 }
 
 // ---------- Tagesablauf ----------
@@ -527,10 +536,12 @@ function startDay() {
   }
   ROOMS.forEach(r => { r.occ = null; });
   lift = { y: 0, queue: [], occ: null, phase: "idle", timer: 0 };
-  actors = G.stations.map((st, i) => ({ st: i, floor: 0, x: 90 + i * 40, mode: "idle", target: null, timer: 0, bubble: "", face: 1 }));
+  actors = G.stations.map((st, i) => ({ st: i, floor: 0, x: 120 + i * 40, mode: "idle", target: null, timer: 0, bubble: "", face: 1 }));
   player = actors[0];
   for (const st of G.stations.slice(1)) planAI(st);
+  openRoom = null;
   save();
+  setView("tower");
   renderAll();
 }
 function planAI(st) {
@@ -540,8 +551,8 @@ function planAI(st) {
   st.ai = { queue: [...first, st.i === 1 ? "r1" : "r2", pick(["market", "ads"]), st.i === 1 ? "r1" : "r2"], next: DAY_START + ri(0, 40) };
 }
 function endDay() {
-  paused = true;
-  if (openRoom) closePanel();
+  paused = true; setSpeedUI();
+  if (openRoom) leaveCurrentRoom();
   const report = [];
   for (const st of G.stations) {
     const costs = 15000 + Math.round(st.credit * 0.015);
@@ -556,7 +567,7 @@ function endDay() {
       }
     }
     st.progs.forEach(p => { p.topic = Math.min(1, p.topic + 0.08); });
-    st.hist.push({ day: G.day, image: st.image, money: st.money, views: G.today.reduce((a, r) => a + (r ? r[st.i].v : 0), 0) });
+    st.hist.push({ day: G.day, image: st.image, money: st.money, income: st.income, costs: st.costs + st.penalties, views: G.today.reduce((a, r) => a + (r ? r[st.i].v : 0), 0) });
   }
   const me = G.stations[0];
   let over = null;
@@ -608,7 +619,7 @@ function aiEnter(actor, room) {
 function buyProgram(st, p) {
   st.money -= p.price; st.progs.push(p);
   G.market = G.market.filter(x => x !== p);
-  if (st.i !== 0) logMsg(`${st.name} kauft „${p.title}“.`);
+  if (st.i !== 0) logMsg(`${st.name} kauft „${p.title}“.`, false, "info");
 }
 function takeAd(st, a) { st.contracts.push(a); G.adOffers = G.adOffers.filter(x => x !== a); }
 function buyNews(st, n) { st.money -= n.price; st.news.push(n); G.newsOffers = G.newsOffers.filter(x => x !== n); }
@@ -659,13 +670,13 @@ function tryEnter(a) {
   }
   if (r.occ && r.occ !== a) { a.mode = "waitDoor"; a.bubble = "Besetzt"; return; }
   r.occ = a; a.mode = "room"; a.bubble = ""; a.x = r.x;
-  if (a.st === 0) openPanel(r.id);
+  if (a.st === 0) enterRoom(r.id);
   else { aiEnter(a, r); a.timer = r.owner !== undefined ? (G.min < 13 * 60 ? 13 * 60 - G.min + ri(0, 60) : 9999) : ri(18, 40); }
 }
 function leaveRoom(a) {
-  const r = RM[a.target.room];
+  const r = a.target && RM[a.target.room];
   if (r && r.occ === a) r.occ = null;
-  a.mode = "idle"; a.target = null; a.x = r ? r.x + (r.side === "L" ? 40 : -40) : a.x;
+  a.mode = "idle"; a.target = null; a.x = r ? r.x + (r.side === "L" ? 44 : -44) : a.x;
 }
 function updateLift(dm) {
   const L = lift;
@@ -702,9 +713,8 @@ function tick(now) {
     while (dm > 0 && !paused) {
       const s = Math.min(dm, 0.5); dm -= s;
       const prev = G.min; G.min += s;
-      const hPrev = Math.floor(prev / 60), hNow = Math.floor(G.min / 60);
-      if (hNow > hPrev) {
-        const idx = HOURS.indexOf(hNow);
+      if (Math.floor(G.min / 60) > Math.floor(prev / 60)) {
+        const idx = HOURS.indexOf(Math.floor(G.min / 60));
         if (idx >= 0) airHour(idx);
       }
       for (const a of actors) updateActor(a, s);
@@ -713,16 +723,18 @@ function tick(now) {
     }
     renderClock();
   }
-  draw();
+  if (view === "tower") draw();
   requestAnimationFrame(tick);
 }
 
-// ---------- Zeichnen ----------
+// ---------- Zeichnen (flache, moderne Vektorgrafik) ----------
 const cv = $("tower"), ctx = cv.getContext("2d");
 let scale = 1, offX = 0, offY = 0, cssW = 0, cssH = 0;
-const STARS = Array.from({ length: 90 }, () => [Math.random() * W, Math.random() * (TOP + 200), Math.random() * 1.6 + 0.3]);
+const STARS = Array.from({ length: 80 }, () => [Math.random() * W, Math.random() * (TOP + 160), Math.random() * 1.3 + 0.3]);
+const SKYLINE = Array.from({ length: 30 }, (_, k) => [k * 36 - 40, 60 + ((k * 53) % 140), 30]);
 function resize() {
   const r = cv.getBoundingClientRect();
+  if (!r.width) return;
   cssW = r.width; cssH = r.height;
   const dpr = window.devicePixelRatio || 1;
   cv.width = Math.round(cssW * dpr); cv.height = Math.round(cssH * dpr);
@@ -732,253 +744,365 @@ function resize() {
 }
 new ResizeObserver(resize).observe(cv);
 const baseY = f => TOP + (FLOORS - 1 - f) * FH + FH - 12;
-function skyColors() {
-  const m = G ? G.min : DAY_START;
-  if (m < 17 * 60) return ["#3a6fb5", "#8fb8e0", 0];
-  if (m < 20 * 60) { const t = (m - 17 * 60) / 180; return [mix("#3a6fb5", "#1b1f4d", t), mix("#8fb8e0", "#e0795a", t), t * 0.6]; }
-  const t = Math.min(1, (m - 20 * 60) / 120);
-  return [mix("#1b1f4d", "#070a1e", t), mix("#e0795a", "#15193d", t), 0.6 + t * 0.4];
-}
+function rr(x, y, w, h, r, fill) { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); ctx.fillStyle = fill; ctx.fill(); }
 function mix(a, b, t) {
   const pa = [1, 3, 5].map(k => parseInt(a.substr(k, 2), 16)), pb = [1, 3, 5].map(k => parseInt(b.substr(k, 2), 16));
   return "rgb(" + pa.map((v, k) => Math.round(v + (pb[k] - v) * t)).join(",") + ")";
 }
+function skyColors() {
+  const m = G ? G.min : DAY_START;
+  if (m < 17 * 60) return ["#1e3a64", "#4f78a8", 0];
+  if (m < 20 * 60) { const t = (m - 17 * 60) / 180; return [mix("#1e3a64", "#1b1838", t), mix("#4f78a8", "#c86a4a", t), t * 0.6]; }
+  const t = Math.min(1, (m - 20 * 60) / 120);
+  return [mix("#1b1838", "#090c14", t), mix("#c86a4a", "#141a2a", t), 0.6 + t * 0.4];
+}
 function draw() {
-  ctx.clearRect(0, 0, cssW, cssH);
+  if (!cssW) resize();
   const [sk1, sk2, night] = skyColors();
   const g = ctx.createLinearGradient(0, 0, 0, cssH);
   g.addColorStop(0, sk1); g.addColorStop(1, sk2);
   ctx.fillStyle = g; ctx.fillRect(0, 0, cssW, cssH);
   ctx.save();
   ctx.translate(offX, offY); ctx.scale(scale, scale);
-  // Sterne
-  if (night > 0.2) {
-    ctx.fillStyle = `rgba(255,255,255,${(night - 0.2) * 1.2})`;
+  if (night > 0.25) {
+    ctx.fillStyle = `rgba(255,255,255,${Math.min(0.8, (night - 0.25) * 1.3)})`;
     for (const [x, y, r] of STARS) { ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill(); }
   }
-  const bx = 60, bw = W - 120, by = TOP - 10, bh = FLOORS * FH + 22;
-  // Dach, Antenne, Leuchtschrift
-  ctx.fillStyle = "#1d2448"; ctx.fillRect(bx + 40, by - 34, bw - 80, 34);
-  ctx.strokeStyle = "#9aa3c7"; ctx.lineWidth = 4;
-  ctx.beginPath(); ctx.moveTo(820, by - 34); ctx.lineTo(820, 8); ctx.stroke();
+  // Skyline im Hintergrund
+  ctx.fillStyle = night > 0.4 ? "rgba(10,14,22,.85)" : "rgba(20,32,52,.45)";
+  for (const [x, h, w] of SKYLINE) ctx.fillRect(x, H - 30 - h, w, h + 30);
+  const bx = 60, bw = W - 120, by = TOP - 8, bh = FLOORS * FH + 20;
+  // Dach mit Antenne und Leuchtschrift
+  rr(bx + 30, by - 30, bw - 60, 30, 6, "#1a2029");
+  ctx.strokeStyle = "#7e8a9c"; ctx.lineWidth = 4;
+  ctx.beginPath(); ctx.moveTo(820, by - 30); ctx.lineTo(820, 12); ctx.stroke();
   ctx.lineWidth = 2;
-  for (let k = 0; k < 4; k++) { ctx.beginPath(); ctx.moveTo(800 + k * 3, 30 + k * 18); ctx.lineTo(840 - k * 3, 30 + k * 18); ctx.stroke(); }
-  const blink = (performance.now() / 600 | 0) % 2;
-  ctx.fillStyle = blink ? "#ff3b3b" : "#5a1a1a"; ctx.beginPath(); ctx.arc(820, 8, 6, 0, 7); ctx.fill();
-  ctx.font = "34px Bungee, Arial Black, sans-serif"; ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
-  ctx.fillStyle = "#ffb21a"; ctx.shadowColor = "#ffb21a"; ctx.shadowBlur = 14 * night;
-  ctx.fillText("QUOTENTURM", 130, by - 46);
+  for (let k = 0; k < 3; k++) { ctx.beginPath(); ctx.moveTo(802 + k * 5, 34 + k * 20); ctx.lineTo(838 - k * 5, 34 + k * 20); ctx.stroke(); }
+  const blink = (performance.now() / 700 | 0) % 2;
+  ctx.fillStyle = blink ? "#ef5b5b" : "#4a1c1c"; ctx.beginPath(); ctx.arc(820, 10, 6, 0, 7); ctx.fill();
+  ctx.font = "700 44px 'Barlow Semi Condensed', Arial Narrow, sans-serif"; ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+  ctx.fillStyle = "#f0a818"; ctx.shadowColor = "rgba(240,168,24,.8)"; ctx.shadowBlur = 18 * night;
+  ctx.fillText("QUOTENTURM", 112, by - 44);
   ctx.shadowBlur = 0;
-  // Fassade
-  ctx.fillStyle = "#262d55"; ctx.fillRect(bx, by, bw, bh);
+  // Gebäudekörper
+  ctx.shadowColor = "rgba(0,0,0,.45)"; ctx.shadowBlur = 30;
+  rr(bx, by, bw, bh, 10, "#141920");
+  ctx.shadowBlur = 0;
   for (let f = 0; f < FLOORS; f++) {
     const y0 = TOP + (FLOORS - 1 - f) * FH;
-    ctx.fillStyle = f % 2 ? "#2f3866" : "#2b3460"; ctx.fillRect(bx + 12, y0 + 4, bw - 24, FH - 16);
-    ctx.fillStyle = "#151a38"; ctx.fillRect(bx, y0 + FH - 12, bw, 12);
-    // Fenster-Leisten
-    ctx.fillStyle = night > 0.3 ? "rgba(255,214,120,.18)" : "rgba(170,210,255,.15)";
-    for (const wx of [110, 380, 600, 880]) ctx.fillRect(wx - 22, y0 + 18, 44, 30);
-    // Etagenschild
-    ctx.fillStyle = "#a3abd0"; ctx.font = "600 15px 'Barlow Condensed', Arial, sans-serif"; ctx.textAlign = "center";
-    ctx.fillText(f === 0 ? "EG" : f + ". OG", LIFT_X, y0 + 22);
+    const base = baseY(f);
+    const wg = ctx.createLinearGradient(0, y0, 0, base);
+    wg.addColorStop(0, f % 2 ? "#252e3b" : "#232b37"); wg.addColorStop(1, f % 2 ? "#1d2430" : "#1b222d");
+    ctx.fillStyle = wg; ctx.fillRect(bx + 10, y0 + 2, bw - 20, FH - 14);
+    // Deckenlicht
+    ctx.fillStyle = night > 0.3 ? "rgba(255,214,140,.07)" : "rgba(180,210,255,.05)";
+    ctx.fillRect(bx + 10, y0 + 2, bw - 20, 26);
+    for (const lx of [150, 360, 640, 850]) { rr(lx - 22, y0 + 4, 44, 4, 2, "rgba(255,240,210,.55)"); }
+    // Glasfenster
+    for (const wx of [92, 908]) {
+      rr(wx - 18, y0 + 22, 36, 64, 4, night > 0.4 ? "#101a33" : "#5d86b8");
+      ctx.fillStyle = "rgba(255,255,255,.08)"; ctx.fillRect(wx - 18, y0 + 22, 12, 64);
+    }
+    // Boden
+    ctx.fillStyle = "#0f1318"; ctx.fillRect(bx, base, bw, 12);
+    ctx.fillStyle = "rgba(255,255,255,.06)"; ctx.fillRect(bx + 10, base - 2, bw - 20, 2);
+    // Etagenmarke
+    rr(LIFT_X - 18, y0 + 10, 36, 20, 10, "#2f3a4a");
+    ctx.fillStyle = "#c9d3e0"; ctx.font = "600 13px Barlow, Arial, sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText(f === 0 ? "EG" : String(f), LIFT_X, y0 + 20.5);
+    if (f) { plant(150, base); plant(850, base); }
   }
   // Aufzugsschacht
-  ctx.fillStyle = "#11152e"; ctx.fillRect(LIFT_X - 40, by, 80, bh - 12);
-  const cabY = baseY(0) - lift.y * FH;
+  ctx.fillStyle = "#0d1015"; ctx.fillRect(LIFT_X - 44, by + 6, 88, bh - 18);
   for (let f = 0; f < FLOORS; f++) {
-    const y = baseY(f);
-    const here = Math.abs(lift.y - f) < 0.02;
-    ctx.fillStyle = here ? "#ffb21a" : "#3a4170"; ctx.beginPath(); ctx.arc(LIFT_X, y - 92, 4, 0, 7); ctx.fill();
+    const y = baseY(f), here = Math.abs(lift.y - f) < 0.02;
+    ctx.fillStyle = here ? "#3fcf7f" : "#2a3340"; ctx.beginPath(); ctx.arc(LIFT_X + 30, y - 100, 3.5, 0, 7); ctx.fill();
   }
-  ctx.fillStyle = "#4b557f"; ctx.fillRect(LIFT_X - 34, cabY - 80, 68, 80);
-  ctx.fillStyle = "#ffe1a1"; ctx.globalAlpha = 0.25; ctx.fillRect(LIFT_X - 30, cabY - 76, 60, 72); ctx.globalAlpha = 1;
-  const open = lift.phase === "doors" ? 1 : 0;
-  ctx.fillStyle = "#7d88b5";
-  const dw = 30 * (1 - open * 0.85);
-  ctx.fillRect(LIFT_X - 34, cabY - 80, dw, 80); ctx.fillRect(LIFT_X + 34 - dw, cabY - 80, dw, 80);
+  const cabY = baseY(0) - lift.y * FH;
+  rr(LIFT_X - 36, cabY - 92, 72, 92, 6, "#3a4558");
+  rr(LIFT_X - 32, cabY - 88, 64, 86, 4, night > 0.3 ? "#e9d9b4" : "#dfe6f0");
+  const open = lift.phase === "doors";
+  const dw = open ? 4 : 32;
+  ctx.fillStyle = "#8793a6";
+  ctx.fillRect(LIFT_X - 32, cabY - 88, dw, 86); ctx.fillRect(LIFT_X + 32 - dw, cabY - 88, dw, 86);
   // Lobby
-  const y0 = baseY(0);
-  ctx.fillStyle = "#4b3a2a"; ctx.fillRect(130, y0 - 34, 120, 34);
-  ctx.fillStyle = "#a3abd0"; ctx.font = "600 14px 'Barlow Condensed', Arial, sans-serif"; ctx.textAlign = "center";
-  ctx.fillText("EMPFANG", 190, y0 - 42);
-  ctx.fillStyle = "#151a38"; ctx.fillRect(840, y0 - 96, 70, 96);
-  ctx.fillStyle = "#a3abd0"; ctx.fillText("AUSGANG", 875, y0 - 104);
-  // Türen
+  const gy = baseY(0);
+  rr(170, gy - 40, 150, 40, 6, "#2f3a4a"); rr(170, gy - 44, 150, 8, 4, "#f0a818");
+  ctx.fillStyle = "#c9d3e0"; ctx.font = "600 14px Barlow, Arial, sans-serif"; ctx.textAlign = "center"; ctx.fillText("EMPFANG", 245, gy - 60);
+  rr(790, gy - 100, 90, 100, 6, night > 0.4 ? "#101a33" : "#5d86b8");
+  ctx.fillStyle = "#8793a6"; ctx.fillRect(833, gy - 100, 4, 100);
+  ctx.fillStyle = "#c9d3e0"; ctx.fillText("AUSGANG", 835, gy - 112);
   for (const r of ROOMS) drawDoor(r);
   // Ziel-Markierung
   if (player && player.target && player.mode !== "room") {
     const t = player.target, ty = baseY(t.floor);
-    ctx.strokeStyle = "#ffb21a"; ctx.lineWidth = 2; ctx.setLineDash([5, 4]);
-    ctx.beginPath(); ctx.ellipse(t.x, ty + 2, 22, 6, 0, 0, 7); ctx.stroke(); ctx.setLineDash([]);
+    ctx.strokeStyle = "#4c8dff"; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.ellipse(t.x, ty - 1, 24, 6, 0, 0, 7); ctx.stroke();
   }
-  // Figuren
   for (const a of actors) {
     if (a.mode === "room") continue;
     const y = a.mode === "lift" ? cabY : baseY(a.floor);
-    drawPerson(a, a.mode === "lift" ? LIFT_X + (a.st - 1) * 6 : a.x, y);
+    drawPerson(a, a.mode === "lift" ? LIFT_X + (a.st - 1) * 8 : a.x, y);
   }
   ctx.restore();
 }
+function plant(x, base) {
+  rr(x - 10, base - 22, 20, 22, 4, "#3a4558");
+  ctx.fillStyle = "#2f8f5a"; ctx.beginPath(); ctx.ellipse(x, base - 36, 14, 18, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = "#3fae6c"; ctx.beginPath(); ctx.ellipse(x - 4, base - 40, 7, 11, -0.4, 0, 7); ctx.fill();
+}
 function drawDoor(r) {
   const y = baseY(r.f), x = r.x;
-  const own = r.owner !== undefined ? STATION_DEF[r.owner].color : null;
-  ctx.fillStyle = "#151a38"; ctx.fillRect(x - 40, y - 100, 80, 100);
-  ctx.fillStyle = own || "#6b5a8a"; ctx.fillRect(x - 34, y - 94, 68, 94);
-  ctx.fillStyle = "rgba(0,0,0,.25)"; ctx.fillRect(x - 28, y - 86, 56, 34);
-  ctx.fillStyle = "#e8e2cf"; ctx.beginPath(); ctx.arc(x + 22, y - 46, 4, 0, 7); ctx.fill();
-  // Schild
-  ctx.font = "15px Bungee, Arial Black, sans-serif"; ctx.textAlign = "center";
-  const tw = Math.max(90, ctx.measureText(r.name).width + 20);
-  const sx = r.side === "L" ? x + 50 : x - 50 - tw;
-  ctx.fillStyle = "#0e1230"; ctx.fillRect(sx, y - 100, tw, 42);
-  ctx.fillStyle = own || "#f3efe4"; ctx.fillText(r.name, sx + tw / 2, y - 80);
-  ctx.font = "500 13px 'Barlow Condensed', Arial, sans-serif"; ctx.fillStyle = "#a3abd0";
-  ctx.fillText(r.sub.split(" · ")[0], sx + tw / 2, y - 64);
-  // Besetzt-Lampe
+  const col = r.owner !== undefined ? STATION_DEF[r.owner].color : "#4c8dff";
+  rr(x - 40, y - 104, 80, 104, 8, "#10141a");
+  rr(x - 35, y - 99, 70, 99, 6, "#2d3746");
+  ctx.fillStyle = col; ctx.fillRect(x - 35, y - 99, 70, 6);
+  ctx.fillStyle = "rgba(255,255,255,.05)"; ctx.fillRect(x - 27, y - 84, 54, 30);
+  ctx.fillStyle = "#c9d3e0"; ctx.beginPath(); ctx.arc(x + 24, y - 48, 3.5, 0, 7); ctx.fill();
+  // Schild über der Tür
+  ctx.font = "700 19px 'Barlow Semi Condensed', Arial Narrow, sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
+  ctx.fillStyle = r.owner !== undefined ? col : "#e9eef5";
+  ctx.fillText(r.name.toUpperCase(), x, y - 112);
+  // Status
   const busy = !!r.occ;
-  ctx.fillStyle = busy ? "#ff3b3b" : "#2a6e47";
-  ctx.beginPath(); ctx.arc(x, y - 108, 6, 0, 7); ctx.fill();
-  if (busy && r.occ.st !== undefined) {
-    ctx.fillStyle = STATION_DEF[r.occ.st].color; ctx.beginPath(); ctx.arc(x, y - 108, 3, 0, 7); ctx.fill();
-  }
+  ctx.fillStyle = busy ? "#ef5b5b" : "#3fcf7f";
+  ctx.beginPath(); ctx.arc(x + 48, y - 92, 5, 0, 7); ctx.fill();
 }
 function drawPerson(a, x, y) {
   const d = STATION_DEF[a.st];
-  const bob = a.mode === "walk" ? Math.sin(performance.now() / 90) * 2 : 0;
-  ctx.fillStyle = "#1a1f3d"; ctx.fillRect(x - 8, y - 22, 6, 22 + bob); ctx.fillRect(x + 2, y - 22, 6, 22 - bob);
-  ctx.fillStyle = d.color; ctx.fillRect(x - 11, y - 52, 22, 32);
-  ctx.fillStyle = d.skin; ctx.beginPath(); ctx.arc(x, y - 62, 10, 0, 7); ctx.fill();
-  ctx.fillStyle = "#1a1f3d"; ctx.beginPath(); ctx.arc(x + a.face * 4, y - 63, 1.8, 0, 7); ctx.fill();
+  const t = performance.now() / 110;
+  const sw = a.mode === "walk" ? Math.sin(t) * 4 : 0;
+  ctx.strokeStyle = "#0f1318"; ctx.lineWidth = 5; ctx.lineCap = "round";
+  ctx.beginPath(); ctx.moveTo(x - 3, y - 24); ctx.lineTo(x - 3 + sw, y - 2); ctx.moveTo(x + 3, y - 24); ctx.lineTo(x + 3 - sw, y - 2); ctx.stroke();
+  rr(x - 11, y - 54, 22, 32, 8, d.color);
+  ctx.fillStyle = d.skin; ctx.beginPath(); ctx.arc(x, y - 64, 9, 0, 7); ctx.fill();
   if (a === player) {
-    ctx.fillStyle = "#ffb21a"; ctx.beginPath(); ctx.moveTo(x - 7, y - 90); ctx.lineTo(x + 7, y - 90); ctx.lineTo(x, y - 80); ctx.fill();
+    const bob = Math.sin(performance.now() / 250) * 2;
+    ctx.fillStyle = "#4c8dff"; ctx.beginPath(); ctx.moveTo(x - 7, y - 90 + bob); ctx.lineTo(x + 7, y - 90 + bob); ctx.lineTo(x, y - 81 + bob); ctx.fill();
   }
   if (a.bubble) {
-    ctx.font = "600 14px 'Barlow Condensed', Arial, sans-serif"; ctx.textAlign = "center";
-    const w = ctx.measureText(a.bubble).width + 14;
-    ctx.fillStyle = "#f3efe4"; ctx.fillRect(x - w / 2, y - 112, w, 20);
-    ctx.fillStyle = "#0d1330"; ctx.fillText(a.bubble, x, y - 97);
+    ctx.font = "600 14px Barlow, Arial, sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    const w = ctx.measureText(a.bubble).width + 18;
+    rr(x - w / 2, y - 112, w, 24, 12, "#ef5b5b");
+    ctx.fillStyle = "#fff"; ctx.fillText(a.bubble, x, y - 99.5);
   }
 }
 
-// ---------- Eingabe ----------
+// ---------- Eingabe Hochhaus ----------
 cv.addEventListener("pointerdown", e => {
-  if (!G || G.over || openRoom || paused && !$("ovl").hidden) return;
+  if (!G || G.over || openRoom || !$("modal").hidden) return;
   const r = cv.getBoundingClientRect();
   const lx = (e.clientX - r.left - offX) / scale, ly = (e.clientY - r.top - offY) / scale;
   for (const room of ROOMS) {
     const y = baseY(room.f);
-    const sx0 = room.side === "L" ? room.x - 45 : room.x - 170, sx1 = room.side === "L" ? room.x + 170 : room.x + 45;
-    if (lx >= sx0 && lx <= sx1 && ly >= y - 115 && ly <= y + 8) { setTarget(player, room.f, room.x, room.id); return; }
+    if (Math.abs(lx - room.x) <= 70 && ly >= y - 135 && ly <= y + 8) { setTarget(player, room.f, room.x, room.id); return; }
   }
   const f = FLOORS - 1 - Math.floor((ly - TOP) / FH);
-  if (f >= 0 && f < FLOORS && lx > 70 && lx < W - 70) setTarget(player, f, clamp(lx, 90, 910), null);
+  if (f >= 0 && f < FLOORS && lx > 70 && lx < W - 70) setTarget(player, f, clamp(lx, 110, 890), null);
 });
 
-// ---------- HUD ----------
+// ---------- Kopfleiste ----------
 function renderClock() {
   $("hudClock").textContent = hhmm(G.min);
-  $("pClock").textContent = hhmm(G.min);
   const live = G.min >= 16 * 60 && G.min < DAY_END;
-  const a = $("hudAir"); a.classList.toggle("live", live); a.textContent = live ? "ON AIR" : "Sendestart 16:00";
+  const a = $("hudAir"); a.classList.toggle("live", live); a.textContent = live ? "On Air" : "Sendestart 16:00";
 }
 function renderHud() {
   const me = G.stations[0];
   $("hudDay").textContent = `Tag ${G.day}`;
   const m = $("hudMoney"); m.textContent = eur(me.money); m.classList.toggle("neg", me.money < 0);
-  $("hudBar").innerHTML = G.stations.map(s => `<span style="width:${s.image}%;background:${s.color}" title="${esc(s.name)}"></span>`).join("");
-  $("hudLegend").innerHTML = G.stations.map(s => `<span style="color:${s.color}">${esc(s.name)} ${s.image}</span>`).join("");
+  $("hudImg").textContent = `Image ${me.image} / 100`;
+  $("hudBar").innerHTML = G.stations.map(s => `<span style="width:${s.image}%;background:${s.color}" title="${esc(s.name)} ${s.image}"></span>`).join("");
   renderClock();
 }
 function renderLive() {
   const i = HOURS.indexOf(Math.floor(G.min / 60));
+  const r = i >= 0 && G.today[i];
+  const total = r ? r.reduce((a, x) => a + x.v, 0) : 0;
   $("live").innerHTML = G.stations.map((s, k) => {
-    let line;
-    if (i >= 0 && G.today[i]) line = `${esc(G.today[i][k].title)} <span class="v">· ${mio(G.today[i][k].v)}</span>`;
-    else {
-      const c = s.sched[0], p = c.p && progOf(s, c.p);
-      line = `<span class="v">16:00</span> ${p ? esc(p.title) : "noch kein Programm"}`;
-      if (k !== 0) line = `<span class="v">Programm unbekannt · Tipp: Kantine</span>`;
-    }
-    return `<div class="live-cell" style="--c:${s.color}"><b>${esc(s.name)}</b><div>${line}</div></div>`;
+    let title;
+    if (r) title = esc(r[k].title);
+    else if (k === 0) { const c = s.sched[0], p = c.p && progOf(s, c.p); title = "16:00 · " + (p ? esc(p.title) : "kein Programm"); }
+    else title = "Programm unbekannt · Tipp: Kantine";
+    return `<div class="lv"><div class="lv-top"><i class="dot" style="background:${s.color}"></i><b>${esc(s.name)}</b><span>${r ? mio(r[k].v) : "–"}</span></div>
+      <div class="lv-t">${title}</div><div class="share"><i style="width:${r ? Math.round(r[k].v / total * 100) : 0}%;background:${s.color}"></i></div></div>`;
   }).join("");
 }
-function renderAll() { renderHud(); renderLive(); }
+function renderAll() { renderHud(); renderLive(); renderNav(); renderView(); }
 let toastT = 0;
 function toast(msg) {
   const t = $("toast"); t.textContent = msg; t.classList.add("show");
   clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove("show"), 2600);
 }
 function setSpeedUI() {
-  document.querySelectorAll("[data-speed]").forEach(b => b.classList.toggle("on", !paused && +b.dataset.speed === speed));
-  $("spPause").classList.toggle("on", paused);
-  $("pPause").classList.toggle("primary", paused);
-  $("pPause").textContent = paused ? "▶" : "II";
+  document.querySelectorAll("[data-speed]").forEach(b => b.classList.toggle("on", +b.dataset.speed === speed));
+  const g = $("goBtn");
+  g.textContent = paused ? "Weiter ▸" : "Pause ❚❚";
+  g.classList.toggle("running", !paused);
 }
 document.querySelectorAll("[data-speed]").forEach(b => b.addEventListener("click", () => {
-  if (!G || !$("ovl").hidden) return;
+  if (!G || !$("modal").hidden) return;
   speed = +b.dataset.speed; paused = false; setSpeedUI();
 }));
-function togglePause() { if (!G || !$("ovl").hidden) return; paused = !paused; setSpeedUI(); }
-$("spPause").addEventListener("click", togglePause);
-$("pPause").addEventListener("click", togglePause);
+$("goBtn").addEventListener("click", () => { if (!G || !$("modal").hidden) return; paused = !paused; setSpeedUI(); });
 
-// ---------- Räume ----------
-function openPanel(id) {
-  openRoom = id;
-  const r = RM[id];
-  $("pTitle").textContent = r.name; $("pSub").textContent = r.sub;
-  $("panel").hidden = false; $("picker").hidden = true;
-  renderPanel();
-}
-function closePanel() {
-  $("panel").hidden = true; $("picker").hidden = true;
-  openRoom = null;
-  if (player) leaveRoom(player);
-}
-$("pLeave").addEventListener("click", () => closePanel());
-
-function progCard(p, extra = "") {
-  const best = GENRES[p.genre].map(h => h + " Uhr").join(" / ");
-  return `<div class="card">
-    <div class="meta"><span class="chip">${esc(p.genre)}</span>${p.fsk ? '<span class="chip fsk">FSK 18</span>' : ""}<span>${p.kind === "serie" ? p.eps + " Folgen" : p.len + " Std."}</span></div>
-    <h3>${esc(p.title)}</h3>
-    <div class="meta"><span>Qualität ${p.q}</span><span>· Aktualität ${Math.round(p.topic * 100)} %</span></div>
-    <div class="qbar"><span style="width:${p.q}%"></span></div>
-    <div class="meta">Beste Sendezeit: ${best}</div>
-    ${extra}</div>`;
-}
-function renderPanel() {
-  if (!openRoom) return;
-  const me = G.stations[0];
-  const body = $("pBody");
+// ---------- Navigation ----------
+const ICONS = {
+  tower: '<svg viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="1"/><path d="M9 7h2M13 7h2M9 11h2M13 11h2M9 15h2M13 15h2"/></svg>',
+  room: '<svg viewBox="0 0 24 24"><path d="M6 21V4h12v17"/><circle cx="15" cy="12" r="1"/><path d="M3 21h18"/></svg>',
+  inbox: '<svg viewBox="0 0 24 24"><path d="M3 13l3-8h12l3 8v6H3z"/><path d="M3 13h5l1 2h6l1-2h5"/></svg>',
+  plan: '<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>',
+  progs: '<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 5v14M17 5v14M3 9h4M3 15h4M17 9h4M17 15h4"/></svg>',
+  ads: '<svg viewBox="0 0 24 24"><path d="M4 10v4h3l6 4V6L7 10z"/><path d="M17 9a4 4 0 010 6"/></svg>',
+  stats: '<svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>',
+  money: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M15 8.5a3.5 3.5 0 100 7M7 11h6M7 13h6"/></svg>',
+};
+const VIEWS = [["tower", "Hochhaus"], ["inbox", "Posteingang"], ["plan", "Sendeplan"], ["progs", "Programme"], ["ads", "Werbung"], ["stats", "Quoten"], ["money", "Finanzen"]];
+function renderNav() {
+  if (!G) return;
   let h = "";
-  switch (openRoom) {
-    case "office": h = renderOffice(me); break;
+  if (openRoom) h += `<button data-view="room" class="room-now ${view === "room" ? "on" : ""}">${ICONS.room}<span>Im Raum: ${esc(RM[openRoom].name)}</span></button><div class="nav-sep"></div>`;
+  h += `<div class="nav-label">Sender</div>`;
+  h += VIEWS.map(([k, n]) => `<button data-view="${k}" class="${view === k ? "on" : ""}">${ICONS[k]}<span>${n}</span>${k === "inbox" && G.unread ? `<span class="cnt">${G.unread}</span>` : ""}</button>`).join("");
+  $("nav").innerHTML = h;
+}
+$("nav").addEventListener("click", e => {
+  const b = e.target.closest("[data-view]");
+  if (b) setView(b.dataset.view);
+});
+function setView(v) {
+  view = v;
+  if (v === "inbox" && G) G.unread = 0;
+  const isTower = v === "tower";
+  $("towerView").hidden = !isTower;
+  $("vbody").hidden = isTower;
+  if (isTower) requestAnimationFrame(resize);
+  renderNav(); renderView();
+}
+function head(crumb, title, actions = "") {
+  $("vhead").innerHTML = `<div class="grow"><div class="crumb">${crumb}</div><h1>${title}</h1></div>${actions}`;
+}
+function goOfficeBtn() {
+  return `<div class="note"><p>Änderungen am Sendeplan sind nur in Ihrem Büro (3. OG) möglich.</p><button class="btn primary" data-act="gooffice">Zum Büro gehen</button></div>`;
+}
+
+// ---------- Ansichten ----------
+function renderView() {
+  if (!G) return;
+  const me = G.stations[0];
+  const body = $("vbody");
+  if (view === "tower") {
+    const where = player ? (player.mode === "lift" ? "Im Aufzug" : floorName(player.floor)) : "";
+    head(`Hochhaus · ${where}`, "Quotenturm", `<span class="muted hide-s">Tippen Sie auf eine Tür, um hinzugehen.</span>`);
+    return;
+  }
+  let h = "";
+  if (view === "room" && openRoom) {
+    const r = RM[openRoom];
+    head(`Hochhaus · ${floorName(r.f)} · ${esc(r.sub)}`, esc(r.name), `<button class="btn club" data-act="leave">Raum verlassen</button>`);
+    h = renderRoom(openRoom, me);
+  } else if (view === "inbox") {
+    head("Sender", "Posteingang");
+    h = `<section class="panel"><div class="inbox">${G.log.map((l, k) => `<div class="msg ${l.kind || "info"} ${k < 3 && l.day === G.day ? "new" : ""}"><i></i><span>${esc(l.msg)}</span><time>Tag ${l.day} · ${l.t}</time></div>`).join("") || '<div class="msg"><i></i><span>Keine Nachrichten.</span></div>'}</div></section>`;
+  } else if (view === "plan") {
+    head("Sender", "Sendeplan", `<span class="muted hide-s">16:00 bis 24:00 Uhr</span>`);
+    h = renderPlan(me, openRoom === "office");
+  } else if (view === "progs") {
+    head("Sender", "Programme", `<span class="muted">${me.progs.length} im Archiv</span>`);
+    h = `<section class="panel">${progTable(me.progs, p => p.kind === "serie" ? `Folge ${(p.ep % p.eps) + 1}/${p.eps}` : "")}</section>`;
+  } else if (view === "ads") {
+    head("Sender", "Werbeverträge", `<span class="muted">${me.contracts.length} / 6 aktiv</span>`);
+    h = `<section class="panel">${adTable(me.contracts, a => `${plannedSpots(me, a.id)} im Plan`)}</section>`;
+  } else if (view === "stats") {
+    head("Sender", "Quoten");
+    h = statsView(me);
+  } else if (view === "money") {
+    head("Sender", "Finanzen");
+    h = moneyView(me);
+  }
+  body.innerHTML = h;
+}
+function progTable(list, extra) {
+  if (!list.length) return `<div class="pad"><p class="lead">Keine Programme vorhanden.</p></div>`;
+  return `<div class="tbl"><table><thead><tr><th>Titel</th><th>Genre</th><th class="num">Qual.</th><th>Aktualität</th><th>Dauer</th><th>Beste Zeit</th><th class="num"></th></tr></thead><tbody>
+    ${list.map(p => `<tr><td class="title">${esc(p.title)} ${p.fsk ? '<span class="chip fsk">FSK 18</span>' : ""}</td><td>${esc(p.genre)}</td><td class="num">${attr(p.q)}</td>
+      <td><span class="mbar"><i style="width:${Math.round(p.topic * 100)}%"></i></span> <span class="muted">${Math.round(p.topic * 100)} %</span></td>
+      <td>${p.kind === "serie" ? p.eps + " Folgen" : p.len + " Std."}</td><td class="muted">${GENRES[p.genre].join("/")} Uhr</td><td class="num">${extra(p)}</td></tr>`).join("")}
+  </tbody></table></div>`;
+}
+function adTable(list, extra) {
+  if (!list.length) return `<div class="pad"><p class="lead">Keine Verträge.</p></div>`;
+  return `<div class="tbl"><table><thead><tr><th>Kunde</th><th class="num">Mindestquote</th><th class="num">Spots</th><th class="num">Frist</th><th class="num">Pro Spot</th><th class="num">Strafe</th><th class="num"></th></tr></thead><tbody>
+    ${list.map(a => `<tr><td class="title">${esc(a.brand)}</td><td class="num">${mio(a.min)}</td><td class="num">${a.done ? `<span class="chip good">${a.done}/${a.spots}</span>` : a.spots}</td>
+      <td class="num">${a.days} T.</td><td class="num">${eur(a.pay)}</td><td class="num muted">${eur(a.penalty)}</td><td class="num">${extra(a)}</td></tr>`).join("")}
+  </tbody></table></div>`;
+}
+function renderPlan(me, editable) {
+  let h = editable ? `<p class="lead">Tippen Sie auf einen Sendeplatz, um ein Programm oder einen Werbespot einzuplanen. Der Plan gilt jeden Tag weiter, bis Sie ihn ändern. ★★★ = ideale Sendezeit.</p>` : goOfficeBtn();
+  h += `<section class="panel"><header><h2>Abendprogramm · Tag ${G.day}</h2>${editable ? '<button class="btn sm" data-act="auto">Vorschlag für offene Plätze</button>' : ""}</header><div class="plan">`;
+  me.sched.forEach((c, i) => {
+    const p = c.p && progOf(me, c.p), ad = c.ad && adOf(me, c.ad);
+    const lock = !editable || cellLocked(me, i);
+    const aired = G.today[i];
+    const exp = expected(me, i);
+    let res = `<small>erwartet</small>${exp.toFixed(2)}`;
+    if (aired) { const mx = Math.max(...aired.map(x => x.v)); res = `<small>${aired[0].v === mx ? "Sieg" : "gemessen"}</small><span class="${aired[0].v === mx ? "win" : ""}">${aired[0].v.toFixed(2)}</span>`; }
+    h += `<div class="slot ${HOURS[i] >= 20 && HOURS[i] <= 21 ? "prime" : ""} ${aired ? "aired" : ""}"><div class="hr">${HOURS[i]}:00<small>${HOURS[i] === 20 ? "Primetime" : aired ? "gesendet" : ""}</small></div>
+      <button class="cell ${c.cont ? "cont" : ""} ${!p ? "bad" : ""}" data-act="pickProg" data-i="${i}" ${lock ? "disabled" : ""}>
+        <span class="t">${p ? (c.cont ? "↳ " : "") + esc(p.title) : "Testbild – nichts geplant"}</span>
+        <span class="s">${p ? esc(p.genre) + ` · <span class="stars">${stars(fit(p.genre, HOURS[i]))}</span> · Q ${p.q} · Akt. ${Math.round(p.topic * 100)} %` : "Kostet Image"}</span></button>
+      <button class="cell ad ${ad && ad.min > exp ? "bad" : ""}" data-act="pickAd" data-i="${i}" ${lock || !p ? "disabled" : ""}>
+        <span class="t">${ad ? esc(ad.brand) : "Keine Werbung"}</span>
+        <span class="s">${ad ? "mind. " + mio(ad.min) + " · " + eur(ad.pay) : "Spot einplanen"}</span></button>
+      <div class="res">${res}</div></div>`;
+  });
+  return h + `</div></section>`;
+}
+function statsView(me) {
+  const rows = HOURS.map((hr, i) => {
+    const r = G.today[i];
+    const vals = G.stations.map((s, k) => r ? r[k].v : s.last[i]);
+    const mx = Math.max(...vals);
+    return `<tr><td>${hr}:00</td>${vals.map(v => `<td class="num ${v === mx && v > 0 ? "win" : ""}">${v ? v.toFixed(2) : "–"}</td>`).join("")}</tr>`;
+  }).join("");
+  return `<div class="tiles">${G.stations.map(s => `<div class="tile" style="box-shadow:inset 0 3px 0 ${s.color}"><small>${esc(s.name)}</small><b>${s.image}</b><span>Imagepunkte · Jury ${Math.round(s.favor)}</span></div>`).join("")}</div>
+    <section class="panel"><header><h2>Zuschauer in Millionen</h2><span class="muted">heute bzw. zuletzt gemessen</span></header>
+    <div class="tbl"><table><thead><tr><th>Stunde</th>${G.stations.map(s => `<th class="num">${esc(s.name)}</th>`).join("")}</tr></thead><tbody>${rows}</tbody></table></div></section>`;
+}
+function moneyView(me) {
+  const hist = [...me.hist].reverse().slice(0, 14);
+  return `<div class="tiles">
+      <div class="tile"><small>Kontostand</small><b>${eur(me.money)}</b><span>Stand ${hhmm(G.min)} Uhr</span></div>
+      <div class="tile"><small>Werbung heute</small><b>${eur(me.income)}</b><span>bisher gesendete Spots</span></div>
+      <div class="tile"><small>Kredit</small><b>${eur(me.credit)}</b><span>1,5 % Zinsen pro Tag</span></div>
+      <div class="tile"><small>Fixkosten</small><b>${eur(15000)}</b><span>pro Tag</span></div></div>
+    <section class="panel"><header><h2>Tagesabschlüsse</h2></header>${hist.length ? `<div class="tbl"><table><thead><tr><th>Tag</th><th class="num">Einnahmen</th><th class="num">Kosten</th><th class="num">Kontostand</th><th class="num">Image</th><th class="num">Zuschauer gesamt</th></tr></thead><tbody>
+      ${hist.map(d => `<tr><td>Tag ${d.day}</td><td class="num">${eur(d.income || 0)}</td><td class="num muted">${eur(-(d.costs || 0))}</td><td class="num">${eur(d.money)}</td><td class="num">${d.image}</td><td class="num">${mio(d.views)}</td></tr>`).join("")}</tbody></table></div>` : '<div class="pad"><p class="lead">Noch kein Tag abgeschlossen.</p></div>'}</section>`;
+}
+function renderRoom(id, me) {
+  switch (id) {
+    case "office":
+      return `<div class="tabs">${[["plan", "Sendeplan"], ["progs", "Programme"], ["ads", "Werbung"]].map(([k, n]) => `<button data-act="tab" data-k="${k}" class="${officeTab === k ? "on" : ""}">${n}</button>`).join("")}</div>` +
+        (officeTab === "plan" ? renderPlan(me, true) : officeTab === "progs" ? `<section class="panel">${progTable(me.progs, p => p.kind === "serie" ? `Folge ${(p.ep % p.eps) + 1}/${p.eps}` : "")}</section>` : `<section class="panel">${adTable(me.contracts, a => `${plannedSpots(me, a.id)} im Plan`)}</section>`);
     case "market":
-      h = `<p class="intro">Hier kaufen Sie Filme, Serien und Shows. Die Konkurrenz kauft ebenfalls hier ein; was weg ist, ist weg. Jeden Morgen kommt neue Ware.</p>
-      <div class="cards">${G.market.map(p => progCard(p, `<div class="row-end"><span class="price">${eur(p.price)}</span><button class="btn primary" data-act="buy" data-id="${p.id}" ${p.price > me.money ? "disabled" : ""}>Kaufen</button></div>`)).join("") || '<p class="empty">Ausverkauft. Morgen gibt es Nachschub.</p>'}</div>`;
-      break;
+      return `<p class="lead">Filme, Serien und Shows. Die Konkurrenz kauft hier ebenfalls ein: Was weg ist, ist weg. Jeden Morgen kommt neue Ware.</p>
+        <section class="panel"><header><h2>Angebot heute</h2><span class="muted">${G.market.length} Titel</span></header>${progTable(G.market, p => `<span class="muted">${eur(p.price)}</span> <button class="btn sm primary" data-act="buy" data-id="${p.id}" ${p.price > me.money ? "disabled" : ""}>Kaufen</button>`)}</section>`;
     case "ads":
-      h = `<p class="intro">Werbung ist Ihre einzige Einnahmequelle. Ein Spot wird nur bezahlt, wenn Ihre Sendung die Mindestquote erreicht. Wer bis zur Frist nicht alle Spots sendet, zahlt eine Strafe. Höchstens 6 Verträge gleichzeitig.</p>
-      <div class="cards">${G.adOffers.map(a => adCard(a, `<button class="btn primary" data-act="ad" data-id="${a.id}" ${me.contracts.length >= 6 ? "disabled" : ""}>Vertrag annehmen</button>`)).join("") || '<p class="empty">Keine Angebote mehr für heute.</p>'}</div>
-      <h3 style="margin:0">Ihre laufenden Verträge (${me.contracts.length}/6)</h3>
-      <div class="cards">${me.contracts.map(a => adCard(a, "")).join("") || '<p class="empty">Keine Verträge.</p>'}</div>`;
-      break;
+      return `<p class="lead">Werbung ist Ihre einzige Einnahmequelle. Ein Spot wird nur bezahlt, wenn die Sendung die Mindestquote erreicht. Wer bis zur Frist nicht alle Spots sendet, zahlt eine Strafe. Höchstens 6 Verträge gleichzeitig.</p>
+        <section class="panel"><header><h2>Angebote</h2></header>${adTable(G.adOffers, a => `<button class="btn sm primary" data-act="ad" data-id="${a.id}" ${me.contracts.length >= 6 ? "disabled" : ""}>Annehmen</button>`)}</section>
+        <section class="panel"><header><h2>Ihre Verträge</h2><span class="muted">${me.contracts.length} / 6</span></header>${adTable(me.contracts, () => "")}</section>`;
     case "news": {
       const q = Math.round(me.news.reduce((a, n) => a + n.q, 0) / 3);
-      h = `<p class="intro">Gute Nachrichten machen den ganzen Abend attraktiver. Bis zu 3 Meldungen pro Tag; ihre durchschnittliche Qualität hebt alle Quoten um bis zu 24 %.</p>
-      <div class="kpis"><div class="kpi" style="--c:var(--amber)"><b>${me.news.length}/3</b><span>Meldungen heute</span></div><div class="kpi"><b>+${Math.round(q / 4.2)} %</b><span>Quotenbonus</span></div></div>
-      <div class="cards">${G.newsOffers.map(n => `<div class="card"><div class="meta"><span class="chip">Meldung</span><span>Relevanz ${n.q}</span></div><h3>${esc(n.title)}</h3><div class="qbar"><span style="width:${n.q}%"></span></div><div class="row-end"><span class="price">${eur(n.price)}</span><button class="btn primary" data-act="news" data-id="${n.id}" ${me.news.length >= 3 || n.price > me.money ? "disabled" : ""}>Kaufen</button></div></div>`).join("") || '<p class="empty">Alle Meldungen sind vergeben.</p>'}</div>
-      ${me.news.length ? `<ul class="feed">${me.news.map(n => `<li>${esc(n.title)}</li>`).join("")}</ul>` : ""}`;
-      break;
+      return `<p class="lead">Gute Nachrichten machen den ganzen Abend attraktiver. Bis zu 3 Meldungen pro Tag; ihre durchschnittliche Relevanz hebt alle Quoten um bis zu 24 %.</p>
+        <div class="tiles"><div class="tile"><small>Meldungen heute</small><b>${me.news.length} / 3</b></div><div class="tile"><small>Quotenbonus</small><b>+${Math.round(q / 4.2)} %</b></div></div>
+        <section class="panel"><header><h2>Ticker</h2></header>${G.newsOffers.length ? `<div class="tbl"><table><thead><tr><th>Meldung</th><th class="num">Relevanz</th><th class="num">Preis</th><th class="num"></th></tr></thead><tbody>
+          ${G.newsOffers.map(n => `<tr><td class="title">${esc(n.title)}</td><td class="num">${attr(n.q)}</td><td class="num">${eur(n.price)}</td><td class="num"><button class="btn sm primary" data-act="news" data-id="${n.id}" ${me.news.length >= 3 || n.price > me.money ? "disabled" : ""}>Kaufen</button></td></tr>`).join("")}
+        </tbody></table></div>` : '<div class="pad"><p class="lead">Alle Meldungen sind vergeben.</p></div>'}</section>
+        ${me.news.length ? `<section class="panel"><header><h2>Ihre Nachrichtensendung</h2></header><div class="inbox">${me.news.map(n => `<div class="msg ok"><i></i><span>${esc(n.title)}</span><time>Relevanz ${n.q}</time></div>`).join("")}</div></section>` : ""}`;
     }
     case "archiv":
-      h = `<p class="intro">Verkaufen Sie Programme, die Sie nicht mehr brauchen, für 40 % des Einkaufspreises. Programme im heutigen Sendeplan können nicht verkauft werden.</p>
-      <div class="cards">${me.progs.map(p => {
-        const inPlan = me.sched.some(c => c.p === p.id);
-        return progCard(p, `<div class="row-end"><span class="price">${eur(p.price * 0.4)}</span><button class="btn" data-act="sell" data-id="${p.id}" ${inPlan ? "disabled" : ""}>${inPlan ? "Im Sendeplan" : "Verkaufen"}</button></div>`);
-      }).join("") || '<p class="empty">Ihr Archiv ist leer.</p>'}</div>`;
-      break;
+      return `<p class="lead">Verkaufen Sie Programme für 40 % des Einkaufspreises. Programme im Sendeplan können nicht verkauft werden.</p>
+        <section class="panel">${progTable(me.progs, p => { const inPlan = me.sched.some(c => c.p === p.id); return `<span class="muted">${eur(p.price * 0.4)}</span> <button class="btn sm" data-act="sell" data-id="${p.id}" ${inPlan ? "disabled" : ""}>${inPlan ? "Im Plan" : "Verkaufen"}</button>`; })}</section>`;
     case "kantine": {
       const gossip = pick([
         "Am Nebentisch heißt es: Kultur um 22 Uhr beeindruckt die Jury der Goldenen Antenne.",
@@ -988,97 +1112,69 @@ function renderPanel() {
         "Am Stammtisch: Ein Film verliert mit jeder Wiederholung an Reiz. Nach ein paar Tagen Pause zieht er wieder.",
         "Die Spotfabrik zahlt gut, aber Vertragsstrafen sind teuer. Lieber vorsichtig planen.",
       ]);
-      h = `<p class="intro">${gossip}</p>` + G.stations.slice(1).map(s => `
-        <div class="card"><h3 style="color:${s.color}">${esc(s.name)} · heute Abend</h3>
-        <div class="meta"><span>Image ${s.image}</span><span>· Kasse ${s.money > 300000 ? "gut gefüllt" : s.money > 80000 ? "solide" : "knapp"}</span><span>· Programme ${s.progs.length}</span></div>
-        <div class="tbl-wrap"><table><tbody>${s.sched.map((c, i) => { const p = c.p && progOf(s, c.p); return `<tr><td>${HOURS[i]}:00</td><td style="text-align:left">${p ? esc(p.title) + (c.cont ? " (Forts.)" : "") : "–"}</td><td>${p ? esc(p.genre) : ""}</td></tr>`; }).join("")}</tbody></table></div></div>`).join("");
-      break;
+      return `<div class="note"><p>${gossip}</p></div>` + G.stations.slice(1).map(s => `
+        <section class="panel"><header><i class="dot" style="background:${s.color}"></i><h2>${esc(s.name)} · heute Abend</h2><span class="muted">Image ${s.image} · Kasse ${s.money > 300000 ? "gut gefüllt" : s.money > 80000 ? "solide" : "knapp"}</span></header>
+        <div class="tbl"><table><tbody>${s.sched.map((c, i) => { const p = c.p && progOf(s, c.p); return `<tr><td>${HOURS[i]}:00</td><td class="title">${p ? esc(p.title) + (c.cont ? ' <span class="muted">(Forts.)</span>' : "") : '<span class="muted">–</span>'}</td><td class="muted">${p ? esc(p.genre) : ""}</td><td class="num">${p ? attr(p.q) : ""}</td></tr>`; }).join("")}</tbody></table></div></section>`).join("");
     }
     case "boss": {
       const trend = me.hist.length ? me.image - me.hist[Math.max(0, me.hist.length - 3)].image : 0;
       const say = me.image < 15 ? "So geht das nicht weiter. Unter 5 Imagepunkten sind Sie raus." :
         trend > 2 ? "Die Zahlen gehen nach oben. Weiter so!" :
         trend < -2 ? "Die Quoten sinken. Ich erwarte eine Kehrtwende." : "Solide Arbeit. Aber Marktführer sind wir noch nicht.";
-      h = `<p class="intro">Die Intendanz blickt von den Quotenkurven auf: „${say}“</p>
-      <div class="kpis">
-        <div class="kpi" style="--c:var(--amber)"><b>${me.image}</b><span>Imagepunkte (Ziel 60)</span></div>
-        <div class="kpi"><b>${eur(me.credit)}</b><span>Kredit (max. 400.000 €)</span></div>
-        <div class="kpi"><b>1,5 %</b><span>Zinsen pro Tag</span></div></div>
-      <div class="actions" style="display:flex;gap:10px;flex-wrap:wrap">
-        <button class="btn primary" data-act="credit" ${me.credit >= 400000 ? "disabled" : ""}>100.000 € leihen</button>
-        <button class="btn" data-act="repay" ${me.credit <= 0 || me.money < 100000 ? "disabled" : ""}>100.000 € zurückzahlen</button></div>
-      <p class="intro">Sie verlieren, wenn das Image unter 5 Punkte fällt oder der Kontostand unter −250.000 € sinkt.</p>`;
-      break;
+      return `<div class="note"><p><b>Intendanz:</b> „${say}“</p></div>
+        <div class="tiles"><div class="tile"><small>Image</small><b>${me.image}</b><span>Ziel: 60 Punkte</span></div><div class="tile"><small>Kredit</small><b>${eur(me.credit)}</b><span>max. 400.000 €</span></div><div class="tile"><small>Zinsen</small><b>1,5 %</b><span>pro Tag</span></div></div>
+        <div class="actions"><button class="btn primary" data-act="credit" ${me.credit >= 400000 ? "disabled" : ""}>100.000 € leihen</button>
+        <button class="btn" data-act="repay" ${me.credit <= 0 || me.money < 100000 ? "disabled" : ""}>100.000 € tilgen</button></div>
+        <p class="lead">Sie verlieren, wenn das Image unter 5 Punkte fällt oder der Kontostand unter −250.000 € sinkt.</p>`;
     }
     case "jury": {
       const cap = Math.min(100, me.image * 2);
-      h = `<p class="intro">Die Jury vergibt die Goldene Antenne an den Sender, der Anspruch und Publikum verbindet. Kultursendungen ab 21 Uhr und Zuwendungen an die Kulturstiftung steigern das Ansehen. Das Ansehen kann nie höher sein als das Doppelte Ihres Senderimages.</p>
-      <div class="kpis"><div class="kpi" style="--c:var(--amber)"><b>${Math.round(me.favor)} / 100</b><span>Ansehen bei der Jury</span></div><div class="kpi"><b>${cap}</b><span>Obergrenze durch Image</span></div></div>
-      <div class="meter" aria-label="Ansehen"><span style="width:${me.favor}%"></span><i style="left:${cap}%"></i></div>
-      <div class="cards">${[["Blumen für die Jury", 5000, 3], ["Konzertkarten", 20000, 8], ["Spende an die Kulturstiftung", 60000, 18]].map(([n, c, f], k) => `
-        <div class="card"><h3>${n}</h3><div class="meta">+${f} Ansehen</div><div class="row-end"><span class="price">${eur(c)}</span><button class="btn primary" data-act="gift" data-k="${k}" ${me.giftDay === G.day || c > me.money ? "disabled" : ""}>Schenken</button></div></div>`).join("")}</div>
-      <p class="intro">${me.giftDay === G.day ? "Für heute haben Sie bereits etwas überreicht." : "Ein Geschenk pro Tag."} Erreicht ein Sender 100 Ansehen, gewinnt er die Goldene Antenne.</p>`;
-      break;
+      return `<p class="lead">Die Jury vergibt die Goldene Antenne an den Sender, der Anspruch und Publikum verbindet. Kultursendungen ab 21 Uhr und Zuwendungen an die Kulturstiftung steigern das Ansehen. Es kann nie höher sein als das Doppelte Ihres Senderimages (rote Linie).</p>
+        <section class="panel"><div class="pad" style="display:grid;gap:8px"><div class="row-end" style="display:flex;justify-content:space-between"><b>Ansehen ${Math.round(me.favor)} / 100</b><span class="muted">Obergrenze ${cap}</span></div>
+        <div class="meter"><span style="width:${me.favor}%"></span><i style="left:${cap}%"></i></div></div></section>
+        <section class="panel"><header><h2>Zuwendungen</h2><span class="muted">${me.giftDay === G.day ? "Heute bereits überreicht" : "Eine pro Tag"}</span></header>
+        <div class="tbl"><table><tbody>${[["Blumen für die Jury", 5000, 3], ["Konzertkarten", 20000, 8], ["Spende an die Kulturstiftung", 60000, 18]].map(([n, c, f], k) => `
+          <tr><td class="title">${n}</td><td class="num">+${f} Ansehen</td><td class="num">${eur(c)}</td><td class="num"><button class="btn sm primary" data-act="gift" data-k="${k}" ${me.giftDay === G.day || c > me.money ? "disabled" : ""}>Schenken</button></td></tr>`).join("")}</tbody></table></div></section>
+        <section class="panel"><header><h2>Rennen um die Antenne</h2></header><div class="tbl"><table><tbody>${G.stations.map(s => `<tr><td><i class="dot" style="background:${s.color};display:inline-block"></i> ${esc(s.name)}</td><td class="num">${Math.round(s.favor)}</td></tr>`).join("")}</tbody></table></div></section>`;
     }
   }
-  body.innerHTML = h;
+  return "";
 }
-function adCard(a, btn) {
-  return `<div class="card"><div class="meta"><span class="chip">${a.spots} Spots</span><span>Frist ${a.days} ${a.days === 1 ? "Tag" : "Tage"}</span>${a.done ? `<span class="chip good">${a.done}/${a.spots} gesendet</span>` : ""}</div>
-    <h3>${esc(a.brand)}</h3>
-    <div class="meta"><span>Mindestquote ${mio(a.min)}</span></div>
-    <div class="row-end"><div><span class="price">${eur(a.pay)}</span> <span class="meta" style="display:inline">pro Spot</span><div class="meta">Strafe ${eur(a.penalty)}</div></div>${btn}</div></div>`;
+
+// ---------- Räume betreten/verlassen ----------
+function enterRoom(id) {
+  openRoom = id;
+  if (id === "office") officeTab = "plan";
+  setView("room");
+  $("vbody").scrollTop = 0;
 }
-function renderOffice(me) {
-  const tabs = [["plan", "Sendeplan"], ["progs", "Programme"], ["ads", "Werbeverträge"], ["stats", "Quoten"]];
-  let h = `<div class="tabs">${tabs.map(([k, n]) => `<button data-act="tab" data-k="${k}" class="${officeTab === k ? "on" : ""}">${n}</button>`).join("")}</div>`;
-  if (officeTab === "plan") {
-    h += `<p class="intro">Tippen Sie auf einen Sendeplatz, um ein Programm oder einen Werbespot einzuplanen. Der Plan gilt jeden Tag weiter, bis Sie ihn ändern. ★★★ = ideale Sendezeit.</p><div class="plan">`;
-    me.sched.forEach((c, i) => {
-      const p = c.p && progOf(me, c.p), ad = c.ad && adOf(me, c.ad);
-      const lock = cellLocked(me, i);
-      const aired = G.today[i] ? G.today[i][0].v : null;
-      const exp = expected(me, i);
-      h += `<div class="slot ${HOURS[i] >= 20 && HOURS[i] <= 21 ? "prime" : ""}"><div class="hour">${HOURS[i]}<small>${HOURS[i] === 20 ? "Primetime" : "Uhr"}</small></div>
-        <button class="cell ${lock ? "locked" : ""} ${c.cont ? "cont" : ""} ${!p ? "bad" : ""}" data-act="pickProg" data-i="${i}" ${lock ? "disabled" : ""}>
-          <span class="t">${p ? esc(p.title) : "Testbild – nichts geplant"}</span>
-          <span class="s">${p ? (c.cont ? "Fortsetzung · " : "") + esc(p.genre) + " · " + stars(fit(p.genre, HOURS[i])) + " · Aktualität " + Math.round(p.topic * 100) + " %" : "Kostet Image"}${aired !== null ? " · " + mio(aired) : ""}</span></button>
-        <button class="cell ad ${lock ? "locked" : ""} ${ad && ad.min > exp ? "bad" : ""}" data-act="pickAd" data-i="${i}" ${lock || !p ? "disabled" : ""}>
-          <span class="t">${ad ? esc(ad.brand) : "Keine Werbung"}</span>
-          <span class="s">${ad ? "Mindestens " + mio(ad.min) : "Erwartet ca. " + mio(exp)}</span></button></div>`;
-    });
-    h += `</div><div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn" data-act="auto">Vorschlag für offene Plätze</button></div>`;
-  } else if (officeTab === "progs") {
-    h += `<div class="cards">${me.progs.map(p => progCard(p, p.kind === "serie" ? `<div class="meta">Nächste Folge: ${(p.ep % p.eps) + 1} von ${p.eps}</div>` : "")).join("") || '<p class="empty">Keine Programme. Ab zur Filmkiste (1. OG)!</p>'}</div>`;
-  } else if (officeTab === "ads") {
-    h += `<div class="cards">${me.contracts.map(a => adCard(a, `<span class="meta">${plannedSpots(me, a.id)} im Plan</span>`)).join("") || '<p class="empty">Keine Werbeverträge. Die Spotfabrik ist im 2. OG.</p>'}</div>`;
-  } else {
-    const rows = HOURS.map((hr, i) => {
-      const r = G.today[i];
-      const vals = G.stations.map((s, k) => r ? r[k].v : s.last[i]);
-      const mx = Math.max(...vals);
-      return `<tr><td>${hr}:00</td>${vals.map(v => `<td class="${v === mx && v > 0 ? "win" : ""}">${v ? v.toFixed(2) : "–"}</td>`).join("")}</tr>`;
-    }).join("");
-    h += `<p class="intro">Zuschauer in Millionen, heute bzw. zuletzt gemessen. Grün = Quotensieg der Stunde.</p>
-    <div class="tbl-wrap"><table><thead><tr><th>Stunde</th>${G.stations.map(s => `<th style="color:${s.color}">${esc(s.name)}</th>`).join("")}</tr></thead><tbody>${rows}</tbody></table></div>
-    <h3 style="margin:0">Letzte Meldungen</h3><ul class="feed">${G.log.slice(0, 20).map(l => `<li>Tag ${l.day}, ${l.t} · ${esc(l.msg)}</li>`).join("")}</ul>`;
-  }
-  return h;
+function leaveCurrentRoom() {
+  openRoom = null;
+  closeModal();
+  if (player) leaveRoom(player);
+  setView("tower");
 }
+
+// ---------- Auswahl-Dialog ----------
+function openModal(html, narrow) {
+  const d = $("dialog"); d.className = "dialog" + (narrow ? " narrow" : "");
+  d.innerHTML = html; $("modal").hidden = false;
+}
+function closeModal() { $("modal").hidden = true; }
 function openPicker(kind, i) {
   const me = G.stations[0];
   const hr = HOURS[i];
   let list = "";
   if (kind === "prog") {
     const sorted = [...me.progs].sort((a, b) => b.q * fit(b.genre, hr) * (0.35 + 0.65 * b.topic) - a.q * fit(a.genre, hr) * (0.35 + 0.65 * a.topic));
-    list = sorted.map(p => {
-      const why = canPlace(p, i);
-      const usedToday = me.sched.some((c, k) => k !== i && c.p === p.id && !c.cont);
-      return `<button class="pick" data-act="setProg" data-i="${i}" data-id="${p.id}" ${why ? "disabled" : ""}>
-        <b>${esc(p.title)}</b>
-        <span class="meta"><span class="chip">${esc(p.genre)}</span>${p.fsk ? '<span class="chip fsk">FSK 18</span>' : ""}<span>${stars(fit(p.genre, hr))}</span><span>Q ${p.q}</span><span>Aktualität ${Math.round(p.topic * 100)} %</span><span>${p.len} Std.</span>${usedToday ? '<span class="chip warn">heute schon geplant</span>' : ""}${why ? `<span>${why}</span>` : ""}</span></button>`;
-    }).join("") || '<p class="empty">Sie besitzen keine Programme.</p>';
-    list = `<button class="pick" data-act="setProg" data-i="${i}" data-id=""><b>Sendeplatz leeren</b><span class="meta">Achtung: Testbild kostet Image</span></button>` + list;
+    list = `<button class="pick" data-act="setProg" data-i="${i}" data-id=""><b>Sendeplatz leeren</b><span class="meta">Achtung: Testbild kostet Image</span></button>` +
+      sorted.map(p => {
+        const why = canPlace(p, i);
+        const usedToday = me.sched.some((c, k) => k !== i && c.p === p.id && !c.cont);
+        return `<button class="pick" data-act="setProg" data-i="${i}" data-id="${p.id}" ${why ? "disabled" : ""}>
+          <b>${esc(p.title)}</b>
+          <span class="meta">${attr(p.q)}<span class="chip">${esc(p.genre)}</span>${p.fsk ? '<span class="chip fsk">FSK 18</span>' : ""}<span class="stars">${stars(fit(p.genre, hr))}</span><span>Akt. ${Math.round(p.topic * 100)} %</span><span>${p.len} Std.</span>${usedToday ? '<span class="chip warn">heute schon geplant</span>' : ""}${why ? `<span>${why}</span>` : ""}</span></button>`;
+      }).join("");
   } else {
     const exp = expected(me, i);
     list = `<button class="pick" data-act="setAd" data-i="${i}" data-id=""><b>Keine Werbung</b><span class="meta">Erwartet ca. ${mio(exp)}</span></button>` +
@@ -1089,15 +1185,19 @@ function openPicker(kind, i) {
           <span class="meta"><span class="chip ${a.min <= exp * 0.95 ? "good" : "warn"}">mind. ${mio(a.min)}</span><span>${a.done}/${a.spots} gesendet</span><span>noch ${Math.max(0, left)} einplanbar</span><span>Frist ${a.days} T.</span></span></button>`;
       }).join("");
   }
-  $("picker").innerHTML = `<div class="picker-box"><header><h3>${hr}:00 Uhr · ${kind === "prog" ? "Programm wählen" : "Werbespot wählen"}</h3><button class="btn" data-act="closePicker">Abbrechen</button></header><div class="picker-list">${list}</div></div>`;
-  $("picker").hidden = false;
+  openModal(`<header><h2>${hr}:00 Uhr · ${kind === "prog" ? "Programm wählen" : "Werbespot wählen"}</h2><button class="btn sm" data-act="closeModal">Abbrechen</button></header><div class="dbody"><div class="picklist">${list}</div></div>`, true);
 }
-$("panel").addEventListener("click", e => {
-  const b = e.target.closest("[data-act]");
-  if (!b || b.disabled) return;
+
+// ---------- Aktionen ----------
+function act(b) {
+  if (b.dataset.act === "new") { closeModal(); newGame(); paused = false; setSpeedUI(); return; }
+  if (b.dataset.act === "load") { if (load()) { closeModal(); startDay(); paused = false; setSpeedUI(); } return; }
+  if (!G) return;
   const me = G.stations[0];
   const id = b.dataset.id ? +b.dataset.id : null, i = b.dataset.i !== undefined ? +b.dataset.i : null;
   switch (b.dataset.act) {
+    case "leave": leaveCurrentRoom(); return;
+    case "gooffice": { const r = RM.office; setView("tower"); setTarget(player, r.f, r.x, r.id); if (paused) { paused = false; setSpeedUI(); } return; }
     case "tab": officeTab = b.dataset.k; break;
     case "buy": { const p = G.market.find(x => x.id === id); if (p && p.price <= me.money) { buyProgram(me, p); toast(`„${p.title}“ gekauft.`); } break; }
     case "ad": { const a = G.adOffers.find(x => x.id === id); if (a && me.contracts.length < 6) { takeAd(me, a); toast(`Vertrag mit ${a.brand} geschlossen.`); } break; }
@@ -1106,58 +1206,55 @@ $("panel").addEventListener("click", e => {
     case "credit": me.money += 100000; me.credit += 100000; toast("Kredit über 100.000 € erhalten."); break;
     case "repay": me.money -= 100000; me.credit -= 100000; toast("100.000 € zurückgezahlt."); break;
     case "gift": {
-      const [, c, f] = [["", 5000, 3], ["", 20000, 8], ["", 60000, 18]][+b.dataset.k];
+      const [c, f] = [[5000, 3], [20000, 8], [60000, 18]][+b.dataset.k];
       me.money -= c; me.giftDay = G.day; me.favor = Math.min(me.image * 2, 100, me.favor + f);
       toast("Die Jury bedankt sich."); break;
     }
     case "pickProg": openPicker("prog", i); return;
     case "pickAd": openPicker("ad", i); return;
-    case "closePicker": $("picker").hidden = true; return;
+    case "closeModal": closeModal(); return;
     case "setProg": {
-      if (cellLocked(me, i)) break;
+      if (openRoom !== "office" || cellLocked(me, i)) break;
       const p = id ? progOf(me, id) : null;
       if (p && canPlace(p, i)) break;
       setProg(me, i, p);
       me.sched.forEach((c, k) => { if (!c.p && !slotLocked(k)) c.ad = null; });
-      $("picker").hidden = true; break;
+      closeModal(); break;
     }
-    case "setAd": if (!slotLocked(i)) me.sched[i].ad = id; $("picker").hidden = true; break;
+    case "setAd": if (openRoom === "office" && !slotLocked(i)) me.sched[i].ad = id; closeModal(); break;
     case "auto": {
       const from = HOURS.findIndex((h, k) => !slotLocked(k));
       if (from >= 0) { autoPlan(me, from); toast("Offene Plätze wurden gefüllt."); }
       break;
     }
+    case "next": closeModal(); if (G.over) showEnd(); else nextDay(); return;
   }
-  renderPanel(); renderHud(); renderLive();
+  renderView(); renderHud(); renderLive();
+}
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-act]");
+  if (!b || b.disabled) return;
+  act(b);
 });
 
-// ---------- Overlays ----------
-function showOverlay(html) { $("ovlSheet").innerHTML = html; $("ovl").hidden = false; }
-function hideOverlay() { $("ovl").hidden = true; }
-$("ovl").addEventListener("click", e => {
-  const b = e.target.closest("[data-act]");
-  if (!b) return;
-  if (b.dataset.act === "new") { hideOverlay(); newGame(); paused = false; setSpeedUI(); }
-  if (b.dataset.act === "load") { if (load()) { hideOverlay(); startDay(); paused = false; setSpeedUI(); } }
-  if (b.dataset.act === "next") { hideOverlay(); if (G.over) showEnd(); else nextDay(); }
-  if (b.dataset.act === "menu") { hideOverlay(); clearSave(); showStart(); }
-});
+// ---------- Start- und Abschlussdialoge ----------
 function showStart() {
   paused = true; setSpeedUI();
   const has = hasSave();
-  showOverlay(`<div class="testcard" aria-hidden="true"></div>
-    <h1>Quotenturm</h1>
-    <p>Sie sind neue Programmdirektion von <b style="color:var(--amber)">KANAL 13</b>. Im selben Hochhaus sitzen FLIMMER TV und SONNENKANAL. Alle drei Sender teilen sich 100 Imagepunkte. Wer zur vollen Stunde die meisten Zuschauer hat, nimmt dem schwächsten Sender einen Punkt ab.</p>
-    <ul>
-      <li><b>Laufen:</b> Tippen Sie auf eine Tür. Ihre Figur (gelber Pfeil) nimmt den Aufzug, der immer nur eine Person mitnimmt. Jeder Raum fasst nur eine Person. Rotes Licht heißt besetzt.</li>
-      <li><b>Einkaufen:</b> Programme in der Filmkiste (1. OG), Werbeverträge in der Spotfabrik (2. OG), Nachrichten bei Ticker24 (1. OG).</li>
-      <li><b>Planen:</b> In Ihrem Büro (3. OG) legen Sie das Abendprogramm von 16 bis 24 Uhr fest. Die Uhr läuft auch, während Sie in einem Raum sind.</li>
-      <li><b>Sendezeiten:</b> Krimis und Serien am Vorabend, Liebesfilme, Komödien und Shows zur Primetime um 20 Uhr, Action ab 21 Uhr, Kultur um 22 Uhr, FSK 18 erst ab 21 Uhr.</li>
-      <li><b>Gewinnen:</b> 60 Imagepunkte erreichen oder von der Jury die Goldene Antenne bekommen (Kultur ab 21 Uhr und Geschenke, 5. OG).</li>
-      <li><b>Verlieren:</b> Image unter 5, Schulden über 250.000 € oder ein Konkurrent ist schneller.</li>
-    </ul>
-    <div class="actions">${has ? '<button class="btn primary" data-act="load">Weiterspielen</button>' : ""}<button class="btn ${has ? "" : "primary"}" data-act="new">Neues Spiel</button></div>
-    <p class="intro" style="font-size:14px">Tipp fürs iPad: In Safari „Teilen“ und dann „Zum Home-Bildschirm“ wählen. Der Spielstand wird nur lokal auf diesem Gerät gespeichert.</p>`);
+  openModal(`<div class="hero"><p>Wirtschaftssimulation · Saison 1</p><h1>QUOTEN<em>TURM</em></h1>
+      <p>Sie übernehmen die Programmdirektion von KANAL 13. Im selben Hochhaus sitzen FLIMMER TV und SONNENKANAL. Alle drei Sender teilen sich 100 Imagepunkte. Wer zur vollen Stunde die meisten Zuschauer hat, nimmt dem schwächsten Sender einen Punkt ab.</p></div>
+    <div class="dbody">
+      <ul class="rules">
+        <li><b>Laufen</b>Tippen Sie im Hochhaus auf eine Tür. Der Aufzug nimmt nur eine Person mit, jeder Raum fasst nur eine. Roter Punkt heißt besetzt.</li>
+        <li><b>Einkaufen</b>Programme in der Filmkiste, Werbeverträge in der Spotfabrik, Nachrichten bei Ticker24.</li>
+        <li><b>Planen</b>Im Büro (3. OG) legen Sie das Programm von 16 bis 24 Uhr fest. Die Uhr läuft weiter, auch im Raum.</li>
+        <li><b>Sendezeiten</b>Krimis und Serien am Vorabend, Primetime um 20 Uhr, Action ab 21, Kultur um 22 Uhr, FSK 18 erst ab 21 Uhr.</li>
+        <li><b>Gewinnen</b>60 Imagepunkte oder die Goldene Antenne der Jury (Kultur ab 21 Uhr und Zuwendungen).</li>
+        <li><b>Verlieren</b>Image unter 5, Schulden über 250.000 € oder ein Konkurrent ist schneller.</li>
+      </ul>
+      <div class="actions">${has ? '<button class="btn primary" data-act="load">Weiterspielen</button>' : ""}<button class="btn ${has ? "" : "primary"}" data-act="new">Neues Spiel</button></div>
+      <p class="lead">Tipp fürs iPad: In Safari „Teilen“ und dann „Zum Home-Bildschirm“ wählen. Der Spielstand wird nur lokal auf diesem Gerät gespeichert.</p>
+    </div>`);
 }
 function showSummary(report) {
   const me = G.stations[0];
@@ -1165,29 +1262,27 @@ function showSummary(report) {
     const r = G.today[i];
     if (!r) return "";
     const mx = Math.max(...r.map(x => x.v));
-    return `<tr><td>${hr}:00</td>${r.map((x, k) => `<td class="${x.v === mx ? "win" : ""}" title="${esc(x.title)}">${x.v.toFixed(2)}</td>`).join("")}</tr>`;
+    return `<tr><td>${hr}:00</td>${r.map(x => `<td class="num ${x.v === mx ? "win" : ""}" title="${esc(x.title)}">${x.v.toFixed(2)}</td>`).join("")}</tr>`;
   }).join("");
   const dImg = me.image - me.imageStart, dMoney = me.money - me.moneyStart;
-  showOverlay(`<h2>Sendeschluss · Tag ${G.day}</h2>
-    <div class="kpis">
-      <div class="kpi" style="--c:var(--amber)"><b>${me.image} (${dImg >= 0 ? "+" : ""}${dImg})</b><span>Imagepunkte</span></div>
-      <div class="kpi" style="--c:var(--good)"><b>${eur(me.income)}</b><span>Werbeeinnahmen</span></div>
-      <div class="kpi"><b>${eur(-me.costs - me.penalties)}</b><span>Kosten & Strafen</span></div>
-      <div class="kpi" style="--c:${dMoney >= 0 ? "var(--good)" : "var(--onair)"}"><b>${eur(dMoney)}</b><span>Saldo des Tages</span></div>
+  openModal(`<header><h2>Sendeschluss · Tag ${G.day}</h2></header><div class="dbody">
+    <div class="tiles">
+      <div class="tile"><small>Image</small><b>${me.image}</b><span class="${dImg >= 0 ? "win" : ""}">${dImg >= 0 ? "+" : ""}${dImg} heute</span></div>
+      <div class="tile"><small>Werbung</small><b>${eur(me.income)}</b><span>Einnahmen</span></div>
+      <div class="tile"><small>Kosten & Strafen</small><b>${eur(-me.costs - me.penalties)}</b><span>Fixkosten, Zinsen</span></div>
+      <div class="tile"><small>Saldo</small><b>${eur(dMoney)}</b><span>Kontostand ${eur(me.money)}</span></div>
     </div>
-    <div class="tbl-wrap"><table><thead><tr><th>Mio. Zuschauer</th>${G.stations.map(s => `<th style="color:${s.color}">${esc(s.name)}</th>`).join("")}</tr></thead><tbody>${rows}</tbody></table></div>
-    <div class="meta">Jury-Ansehen: ${G.stations.map(s => `<span style="color:${s.color}">${esc(s.name)} ${Math.round(s.favor)}</span>`).join(" · ")}</div>
-    ${report.length ? `<ul class="feed">${report.map(r => `<li>${esc(r)}</li>`).join("")}</ul>` : ""}
-    <div class="actions"><button class="btn primary" data-act="next">${G.over ? "Weiter" : "Nächster Tag"}</button></div>`);
+    <section class="panel"><div class="tbl"><table><thead><tr><th>Mio. Zuschauer</th>${G.stations.map(s => `<th class="num">${esc(s.name)}</th>`).join("")}</tr></thead><tbody>${rows}</tbody></table></div></section>
+    <p class="lead">Jury-Ansehen: ${G.stations.map(s => `${esc(s.name)} ${Math.round(s.favor)}`).join(" · ")}</p>
+    ${report.length ? `<section class="panel"><div class="inbox">${report.map(r => `<div class="msg warn"><i></i><span>${esc(r)}</span><time></time></div>`).join("")}</div></section>` : ""}
+    <div class="actions"><button class="btn primary" data-act="next">${G.over ? "Weiter" : "Nächster Tag"}</button></div></div>`);
 }
 function showEnd() {
   const o = G.over;
   clearSave();
-  showOverlay(`<div class="testcard" aria-hidden="true"></div>
-    <h1 style="color:${o.win ? "var(--amber)" : "var(--onair)"}">${o.win ? "Goldene Quote!" : "Sendeschluss"}</h1>
-    <p>${esc(o.why)}</p>
-    <p>Gespielt: ${G.day} ${G.day === 1 ? "Tag" : "Tage"} · Endstand Image ${G.stations.map(s => `${esc(s.name)} ${s.image}`).join(", ")}</p>
-    <div class="actions"><button class="btn primary" data-act="new">Neues Spiel</button></div>`);
+  openModal(`<div class="hero"><p>${o.win ? "Saisonende · Sieg" : "Saisonende"}</p><h1>${o.win ? "GOLDENE <em>QUOTE</em>" : "SENDE<em>SCHLUSS</em>"}</h1><p>${esc(o.why)}</p></div>
+    <div class="dbody"><p class="lead">Gespielt: ${G.day} ${G.day === 1 ? "Tag" : "Tage"} · Endstand Image ${G.stations.map(s => `${esc(s.name)} ${s.image}`).join(", ")}</p>
+    <div class="actions"><button class="btn primary" data-act="new">Neues Spiel</button></div></div>`);
 }
 
 // ---------- Speichern (nur lokal im Browser) ----------

@@ -1,6 +1,6 @@
 # Quotenturm
 
-Eine Fernsehsender-Wirtschaftssimulation für das iPad, inspiriert vom Klassiker *Mad TV* (Rainbow Arts, 1991). Alle Namen, Figuren, Titel und Grafiken sind eigene Erfindungen.
+Eine Fernsehsender-Wirtschaftssimulation für das iPad. Das Spielprinzip ist vom Klassiker *Mad TV* (Rainbow Arts, 1991) inspiriert, die Oberfläche von modernen Manager-Spielen: Kopfleiste mit „Weiter“, Navigationsleiste, Posteingang, datendichte Tabellen mit farbcodierten Werten. Alle Namen, Figuren, Titel und Grafiken sind eigene Erfindungen.
 
 ## Spielen
 
