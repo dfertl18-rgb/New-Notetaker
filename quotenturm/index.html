@@ -327,6 +327,16 @@ label { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .sbar i { display: block; height: 100%; border-radius: 3px; transition: width .3s; }
 .sbar.big { height: 10px; border-radius: 5px; }
 .toolbar { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.search { flex: 1 1 220px; min-width: 0; background: var(--panel-2); color: var(--text); border: 1px solid #353b45; border-radius: 6px; padding: 9px 12px; font: inherit; min-height: 40px; }
+.btn.red { background: #3a1416; border-color: var(--bad); color: #ff8787; }
+.btn.red:disabled { opacity: 1; }
+.btn.small { min-height: 30px; padding: 4px 10px; font-size: 13px; }
+.act2 { display: grid; gap: 4px; justify-items: end; }
+.status { display: inline-flex; align-items: center; gap: 6px; justify-content: flex-end; font-size: 12px; color: var(--muted); }
+.status i { width: 8px; height: 8px; border-radius: 50%; }
+.tile-btn { text-align: left; border: 1px solid var(--line); cursor: pointer; }
+.tile-btn.on { border-color: var(--violet); box-shadow: inset 0 0 0 1px var(--violet); }
+.btn.more { width: 100%; min-height: 44px; }
 /* Nachrichtenredaktion */
 .nr { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 14px; align-items: start; }
 .nr-main { display: grid; gap: 12px; min-width: 0; }
@@ -1122,6 +1132,7 @@ const EVENTS = [
       const P = me(), p = P.progs.find(x => x.id === pid);
       if (k === 0 && p) { p.q = Math.max(20, p.q - 10); P.favor += 3; P.conf = clamp(P.conf + 1, 0, 100); }
       if (k === 1) P.conf = clamp(P.conf - 2, 0, 100);
+      if (k === 2 && p && p.host && person(p.host)) { const h = person(p.host); h.ban = G.day + 10; logMsg("Landesmedienanstalt", "Personal", `${h.name} ist nach der Empörung 10 Tage für das Free-TV gesperrt.`); }
       if (k === 2) { const c = [...P.contracts].sort((a, b) => b.pay - a.pay)[0]; if (c) { P.contracts = P.contracts.filter(x => x !== c); P.week.forEach(d => d.forEach(s => { if (s.ad === c.id) s.ad = null; })); buildToday(P); logMsg("Werbezeitenvermarktung", "Werbung", `${c.brand} kündigt den Vertrag mit sofortiger Wirkung.`); } P.brand = Math.max(0.5, P.brand - 0.3); P.favor = Math.max(0, P.favor - 4); }
     } },
   { id: "studio", type: "Team", when: () => !G.mods.studioOk && !(G.mods.studioRisk >= G.day),
@@ -1178,37 +1189,6 @@ function refreshAds() {
 // =====================================================================
 // Produktion: Eigenproduktionen, Casting, Nachrichtenredaktion
 // =====================================================================
-// Frei erfundene Medienpersönlichkeiten (keine Parodien echter Personen).
-// [id, Name, Rolle, Talent, Buzz, Zuverlässigkeit, Gage je Projekt, Lieblingsgenres, Spezialität, Blattlinie (nur Nachrichten, −2…2)]
-const PEOPLE_DB = [
-  ["p1", "Lena Marquardt", "Schauspiel", 88, 70, 85, 600000, ["Drama", "Krimi"], "Charakterdarstellerin", 0],
-  ["p2", "Can Yılmaz", "Schauspiel", 82, 78, 70, 450000, ["Action", "Krimi"], "Actionstar", 0],
-  ["p3", "Johanna Brecht", "Schauspiel", 76, 55, 92, 300000, ["Liebesfilm", "Drama"], "Verlässlich am Set", 0],
-  ["p4", "Mats Hoffmann", "Schauspiel", 90, 85, 45, 900000, ["Drama", "Science-Fiction"], "Diva-Allüren", 0],
-  ["p5", "Amara Okafor", "Schauspiel", 80, 82, 80, 500000, ["Komödie", "Sitcom"], "Comedy-Timing", 0],
-  ["p6", "Felix Brandner", "Schauspiel", 65, 40, 95, 150000, ["Krimi", "Soap"], "Routinier", 0],
-  ["p7", "Sophie Lindqvist", "Schauspiel", 72, 90, 55, 400000, ["Liebesfilm", "Komödie"], "Social-Media-Liebling", 0],
-  ["p8", "Dragan Petrović", "Schauspiel", 84, 60, 75, 550000, ["Krimi", "Drama"], "Charakterdarsteller", 0],
-  ["p9", "Greta Wolff", "Schauspiel", 58, 35, 90, 90000, ["Soap", "Serie"], "Nachwuchstalent", 0],
-  ["p10", "Tom Albers", "Schauspiel", 70, 72, 60, 250000, ["Sitcom", "Komödie"], "Improvisation", 0],
-  ["p11", "Henning Lorenz", "Moderation", 92, 75, 95, 800000, ["Show"], "Live-Sicherheit", 0],
-  ["p12", "Mira Schäfer", "Moderation", 80, 92, 50, 500000, ["Show", "Reality"], "Improvisation", 0],
-  ["p13", "Ben Ostermann", "Moderation", 78, 90, 48, 450000, ["Show", "Reality"], "Improvisation", 0],
-  ["p14", "Nadine Vogt", "Moderation", 75, 65, 88, 300000, ["Talk", "Show"], "Empathie", 0],
-  ["p15", "Yusuf Demir", "Moderation", 70, 85, 72, 280000, ["Reality", "Show"], "Publikumsnähe", 0],
-  ["p16", "Carla Engel", "Moderation", 62, 95, 30, 350000, ["Reality"], "Skandalnudel", 0],
-  ["p17", "Rolf Bachmann", "Moderation", 68, 40, 90, 150000, ["Show"], "Quiz-Routinier", 0],
-  ["p18", "Katharina Neumann", "Nachrichten", 94, 30, 98, 400000, ["Nachrichten"], "Seriosität", 0],
-  ["p19", "Elif Kaya", "Nachrichten", 88, 60, 92, 350000, ["Nachrichten"], "Glaubwürdigkeit", 0],
-  ["p20", "Jonas Petersen", "Nachrichten", 85, 45, 90, 300000, ["Nachrichten"], "Stressresistenz", -1],
-  ["p21", "Bernd Kröger", "Nachrichten", 72, 55, 80, 200000, ["Nachrichten"], "Meinungsstark", 1],
-  ["p22", "Svenja Albrecht", "Nachrichten", 62, 80, 70, 220000, ["Nachrichten"], "Boulevard-Profi", 0],
-  ["p23", "Lukas Reinholt", "Nachrichten", 74, 58, 82, 180000, ["Nachrichten"], "Kommentator", -2],
-  ["p24", "Helmut Sander", "Nachrichten", 74, 58, 82, 180000, ["Nachrichten"], "Kommentator", 2],
-  ["p25", "Paula Fink", "Journalismus", 90, 50, 90, 250000, ["Doku"], "Investigativ", 0],
-  ["p26", "Ole Brandt", "Journalismus", 75, 55, 88, 150000, ["Doku"], "Natur & Expedition", 0],
-  ["p27", "Aylin Çelik", "Journalismus", 82, 65, 85, 220000, ["Doku"], "Auslandsreportage", 0],
-];
 const BLUEPRINTS = [
   { id: "gala", name: "Samstagabend-Gala", genre: "Show", cost: 2.5e6, live: 0.3, wear: 0.96, stream: 0.8, fit: ["Live-Sicherheit", "Improvisation"], aud: "Familie" },
   { id: "quiz", name: "Quizshow", genre: "Show", cost: 0.8e6, live: 0, wear: 0.95, stream: 0.7, fit: ["Quiz-Routinier", "Live-Sicherheit"], aud: "Familie & Ältere" },
@@ -1224,7 +1204,7 @@ const FORMATS = {
   film: { name: "Spielfilm", sub: "90–120 Minuten", icon: '<rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M7 6l2 4M12 6l2 4M17 6l2 4"/>', roles: [["Schauspiel", "Hauptrolle"], ["Schauspiel", "Zweite Hauptrolle"]], days: 10, base: 1.6e6, optLabel: "Genre", opts: ["Krimi", "Komödie", "Drama", "Liebesfilm", "Action", "Science-Fiction"] },
   serie: { name: "TV-Serie", sub: "Staffel mit 10 Folgen", icon: '<rect x="3" y="5" width="18" height="12" rx="2"/><path d="M8 21h8M12 17v4"/>', roles: [["Schauspiel", "Hauptrolle"], ["Schauspiel", "Zweite Hauptrolle"]], days: 8, base: 2.5e6, optLabel: "Genre", opts: ["Krimi", "Serie", "Sitcom", "Soap"] },
   show: { name: "Show", sub: "Unterhaltung & Talk", icon: '<path d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.4 6.8 19.1l1-5.8L3.5 9.2l5.9-.9z"/>', roles: [["Moderation", "Moderation"], ["Moderation?", "Co-Moderation"]], days: 4, base: 0, optLabel: "Konzept-Vorlage", opts: ["gala", "quiz", "talent", "late"] },
-  reality: { name: "Reality-TV", sub: "Dating, Insel, Doku-Soap", icon: '<circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/>', roles: [["Moderation", "Moderation"], ["Moderation?", "Co-Moderation"]], days: 4, base: 0, optLabel: "Konzept-Vorlage", opts: ["dating", "island", "cook", "docusoap"] },
+  reality: { name: "Reality-TV", sub: "Dating, Insel, Doku-Soap", icon: '<circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/>', roles: [["Moderation", "Moderation"], ["Reality", "Reality-Star"], ["Reality?", "Reality-Star"]], days: 4, base: 0, optLabel: "Konzept-Vorlage", opts: ["dating", "island", "cook", "docusoap"] },
   doku: { name: "Dokumentation", sub: "Reportage & Doku", icon: '<circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/>', roles: [["Journalismus", "Autor*in"]], days: 5, base: 0.5e6, optLabel: "Thema", opts: ["Reportage", "Natur & Expedition", "Investigativ", "Zeitgeschichte"] },
   bio: { name: "Biografie", sub: "Biopic über ein Leben", icon: '<path d="M6 3h9l3 3v15H6z"/><path d="M9 10h6M9 14h6M9 18h4"/>', roles: [["Schauspiel", "Titelrolle"], ["Journalismus?", "Fachberatung"]], days: 9, base: 1.4e6, optLabel: "Lebensbereich", opts: ["Sport", "Musik", "Politik", "Wissenschaft", "Wirtschaft"] },
   live: { name: "Live-Event", sub: "Einmalig, große Bühne", icon: '<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>', roles: [["Moderation", "Moderation"], ["Moderation?", "Co-Moderation"]], days: 3, base: 1.2e6, optLabel: "Anlass", opts: ["Preisverleihung", "Benefiz-Gala", "Konzert", "Silvesterparty"] },
@@ -1236,15 +1216,65 @@ const LINES = ["Links-alternativ", "Mitte-links", "Mittig-seriös", "Mitte-recht
 const STYLES = ["Investigativ & Hard News", "Ausgewogen", "Boulevard & Sensation"];
 let draft = null, castFilter = "alle", dirSort = "buzz", dirCtx = null;
 
+// CastingEngine: erzeugt beim Spielstart 1.000 eindeutige, frei erfundene Medienpersönlichkeiten.
+// Bewusst häufige, vielfältige Namen statt Namen echter Prominenter – so entstehen keine realen Personen.
+const FIRST_NAMES = ["Anna", "Lena", "Julia", "Sarah", "Laura", "Lisa", "Katharina", "Johanna", "Marie", "Sophie", "Hannah", "Clara", "Paula", "Nina", "Svenja", "Miriam", "Elif", "Aylin", "Amara", "Leyla", "Mia", "Greta", "Jana", "Carla", "Nadine",
+  "Lukas", "Jonas", "Felix", "Maximilian", "Tobias", "Jan", "Paul", "Niklas", "Moritz", "David", "Florian", "Sebastian", "Daniel", "Matthias", "Tim", "Can", "Yusuf", "Dragan", "Mats", "Ole", "Ben", "Tom", "Leon", "Jakob", "Malte"];
+const LAST_NAMES = ["Müller", "Schmidt", "Schneider", "Fischer", "Weber", "Meyer", "Wagner", "Becker", "Schulz", "Hoffmann", "Koch", "Richter", "Klein", "Wolf", "Schröder", "Neumann", "Schwarz", "Braun", "Hofmann", "Zimmermann",
+  "Hartmann", "Krüger", "Lange", "Werner", "Lehmann", "Köhler", "Maier", "Huber", "Kaiser", "Fuchs", "Peters", "Lang", "Scholz", "Möller", "Weiß", "Jung", "Hahn", "Vogel", "Friedrich", "Keller",
+  "Yılmaz", "Kaya", "Demir", "Nowak", "Kowalski", "Petrović", "Okafor", "Nguyen", "Rossi", "Lindqvist"];
+const ROLE_MIX = [["Schauspiel", 0.4], ["Moderation", 0.18], ["Reality", 0.2], ["Nachrichten", 0.11], ["Journalismus", 0.11]];
+const TRAITS = {
+  Schauspiel: ["Charakterdarsteller*in", "Actionstar", "Comedy-Timing", "Verlässlich am Set", "Diva-Allüren", "Social-Media-Liebling", "Nachwuchstalent", "Routinier", "Improvisation"],
+  Moderation: ["Live-Sicherheit", "Improvisation", "Empathie", "Publikumsnähe", "Quiz-Routinier", "Skandalnudel"],
+  Reality: ["Skandalnudel", "Publikumsnähe", "Krawall", "Social-Media-Liebling", "Herzensmensch"],
+  Nachrichten: ["Seriosität", "Glaubwürdigkeit", "Stressresistenz", "Meinungsstark", "Boulevard-Profi"],
+  Journalismus: ["Investigativ", "Natur & Expedition", "Auslandsreportage"],
+};
+const ACT_GENRES = ["Krimi", "Komödie", "Drama", "Liebesfilm", "Action", "Science-Fiction", "Sitcom", "Soap", "Serie"];
+const SPEC_NAME = { Schauspiel: "Schauspiel", Moderation: "Entertainer", Reality: "Reality", Nachrichten: "News-Sprecher*in", Journalismus: "Journalismus" };
+// Werte 10–100, wenige echte Stars, viel Mittelfeld
+const stat = () => Math.round(10 + 90 * Math.pow(Math.random(), 1.35));
+const baseGage = (talent, cha) => r1000(20000 + Math.pow(talent * 0.6 + cha * 0.4, 2.2) * 40);
+const marketValue = p => p.gage * 1.5;
+// Ablöse: Marktwert, steigt mit der Restlaufzeit des Vertrags
+const abloese = p => r1000(marketValue(p) * (1 + Math.max(0, p.until - G.day) / 120));
+function castingEngine(n = 1000) {
+  const names = new Set(), out = [];
+  while (out.length < n && names.size < FIRST_NAMES.length * LAST_NAMES.length) {
+    const name = `${pick(FIRST_NAMES)} ${pick(LAST_NAMES)}`;
+    if (names.has(name)) continue;
+    names.add(name);
+    let r = Math.random(), role = "Schauspiel";
+    for (const [k, w] of ROLE_MIX) { if (r < w) { role = k; break; } r -= w; }
+    const talent = stat(), buzz = role === "Reality" ? Math.round(25 + stat() * 0.75) : stat(), scandal = role === "Reality" ? Math.round(30 + stat() * 0.7) : role === "Nachrichten" ? Math.max(10, Math.round(stat() * 0.6)) : stat();
+    const genres = role === "Schauspiel" ? shuffle(ACT_GENRES.slice()).slice(0, 2) : role === "Moderation" ? (Math.random() < 0.4 ? ["Show", "Talk"] : ["Show"]) : role === "Reality" ? ["Reality"] : role === "Nachrichten" ? ["Nachrichten"] : ["Doku"];
+    const leanR = Math.random();
+    out.push({ id: "c" + Math.random().toString(36).slice(2, 9), name, role, talent, buzz, rel: 110 - scandal, gage: baseGage(talent, buzz), genres, trait: pick(TRAITS[role]),
+      lean: role === "Nachrichten" ? (leanR < 0.6 ? 0 : leanR < 0.75 ? -1 : leanR < 0.9 ? 1 : leanR < 0.95 ? -2 : 2) : 0, holder: null, until: 0, busy: 0, ban: 0 });
+  }
+  return out;
+}
+let PIDX = null, PIDX_SRC = null;
+const person = id => { if (PIDX_SRC !== G.people) { PIDX = new Map(G.people.map(p => [p.id, p])); PIDX_SRC = G.people; } return PIDX.get(id); };
 function initPeople() {
-  G.people = PEOPLE_DB.map(([id, name, role, talent, buzz, rel, gage, genres, trait, lean]) => ({ id, name, role, talent, buzz, rel, gage, genres, trait, lean, holder: null, until: 0, busy: 0 }));
-  // Ein Teil der Stars steht bei der Konkurrenz unter Exklusivvertrag
-  for (const p of shuffle(G.people.slice()).slice(0, 9)) { p.holder = pick(G.stations.filter(s => !isMe(s))).id; p.until = ri(10, 40); }
+  G.people = castingEngine(1000);
+  // Exklusivitäts-Logik: 30 % der Top-Stars (nach Marktwert) sind bei der Konkurrenz unter Vertrag
+  const top = G.people.slice().sort((a, b) => b.gage - a.gage).slice(0, 300);
+  const rivals = ["rtl", "pro7", "sat1", "ard", "zdf"].filter(id => id !== me().id);
+  for (const p of shuffle(top).slice(0, 90)) { p.holder = pick(rivals); p.until = ri(30, 420); }
   G.prods = []; G.newsroom = { line: 2, style: 1, budget: 1, anchor: null };
 }
-const person = id => G.people.find(x => x.id === id);
-const pStatus = p => p.busy > G.day ? `Im Dreh bis ${dateShort(p.busy)}` : p.holder === me().id ? "Exklusiv bei Ihnen" : p.holder ? `Exklusiv bei ${holderName(p.holder)}` : "Frei";
-const pAvail = p => p.busy <= G.day && (!p.holder || p.holder === me().id);
+// Vier Status-Typen: Frei, Exklusiv bei der Konkurrenz, Im Dreh, Gesperrt
+function pState(p) {
+  if (p.ban > G.day) return { k: "ban", label: `Gesperrt bis ${dateShort(p.ban)}`, color: "#868e96" };
+  if (p.holder && p.holder !== me().id) return { k: "rival", label: `Exklusiv bei ${holderName(p.holder)}`, color: "#ef4444" };
+  if (p.busy > G.day) return { k: "busy", label: `Im Dreh bis ${dateShort(p.busy)}`, color: "#eab308" };
+  if (p.holder === me().id) return { k: "mine", label: `Exklusiv bei Ihnen bis ${dateShort(p.until)}`, color: "#e3a019" };
+  return { k: "free", label: "Frei", color: "#22c55e" };
+}
+const pStatus = p => pState(p).label;
+const pAvail = p => ["free", "mine"].includes(pState(p).k);
 const projectGage = p => p.holder === me().id ? 0 : p.gage;
 const fmtGenre = d => d.kind === "show" || d.kind === "reality" ? BLUEPRINTS.find(b => b.id === d.opt).genre : d.kind === "doku" ? "Doku" : d.kind === "bio" ? "Drama" : d.kind === "live" ? "Show" : d.opt;
 const optName = (kind, o) => kind === "show" || kind === "reality" ? BLUEPRINTS.find(b => b.id === o).name : o === "Serie" ? "Drama" : o;
@@ -1334,10 +1364,17 @@ function reviews(pr) {
   logMsg("Medien-Insider", "Kritik", `Kritiken zu „${pr.title}“ – Feuilleton: ${verdict(feuil)}, Publikumspresse: ${verdict(pub)}, Online-Blogs: ${verdict(blog)}.${pr.star > 80 && pr.script < 50 ? " Tenor: Starke Besetzung rettet eine vorhersehbare Geschichte." : pr.script > 80 && pr.star < 60 ? " Tenor: Kluges Buch, aber die Besetzung bleibt blass." : ""}`);
 }
 function peopleDay() {
+  const P = me();
   for (const p of G.people) {
-    if (p.holder && p.until <= G.day) { if (p.holder === me().id) { logMsg("Casting", "Personal", `Der Exklusivvertrag mit ${p.name} ist ausgelaufen.`); if (G.newsroom.anchor === p.id) G.newsroom.anchor = null; } p.holder = null; }
-    if (p.holder && p.holder !== me().id && p.busy <= G.day && Math.random() < 0.12) p.busy = G.day + ri(3, 8); // Konkurrenz dreht
-    if (!p.holder && Math.random() < 0.03) { p.holder = pick(G.stations.filter(s => !isMe(s))).id; p.until = G.day + ri(14, 40); logMsg("Branchendienst", "Konkurrenz", `${holderName(p.holder)} nimmt ${p.name} exklusiv unter Vertrag.`); }
+    if (p.holder && p.until <= G.day) { if (p.holder === P.id) { logMsg("Casting", "Personal", `Der Exklusivvertrag mit ${p.name} ist ausgelaufen.`); if (G.newsroom.anchor === p.id) G.newsroom.anchor = null; } p.holder = null; }
+    if (p.holder && p.holder !== P.id && p.busy <= G.day && Math.random() < 0.08) p.busy = G.day + ri(3, 12); // Konkurrenz dreht
+    else if (!p.holder && p.busy <= G.day && Math.random() < 0.01) p.busy = G.day + ri(3, 12); // freie Stars drehen für andere
+  }
+  // Die Konkurrenz verpflichtet täglich einige freie Top-Leute
+  const free = G.people.filter(p => !p.holder && p.gage > 300000);
+  for (const p of shuffle(free).slice(0, 3)) {
+    p.holder = pick(G.stations.filter(s => !isMe(s))).id; p.until = G.day + ri(30, 200);
+    if (p.gage > 600000) logMsg("Branchendienst", "Konkurrenz", `${holderName(p.holder)} nimmt ${p.name} (${SPEC_NAME[p.role]}) exklusiv unter Vertrag.`);
   }
 }
 // Nachrichtenredaktion
@@ -1424,7 +1461,7 @@ function newProdPage(P) {
     return `<button class="opt ${d.opt === o ? "on" : ""}" data-act="draftSet" data-k="opt" data-v="${o}"><b>${esc(optName(d.kind, o))}</b>${bp ? `<span>${meur(bp.cost)}${bp.live ? " · live" : ""}</span>` : ""}</button>`;
   }).join("");
   const roleKinds = [...new Set(F.roles.map(([r]) => r.replace("?", "")))];
-  const dirName = { Schauspiel: "Darsteller-Verzeichnis", Moderation: "Moderatoren-Verzeichnis", Journalismus: "Journalisten-Verzeichnis" };
+  const dirName = DIR_TITLES;
   return `<div class="ws">
     <aside class="ws-col fmt-col" aria-label="Format-Typ"><div class="ws-label">1 · Format</div>
       ${Object.entries(FORMATS).map(([k, f]) => `<button class="fmt ${d.kind === k ? "on" : ""}" data-act="fmt" data-k="${k}">${ICON(f.icon)}<span><b>${f.name}</b><small>${f.sub}</small></span></button>`).join("")}
@@ -1458,55 +1495,76 @@ function newProdPage(P) {
     </aside></div>`;
 }
 // Darsteller-, Moderatoren- und Journalisten-Verzeichnis
-const DIR_SORTS = [["buzz", "Beliebtheit"], ["talent", "Talent"], ["gage", "Gage"], ["scandal", "Skandalfaktor"]];
-function sortedPeople(role) {
-  const list = G.people.filter(p => role === "alle" || p.role === role);
+const DIR_SORTS = [["buzz", "Charisma"], ["talent", "Talent"], ["gage", "Gage"], ["scandal", "Skandalfaktor"]];
+const DIR_TITLES = { Schauspiel: "Darsteller-Verzeichnis", Moderation: "Moderatoren-Verzeichnis", Reality: "Reality-Verzeichnis", Journalismus: "Journalisten-Verzeichnis", Nachrichten: "Nachrichtengesichter" };
+let dirQuery = "", dirLimit = 40, castQuery = "", castLimit = 40, castStatus = "alle";
+function sortedPeople(role, q = "", status = "alle") {
+  const ql = q.trim().toLowerCase();
+  const list = G.people.filter(p => (role === "alle" || p.role === role) && (!ql || p.name.toLowerCase().includes(ql)) && (status === "alle" || (status === "free" ? pAvail(p) : pState(p).k === status)));
   const key = { buzz: p => -p.buzz, talent: p => -p.talent, gage: p => -p.gage, scandal: p => p.rel }[dirSort];
   return list.sort((a, b) => key(a) - key(b));
 }
 function personRow(p, action) {
-  return `<div class="prow ${p.holder === me().id ? "mine" : ""}">
+  const st = pState(p);
+  return `<div class="prow ${st.k === "mine" ? "mine" : ""}">
     ${avatar(p, 46)}
-    <div class="prow-main"><b>${esc(p.name)}</b><span class="muted">${p.role} · ${esc(p.trait)}${p.role === "Nachrichten" ? ` · ${LINES[p.lean + 2]}` : ` · ${p.genres.join(", ")}`}</span></div>
-    <div class="prow-stats"><span>Talent</span>${bar(p.talent, "#22c55e")}<em>${p.talent}</em><span>Beliebtheit</span>${bar(p.buzz, "#7c3aed")}<em>${p.buzz}</em><span>Skandal</span>${bar(100 - p.rel, "#ef4444")}<em>${100 - p.rel}</em></div>
-    <div class="prow-side"><b>${meur(p.gage)}</b><span class="muted">${pStatus(p)}</span></div>
-    <div class="prow-act">${action(p)}</div></div>`;
+    <div class="prow-main"><b>${esc(p.name)}</b><span class="muted">${SPEC_NAME[p.role]} · ${esc(p.trait)}${p.role === "Nachrichten" ? ` · ${LINES[p.lean + 2]}` : ["Schauspiel", "Moderation"].includes(p.role) ? ` · ${p.genres.join(", ")}` : ""}</span></div>
+    <div class="prow-stats"><span>Talent</span>${bar(p.talent, "#22c55e")}<em>${p.talent}</em><span>Charisma</span>${bar(p.buzz, "#7c3aed")}<em>${p.buzz}</em><span>Skandal</span>${bar(110 - p.rel, "#ef4444")}<em>${110 - p.rel}</em></div>
+    <div class="prow-side"><b>${meur(p.gage)}</b><span class="status"><i style="background:${st.color}"></i>${esc(st.label)}</span>${st.k === "rival" ? `<span class="muted">Ablöse ${meur(abloese(p))}</span>` : ""}</div>
+    <div class="prow-act">${action(p, st)}</div></div>`;
 }
+const moreBtn = (shown, total, act) => shown < total ? `<button class="btn more" data-act="${act}">Weitere ${Math.min(40, total - shown)} anzeigen · ${shown} von ${total}</button>` : `<p class="fine center">${total} Personen</p>`;
 function openDirectory(role, slot) {
-  dirCtx = { role, slot };
+  dirCtx = { role, slot }; dirQuery = ""; dirLimit = 40;
+  openModal(`<header><h2>${DIR_TITLES[role]}</h2><button class="btn" data-act="close">Schließen</button></header><div class="dbody">
+    <div class="toolbar"><input type="search" id="dirSearch" class="search" placeholder="Name suchen" value="" aria-label="Name suchen">
+      <div class="pills" id="dirSorts"></div></div>
+    <div class="plist" id="dirList"></div></div>`);
   renderDirectory();
 }
+function dirAction(p, st) {
+  const P = me();
+  if (dirCtx.slot === "anchor") {
+    if (G.newsroom.anchor === p.id) return '<span class="chip good">Im Einsatz</span>';
+    if (st.k === "mine") return `<button class="btn hot" data-act="dirPick" data-k="${p.id}">Einsetzen</button>`;
+    if (st.k === "free" || st.k === "busy") return `<button class="btn hot" data-act="dirPick" data-k="${p.id}">Verpflichten & einsetzen</button>`;
+    if (st.k === "rival") return `<div class="act2"><button class="btn red" disabled>Nicht frei</button><button class="btn small" data-act="dirPick" data-k="${p.id}" ${P.money < abloese(p) ? "disabled" : ""}>Abwerben</button></div>`;
+    return '<button class="btn red" disabled>Gesperrt</button>';
+  }
+  if (draft && draft.cast.includes(p.id)) return '<span class="chip good">Besetzt</span>';
+  if (pAvail(p)) return `<button class="btn hot" data-act="dirPick" data-k="${p.id}">Besetzen</button>`;
+  if (st.k === "rival") return `<div class="act2"><button class="btn red" disabled>Nicht frei</button><button class="btn small" data-act="poach" data-k="${p.id}" ${P.money < abloese(p) || planLocked() ? "disabled" : ""}>Abwerben</button></div>`;
+  return `<button class="btn red" disabled>${st.k === "busy" ? "Im Dreh" : "Gesperrt"}</button>`;
+}
 function renderDirectory() {
-  const { role, slot } = dirCtx, P = me();
-  const forAnchor = slot === "anchor";
-  const title = { Schauspiel: "Darsteller-Verzeichnis", Moderation: "Moderatoren-Verzeichnis", Journalismus: "Journalisten-Verzeichnis", Nachrichten: "Nachrichtengesichter" }[role];
-  const act = p => {
-    if (forAnchor) {
-      if (G.newsroom.anchor === p.id) return '<span class="chip good">Im Einsatz</span>';
-      if (p.holder === P.id) return `<button class="btn hot" data-act="dirPick" data-k="${p.id}">Einsetzen</button>`;
-      if (!p.holder) return `<button class="btn hot" data-act="dirPick" data-k="${p.id}">Verpflichten & einsetzen</button>`;
-      const fee = r1000(p.gage * 1.5);
-      return `<button class="btn" data-act="dirPick" data-k="${p.id}" ${P.money < fee ? "disabled" : ""}>Abwerben · ${meur(fee)}</button>`;
-    }
-    if (draft && draft.cast.includes(p.id)) return '<span class="chip good">Besetzt</span>';
-    return `<button class="btn hot" data-act="dirPick" data-k="${p.id}" ${pAvail(p) ? "" : "disabled"}>${pAvail(p) ? "Besetzen" : "Nicht frei"}</button>`;
-  };
-  openModal(`<header><h2>${title}</h2><button class="btn" data-act="close">Schließen</button></header><div class="dbody">
-    <div class="pills">${DIR_SORTS.map(([k, n]) => `<button data-act="dirSort" data-k="${k}" class="${dirSort === k ? "on" : ""}">${n}</button>`).join("")}</div>
-    <div class="plist">${sortedPeople(role).map(p => personRow(p, act)).join("")}</div></div>`);
+  if ($("modal").hidden || !$("dirList")) return;
+  const list = sortedPeople(dirCtx.role, dirQuery);
+  $("dirSorts").innerHTML = DIR_SORTS.map(([k, n]) => `<button data-act="dirSort" data-k="${k}" class="${dirSort === k ? "on" : ""}">${n}</button>`).join("");
+  $("dirList").innerHTML = list.slice(0, dirLimit).map(p => personRow(p, dirAction)).join("") + moreBtn(Math.min(dirLimit, list.length), list.length, "dirMore");
+}
+function castAction(p, st) {
+  const P = me();
+  if (st.k === "mine") return `<span class="chip good">Unter Vertrag</span>`;
+  if (st.k === "rival") return `<div class="act2"><button class="btn red" disabled>Nicht frei</button><button class="btn small" data-act="poach" data-k="${p.id}" ${P.money < abloese(p) || planLocked() ? "disabled" : ""}>Abwerben · ${meur(abloese(p))}</button></div>`;
+  if (st.k === "ban") return '<button class="btn red" disabled>Gesperrt</button>';
+  return `<button class="btn hot" data-act="sign" data-k="${p.id}" ${planLocked() ? "disabled" : ""}>Exklusiv · ${eur(r1000(p.gage / 20))}/Tag</button>`;
+}
+function renderCastList() {
+  if (!$("castList")) return;
+  const list = sortedPeople(castFilter, castQuery, castStatus);
+  $("castList").innerHTML = list.slice(0, castLimit).map(p => personRow(p, castAction)).join("") + moreBtn(Math.min(castLimit, list.length), list.length, "castMore");
 }
 function casting(P) {
-  const roles = [["alle", "Alle"], ["Schauspiel", "Darsteller"], ["Moderation", "Moderation"], ["Nachrichten", "Nachrichten"], ["Journalismus", "Journalismus"]];
-  const act = p => {
-    const mine = p.holder === P.id, fee = r1000(p.gage * 1.5);
-    if (mine) return `<span class="chip good">Vertrag bis ${dateShort(p.until)}</span>`;
-    if (p.holder) return `<button class="btn" data-act="poach" data-k="${p.id}" ${P.money < fee || planLocked() ? "disabled" : ""}>Abwerben · ${meur(fee)}</button>`;
-    return `<button class="btn hot" data-act="sign" data-k="${p.id}" ${planLocked() ? "disabled" : ""}>Exklusiv · ${eur(r1000(p.gage / 20))}/Tag</button>`;
-  };
-  return title("Casting-Kartei", `<span class="muted">${G.people.filter(p => p.holder === P.id).length} exklusiv bei Ihnen ${info("Exklusivverträge laufen 28 Tage und kosten Tagesgage; dafür entfällt die Projektgage. Stars der Konkurrenz lassen sich gegen Ablöse abwerben. Alle Personen sind frei erfunden.")}</span>`) +
-    `<div class="toolbar mb"><div class="pills">${roles.map(([k, n]) => `<button data-act="castFilter" data-k="${k}" class="${castFilter === k ? "on" : ""}">${n}</button>`).join("")}</div>
-      <div class="pills"><span class="muted" style="align-self:center">Sortieren:</span>${DIR_SORTS.map(([k, n]) => `<button data-act="dirSortPage" data-k="${k}" class="${dirSort === k ? "on" : ""}">${n}</button>`).join("")}</div></div>
-    <div class="plist">${sortedPeople(castFilter).map(p => personRow(p, act)).join("")}</div>`;
+  const roles = [["alle", "Alle"], ["Schauspiel", "Schauspiel"], ["Moderation", "Entertainer"], ["Reality", "Reality"], ["Nachrichten", "News"], ["Journalismus", "Journalismus"]];
+  const states = [["alle", "Alle"], ["free", "Frei"], ["rival", "Exklusiv Konkurrenz"], ["busy", "Im Dreh"], ["mine", "Bei Ihnen"]];
+  const count = k => G.people.filter(p => k === "free" ? pAvail(p) : pState(p).k === k).length;
+  setTimeout(renderCastList, 0);
+  return title("Casting-Kartei", `<span class="muted">${G.people.length.toLocaleString("de-DE")} Personen · ${count("mine")} bei Ihnen ${info("Exklusivverträge laufen 28 Tage und kosten Tagesgage, dafür entfällt die Projektgage. Stars der Konkurrenz sind gesperrt – gegen Ablöse lassen sie sich abwerben; die Ablöse steigt mit der Restlaufzeit. Alle Personen sind frei erfunden.")}</span>`) +
+    `<div class="tiles mb">${states.slice(1).map(([k, n]) => `<button class="tile tile-btn ${castStatus === k ? "on" : ""}" data-act="castStatus" data-k="${k}"><small>${n}</small><b>${count(k)}</b></button>`).join("")}</div>
+    <div class="toolbar mb"><input type="search" id="castSearch" class="search" placeholder="Name suchen" value="${esc(castQuery)}" aria-label="Name suchen">
+      <div class="pills">${roles.map(([k, n]) => `<button data-act="castFilter" data-k="${k}" class="${castFilter === k ? "on" : ""}">${n}</button>`).join("")}</div>
+      <div class="pills">${DIR_SORTS.map(([k, n]) => `<button data-act="dirSortPage" data-k="${k}" class="${dirSort === k ? "on" : ""}">${n}</button>`).join("")}</div></div>
+    <div class="plist" id="castList"></div>`;
 }
 function newsroom(P) {
   const N = G.newsroom, c = newsroomCalc(), a = c.a;
@@ -1846,6 +1904,8 @@ document.addEventListener("click", e => {
   if (b && !b.disabled) act(b);
 });
 document.addEventListener("input", e => {
+  if (e.target.id === "dirSearch") { dirQuery = e.target.value; dirLimit = 40; renderDirectory(); return; }
+  if (e.target.id === "castSearch") { castQuery = e.target.value; castLimit = 40; renderCastList(); return; }
   if (e.target.dataset.draft === "title" && draft) draft.title = e.target.value.slice(0, 60);
 });
 document.addEventListener("change", e => {
@@ -2458,11 +2518,14 @@ function act(b) {
     case "slotClear": draft.cast[+b.dataset.k] = null; break;
     case "dirOpen": openDirectory(b.dataset.k, b.dataset.v === "anchor" ? "anchor" : +b.dataset.v); return;
     case "dirSort": dirSort = b.dataset.k; renderDirectory(); return;
+    case "dirMore": dirLimit += 40; renderDirectory(); return;
+    case "castMore": castLimit += 40; renderCastList(); return;
+    case "castStatus": castStatus = castStatus === b.dataset.k ? "alle" : b.dataset.k; castLimit = 40; break;
     case "dirSortPage": dirSort = b.dataset.k; break;
     case "dirPick": {
       const p = person(b.dataset.k);
       if (dirCtx.slot === "anchor") {
-        if (p.holder && p.holder !== P.id) { const fee = r1000(p.gage * 1.5); if (P.money < fee) return; book(P, "Redaktion & Gagen", -fee); logMsg("Branchendienst", "Konkurrenz", `Coup: ${P.name} wirbt ${p.name} von ${holderName(p.holder)} ab (Ablöse ${meur(fee)}).`, true); }
+        if (p.holder && p.holder !== P.id) { const fee = abloese(p); if (P.money < fee) return; book(P, "Redaktion & Gagen", -fee); logMsg("Branchendienst", "Konkurrenz", `Coup: ${P.name} wirbt ${p.name} von ${holderName(p.holder)} ab (Ablöse ${meur(fee)}).`, true); }
         if (p.holder !== P.id) { p.holder = P.id; p.until = G.day + 28; }
         G.newsroom.anchor = p.id; toast(`${p.name} präsentiert jetzt Ihre Nachrichten.`);
       } else if (draft && pAvail(p)) { draft.cast[dirCtx.slot] = p.id; }
@@ -2476,9 +2539,10 @@ function act(b) {
     case "startProd": startProduction(); return;
     case "promo": if (!planLocked()) promote(id, b.dataset.k); break;
     case "export": sellExport(id, b.dataset.k); break;
-    case "castFilter": castFilter = b.dataset.k; break;
-    case "sign": { const p = person(b.dataset.k); if (p && !p.holder && !planLocked()) { p.holder = P.id; p.until = G.day + 28; logMsg("Casting", "Personal", `${p.name} ist jetzt exklusiv bei ${P.name} unter Vertrag (28 Tage, ${eur(r1000(p.gage / 20))} pro Tag).`, true); } break; }
-    case "poach": { const p = person(b.dataset.k); const fee = r1000(p.gage * 1.5); if (p && p.holder && p.holder !== P.id && P.money >= fee && !planLocked()) { const old = holderName(p.holder); book(P, "Redaktion & Gagen", -fee); p.holder = P.id; p.until = G.day + 28; logMsg("Branchendienst", "Konkurrenz", `Coup: ${P.name} wirbt ${p.name} von ${old} ab (Ablöse ${meur(fee)}).`, true); } break; }
+    case "castFilter": castFilter = b.dataset.k; castLimit = 40; break;
+    case "sign": { const p = person(b.dataset.k); if (p && !p.holder && !(p.ban > G.day) && !planLocked()) { p.holder = P.id; p.until = G.day + 28; logMsg("Casting", "Personal", `${p.name} ist jetzt exklusiv bei ${P.name} unter Vertrag (28 Tage, ${eur(r1000(p.gage / 20))} pro Tag).`, true); } break; }
+    case "poach": { const p = person(b.dataset.k); const fee = abloese(p); if (p && p.holder && p.holder !== P.id && P.money >= fee && !planLocked()) { const old = holderName(p.holder); book(P, "Redaktion & Gagen", -fee); p.holder = P.id; p.until = G.day + 28; logMsg("Branchendienst", "Konkurrenz", `Coup: ${P.name} wirbt ${p.name} von ${old} ab (Ablöse ${meur(fee)}).`, true); }
+      if (!$("modal").hidden && $("dirList")) { renderDirectory(); return; } break; }
     case "decide": decide(+b.dataset.k); return;
     case "stream": if (G.stream && G.stream.stage >= 2) { addToStream(id, b.dataset.k); toast(b.dataset.k === "excl" ? "Titel läuft jetzt exklusiv im Stream." : "Titel zum Katalog hinzugefügt."); } break;
     case "unstream": if (G.stream) { G.stream.catalog = G.stream.catalog.filter(c => c.id !== id); const p = P.progs.find(x => x.id === id); if (p) p.exclusive = false; } break;
@@ -2519,7 +2583,7 @@ function act(b) {
 // =====================================================================
 // Speichern (nur lokal im Browser)
 // =====================================================================
-const KEY = "quotenturm-v6";
+const KEY = "quotenturm-v7";
 function save() { try { localStorage.setItem(KEY, JSON.stringify(G)); } catch (e) { /* ohne Speicher spielbar */ } }
 function hasSave() { try { return !!localStorage.getItem(KEY); } catch (e) { return false; } }
 function load() {
