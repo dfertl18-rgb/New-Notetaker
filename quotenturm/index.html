@@ -60,15 +60,26 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px s
 #topCrest { display: flex; }
 #mainnav { display: flex; gap: 2px; overflow-x: auto; scrollbar-width: none; min-width: 0; }
 #mainnav::-webkit-scrollbar { display: none; }
-#mainnav button { background: transparent; border: 0; font-family: var(--font-head); font-weight: 700; font-size: 21px; letter-spacing: .02em; text-transform: uppercase; padding: 8px 10px; white-space: nowrap; position: relative; color: var(--club-ink); opacity: .75; }
+#mainnav button { background: transparent; border: 0; font-family: var(--font-head); font-weight: 700; font-size: 19px; letter-spacing: .02em; text-transform: uppercase; padding: 8px 6px 8px 8px; white-space: nowrap; position: relative; color: var(--club-ink); opacity: .8; display: flex; align-items: center; gap: 3px; border-radius: 4px; }
+#mainnav button svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; transition: transform .15s; }
+#mainnav button.open { background: rgba(0,0,0,.16); opacity: 1; }
+#mainnav button.open svg { transform: rotate(180deg); }
 #mainnav button.on { opacity: 1; }
+#dropdown { position: fixed; z-index: 45; width: 280px; background: var(--panel-2); border: 1px solid var(--line); border-top: 3px solid var(--club); border-radius: 0 0 8px 8px; box-shadow: 0 18px 40px rgba(0,0,0,.55); padding: 6px; display: grid; gap: 2px; }
+#dropdown .dd-head { font-family: var(--font-head); font-weight: 700; font-size: 13px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); padding: 6px 10px 4px; }
+#dropdown button { background: transparent; border: 0; border-radius: 6px; text-align: left; padding: 9px 10px; display: grid; gap: 1px; min-height: 44px; }
+#dropdown button:hover { background: #262b33; }
+#dropdown button.on { background: rgba(124,58,237,.22); box-shadow: inset 3px 0 0 var(--violet); }
+#dropdown button b { font-weight: 600; font-size: 15px; }
+#dropdown button span { font-size: 13px; color: var(--muted); }
+#dropdown .cnt { background: var(--violet); color: #fff; border-radius: 999px; padding: 0 7px; font-size: 12px; }
 #mainnav button.on::after { content: ""; position: absolute; left: 50%; bottom: 0; width: 16px; height: 3px; transform: translateX(-50%); background: var(--club-ink); border-radius: 2px; }
 .top-spacer { flex: 1; }
-.datebox { background: rgba(0,0,0,.14); border-radius: 6px; padding: 5px 10px; line-height: 1.15; white-space: nowrap; }
+.datebox { background: rgba(0,0,0,.18); border-radius: 6px; padding: 5px 10px; line-height: 1.15; white-space: nowrap; }
 .datebox b { display: block; font-family: var(--font-head); font-weight: 700; font-size: 17px; }
 .datebox span { font-size: 13px; }
 .timebox { background: #0b0d10; color: #fff; font-family: var(--font-head); font-weight: 700; font-size: 20px; padding: 5px 8px; border-radius: 4px; font-variant-numeric: tabular-nums; }
-#cont { background: var(--hot); color: #fff; border: 0; border-radius: 4px; height: 46px; min-width: 210px; padding: 0 16px; display: flex; align-items: center; justify-content: space-between; gap: 20px; font-family: var(--font-head); font-weight: 700; font-size: 20px; }
+#cont { background: var(--hot); color: #fff; border: 0; border-radius: 4px; height: 46px; min-width: 190px; padding: 0 16px; display: flex; align-items: center; justify-content: space-between; gap: 20px; font-family: var(--font-head); font-weight: 700; font-size: 20px; }
 #cont svg { width: 22px; height: 22px; stroke: #fff; fill: none; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
 #cont.busy { background: #8a1a45; }
 
@@ -271,6 +282,11 @@ label { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 #toast { position: fixed; right: max(16px, env(safe-area-inset-right, 0px)); bottom: max(16px, env(safe-area-inset-bottom, 0px)); background: var(--panel-2); border: 1px solid var(--line); border-left: 4px solid var(--hot); border-radius: 6px; padding: 10px 14px; max-width: min(420px, calc(100% - 32px)); z-index: 60; opacity: 0; transform: translateY(8px); transition: opacity .2s, transform .2s; pointer-events: none; box-shadow: 0 12px 30px rgba(0,0,0,.5); }
 #toast.show { opacity: 1; transform: none; }
 
+@media (max-width: 1260px) {
+  #top { gap: 10px; }
+  #mainnav button { font-size: 17px; padding: 8px 4px 8px 6px; }
+  #cont { min-width: 150px; }
+}
 @media (max-width: 900px) {
   #top { flex-wrap: wrap; }
   #mainnav { order: 5; width: 100%; }
@@ -306,6 +322,7 @@ label { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
   </div>
   <main id="content"></main>
 </div>
+<div id="dropdown" role="menu" hidden></div>
 <div class="modal" id="modal" hidden><div class="dialog" id="dialog"></div></div>
 <div id="toast" role="status" aria-live="polite"></div>
 
@@ -457,16 +474,17 @@ const HEADLINES = [
   "Orkanböen auf der Zugspitze", "Forschungsteam entdeckt neue Käferart", "Großbrand in Lagerhalle gelöscht",
   "Weltraumteleskop liefert erste Bilder", "Pokal-Überraschung in der zweiten Runde", "Digitalisierung der Schulen kommt voran",
 ];
+// Menüführung: Hauptpunkt → Aufklappmenü mit allen Unterseiten [Seite, Name, Erklärung]
 const MENU = [
-  { id: "portal", name: "Portal", subs: [["overview", "Übersicht"], ["inbox", "Posteingang"]] },
-  { id: "programm", name: "Programm", subs: [["plan", "Wochenplan"], ["archiv", "Archiv"], ["market", "Programmhandel"]] },
-  { id: "streaming", name: "Streaming", subs: [["stream", "Plattform"], ["catalog", "Katalog"], ["smarket", "Wettbewerb"]] },
-  { id: "sport", name: "Sport", subs: [["rights", "Rechtemarkt"], ["myrights", "Meine Rechte"]] },
-  { id: "werbung", name: "Werbung", subs: [["contracts", "Verträge"], ["agency", "Werbeagentur"]] },
-  { id: "news", name: "Nachrichten", subs: [["ticker", "Ticker24"]] },
-  { id: "quoten", name: "Quoten", subs: [["table", "Quotentabelle"], ["ratings", "Einschaltquoten"], ["landscape", "Markt"]] },
-  { id: "sender", name: "Sender", subs: [["board", "Senderleitung"], ["finance", "Finanzen"], ["jury", "Goldene Antenne"], ["rivals", "Konkurrenz"]] },
+  { id: "portal", name: "Portal", subs: [["overview", "Übersicht", "Dashboard mit Nachrichten, Tabelle und Kennzahlen"], ["inbox", "Posteingang", "Alle Meldungen aus dem Haus"]] },
+  { id: "programm", name: "Programm", subs: [["plan", "Wochenplan", "Programm 0–24 Uhr, Montag bis Sonntag"], ["archiv", "Archiv", "Eigene Filme, Serien und Formate"], ["market", "Programmhandel", "Filme und Serienlizenzen kaufen"], ["ticker", "Nachrichten", "Meldungen von Ticker24 einkaufen"]] },
+  { id: "streaming", name: "Streaming", subs: [["stream", "Plattform", "Abos, Churn, ARPU und Preismodell"], ["catalog", "Katalog", "Titel und Verwertungsfenster"], ["smarket", "Wettbewerb", "Streamer im Vergleich und Top 10"]] },
+  { id: "sport", name: "Sport", subs: [["rights", "Rechtemarkt", "Ausschreibungen und Gebote"], ["myrights", "Meine Rechte", "Pakete und Live-Termine"]] },
+  { id: "werbung", name: "Werbung", subs: [["contracts", "Verträge", "Laufende Werbeverträge"], ["agency", "Werbeagentur", "Neue Kunden gewinnen"]] },
+  { id: "quoten", name: "Quoten", subs: [["table", "Quotentabelle", "Senderranking nach Marktanteil"], ["ratings", "Einschaltquoten", "Jede Stunde, jeder Sender"], ["rivals", "Konkurrenz", "Tagesplan der anderen Sender"], ["landscape", "Markt", "Sendergruppen und Streamer"]] },
+  { id: "sender", name: "Sender", subs: [["board", "Senderleitung", "Erwartungen, Vertrauen, Kredit"], ["finance", "Finanzen", "Erlöse, Kosten, EBITDA"], ["jury", "Goldene Antenne", "Rennen um den Qualitätspreis"]] },
 ];
+let openMenu = null;
 const PAGE_SECTION = Object.fromEntries(MENU.flatMap(m => m.subs.map(([k]) => [k, m.id])));
 const QUICK = [["inbox", "Posteingang", '<path d="M3 13l3-8h12l3 8v6H3z"/><path d="M3 13h5l1 2h6l1-2h5"/>'], ["plan", "Wochenplan", '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>'], ["market", "Programmhandel", '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 5v14M17 5v14"/>'], ["stream", "Streamer", '<rect x="3" y="5" width="18" height="12" rx="2"/><path d="M10 9l5 2-5 2z"/>'], ["table", "Tabelle", '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>']];
 
@@ -1027,6 +1045,7 @@ function nextDay() {
 // Navigation
 // =====================================================================
 function go(p, noHist) {
+  openMenu = null;
   if (!noHist && p !== page) { hist.push(page); fut = []; }
   page = p;
   if (p === "inbox") G.log.forEach(l => { l.read = true; });
@@ -1059,7 +1078,9 @@ function renderTop() {
 function renderNav() {
   const sec = page === "live" ? null : PAGE_SECTION[page];
   $("topCrest").innerHTML = crest(G.me, 40);
-  $("mainnav").innerHTML = MENU.map(m => `<button data-sec="${m.id}" class="${sec === m.id ? "on" : ""}">${m.name}</button>`).join("");
+  $("mainnav").innerHTML = MENU.map(m => `<button data-menu="${m.id}" aria-haspopup="true" aria-expanded="${openMenu === m.id}" class="${sec === m.id ? "on" : ""} ${openMenu === m.id ? "open" : ""}">${m.name}<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>`).join("");
+  renderDropdown();
+  applyClubColors();
   const m = MENU.find(x => x.id === sec);
   $("secName").textContent = page === "live" ? "Live-Regie" : m.name;
   const unread = G.log.filter(l => !l.read).length;
@@ -1068,8 +1089,9 @@ function renderNav() {
   $("back").disabled = !hist.length; $("fwd").disabled = !fut.length;
 }
 document.addEventListener("click", e => {
-  const s = e.target.closest("[data-sec]");
-  if (s && G) { go(MENU.find(m => m.id === s.dataset.sec).subs[0][0]); return; }
+  const s = e.target.closest("[data-menu]");
+  if (s && G) { openMenu = openMenu === s.dataset.menu ? null : s.dataset.menu; renderNav(); return; }
+  if (openMenu && !e.target.closest("#dropdown")) { openMenu = null; renderNav(); }
   const p = e.target.closest("[data-page]");
   if (p && G) { go(p.dataset.page); return; }
   const b = e.target.closest("[data-act]");
@@ -1080,6 +1102,31 @@ document.addEventListener("change", e => {
   if (e.target.id === "sModel" && G.stream) { G.stream.model = e.target.value; render(); }
   if (e.target.id === "sPrice" && G.stream) { G.stream.price = clamp(+e.target.value || 0, 2.99, 29.99); render(); }
 });
+// Aufklappmenü unter dem Hauptpunkt (wie im Fußball-Manager)
+function renderDropdown() {
+  const dd = $("dropdown");
+  const m = MENU.find(x => x.id === openMenu);
+  if (!m) { dd.hidden = true; return; }
+  const btn = document.querySelector(`[data-menu="${m.id}"]`);
+  const r = btn.getBoundingClientRect();
+  const unread = G.log.filter(l => !l.read).length;
+  dd.innerHTML = `<div class="dd-head">${m.name}</div>` + m.subs.map(([k, n, d]) => `<button data-page="${k}" class="${page === k ? "on" : ""}"><b>${n}${k === "inbox" && unread ? ` <span class="cnt">${unread}</span>` : ""}</b><span>${d}</span></button>`).join("");
+  dd.hidden = false;
+  const w = 280;
+  dd.style.top = Math.round(r.bottom + 6) + "px";
+  dd.style.left = Math.round(Math.max(8, Math.min(r.left, window.innerWidth - w - 8))) + "px";
+}
+window.addEventListener("resize", () => { if (openMenu) renderDropdown(); });
+document.addEventListener("keydown", e => { if (e.key === "Escape" && openMenu) { openMenu = null; renderNav(); } });
+// Kopfleiste in den Farben des eigenen Senders
+function applyClubColors() {
+  const c = STATIONS[G.me].color, rgb = [1, 3, 5].map(k => parseInt(c.substr(k, 2), 16));
+  const lum = (0.299 * rgb[0] + 0.587 * rgb[1] + 0.114 * rgb[2]) / 255;
+  const root = document.documentElement.style;
+  root.setProperty("--club", c);
+  root.setProperty("--club-ink", lum > 0.55 ? "#15110a" : "#ffffff");
+  root.setProperty("--club-sub", `rgb(${rgb.map(v => Math.round(v * 0.16 + 12)).join(",")})`);
+}
 function render(top) {
   if (!G) return;
   renderNav(); renderTop();
