@@ -13,7 +13,8 @@ Ein TV- und Streaming-Manager für das iPad. Spielprinzip inspiriert von *Mad TV
 - **Zwei-Phasen-Tag:** Planung (Zeit steht) → „Weiter“: 0–18 Uhr wird ausgewertet, der Abend läuft in der **Live-Regie** (Monitorwand, Quotenkurve, Zusatz-Werbeblock, Notfall-Wiederholung).
 - **Programmhandel** mit echten Film- und Serientiteln, Eigenformaten der Sender (z. B. Tatort, Wer wird Millionär?), Lizenzlaufzeiten.
 - **Sportrechte-Auktionen** (Free-TV-Pakete) mit verdeckten Geboten der Konkurrenz; Pay-/Streaming-exklusive Rechte als Marktübersicht.
-- **Streaming:** eigener Streamer (RTL+, Joyn oder Mediathek je nach Sendergruppe, sonst Gründung), Katalog, Abos, Churn, ARPU, Abrufe, Geschäftsmodell (SVoD/Hybrid/AVoD), Verwertungsfenster (Streaming-First, Linear-First, Day-and-Date), Wettbewerb und Top 10.
+- **Streaming als Ausbaupfad:** Start als reiner TV-Sender; Stufe 1 Mediathek, Stufe 2 Premium-Abo (nicht für ÖRR), Stufe 3 Live-Sport im Stream – mit Bauzeit, Serverkosten, Kapazität und Absturzrisiko bei Großevents. Katalog, Exklusivtitel (aus dem TV abgezogen), Verwertungsfenster, Kampagne „Erster Monat gratis“, Abos, Churn, ARPU, Break-even-Anzeige, Wettbewerb und Top 10.
+- **Medien-Insider:** Ereignisse am Morgen mit Entscheidungen – Markttrends und Gerüchte, Skandale (mit verzögertem Risiko beim Vertuschen) und Vorschläge aus dem Team.
 - **Finanzen nach Segmenten** (TV-Werbung, Teleshopping, Distribution, Rundfunkbeitrag, Abos, AVoD; Programm, Sportrechte, Personal, Technik/CDN, Strafen) mit EBITDA.
 - **Regeln:** ÖRR-Werbeverbot ab 20 Uhr und sonntags; Jugendschutz (FSK 16 ab 22 Uhr, FSK 18 ab 23 Uhr) mit Bußgeld.
 
@@ -26,7 +27,6 @@ Alle Quoten, Preise, Abozahlen und Bewertungen sind simuliert. Sender-, Film- un
 3. Personal-Kartei: Stars, Moderation, Chemie, Gagen, Skandale; Pressekonferenzen.
 4. Presse & PR: Kritiken (Feuilleton, Publikumspresse, Blogs), Kooperationen, Klon-Krieg der Konkurrenz.
 5. Konzern-Ebene: Sender gründen/kaufen/fusionieren/schließen, KEK-Konzentrationskontrolle, Sublizenzen, Lizenzverkauf ins Ausland.
-6. Streaming-Infrastruktur: Serverlast, Ausfälle bei Live-Events, Marketing-Budget.
 7. Externe Datenbasis (z. B. TMDb-Export) als JSON-Datei statt der eingebauten Titellisten.
 
 ## Datenschutz

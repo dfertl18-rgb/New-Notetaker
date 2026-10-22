@@ -250,6 +250,14 @@ input[type=number] { width: 130px; }
 img.logo { object-fit: contain; flex: 0 0 auto; }
 label { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 
+.stages { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; padding: 0 14px 14px; }
+.stage { background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; display: grid; gap: 6px; align-content: start; }
+.stage.done { border-color: rgba(34,197,94,.5); }
+.row-s { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+.event-head { display: grid; gap: 6px; }
+.event-head .chip { justify-self: start; }
+.event-head h3 { margin: 0; font-size: 22px; line-height: 1.2; text-wrap: balance; }
+.event-card { border-color: var(--hot); }
 /* Dialoge */
 .modal { position: fixed; inset: 0; z-index: 50; background: rgba(4, 5, 7, .75); display: flex; align-items: center; justify-content: center; overflow-y: auto;
   padding-block: max(16px, env(safe-area-inset-top, 0px));
@@ -577,7 +585,8 @@ function makeAd(scale) {
   const mins = [0.2, 0.3, 0.5, 0.8, 1.0, 1.5, 2.0, 2.5, 3.0, 4.0].filter(m => m <= scale * 1.4 + 0.2);
   const min = pick(mins.length ? mins : [0.2]);
   const spots = ri(3, 9);
-  const pay = r1000(min * 60000 * rnd(0.85, 1.2) + 4000);
+  const f = G && G.mods && G.mods.adCut && G.mods.adCut.until >= G.day ? G.mods.adCut.f : 1;
+  const pay = r1000((min * 60000 * rnd(0.85, 1.2) + 4000) * f);
   return { id: uid(), brand: pick(BRANDS), min, spots, done: 0, days: Math.ceil(spots / 2) + ri(1, 3), pay, penalty: r1000(pay * spots * 0.5) };
 }
 function makeNews() {
@@ -616,21 +625,14 @@ function newGame(stationId) {
   for (let k = 0; k < 3; k++) P.contracts.push(makeAd(expectedPrime(P) * 0.5));
   G.rights = RIGHTS.map(r => ({ id: r.id, owner: r.holder || null, days: r.holder ? ri(6, 34) : 0, price: 0, bid: 0 }));
   G.rights.forEach(r => { if (!r.owner) r.price = rightPrice(RDEF(r.id)); });
-  // Streamer der Sendergruppe übernehmen (RTL+, Joyn, Mediathek)
-  const sid = STATIONS[G.me].streamer;
-  if (sid) {
-    const s = STREAMERS.find(x => x.id === sid);
-    G.stream = { id: sid, name: s.name, model: sid === "mediathek" ? "free" : sid === "joyn" ? "hybrid" : "hybrid", price: s.price || 0,
-      subs: sid === "mediathek" ? 0 : s.subs * 0.35, reach: sid === "mediathek" ? 3 : 0, catalog: [], awareness: 60, views: {}, hist: [], founded: false };
-    const ai = G.streamers.find(x => x.id === sid); ai.player = true;
-  }
+  G.project = null; G.mods = {}; G.event = null; G.eventLog = [];
   for (const st of G.stations) { for (const wd of WEEK) planDayFor(st, wd); }
   refreshOffers(true);
   logMsg("Senderleitung", "Vertrag", `Willkommen als Programmdirektion von ${P.name}! Saisonziel: Ø ${pct(P.target)} Marktanteil über den ganzen Tag. Bilanz nach ${SEASON} Tagen.`);
   logMsg("Medienforschung", "Hinweis", "Ihr Vorgänger hat einen Wochenplan für 0–24 Uhr hinterlassen. Prüfen Sie ihn im Wochenplan – jeder Wochentag hat ein eigenes Programm.");
   if (P.type === "oer") logMsg("Justiziariat", "Regel", "Öffentlich-rechtlich: Werbung nur werktags vor 20 Uhr, sonntags gar nicht. Dafür fließt täglich der Rundfunkbeitrag.");
   logMsg("Justiziariat", "Regel", "Jugendschutz: FSK 16 im Free-TV erst ab 22 Uhr, FSK 18 ab 23 Uhr. Verstöße ahndet die Landesmedienanstalt mit Bußgeld.");
-  if (G.stream) logMsg("Digitalvorstand", "Streaming", `Zur Sendergruppe gehört ${G.stream.name}. Bestücken Sie den Katalog mit Titeln aus Ihrem Archiv.`);
+  logMsg("Digitalvorstand", "Streaming", "Wir senden bisher nur linear. Ein eigener Streamer lässt sich unter Streaming in drei Ausbaustufen aufbauen – teuer, aber langfristig unverzichtbar.");
   const own = G.rights.filter(r => r.owner === P.id);
   if (own.length) logMsg("Sportredaktion", "Sport", `Wir halten ${own.length} Sportrecht${own.length > 1 ? "e" : ""}: ${own.map(r => RDEF(r.id).name).join(", ")}.`);
   startDay();
@@ -642,9 +644,9 @@ function refreshOffers(first) {
   const spool = shuffle(SERIES_DB.filter(r => !r[4] && !owned.has(r[0])));
   const fpool = shuffle(FILM_DB.filter(r => !owned.has(r[0])));
   while (G.market.filter(p => p.kind === "serie").length < 6 && spool.length) G.market.push(fromDB(spool.pop()));
-  while (G.market.length < 14 && fpool.length) G.market.push(realFilm(fpool.pop()));
-  G.adOffers = [];
-  for (let k = 0; k < 8; k++) G.adOffers.push(makeAd(expectedPrime(me())));
+  const filmMax = G.mods && G.mods.filmShortage >= G.day ? 9 : 14;
+  while (G.market.length < filmMax && fpool.length) G.market.push(realFilm(fpool.pop()));
+  refreshAds();
   G.newsOffers = [];
   for (let k = 0; k < 5; k++) G.newsOffers.push(makeNews());
 }
@@ -670,6 +672,7 @@ function clearAt(st, sc, i) {
 }
 function canPlace(st, sc, p, i) {
   if (sc[i].live) return "Live-Event";
+  if (p.exclusive) return "Exklusiv im Stream";
   if (i + p.len > 24) return "Passt nicht mehr in den Tag";
   for (let k = 1; k < p.len; k++) if (sc[i + k].live) return "Kollidiert mit Live-Event";
   if (p.kind === "serie" && p.ep >= p.eps * 2) return "Lizenz ausgeschöpft";
@@ -770,6 +773,8 @@ function attractiveness(st, i) {
     if (c.cont && p.kind !== "sport") A *= 0.96;
   }
   if (isMe(st) && G.adBreak[i]) A *= 0.85;
+  if (isMe(st) && p && p.kind === "sport" && G.mods.split) A *= 0.95;
+  if (isMe(st) && i >= LIVE_FROM && !G.mods.studioOk && G.mods.studioRisk >= G.day && Math.random() < 0.05) { A *= 0.3; G.blackout = i; }
   return { p, c, A };
 }
 function airHour(i) {
@@ -790,6 +795,9 @@ function airHour(i) {
       if ((r.p.genre === "Kultur" || r.p.genre === "Doku") && i >= 20) st.favor = Math.min(100, st.favor + 0.3 + r.p.q / 100);
     }
     if (!isMe(st)) continue;
+    if (r.p && !r.c.cont) r.p.lastAired = G.day;
+    if (G.blackout === i) { G.blackout = null; logMsg("Sendetechnik", "Warnung", `${hh(i)} – Bildausfall im Studio! Minutenlang schwarzer Bildschirm, die Zuschauer schalten weg.`, true); }
+    if (r.p && r.p.kind === "sport" && !r.c.cont) { liveStream(r.v, r.p.title); if (G.mods.split) book(st, "TV-Werbung", r1000(r.v * 20000)); }
     if (r.p && !r.c.cont && !youthOk(r.p, i)) {
       const fine = r1000(rnd(80000, 250000));
       book(st, "Strafen", -fine); st.conf = clamp(st.conf - 3, 0, 100);
@@ -820,66 +828,224 @@ function airHour(i) {
 }
 
 // =====================================================================
-// Streaming
+// Streaming: Ausbaupfad vom reinen Fernsehsender zum hybriden Medienhaus
 // =====================================================================
-const streamItems = () => G.stream ? G.stream.catalog.map(c => ({ c, p: me().progs.find(p => p.id === c.id) })).filter(x => x.p) : [];
+const STAGES = [
+  null,
+  { n: 1, name: "Mediathek", cost: 2e6, days: 3, server: 40000, desc: "Gesendete Programme 7 Tage zum Nachholen. Privat werbefinanziert, öffentlich-rechtlich kostenlos." },
+  { n: 2, name: "Premium-Abo", cost: 8e6, days: 7, server: 120000, desc: "Eigener Abo-Dienst: Katalog, Exklusivtitel, Preismodell, Marketing-Kampagnen." },
+  { n: 3, name: "Live-Sport im Stream", cost: 5e6, days: 5, server: 60000, desc: "Live-Events laufen parallel im Stream. Die Spitzenlast braucht genug Serverkapazität." },
+];
+const stageAllowed = n => n !== 2 || STATIONS[G.me].type !== "oer";
+const sFree = S => S.stage < 2 || S.model === "free";
+function streamBrand() {
+  const sid = STATIONS[G.me].streamer;
+  return sid === "mediathek" ? `${me().name} Mediathek` : STREAMERS.find(x => x.id === sid).name;
+}
+function startProject(n) {
+  const P = me(), s = STAGES[n];
+  if (G.project || P.money < s.cost || !stageAllowed(n) || (G.stream ? G.stream.stage : 0) !== n - 1) return;
+  book(P, "Streaming-Aufbau", -s.cost);
+  G.project = { n, left: s.days };
+  logMsg("Digitalvorstand", "Streaming", `Projekt „${s.name}“ gestartet: ${s.days} Tage Bauzeit für Server, Apps (iOS, Android, Smart-TV) und Design.`, true);
+}
+function projectDay() {
+  if (!G.project) return;
+  if (--G.project.left > 0) return;
+  const n = G.project.n; G.project = null;
+  if (!G.stream) {
+    const sid = STATIONS[G.me].streamer;
+    G.stream = { id: sid, name: streamBrand(), stage: 1, model: STATIONS[G.me].type === "oer" ? "free" : "avod", price: 0, subs: 0, reach: 0.15,
+      catalog: [], awareness: 25, views: {}, hist: [], capacity: 1, cum: 0, campaign: 0 };
+    const ai = G.streamers.find(x => x.id === sid);
+    if (ai) { ai.player = true; ai.subs = 0; }
+  } else G.stream.stage = n;
+  if (n === 2) { G.stream.model = "hybrid"; G.stream.price = 6.99; G.stream.subs = 0.04; G.stream.awareness = Math.max(G.stream.awareness, 35); }
+  logMsg("Digitalvorstand", "Streaming", `${G.stream.name}: Ausbaustufe „${STAGES[n].name}“ ist online!`, true);
+}
+// Katalog: Stufe 1 = automatische Mediathek (zuletzt gesendet), ab Stufe 2 eigener Katalog
+function streamItems() {
+  const S = G.stream; if (!S) return [];
+  const P = me();
+  const catchup = P.progs.filter(p => p.lastAired >= G.day - 7 && !p.filler && !S.catalog.some(c => c.id === p.id)).map(p => ({ c: { id: p.id, added: p.lastAired, window: "catchup" }, p }));
+  const own = S.stage >= 2 ? S.catalog.map(c => ({ c, p: P.progs.find(p => p.id === c.id) })).filter(x => x.p) : [];
+  return own.concat(catchup);
+}
+const WINDOW_F = { excl: 1.6, stream: 1.25, dd: 1.1, linear: 0.85, catchup: 0.7 };
 function streamDay() {
-  const S = G.stream;
-  // Wettbewerber entwickeln sich
   for (const s of G.streamers) if (!s.player) { s.trend = clamp(s.trend + rnd(-0.004, 0.004), -0.01, 0.012); s.subs = Math.max(0.2, s.subs * (1 + s.trend + 0.0008)); }
+  const S = G.stream;
   if (!S) return null;
   const P = me();
   const items = streamItems();
-  // Katalogwert: beste 25 Titel nach Qualität × Frische
   const scored = items.map(({ c, p }) => {
     const age = G.day - c.added;
-    const fresh = Math.max(0.25, 1 - age * 0.02) * (c.window === "stream" ? 1.25 : c.window === "dd" ? 1.1 : 0.85);
-    return { c, p, s: p.q * fresh * (p.kind === "serie" ? 1.2 : 1) };
+    return { c, p, s: p.q * Math.max(0.25, 1 - age * 0.02) * WINDOW_F[c.window] * (p.kind === "serie" ? 1.2 : 1) };
   }).sort((a, b) => b.s - a.s);
   const top = scored.slice(0, 25);
-  const cat = top.reduce((a, x) => a + x.s, 0) / 25; // 0..~110
-  const newCount = items.filter(x => G.day - x.c.added < 7).length;
-  const priceF = S.model === "free" ? 1.3 : S.model === "avod" ? 1.2 : clamp(1.35 - S.price / 25, 0.5, 1.15);
-  let views = 0;
-  if (S.model === "free") {
-    S.reach = clamp(S.reach * 0.97 + cat / 40 * 0.06 + newCount * 0.01, 0.5, 12);
-    views = S.reach * 1e6 * 0.35 * (cat / 70);
+  const cat = top.reduce((a, x) => a + x.s, 0) / Math.max(10, top.length);
+  const newCount = items.filter(x => G.day - x.c.added < 7 && x.c.window !== "catchup").length;
+  const campaign = S.campaign > 0;
+  let views;
+  if (sFree(S)) {
+    S.reach = clamp(S.reach * 0.97 + cat / 40 * 0.05 + items.length * 0.004, 0.1, 12);
+    views = S.reach * 1e6 * 0.3 * (cat / 70);
   } else {
-    const churn = clamp(0.0025 + (newCount === 0 ? 0.0015 : 0) + (S.price > 12 ? (S.price - 12) * 0.0004 : 0) - cat / 70 * 0.0012 - (S.model === "avod" ? -0.0005 : 0), 0.0008, 0.01);
-    const gross = (0.004 * cat / 70 + newCount * 0.0006) * priceF * (S.awareness / 60);
-    const before = S.subs;
-    S.subs = Math.max(0.02, S.subs * (1 + gross - churn));
-    S.churn = churn * 30 * 100; S.gross = gross;
-    S.net = S.subs - before;
+    const priceF = S.model === "avod" ? 1.2 : clamp(1.35 - S.price / 25, 0.5, 1.15);
+    const churn = clamp(0.0025 + (newCount === 0 ? 0.0015 : 0) + (S.price > 12 ? (S.price - 12) * 0.0004 : 0) - cat / 70 * 0.0012 + (G.mods.churnUp >= G.day ? 0.002 : 0), 0.0008, 0.012);
+    // Neukunden (Mio. pro Tag): Katalog, Bekanntheit, Preis, Kampagne, Umsteiger aus der Mediathek
+    const adds = (0.02 * cat / 70 + newCount * 0.002) * (S.awareness / 60) * priceF * (campaign ? 2.5 : 1) + S.reach * 0.002;
+    S.subs = Math.max(0.01, S.subs * (1 + 0.001 - churn) + adds);
+    S.churn = churn * 30 * 100;
     views = S.subs * 1e6 * 0.32 * (cat / 70);
   }
-  S.awareness = clamp(S.awareness + (newCount ? 0.4 : -0.3), 10, 100);
-  // Abrufe je Titel
+  if (campaign) S.campaign--;
+  S.awareness = clamp(S.awareness + (newCount ? 0.5 : -0.2) + (campaign ? 1.5 : 0), 10, 100);
   const tot = top.reduce((a, x) => a + x.s, 0) || 1;
   S.views = {};
   for (const x of top) S.views[x.c.id] = Math.round(views * x.s / tot);
-  // Erlöse & Kosten
-  const users = S.model === "free" ? S.reach : S.subs;
-  const svod = S.model === "svod" || S.model === "hybrid" ? S.subs * 1e6 * S.price * (S.model === "hybrid" ? 0.8 : 1) / 30 : 0;
-  const avod = S.model === "avod" || S.model === "hybrid" || S.model === "free" ? views * (S.model === "free" ? 0 : 0.012) : 0;
-  const cdn = views * 0.004 + 60000;
+  const users = sFree(S) ? S.reach : S.subs;
+  const svod = !sFree(S) && S.model !== "avod" ? S.subs * 1e6 * S.price * (S.model === "hybrid" ? 0.8 : 1) / 30 * (campaign ? 0.85 : 1) : 0;
+  const avod = S.model === "free" ? 0 : views * (S.model === "hybrid" ? 0.025 : 0.05); // Werbung je Abruf
+  const server = STAGES.slice(1, S.stage + 1).reduce((a, s) => a + s.server, 0) + (S.capacity - 1) * 20000;
+  const cdn = views * 0.004;
   if (svod) book(P, "Streaming-Abos", r1000(svod));
   if (avod) book(P, "Streaming-Werbung", r1000(avod));
-  book(P, "Technik & CDN", -r1000(cdn));
+  book(P, "Streaming-Technik", -r1000(server + cdn));
+  const result = svod + avod - server - cdn;
+  S.cum += result;
   const arpu = users ? (svod + avod) * 30 / (users * 1e6) : 0;
-  const rec = { day: G.day, subs: S.subs, reach: S.reach, views, svod, avod, cdn, arpu, churn: S.churn || 0, newCount };
+  const rec = { day: G.day, subs: S.subs, reach: S.reach, views, svod, avod, cdn: server + cdn, arpu, churn: S.churn || 0, newCount, result };
   S.hist.push(rec); if (S.hist.length > 60) S.hist.shift();
-  const mine = G.streamers.find(s => s.id === S.id); if (mine) mine.subs = S.model === "free" ? 0 : S.subs;
+  const mine = G.streamers.find(s => s.id === S.id); if (mine) mine.subs = sFree(S) ? 0 : S.subs;
   return rec;
 }
 function addToStream(id, window) {
   const S = G.stream, P = me();
   const p = P.progs.find(x => x.id === id);
-  if (!p || S.catalog.some(c => c.id === id)) return;
-  const w = window || (p.aired ? "linear" : "stream");
-  S.catalog.push({ id, added: G.day, window: w });
-  if (w === "stream") p.streamFirst = true;
-  if (w === "stream") logMsg("Digitalvorstand", "Streaming", `„${p.title}“ startet exklusiv auf ${S.name} (Streaming-First). Die spätere TV-Ausstrahlung bringt etwas weniger Quote.`);
+  if (!p || S.stage < 2 || S.catalog.some(c => c.id === id)) return;
+  S.catalog.push({ id, added: G.day, window });
+  if (window === "stream") { p.streamFirst = true; logMsg("Digitalvorstand", "Streaming", `„${p.title}“ startet exklusiv zuerst auf ${S.name} (Streaming-First). Die spätere TV-Ausstrahlung bringt etwas weniger Quote.`); }
+  if (window === "excl") {
+    p.exclusive = true;
+    P.week.forEach(d => { for (let i = 0; i < 24; i++) if (d[i].p === p.id) { d[i].p = null; d[i].cont = false; d[i].ad = null; } });
+    if (!planLocked()) buildToday(P);
+    P.brand = Math.max(0.5, P.brand - 0.05);
+    logMsg("Zuschauerservice", "Streaming", `„${p.title}“ läuft nur noch auf ${S.name}. Erste TV-Zuschauer beschweren sich – die Sendeplätze sind jetzt frei.`, true);
+  }
+}
+// Live-Sport im Stream: Spitzenlast gegen Serverkapazität
+function liveStream(v, title) {
+  const S = G.stream, P = me();
+  if (!S || S.stage < 3) return;
+  const peak = v * 0.3;
+  if (peak > S.capacity) {
+    if (sFree(S)) S.reach *= 0.95; else S.subs *= 0.97;
+    S.awareness = Math.max(10, S.awareness - 10);
+    P.conf = clamp(P.conf - 3, 0, 100);
+    logMsg("Digitalvorstand", "Streaming", `Server-Crash bei „${title}“: ${mio(peak)} Mio. wollten gleichzeitig streamen, Kapazität ${mio(S.capacity)} Mio. Shitstorm in den sozialen Medien, Abos gekündigt.`, true);
+  } else {
+    if (sFree(S)) S.reach += 0.05; else S.subs *= 1.006;
+    book(P, "Streaming-Werbung", r1000(peak * 1e6 * 0.02));
+    logMsg("Digitalvorstand", "Streaming", `Live-Stream stabil: ${mio(peak)} Mio. gleichzeitige Streams bei „${title}“.`);
+  }
+}
+
+// =====================================================================
+// Medien-Ticker: Ereignisse mit Entscheidungen
+// =====================================================================
+const myProg = filter => { const P = me(); const used = new Set(P.week.flatMap(d => d.map(c => c.p))); return shuffle(P.progs.filter(p => used.has(p.id) && !p.filler && filter(p)))[0]; };
+const EVENTS = [
+  { id: "hollywood", type: "Markt", when: () => !(G.mods.filmShortage >= G.day),
+    make: () => ({ title: "Gerücht: US-Studio startet eigenen Streamer in Deutschland", text: "Ein Hollywood-Major will seine Blockbuster künftig nur noch selbst streamen und zieht Filmlizenzen vom Markt ab. Branchenkenner rechnen mit knappen Kinofilmen im Free-TV.",
+      opts: [["Rechtemarkt leerkaufen", "Drei Top-Filme kommen sofort in den Handel, 20 % teurer. Danach 10 Tage weniger Filmnachschub."], ["Abwarten", "10 Tage weniger Filmnachschub im Programmhandel."]] }),
+    fn: (k) => {
+      G.mods.filmShortage = G.day + 10;
+      if (k === 0) {
+        const owned = new Set(G.stations.flatMap(s => s.progs.map(p => p.title)).concat(G.market.map(p => p.title)));
+        shuffle(FILM_DB.filter(r => r[2] >= 78 && !owned.has(r[0]))).slice(0, 3).forEach(r => { const f = realFilm(r); f.price = r1000(f.price * 1.2); G.market.unshift(f); });
+        go("market");
+      }
+    } },
+  { id: "adslump", type: "Markt", when: () => !(G.mods.adCut && G.mods.adCut.until >= G.day),
+    make: () => ({ title: "Werbemarkt schwächelt: Agenturen kürzen Budgets", text: "Mehrere große Werbekunden frieren ihre TV-Etats ein. Die Spotfabrik fragt, wie Sie reagieren wollen.",
+      opts: [["Rabatte anbieten", "7 Tage mehr Angebote, aber 10 % weniger Geld je Spot."], ["Preise halten", "7 Tage nur halb so viele Angebote."]] }),
+    fn: (k) => { G.mods.adCut = k === 0 ? { until: G.day + 7, f: 0.9, n: 10 } : { until: G.day + 7, f: 1, n: 4 }; refreshAds(); } },
+  { id: "pricewar", type: "Markt", when: () => G.stream && G.stream.stage >= 2 && G.stream.model !== "avod" && G.stream.model !== "free",
+    make: () => ({ title: "Preiskampf: Konkurrenz-Streamer senkt Abo-Preis", text: "Ein großer Streamingdienst lockt mit einem dauerhaft günstigeren Abo. Ihre Abonnenten vergleichen bereits.",
+      opts: [["Mitziehen", "Abo-Preis sinkt um 2 €."], ["Preis halten", "7 Tage erhöhte Kündigungsquote."]] }),
+    fn: (k) => { if (k === 0) G.stream.price = Math.max(2.99, Math.round((G.stream.price - 2) * 100) / 100); else G.mods.churnUp = G.day + 7; } },
+  { id: "earlyrights", type: "Markt", when: () => G.rights.some(r => r.owner && r.owner !== me().id && r.days > 5),
+    make: () => { const r = pick(G.rights.filter(x => x.owner && x.owner !== me().id && x.days > 5)); return { data: r.id, title: `Exklusiv: „${RDEF(r.id).name}“ wird vorzeitig neu vergeben`, text: `Der Rechteinhaber ${holderName(r.owner)} steckt in Finanznöten. Die Rechteagentur fragt diskret nach Interesse.`,
+      opts: [["Interesse anmelden", "Das Paket kommt sofort in die Ausschreibung."], ["Kein Interesse", "Alles bleibt, wie es ist."]] }; },
+    fn: (k, rid) => { if (k === 0) { const r = G.rights.find(x => x.id === rid); r.owner = null; r.days = 0; r.price = rightPrice(RDEF(rid)); r.bid = 0; go("rights"); } } },
+  { id: "setfight", type: "Skandal", when: () => !!myProg(p => p.kind === "serie" || (p.kind === "show" && p.genre !== "Nachrichten")),
+    make: () => { const p = myProg(p => p.kind === "serie" || (p.kind === "show" && p.genre !== "Nachrichten")); return { data: p.id, title: `Eklat am Set von „${p.title}“`, text: "Nach einem Streit über das Drehbuch geraten Hauptdarsteller und Regie handgreiflich aneinander. Die Boulevardpresse hat Wind davon bekommen.",
+      opts: [["Fristlos trennen", "Prestige steigt, die Produktion verliert 15 Qualitätspunkte."], ["Mit PR-Geld beruhigen", "−100.000 €, die Quote bleibt stabil – aber es könnte später auffliegen."], ["Krisen-Spezial senden", "Neue Reality-Sendung mit großem Quotenpotenzial. Kostet Prestige."]] }; },
+    fn: (k, pid) => {
+      const P = me(), p = P.progs.find(x => x.id === pid); if (!p) return;
+      if (k === 0) { p.q = Math.max(20, p.q - 15); P.favor += 3; P.conf = clamp(P.conf + 2, 0, 100); }
+      if (k === 1) { book(P, "PR & Krisen", -100000); G.mods.coverup = { day: G.day + ri(3, 8), title: p.title }; }
+      if (k === 2) { P.progs.push({ id: uid(), title: `Krisen-Spezial: ${p.title}`, genre: "Reality", kind: "show", q: 84, len: 1, topic: 1, fsk: 0, real: false, price: 0, aired: 0 }); P.favor = Math.max(0, P.favor - 5); P.brand = Math.max(0.5, P.brand - 0.1); }
+    } },
+  { id: "host", type: "Skandal", when: () => !!myProg(p => p.kind === "show" && ["Show", "Talk", "Reality"].includes(p.genre)),
+    make: () => { const p = myProg(p => p.kind === "show" && ["Show", "Talk", "Reality"].includes(p.genre)); return { data: p.id, title: `Empörung über Moderation von „${p.title}“`, text: "In der letzten Ausgabe fielen abwertende Bemerkungen über eine Bevölkerungsgruppe. Zuschauerinnen und Zuschauer sowie Werbekunden fordern Konsequenzen.",
+      opts: [["Moderation austauschen", "Klare Haltung: Prestige steigt, die Sendung verliert 10 Qualitätspunkte."], ["Öffentliche Entschuldigung", "Vertrauen der Senderleitung −2."], ["Aussitzen", "Ein Werbekunde springt ab, das Image leidet deutlich."]] }; },
+    fn: (k, pid) => {
+      const P = me(), p = P.progs.find(x => x.id === pid);
+      if (k === 0 && p) { p.q = Math.max(20, p.q - 10); P.favor += 3; P.conf = clamp(P.conf + 1, 0, 100); }
+      if (k === 1) P.conf = clamp(P.conf - 2, 0, 100);
+      if (k === 2) { const c = [...P.contracts].sort((a, b) => b.pay - a.pay)[0]; if (c) { P.contracts = P.contracts.filter(x => x !== c); P.week.forEach(d => d.forEach(s => { if (s.ad === c.id) s.ad = null; })); buildToday(P); logMsg("Werbezeitenvermarktung", "Werbung", `${c.brand} kündigt den Vertrag mit sofortiger Wirkung.`); } P.brand = Math.max(0.5, P.brand - 0.3); P.favor = Math.max(0, P.favor - 4); }
+    } },
+  { id: "studio", type: "Team", when: () => !G.mods.studioOk && !(G.mods.studioRisk >= G.day),
+    make: () => ({ title: "Chefredaktion warnt: Studiotechnik veraltet", text: "Bei Live-Schalten drohen Bildausfälle. Die Technik bittet um ein Upgrade, bevor beim nächsten großen Abend der Bildschirm schwarz bleibt.",
+      opts: [["Studio modernisieren", "−1,5 Mio. €, das Risiko ist dauerhaft gebannt."], ["Risiko eingehen", "14 Tage lang kann es abends zu Bildausfällen kommen."]] }),
+    fn: (k) => { if (k === 0) { book(me(), "Sendetechnik & Verbreitung", -1.5e6); G.mods.studioOk = true; } else G.mods.studioRisk = G.day + 14; } },
+  { id: "newsoff", type: "Team", when: () => me().progs.some(p => p.genre === "Nachrichten" && p.q < 95),
+    make: () => ({ title: "Redaktion schlägt Nachrichtenoffensive vor", text: "Mehr Korrespondenten, ein neues Studio-Design und Datenjournalismus: Die Nachrichtenredaktion will Ihre Nachrichtensendung aufwerten.",
+      opts: [["Investieren", "−800.000 €, Ihre Nachrichtensendungen gewinnen 10 Qualitätspunkte."], ["Ablehnen", "Kein Geld, keine Veränderung."]] }),
+    fn: (k) => { if (k === 0) { book(me(), "Programmkäufe", -8e5); me().progs.filter(p => p.genre === "Nachrichten").forEach(p => { p.q = Math.min(99, p.q + 10); }); } } },
+  { id: "split", type: "Team", when: () => !G.mods.split && G.rights.some(r => r.owner === me().id) && me().type === "privat",
+    make: () => ({ title: "Vermarktung schlägt Split-Screen-Werbung vor", text: "Während Live-Sport könnten Werbespots im geteilten Bild laufen, ohne das Spiel zu unterbrechen.",
+      opts: [["Einführen", "Mehr Werbegeld bei Live-Sport, aber 5 % weniger Zuschauer."], ["Ablehnen", "Die Zuschauer bleiben ungestört."]] }),
+    fn: (k) => { if (k === 0) G.mods.split = true; } },
+  { id: "servers", type: "Team", when: () => G.stream && G.stream.stage >= 2 && G.stream.capacity < 3,
+    make: () => ({ title: "Digitalteam: Server bei Großevents am Limit", text: `Bei Spitzenlast kommt ${G.stream.name} an seine Grenzen. Fällt der Stream bei einem Großereignis aus, droht ein Shitstorm.`,
+      opts: [["Kapazität ausbauen", "−1,5 Mio. €, +1 Mio. gleichzeitige Streams, höhere Serverkosten."], ["Abwarten", "Risiko bleibt bestehen."]] }),
+    fn: (k) => { if (k === 0) { book(me(), "Streaming-Aufbau", -1.5e6); G.stream.capacity++; } } },
+  { id: "streamtrend", type: "Markt", when: () => !G.stream && !G.project && G.day >= 3,
+    make: () => ({ title: "Analysten: Sender ohne Streamer verlieren junge Zuschauer", text: "Der Anteil der Streaming-Nutzung wächst jeden Monat. Ohne eigene Plattform drohen Werbekunden für junge Zielgruppen abzuwandern.",
+      opts: [["Streaming-Projekt prüfen", "Öffnet die Streaming-Planung."], ["Später", "Wir bleiben vorerst beim linearen Fernsehen."]] }),
+    fn: (k) => { if (k === 0) go("stream"); } },
+];
+function pickEvent() {
+  if (G.day < 2 || Math.random() > 0.75) return;
+  const recent = new Set((G.eventLog || []).slice(-4));
+  const pool = EVENTS.filter(e => !recent.has(e.id) && e.when());
+  if (!pool.length) return;
+  const e = pick(pool), m = e.make();
+  G.event = { id: e.id, type: e.type, title: m.title, text: m.text, opts: m.opts, data: m.data };
+  (G.eventLog = G.eventLog || []).push(e.id);
+  logMsg("Medien-Insider", "Entscheidung", m.title);
+}
+function showEvent() {
+  const e = G.event; if (!e) return;
+  openModal(`<header><h2>Medien-Insider · ${e.type === "Markt" ? "Markt & Gerüchte" : e.type === "Skandal" ? "Krisenmanagement" : "Aus dem Team"}</h2></header><div class="dbody">
+    <div class="event-head"><span class="chip ${e.type === "Skandal" ? "fsk" : "real"}">${e.type}</span><h3>${esc(e.title)}</h3><p class="lead">${esc(e.text)}</p></div>
+    <div class="picklist">${e.opts.map(([l, h], k) => `<button class="pick" data-act="decide" data-k="${k}"><b>${esc(l)}</b><span class="meta">${esc(h)}</span></button>`).join("")}</div></div>`, true);
+}
+function decide(k) {
+  const e = G.event; if (!e) return;
+  G.event = null;
+  closeModal();
+  logMsg("Medien-Insider", "Entscheidung", `Entscheidung „${e.opts[k][0]}“: ${e.opts[k][1]}`);
+  EVENTS.find(x => x.id === e.id).fn(k, e.data);
+  render();
+}
+function refreshAds() {
+  const n = G.mods.adCut && G.mods.adCut.until >= G.day ? G.mods.adCut.n : 8;
+  G.adOffers = [];
+  for (let k = 0; k < n; k++) G.adOffers.push(makeAd(expectedPrime(me())));
 }
 
 // =====================================================================
@@ -1028,6 +1194,11 @@ function resolveAuctions() {
 function nextDay() {
   G.day++;
   for (const st of G.stations) st.fin = {};
+  projectDay();
+  if (G.mods.coverup && G.day >= G.mods.coverup.day) {
+    const c = G.mods.coverup; G.mods.coverup = null;
+    if (Math.random() < 0.6) { const P = me(); P.conf = clamp(P.conf - 8, 0, 100); P.brand = Math.max(0.5, P.brand - 0.4); logMsg("Medien-Insider", "Skandal", `Vertuschung aufgeflogen: Die Boulevardpresse enthüllt den Vorfall bei „${c.title}“ – und dass der Sender Schweigegeld gezahlt hat.`, true); }
+  }
   resolveAuctions();
   refreshOffers(false);
   const P = me();
@@ -1038,7 +1209,9 @@ function nextDay() {
   if (holes) logMsg("Programmplanung", "Warnung", `Der heutige ${WDL[weekday(G.day)]} hat ${holes} leere Stunde${holes > 1 ? "n" : ""} im Wochenplan.`);
   logMsg("Programmhandel", "Programm", "Neue Filme und Serienlizenzen sind eingetroffen.");
   startDay();
+  pickEvent();
   go("overview", true);
+  if (G.event) showEvent();
 }
 
 // =====================================================================
@@ -1056,6 +1229,7 @@ $("back").addEventListener("click", () => { if (!hist.length) return; fut.push(p
 $("fwd").addEventListener("click", () => { if (!fut.length) return; hist.push(page); page = fut.pop(); render(true); });
 $("cont").addEventListener("click", () => {
   if (!G || !$("modal").hidden) return;
+  if (G.event) { showEvent(); return; }
   if (G.phase === "plan") {
     const empty = me().sched.filter(c => !c.p).length;
     if (empty) {
@@ -1247,11 +1421,13 @@ function overview(P) {
       <section class="panel"><div class="ph"><h2>Senderleitung</h2><span class="aside">Tag ${G.day} / ${SEASON}</span></div>
         <div class="goal"><div class="row"><b>Vertrauen</b><span class="${P.conf < 30 ? "down" : "muted"}">${P.conf} / 100</span></div><div class="track"><i style="width:${P.conf}%;background:${P.conf < 30 ? "#ef4444" : P.conf < 55 ? "#eab308" : "#22c55e"}"></i></div></div>
         <div class="goal"><div class="row"><b>Saisonziel Marktanteil</b><span class="muted">${P.maDays ? pct(avg) : "–"} / ${pct(P.target)}</span></div><div class="track"><i style="width:${Math.min(100, avg / P.target * 75)}%;background:#e3a019"></i><b style="left:75%"></b></div></div></section>
+      ${G.event ? `<section class="panel event-card"><div class="ph"><h2>Entscheidung nötig</h2><span class="chip ${G.event.type === "Skandal" ? "fsk" : "real"}">${G.event.type}</span></div><div class="pad"><p style="margin:0 0 10px">${esc(G.event.title)}</p><button class="btn hot" data-act="showEvent">Jetzt entscheiden</button></div></section>` : ""}
+      ${!S ? `<section class="panel"><div class="ph"><h2>Streaming</h2></div><div class="pad"><p class="lead">${G.project ? `Projekt „${STAGES[G.project.n].name}“ im Bau – noch ${G.project.left} Tage.` : "Noch kein eigener Streamer."} <button class="btn" data-page="stream">Zur Planung</button></p></div></section>` : ""}
       ${holes ? `<section class="panel"><div class="ph"><h2>Programmlöcher</h2></div><div class="pad"><p class="lead">Heute ${holes === 1 ? "ist 1 Stunde" : `sind ${holes} Stunden`} leer. <button class="btn" data-page="plan">Zum Wochenplan</button></p></div></section>` : ""}
       <section class="panel"><div class="ph"><h2>Primetime</h2><span class="aside">${dateLabel(G.day)}</span></div>
         <div class="fixture"><div class="side">${crest(P.i, 26)}<b>${pp ? esc(pp.title) : "Testbild"}</b></div><div class="t">20:15</div><div class="side"><span class="muted">vs. 11 Sender & Streaming</span></div></div></section>
       ${S ? `<section class="panel"><div class="ph"><h2>${esc(S.name)}</h2><span class="aside">Streaming</span></div><div class="slist">
-        <div class="srow"><b>${S.model === "free" ? "Reichweite" : "Abonnenten"}</b><em>${S.model === "free" ? mio(S.reach) : mio(S.subs)} Mio.</em><span>${sl ? (S.model === "free" ? "Nutzer pro Tag" : `Churn ${pct(sl.churn)} / Monat`) : "noch keine Daten"}</span></div>
+        <div class="srow"><b>${sFree(S) ? "Reichweite" : "Abonnenten"}</b><em>${sFree(S) ? mio(S.reach) : mio(S.subs)} Mio.</em><span>${sl ? (sFree(S) ? "Nutzer pro Tag" : `Churn ${pct(sl.churn)} / Monat`) : "noch keine Daten"}</span></div>
         <div class="srow"><b>Katalog</b><em>${S.catalog.length}</em><span>${sl ? sl.newCount + " neue Titel in 7 Tagen" : "Titel"}</span></div></div></section>` : ""}
       <section class="panel"><div class="ph"><h2>Nächstes Live-Event</h2></div>${ev ? `<div class="slist"><div class="srow"><b>${esc(ev.def.name)}</b><em>${hh(ev.def.h)}</em><span>${WDL[weekday(ev.d)]}, ${dateShort(ev.d)}</span></div></div>` : `<div class="pad"><p class="lead">Keine Sportrechte. <button class="btn" data-page="rights">Zum Rechtemarkt</button></p></div>`}</section>
       <section class="panel"><div class="ph"><h2>Kennzahlen</h2></div><div class="slist">
@@ -1323,67 +1499,79 @@ function market(P) {
 // =====================================================================
 // Seiten: Streaming
 // =====================================================================
-function noStream() {
-  return title("Streaming") + `<section class="panel"><div class="ph"><h2>Eigenen Streamer gründen</h2></div><div class="pad">
-    <p class="lead mb">Ihr Sender gehört zu keiner Gruppe mit eigenem Streamingdienst. Eine Gründung kostet 6 Mio. € Anschubinvestition, danach laufende Technik- und CDN-Kosten. Die Marke ist anfangs unbekannt.</p>
-    <div class="actions"><button class="btn hot" data-act="foundStream" ${planLocked() || me().money < 6e6 ? "disabled" : ""}>Streamer für 6 Mio. € gründen</button></div></div></section>`;
+function stagePanel() {
+  const S = G.stream, cur = S ? S.stage : 0, P = me();
+  return `<section class="panel mb"><div class="ph"><h2>Ausbaupfad</h2><span class="aside">vom Free-TV zum hybriden Medienhaus</span></div><div class="stages">${STAGES.slice(1).map(s => {
+    const done = cur >= s.n, building = G.project && G.project.n === s.n, next = cur === s.n - 1 && !G.project, allowed = stageAllowed(s.n);
+    const status = done ? '<span class="chip good">Online</span>' : building ? `<span class="chip warn">Im Bau · noch ${G.project.left} T.</span>` : !allowed ? '<span class="chip">Für ÖRR nicht vorgesehen</span>' : next ? '<span class="chip real">Verfügbar</span>' : '<span class="chip">Gesperrt</span>';
+    return `<div class="stage ${done ? "done" : ""}"><div class="row-s"><b>Stufe ${s.n}: ${s.name}</b>${status}</div><p class="fine">${s.desc}</p>
+      <div class="row-s"><span class="muted">${meur(s.cost)} · ${s.days} Tage · Server ${eur(s.server)}/Tag</span>${next && allowed && !done ? `<button class="btn hot" data-act="project" data-k="${s.n}" ${P.money < s.cost || planLocked() ? "disabled" : ""}>Starten</button>` : ""}</div></div>`;
+  }).join("")}</div></section>`;
 }
 function streamPage(P) {
   const S = G.stream;
-  if (!S) return noStream();
+  if (!S) return title("Streaming", `<span class="muted">Noch kein eigener Streamer</span>`) + `<p class="lead mb">Sie starten als reiner Fernsehsender. Ein eigener Streamer ist ein teures Großprojekt: Erst nach Monaten trägt er sich, bis dahin muss das Fernsehgeschäft die Verluste ausgleichen.</p>` + stagePanel();
   const h = S.hist, last = h[h.length - 1];
   const spark = (key, color) => {
     if (h.length < 2) return '<p class="fine">Daten ab dem zweiten Tag.</p>';
-    const vals = h.map(x => x[key]), mx = Math.max(...vals) * 1.1 || 1, mn = Math.min(...vals) * 0.9;
-    const pts = vals.map((v, i) => `${(i / (vals.length - 1) * 300).toFixed(1)},${(60 - (v - mn) / (mx - mn || 1) * 56).toFixed(1)}`).join(" ");
+    const vals = h.map(x => x[key]), mx = Math.max(...vals), mn = Math.min(...vals), span = mx - mn || 1;
+    const pts = vals.map((v, i) => `${(i / (vals.length - 1) * 300).toFixed(1)},${(60 - (v - mn) / span * 54).toFixed(1)}`).join(" ");
     return `<svg class="chart" viewBox="0 0 300 64"><polyline points="${pts}" fill="none" stroke="${color}" stroke-width="2.5"/></svg>`;
   };
-  const free = S.model === "free";
-  return title(esc(S.name), `<span class="muted">Ihre Streaming-Plattform</span>`) +
+  const free = sFree(S);
+  const prev = h[h.length - 2] || last;
+  return title(esc(S.name), `<span class="muted">Stufe ${S.stage}: ${STAGES[S.stage].name}</span>`) +
     `<div class="tiles mb">
-      <div class="tile"><small>${free ? "Nutzer pro Tag" : "Abonnenten"}</small><b>${mio(free ? S.reach : S.subs)} Mio.</b><span>${last && !free ? (last.subs - (h[h.length - 2] || last).subs >= 0 ? "+" : "") + Math.round((last.subs - (h[h.length - 2] || last).subs) * 1e6).toLocaleString("de-DE") + " gestern" : ""}</span></div>
+      <div class="tile"><small>${free ? "Nutzer pro Tag" : "Abonnenten"}</small><b>${mio(free ? S.reach : S.subs)} Mio.</b><span>${last && !free ? (last.subs - prev.subs >= 0 ? "+" : "−") + Math.abs(Math.round((last.subs - prev.subs) * 1e6)).toLocaleString("de-DE") + " gestern" : ""}</span></div>
       <div class="tile"><small>Churn</small><b>${last && !free ? pct(last.churn) : "–"}</b><span>Kündigungen pro Monat</span></div>
       <div class="tile"><small>ARPU</small><b>${last ? last.arpu.toLocaleString("de-DE", { maximumFractionDigits: 2, minimumFractionDigits: 2 }) + " €" : "–"}</b><span>Umsatz je Nutzer / Monat</span></div>
-      <div class="tile"><small>Abrufe gestern</small><b>${last ? mio(last.views / 1e6) + " Mio." : "–"}</b><span>alle Titel</span></div>
-      <div class="tile"><small>Ergebnis gestern</small><b class="${last && last.svod + last.avod - last.cdn < 0 ? "down" : "up"}">${last ? meur(last.svod + last.avod - last.cdn) : "–"}</b><span>Abos + Werbung − Technik</span></div>
+      <div class="tile"><small>Ergebnis gestern</small><b class="${last && last.result < 0 ? "down" : "up"}">${last ? meur(last.result) : "–"}</b><span>Erlöse − Server − CDN</span></div>
+      <div class="tile"><small>Seit Start</small><b class="${S.cum < 0 ? "down" : "up"}">${meur(S.cum)}</b><span>${S.cum < 0 ? "Break-even noch nicht erreicht" : "Gewinnzone"}</span></div>
     </div>
+    ${stagePanel()}
     <div class="grid two">
       <section class="panel"><div class="ph"><h2>Geschäftsmodell</h2></div><div class="pad" style="display:grid;gap:12px">
-        ${free ? `<p class="lead">Die öffentlich-rechtlichen Mediatheken sind kostenlos und werbefrei. Ziel ist Reichweite, nicht Umsatz.</p>` : `
+        ${S.stage < 2 ? `<p class="lead">${S.model === "free" ? "Die Mediathek ist kostenlos und werbefrei. Ziel ist Reichweite." : "Die Mediathek finanziert sich über Werbung vor und während der Abrufe."} Ein Abo-Modell gibt es ab Stufe 2.</p>` : `
         <label>Modell <select id="sModel"><option value="svod" ${S.model === "svod" ? "selected" : ""}>SVoD – reines Abo</option><option value="hybrid" ${S.model === "hybrid" ? "selected" : ""}>Hybrid – günstiger mit Werbung</option><option value="avod" ${S.model === "avod" ? "selected" : ""}>AVoD – kostenlos mit Werbung</option></select></label>
         ${S.model !== "avod" ? `<label>Monatspreis <input type="number" id="sPrice" min="2.99" max="29.99" step="1" value="${S.price}"> €</label>` : ""}
-        <p class="fine">Höhere Preise bringen mehr Umsatz je Abo, treiben aber die Kündigungen. Ohne neue Titel steigt der Churn.</p>`}
+        <p class="fine">Höhere Preise bringen mehr Umsatz je Abo, treiben aber die Kündigungen. Ohne neue Titel steigt der Churn.</p>
+        <div class="actions"><button class="btn hot" data-act="campaign" ${S.campaign > 0 || P.money < 1.5e6 || planLocked() ? "disabled" : ""}>${S.campaign > 0 ? `Kampagne läuft · ${S.campaign} T.` : "Kampagne „Erster Monat gratis“ · 1,5 Mio. €"}</button></div>`}
       </div></section>
-      <section class="panel"><div class="ph"><h2>${free ? "Reichweite" : "Abonnenten"}</h2><span class="aside">Verlauf</span></div><div class="pad">${spark(free ? "reach" : "subs", "#e6246e")}</div>
-        <div class="ph"><h2>Abrufe</h2></div><div class="pad">${spark("views", "#7c3aed")}</div></section>
+      <section class="panel"><div class="ph"><h2>Infrastruktur</h2></div><div class="slist">
+        <div class="srow"><b>Serverkapazität</b><em>${S.capacity} Mio.</em><span>gleichzeitige Streams bei Live-Events</span></div>
+        <div class="srow"><b>Serverkosten</b><em>${eur(STAGES.slice(1, S.stage + 1).reduce((a, s) => a + s.server, 0) + (S.capacity - 1) * 20000)}</em><span>pro Tag, unabhängig von der Nutzung</span></div></div>
+        <div class="pad actions" style="padding-top:12px"><button class="btn" data-act="capacity" ${P.money < 1.5e6 || planLocked() ? "disabled" : ""}>+1 Mio. Streams · 1,5 Mio. €</button></div></section>
+      <section class="panel"><div class="ph"><h2>${free ? "Reichweite" : "Abonnenten"}</h2><span class="aside">Verlauf</span></div><div class="pad">${spark(free ? "reach" : "subs", "#e6246e")}</div></section>
+      <section class="panel"><div class="ph"><h2>Ergebnis pro Tag</h2><span class="aside">Weg zum Break-even</span></div><div class="pad">${spark("result", "#22c55e")}</div></section>
     </div>`;
 }
 function catalog(P) {
   const S = G.stream;
-  if (!S) return noStream();
-  const inCat = streamItems();
-  const outCat = P.progs.filter(p => !S.catalog.some(c => c.id === p.id) && p.kind !== "sport" && !p.filler);
-  const wname = { stream: "Streaming-First", linear: "Linear-First", dd: "Day-and-Date" };
-  return title("Katalog", `<span class="muted">${inCat.length} Titel auf ${esc(S.name)}</span>`) +
-    `<p class="lead mb">Verwertungsfenster: Noch nie gesendete Titel starten <b>Streaming-First</b> (Abo-Schub, später etwas weniger TV-Quote). Bereits gesendete Titel laufen <b>Linear-First</b> (Nachholen, weniger Zugkraft im Stream). <b>Day-and-Date</b> nutzen Sie für Titel, die heute auch im TV laufen.</p>
-    <section class="panel mb"><div class="ph"><h2>Im Katalog</h2><span class="aside">Abrufe gestern</span></div>${inCat.length ? `<div class="tbl"><table><thead><tr><th>Titel</th><th>Genre</th><th class="num">Qual.</th><th>Fenster</th><th class="num">Online seit</th><th class="num">Abrufe</th><th></th></tr></thead><tbody>
-      ${inCat.sort((a, b) => (S.views[b.c.id] || 0) - (S.views[a.c.id] || 0)).map(({ c, p }) => `<tr><td class="title">${esc(p.title)}</td><td>${esc(p.genre)}</td><td class="num">${attr(p.q)}</td><td><span class="chip ${c.window === "stream" ? "good" : ""}">${wname[c.window]}</span></td><td class="num">${G.day - c.added} T.</td><td class="num">${(S.views[c.id] || 0).toLocaleString("de-DE")}</td><td class="num"><button class="btn" data-act="unstream" data-id="${p.id}">Entfernen</button></td></tr>`).join("")}
-    </tbody></table></div>` : '<div class="pad"><p class="lead">Der Katalog ist leer.</p></div>'}</section>
-    <section class="panel"><div class="ph"><h2>Aus dem Archiv hinzufügen</h2></div>${outCat.length ? `<div class="tbl"><table><thead><tr><th>Titel</th><th>Genre</th><th class="num">Qual.</th><th>Fenster</th><th></th></tr></thead><tbody>
-      ${outCat.map(p => { const todayTV = P.sched.some(c => c.p === p.id); const w = todayTV ? "dd" : p.aired ? "linear" : "stream"; return `<tr><td class="title">${esc(p.title)}</td><td>${esc(p.genre)}</td><td class="num">${attr(p.q)}</td><td><span class="chip">${wname[w]}</span></td><td class="num"><button class="btn hot" data-act="stream" data-id="${p.id}" data-k="${w}">Hinzufügen</button></td></tr>`; }).join("")}
+  if (!S) return streamPage(P);
+  const items = streamItems();
+  const wname = { stream: "Streaming-First", linear: "Linear-First", dd: "Day-and-Date", excl: "Exklusiv", catchup: "Mediathek (7 Tage)" };
+  let h = title("Katalog", `<span class="muted">${items.length} Titel auf ${esc(S.name)}</span>`);
+  h += `<section class="panel mb"><div class="ph"><h2>Online</h2><span class="aside">Abrufe gestern</span></div>${items.length ? `<div class="tbl"><table><thead><tr><th>Titel</th><th>Genre</th><th class="num">Qual.</th><th>Fenster</th><th class="num">Online seit</th><th class="num">Abrufe</th><th></th></tr></thead><tbody>
+    ${items.sort((a, b) => (S.views[b.c.id] || 0) - (S.views[a.c.id] || 0)).map(({ c, p }) => `<tr><td class="title">${esc(p.title)}</td><td>${esc(p.genre)}</td><td class="num">${attr(p.q)}</td><td><span class="chip ${c.window === "excl" || c.window === "stream" ? "good" : ""}">${wname[c.window]}</span></td><td class="num">${G.day - c.added} T.</td><td class="num">${(S.views[c.id] || 0).toLocaleString("de-DE")}</td><td class="num">${c.window === "catchup" ? "" : `<button class="btn" data-act="unstream" data-id="${p.id}">Entfernen</button>`}</td></tr>`).join("")}
+  </tbody></table></div>` : '<div class="pad"><p class="lead">Noch keine Titel. In der Mediathek erscheinen gesendete Programme automatisch für 7 Tage.</p></div>'}</section>`;
+  if (S.stage < 2) return h + `<p class="lead">Einen eigenen Katalog mit Exklusivtiteln und Verwertungsfenstern gibt es ab Stufe 2 (Premium-Abo).</p>`;
+  const out = P.progs.filter(p => !S.catalog.some(c => c.id === p.id) && p.kind !== "sport" && !p.filler);
+  h += `<p class="lead mb">Verwertungsfenster: <b>Streaming-First</b> für noch nie gesendete Titel (Abo-Schub, später etwas weniger TV-Quote), <b>Linear-First</b> für bereits gesendete (Nachholen), <b>Day-and-Date</b> für Titel, die heute auch im TV laufen. <b>Exklusiv</b> zieht einen Titel ganz aus dem Fernsehen ab – stärkster Abo-Treiber, aber verärgerte TV-Zuschauer und leere Sendeplätze.</p>
+    <section class="panel"><div class="ph"><h2>Aus dem Archiv hinzufügen</h2></div>${out.length ? `<div class="tbl"><table><thead><tr><th>Titel</th><th>Genre</th><th class="num">Qual.</th><th>Fenster</th><th></th></tr></thead><tbody>
+      ${out.map(p => { const w = P.sched.some(c => c.p === p.id) ? "dd" : p.aired ? "linear" : "stream"; return `<tr><td class="title">${esc(p.title)}</td><td>${esc(p.genre)}</td><td class="num">${attr(p.q)}</td><td><span class="chip">${wname[w]}</span></td><td class="num"><div class="actions" style="justify-content:flex-end"><button class="btn hot" data-act="stream" data-id="${p.id}" data-k="${w}">Hinzufügen</button>${p.home ? "" : `<button class="btn" data-act="stream" data-id="${p.id}" data-k="excl">Exklusiv</button>`}</div></td></tr>`; }).join("")}
     </tbody></table></div>` : '<div class="pad"><p class="lead">Alle Titel sind bereits im Katalog.</p></div>'}</section>`;
+  return h;
 }
 function smarket(P) {
   const S = G.stream;
-  const list = G.streamers.map(s => ({ ...STREAMERS.find(x => x.id === s.id), ...s })).filter(s => s.id !== "mediathek").sort((a, b) => b.subs - a.subs);
-  // Top 10 der Woche: Hits der Konkurrenz + eigene Titel
+  const list = G.streamers.map(s => ({ ...STREAMERS.find(x => x.id === s.id), ...s })).filter(s => s.id !== "mediathek" && !(s.player && (!S || sFree(S)))).sort((a, b) => b.subs - a.subs);
   const chart = [];
   for (const s of list) if (!s.player) s.hits.forEach((t, k) => chart.push({ t, who: s.id, v: s.subs * 1e6 * 0.06 / (k + 1) * rnd(0.9, 1.1) }));
   if (S) for (const { c, p } of streamItems()) chart.push({ t: p.title, who: S.id, v: (S.views[c.id] || 0) * 1.4, mine: true });
   chart.sort((a, b) => b.v - a.v);
   return title("Streaming-Wettbewerb", `<span class="muted">Spielwerte, grob an Größenordnungen angelehnt</span>`) +
     `<div class="grid two"><section class="panel"><div class="ph"><h2>Abonnenten</h2><span class="aside">Deutschland, Mio.</span></div><div class="tbl"><table><thead><tr><th>Pos</th><th>Dienst</th><th>Modell</th><th class="num">Preis</th><th class="num">Abos</th></tr></thead><tbody>
-      ${list.map((s, k) => `<tr class="${s.player ? "mine" : ""}"><td>${k + 1}</td><td><span class="sn">${sbadge(s.id)}${esc(s.name)}</span></td><td class="muted">${esc(s.player && S ? ({ svod: "Abo", hybrid: "Hybrid", avod: "Werbung", free: "kostenlos" })[S.model] : s.model)}</td><td class="num">${(s.player && S ? S.price : s.price).toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</td><td class="num"><b>${mio(s.subs)}</b></td></tr>`).join("")}
+      ${list.map((s, k) => `<tr class="${s.player ? "mine" : ""}"><td>${k + 1}</td><td><span class="sn">${sbadge(s.id)}${esc(s.player && S ? S.name : s.name)}</span></td><td class="muted">${esc(s.player && S ? ({ svod: "Abo", hybrid: "Hybrid", avod: "Werbung", free: "kostenlos" })[S.model] : s.model)}</td><td class="num">${(s.player && S ? S.price : s.price).toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</td><td class="num"><b>${mio(s.subs)}</b></td></tr>`).join("")}
     </tbody></table></div></section>
     <section class="panel"><div class="ph"><h2>Top 10 der Woche</h2><span class="aside">nach Abrufen</span></div><div class="tbl"><table><tbody>
       ${chart.slice(0, 10).map((x, k) => `<tr class="${x.mine ? "mine" : ""}"><td>${k + 1}</td><td class="title">${esc(x.t)}</td><td><span class="sn">${sbadge(x.who)}</span></td></tr>`).join("")}
@@ -1468,7 +1656,7 @@ function board(P) {
 }
 function finance(P) {
   const hist = P.hist.slice(-14);
-  const keys = ["TV-Werbung", "Teleshopping", "Distribution (HD/Kabel)", "Rundfunkbeitrag", "Streaming-Abos", "Streaming-Werbung", "Programmkäufe", "Sportrechte", "Personal & Verwaltung", "Sendetechnik & Verbreitung", "Technik & CDN", "Strafen", "Zinsen"];
+  const keys = ["TV-Werbung", "Teleshopping", "Distribution (HD/Kabel)", "Rundfunkbeitrag", "Streaming-Abos", "Streaming-Werbung", "Programmkäufe", "Sportrechte", "Personal & Verwaltung", "Sendetechnik & Verbreitung", "Streaming-Technik", "Streaming-Aufbau", "PR & Krisen", "Strafen", "Zinsen"];
   const sum = {}; for (const d of P.hist) for (const [k, v] of Object.entries(d.fin)) sum[k] = (sum[k] || 0) + v;
   const rev = keys.filter(k => (sum[k] || 0) > 0), cost = keys.filter(k => (sum[k] || 0) < 0);
   const tot = arr => arr.reduce((a, k) => a + (sum[k] || 0), 0);
@@ -1618,7 +1806,7 @@ function showSummary(report) {
       <div class="tile"><small>Marktanteil 0–24 Uhr</small><b class="${last.d >= 0 ? "up" : "down"}">${pct(P.dayMA)}</b><span>Ziel ${pct(P.target)}</span></div>
       <div class="tile"><small>Vertrauen</small><b>${P.conf}</b><span>Senderleitung</span></div>
       <div class="tile"><small>EBITDA</small><b class="${last.ebitda < 0 ? "down" : "up"}">${meur(last.ebitda)}</b><span>operatives Ergebnis</span></div>
-      ${S && sr ? `<div class="tile"><small>${esc(S.name)}</small><b>${S.model === "free" ? mio(S.reach) : mio(S.subs)} Mio.</b><span>${S.model === "free" ? "Nutzer" : "Abonnenten"} · ${mio(sr.views / 1e6)} Mio. Abrufe</span></div>` : `<div class="tile"><small>Kontostand</small><b>${meur(P.money)}</b></div>`}
+      ${S && sr ? `<div class="tile"><small>${esc(S.name)}</small><b>${sFree(S) ? mio(S.reach) : mio(S.subs)} Mio.</b><span>${sFree(S) ? "Nutzer" : "Abonnenten"} · ${mio(sr.views / 1e6)} Mio. Abrufe</span></div>` : `<div class="tile"><small>Kontostand</small><b>${meur(P.money)}</b></div>`}
     </div>
     <section class="panel"><div class="tbl" style="max-height:44vh;overflow:auto"><table><thead><tr><th>Zeit</th><th>Ihr Programm</th><th class="num">Mio.</th><th class="num">MA</th><th class="num">Platz</th><th>Stundensieger</th></tr></thead><tbody>${rows}</tbody></table></div></section>
     ${report.length ? `<section class="panel"><div class="msgs">${report.map(r => `<div class="msg"><span class="from">Werbezeitenvermarktung</span><span class="chip tag">Strafe</span><span class="txt">${esc(r)}</span><time></time></div>`).join("")}</div></section>` : ""}
@@ -1672,15 +1860,13 @@ function act(b) {
     case "sell": { const p = P.progs.find(x => x.id === id); if (p && !planLocked() && !p.home) { book(P, "Programmkäufe", r1000(p.price * 0.4)); P.progs = P.progs.filter(x => x !== p); if (G.stream) G.stream.catalog = G.stream.catalog.filter(c => c.id !== id); toast(`„${p.title}“ verkauft.`); } break; }
     case "credit": P.money += 2.5e6; P.credit += 2.5e6; toast("Kredit über 2,5 Mio. € erhalten."); break;
     case "repay": P.money -= 2.5e6; P.credit -= 2.5e6; toast("2,5 Mio. € getilgt."); break;
-    case "foundStream": if (!G.stream && P.money >= 6e6) {
-      book(P, "Programmkäufe", -6e6);
-      G.stream = { id: "own", name: `${P.name}+`, model: "svod", price: 6.99, subs: 0.05, reach: 0, catalog: [], awareness: 20, views: {}, hist: [], founded: true };
-      STREAMERS.push({ id: "own", name: `${P.name}+`, model: "Abo", subs: 0.05, price: 6.99, color: P.color, hits: [] });
-      G.streamers.push({ id: "own", subs: 0.05, trend: 0, player: true });
-      logMsg("Digitalvorstand", "Streaming", `${P.name}+ ist gestartet! Jetzt den Katalog bestücken.`, true);
-    } break;
-    case "stream": if (G.stream) { addToStream(id, b.dataset.k); toast("Titel zum Katalog hinzugefügt."); } break;
-    case "unstream": if (G.stream) G.stream.catalog = G.stream.catalog.filter(c => c.id !== id); break;
+    case "project": if (!planLocked()) startProject(+b.dataset.k); break;
+    case "capacity": if (G.stream && P.money >= 1.5e6 && !planLocked()) { book(P, "Streaming-Aufbau", -1.5e6); G.stream.capacity++; toast("Serverkapazität ausgebaut."); } break;
+    case "campaign": if (G.stream && G.stream.stage >= 2 && !G.stream.campaign && P.money >= 1.5e6 && !planLocked()) { book(P, "Streaming-Aufbau", -1.5e6); G.stream.campaign = 7; logMsg("Marketing", "Streaming", `Kampagne „Erster Monat gratis“ für ${G.stream.name} läuft 7 Tage: deutlich mehr Neukunden, aber weniger Umsatz je Abo.`, true); } break;
+    case "showEvent": showEvent(); return;
+    case "decide": decide(+b.dataset.k); return;
+    case "stream": if (G.stream && G.stream.stage >= 2) { addToStream(id, b.dataset.k); toast(b.dataset.k === "excl" ? "Titel läuft jetzt exklusiv im Stream." : "Titel zum Katalog hinzugefügt."); } break;
+    case "unstream": if (G.stream) { G.stream.catalog = G.stream.catalog.filter(c => c.id !== id); const p = P.progs.find(x => x.id === id); if (p) p.exclusive = false; } break;
     case "bid": {
       const r = G.rights.find(x => x.id === b.dataset.k);
       const v = Math.round(+($("bid-" + r.id).value || 0) / 1000) * 1000;
@@ -1718,13 +1904,13 @@ function act(b) {
 // =====================================================================
 // Speichern (nur lokal im Browser)
 // =====================================================================
-const KEY = "quotenturm-v4";
+const KEY = "quotenturm-v5";
 function save() { try { localStorage.setItem(KEY, JSON.stringify(G)); } catch (e) { /* ohne Speicher spielbar */ } }
 function hasSave() { try { return !!localStorage.getItem(KEY); } catch (e) { return false; } }
 function load() {
   try {
     const s = localStorage.getItem(KEY); if (!s) return false; G = JSON.parse(s);
-    if (G.stream && G.stream.id === "own" && !STREAMERS.some(x => x.id === "own")) STREAMERS.push({ id: "own", name: G.stream.name, model: "Abo", subs: 0, price: G.stream.price, color: me().color, hits: [] });
+    G.mods = G.mods || {}; G.eventLog = G.eventLog || [];
     return true;
   } catch (e) { return false; }
 }
