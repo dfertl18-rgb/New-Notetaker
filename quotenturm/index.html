@@ -401,6 +401,16 @@ img.avatar.photo { border-radius: 50%; object-fit: cover; flex: 0 0 auto; }
 .fxgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 10px; margin-top: 12px; } .fxcard { background: var(--panel-2); border-radius: 6px; padding: 12px 14px; display: grid; gap: 8px; align-content: start; } .fxcard h3 { margin: 0; font-family: var(--font-head); font-size: 17px; } .fxcard p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.45; }
 .fxmeta { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--muted); } .fxmeta b { color: var(--text); } .fxcard .btn { justify-self: start; }
 td.cw { position: relative; } .cell-i { position: absolute; right: 8px; top: 8px; width: 20px; height: 20px; border-radius: 50%; border: 1px solid var(--line); display: grid; place-items: center; font-size: 12px; font-weight: 700; color: var(--muted); cursor: pointer; background: var(--panel); z-index: 1; } .cell-i:hover { color: var(--hot); border-color: var(--hot); }
+.msg .txt:has(> .rep) { grid-column: 1 / -1; } .rep { font-size: 14px; color: var(--text); display: grid; gap: 10px; background: var(--panel-2); border-radius: 6px; padding: 12px 14px; margin-top: 4px; } .rep-h { margin: 0; font-family: var(--font-head); font-size: 22px; color: var(--good); } .rep-h::before { content: ""; display: inline-block; width: 16px; height: 14px; background: var(--good); margin-right: 8px; }
+.rep-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); gap: 16px; } .rep h4 { margin: 0 0 8px; font-size: 13px; } .rep-bars { display: flex; gap: 8px; align-items: end; height: 170px; }
+.rep-bar { flex: 1; display: grid; grid-template-rows: 1fr auto auto auto; justify-items: center; gap: 3px; height: 100%; font-size: 12px; } .rep-col { width: 70%; display: flex; align-items: end; height: 100%; } .rep-col i { width: 100%; border-radius: 4px 4px 0 0; display: block; } .rep-bar span { color: var(--muted); font-size: 11px; }
+.rep-t { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .rep-txt p { margin: 0 0 4px; color: var(--muted); font-size: 13px; line-height: 1.5; }
+@media (max-width: 700px) { .rep-grid { grid-template-columns: 1fr; } }
+.tsteps { display: flex; flex-wrap: wrap; gap: 4px; padding: 8px 14px 0; } .tsteps span { font-size: 12px; padding: 4px 9px; border-radius: 4px; background: var(--row); color: var(--muted); } .tsteps span.on { background: var(--violet); color: #fff; } .tsteps span.done { color: var(--good); }
+.home-hero { background: linear-gradient(120deg, rgba(123,47,247,.45), rgba(224,33,138,.25)); border-radius: 8px; padding: 18px 16px; display: grid; gap: 3px; min-height: 86px; align-content: end; } .home-hero small { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .05em; } .home-hero b { font-family: var(--font-head); font-size: 24px; } .home-hero span { color: var(--muted); font-size: 13px; }
+.home-row { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; margin-top: 8px; } .home-tile { background: var(--panel-2); border-radius: 6px; padding: 10px; min-height: 76px; display: grid; gap: 3px; align-content: start; font-size: 13px; } .home-tile span { color: var(--muted); font-size: 12px; } .home-tile .btn { justify-self: start; }
+@media (max-width: 700px) { .home-row { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.season { display: grid; grid-template-columns: repeat(12, 1fr); gap: 4px; height: 110px; align-items: end; } .season div { display: grid; grid-template-rows: 1fr auto; height: 100%; justify-items: center; gap: 3px; } .season i { width: 70%; align-self: end; background: var(--line); border-radius: 3px 3px 0 0; display: block; } .season .on i { background: var(--hot); } .season span { font-size: 11px; color: var(--muted); }
 .ptabs button.on { color: var(--hot); } .ptabs button.on::after { content: ""; position: absolute; left: 10px; right: 10px; bottom: -1px; height: 2px; background: var(--hot); }
 .acols { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 .acol h3 { margin: 0 0 6px; font-family: var(--font-head); font-size: 16px; color: var(--muted); border-bottom: 1px solid var(--line); padding-bottom: 4px; }
@@ -1226,7 +1236,7 @@ const MENU = [
   { id: "streaming", name: "Streaming", subs: [["stream", "Plattform", "Abos, Churn, ARPU und Preismodell"], ["catalog", "Katalog", "Titel und Verwertungsfenster"], ["smarket", "Wettbewerb", "Streamer im Vergleich und Top 10"]] },
   { id: "sport", name: "Sport", subs: [["rights", "Rechtemarkt", "Ausschreibungen und Gebote"], ["myrights", "Meine Rechte", "Pakete und Live-Termine"]] },
   { id: "quoten", name: "Quoten", subs: [["table", "Quotentabelle", "Senderranking nach Marktanteil"], ["ratings", "Einschaltquoten", "Jede Stunde, jeder Sender"], ["rivals", "Konkurrenz", "Tagesplan der anderen Sender"], ["landscape", "Markt", "Sendergruppen und Streamer"]] },
-  { id: "sender", name: "Sender", subs: [["chiefs", "Rivalen", "Beziehungen zu den Senderchefs"], ["board", "Senderleitung", "Erwartungen, Vertrauen, Kredit"], ["finance", "Finanzen", "Erlöse, Kosten, EBITDA"], ["contracts", "Werbeverträge", "Laufende Werbeverträge"], ["agency", "Werbeagentur", "Neue Werbekunden gewinnen"], ["jury", "Fernsehpreise", "Grimme, Fernsehpreis, Bambi, Henne"]] },
+  { id: "sender", name: "Sender", subs: [["chiefs", "Rivalen", "Beziehungen zu den Senderchefs"], ["board", "Senderleitung", "Erwartungen, Vertrauen, Kredit"], ["finance", "Finanzen", "Erlöse, Kosten, EBITDA"], ["contracts", "Werbeverträge", "Laufende Werbeverträge"], ["adsales", "Vermarktung", "Erlöse, TKP, Kunden, Preisliste"], ["agency", "Werbeagentur", "Neue Werbekunden gewinnen"], ["jury", "Fernsehpreise", "Grimme, Fernsehpreis, Bambi, Henne"]] },
 ];
 let openMenu = null;
 const PAGE_SECTION = Object.fromEntries(MENU.flatMap(m => m.subs.map(([k]) => [k, m.id])));
@@ -1344,6 +1354,7 @@ function makeFiller(genre, st) {
   return { id: uid(), title, genre, kind: "show", q: genre === "Teleshopping" ? 18 : ri(32, 56), len: 1, topic: 1, fsk: 0, real: false, filler: true, price: 0, aired: 0 };
 }
 function makeAd(scale) {
+  if (G && G.me !== undefined && G.stations && G.stations.length) return makeAd2(scale);
   const mins = [0.2, 0.3, 0.5, 0.8, 1.0, 1.5, 2.0, 2.5, 3.0, 4.0].filter(m => m <= scale * 1.4 + 0.2);
   const min = pick(mins.length ? mins : [0.2]);
   const spots = ri(3, 9);
@@ -1627,7 +1638,7 @@ function planDayFor(st, wd, sc = st.week[wd], opts = {}) {
     let best = null;
     for (const c of st.contracts) {
       const n = sc.filter(x => x.ad === c.id).length;
-      if (c.spots - c.done - n <= 0 || c.min > exp[i]) continue;
+      if (c.spots - c.done - n <= 0 || adNeed(c) > exp[i] || (c.prime && (i < 20 || i > 22))) continue;
       if (!best || c.pay > best.pay) best = c;
     }
     if (best) sc[i].ad = best.id;
@@ -1725,16 +1736,17 @@ function airHour(i) {
     if (r.p && r.p.genre === "Teleshopping" && st.type === "privat") book(st, "Teleshopping", r1000(12000 + r.v * 20000));
     const ad = r.c.ad ? adOf(st, r.c.ad) : null;
     if (ad && ad.done < ad.spots && adAllowed(st, i)) {
-      if (r.v >= ad.min) {
-        ad.done++; book(st, "TV-Werbung", r1000(ad.pay * newsroomCalc().adF));
-        if (i >= LIVE_FROM) logMsg("Werbezeitenvermarktung", "Werbung", `${hh(i)} – Spot „${ad.brand}“ gesendet: +${eur(ad.pay)}`);
+      const reach = r.v * tgFrac(st, r.p, ad.tg || "all");
+      if (reach >= ad.min && !(ad.prime && (i < 20 || i > 22))) {
+        ad.done++; const paid = adPaid(st, ad, r.p, i, reach); book(st, "TV-Werbung", paid);
+        if (i >= LIVE_FROM) logMsg("Werbezeitenvermarktung", "Werbung", `${hh(i)} – Spot „${ad.brand}“ gesendet: +${eur(paid)}`);
         if (ad.done >= ad.spots) {
           st.contracts = st.contracts.filter(x => x !== ad);
           st.sched.forEach(s => { if (s.ad === ad.id) s.ad = null; });
           (isMe(st) ? allPlans(st) : st.week).forEach(d => d.forEach(s => { if (s.ad === ad.id) s.ad = null; }));
-          logMsg("Werbezeitenvermarktung", "Werbung", `Vertrag „${ad.brand}“ vollständig erfüllt.`, i >= LIVE_FROM);
+          adDelivered(ad); logMsg("Werbezeitenvermarktung", "Werbung", `Vertrag „${ad.brand}“ vollständig erfüllt.`, i >= LIVE_FROM);
         }
-      } else logMsg("Werbezeitenvermarktung", "Werbung", `${hh(i)} – Spot „${ad.brand}“ verfehlt: ${mio(r.v)} statt ${mio(ad.min)} Mio.`, i >= LIVE_FROM);
+      } else logMsg("Werbezeitenvermarktung", "Werbung", `${hh(i)} – Spot „${ad.brand}“ verfehlt: ${mio(reach)} statt ${mio(ad.min)} Mio.${ad.tg && ad.tg !== "all" ? ` (Zielgruppe ${AD_TG[ad.tg][0]})` : ""}${ad.prime && (i < 20 || i > 22) ? " – Premium-Spot nur 20–23 Uhr" : ""}`, i >= LIVE_FROM);
     }
     if (G.adBreak[i]) { const extra = r1000(r.v * 45000); book(st, "TV-Werbung", extra); logMsg("Live-Regie", "Werbung", `${hh(i)} – Zusatz-Werbeblock: +${eur(extra)}, dafür weniger Zuschauer.`); }
     if (!r.p) logMsg("Sendetechnik", "Warnung", `${hh(i)} – Sendeloch! Testbild auf Sendung.`, i >= LIVE_FROM);
@@ -1910,14 +1922,15 @@ function dachBids(r, d) {
   return out;
 }
 function streamDay() {
-  for (const s of G.streamers) if (!s.player) { s.trend = clamp(s.trend + rnd(-0.004, 0.004), -0.01, 0.012); s.subs = Math.max(0.2, s.subs * (1 + s.trend + 0.0008)); }
+  for (const s of G.streamers) if (!s.player) { s.trend = clamp(s.trend + rnd(-0.0003, 0.0003), -0.0012, 0.0015); s.subs = Math.max(0.2, s.subs * (1 + s.trend + 0.0002)); }
+  streamerAIDay();
   const S = G.stream;
   if (!S) return null;
-  const P = me();
+  const P = me(), o = sOpts(S);
   const items = streamItems();
   const scored = items.map(({ c, p }) => {
     const age = G.day - c.added;
-    return { c, p, s: p.q * Math.max(0.25, 1 - age * 0.02) * WINDOW_F[c.window] * (p.kind === "serie" ? 1.2 : 1) * (p.streamF || 1) * (age < 7 && p.hypeStream ? 1 + p.hypeStream / 100 : 1) * (1 + (p.pull || 0) * 0.45) };
+    return { c, p, s: p.q * Math.max(0.25, 1 - age * relDecay(p)) * relBoost(p, age) * placeF(S, c.id) * WINDOW_F[c.window] * (p.kind === "serie" ? 1.2 : 1) * (p.streamF || 1) * (age < 7 && p.hypeStream ? 1 + p.hypeStream / 100 : 1) * (1 + (p.pull || 0) * 0.45) };
   }).sort((a, b) => b.s - a.s);
   const top = scored.slice(0, 25);
   const cat = top.reduce((a, x) => a + x.s, 0) / Math.max(10, top.length);
@@ -1932,23 +1945,26 @@ function streamDay() {
     // Churn (pro Monat): 2 % Basis + Content-Mangel (je 14 Spieltage ohne Titel mit Rating ≥ 70: +4 %) + Preiskampf
     if (items.some(x => x.p.q >= 70 && G.day - x.c.added <= 1)) S.lastHit = G.day;
     const dry = Math.floor((G.day - (S.lastHit || G.day)) / 14);
-    S.churnM = 2 + dry * 4 + (G.mods.churnUp >= G.day ? 2 : 0);
+    S.churnM = Math.max(0.5, churnParts(S).reduce((a, [, v]) => a + v, 0)) * (o.annual ? 0.8 : 1);
     const churn = S.churnM / 100 / 30;
     // Neukunden (Mio. pro Tag): Katalog, Bekanntheit, Preis, Kampagne, Umsteiger aus der Mediathek
-    const adds = (0.02 * cat / 70 + newCount * 0.002) * (S.awareness / 60) * priceF * (campaign ? 2.5 : 1) + S.reach * 0.002;
+    const adds = (0.02 * cat / 70 + newCount * 0.002) * (S.awareness / 60) * priceF * (campaign ? 2.5 : 1) * (o.bundle ? 1.35 : 1) * (o.sharing ? 1.04 : 1) * clamp(1 + (compStdAvg() - avgPrice(S)) / compStdAvg() * 0.4, 0.75, 1.25) + S.reach * 0.002;
     sportTerritories(S);
     regionDay(S, churn, adds);
     S.churn = churn * 30 * 100;
     views = S.subs * 1e6 * 0.32 * (cat / 70);
   }
   if (campaign) S.campaign--;
-  S.awareness = clamp(S.awareness + (newCount ? 0.5 : -0.2) + (campaign ? 1.5 : 0), 10, 100);
+  const heroP = sPlace(S).hero && P.progs.find(p => p.id === S.place.hero);
+  if (S.place.hero && !heroP) S.place.hero = null;
+  S.place.row = S.place.row.filter(id => P.progs.some(p => p.id === id));
+  S.awareness = clamp(S.awareness + (newCount ? 0.5 : -0.2) + (campaign ? 1.5 : 0) + (heroP && heroP.q >= 65 ? 0.3 : 0), 10, 100);
   const tot = top.reduce((a, x) => a + x.s, 0) || 1;
   S.views = {};
   for (const x of top) S.views[x.c.id] = Math.round(views * x.s / tot);
   const users = sFree(S) ? S.reach : S.subs;
   const shares = !sFree(S) ? tierShares(S) : null;
-  const svod = shares ? S.subs * 1e6 * shares.reduce((a, sh, k) => a + sh * S.tiers[k], 0) / 30 * (campaign ? 0.85 : 1) * arpuFactor(S) : 0;
+  const svod = shares ? S.subs * 1e6 * shares.reduce((a, sh, k) => a + sh * S.tiers[k], 0) / 30 * (campaign ? 0.85 : 1) * arpuFactor(S) * (o.annual ? 0.95 : 1) * (o.bundle ? 0.9 : 1) * (o.sharing ? 1.07 : 1) : 0;
   const avod = S.model === "free" ? 0 : views * (shares ? shares[0] * 0.05 : 0.05); // Werbung je Abruf (Abo: nur Basis-Paket)
   const server = STAGES.slice(1, S.stage + 1).reduce((a, s) => a + s.server, 0) + (S.capacity - 1) * 20000;
   const cdn = views * 0.004;
@@ -2075,7 +2091,7 @@ function pickEvent() {
 }
 function showEvent() {
   const e = G.event; if (!e) return;
-  openModal(`<header><h2>${e.type === "Interview" ? "Interview-Anfrage · Medien-Blitz" : e.type === "Konkurrenz" ? "Medien-Insider · Konkurrenz" : `Medien-Insider · ${e.type === "Markt" ? "Markt & Gerüchte" : e.type === "Skandal" ? "Krisenmanagement" : "Aus dem Team"}`}</h2></header><div class="dbody">
+  openModal(`<header><h2>${e.type === "Interview" ? "Interview-Anfrage · Medien-Blitz" : e.type === "Konkurrenz" ? "Medien-Insider · Konkurrenz" : e.type === "Rechte" ? "Rechteagentur · Bieterverfahren" : `Medien-Insider · ${e.type === "Markt" ? "Markt & Gerüchte" : e.type === "Skandal" ? "Krisenmanagement" : "Aus dem Team"}`}</h2></header><div class="dbody">
     <div class="event-head"><span class="chip ${e.type === "Skandal" ? "fsk" : "real"}">${e.type}</span><h3>${esc(e.title)}</h3><p class="lead">${esc(e.text)}</p></div>
     <div class="picklist">${e.opts.map(([l, h], k) => `<button class="pick" data-act="decide" data-k="${k}"><b>${esc(l)}</b><span class="meta">${esc(h)}</span></button>`).join("")}</div></div>`, true);
 }
@@ -2086,9 +2102,10 @@ function decide(k) {
   logMsg("Medien-Insider", "Entscheidung", `Entscheidung „${e.opts[k][0]}“: ${e.opts[k][1]}`);
   EVENTS.find(x => x.id === e.id).fn(k, e.data);
   render();
+  if (!G.event && G.evQ && G.evQ.length) { G.event = G.evQ.shift(); showEvent(); }
 }
 function refreshAds() {
-  const n = G.mods.adCut && G.mods.adCut.until >= G.day ? G.mods.adCut.n : 8;
+  const n = Math.round((G.mods.adCut && G.mods.adCut.until >= G.day ? G.mods.adCut.n : 8) * Math.pow(2 - adList(), 1.5));
   G.adOffers = [];
   for (let k = 0; k < n; k++) G.adOffers.push(makeAd(expectedPrime(me())));
 }
@@ -3045,7 +3062,7 @@ function endDay() {
         book(st, "Strafen", -c.penalty);
         st.contracts = st.contracts.filter(x => x !== c);
         report.push(`Vertragsstrafe „${c.brand}“: −${eur(c.penalty)}`);
-        logMsg("Werbezeitenvermarktung", "Werbung", `Frist abgelaufen: Vertragsstrafe „${c.brand}“ über ${eur(c.penalty)}.`);
+        adFailed(c); logMsg("Werbezeitenvermarktung", "Werbung", `Frist abgelaufen: Vertragsstrafe „${c.brand}“ über ${eur(c.penalty)}.`);
       }
     }
     // Sportrechte werden anteilig pro Tag abgerechnet
@@ -3064,6 +3081,7 @@ function endDay() {
     st.conf = clamp(st.conf + dc + (st.money < 0 ? -2 : 0) + (ebitda < -1e6 ? -1 : 0), 0, 100);
     st.hist.push({ day: G.day, ma: st.dayMA, d, money: st.money, fin: { ...st.fin }, ebitda, views, conf: st.conf, stream: srec });
   }
+  quotenReport();
   for (const r of G.rights) {
     if (rActive(r)) {
       if (--r.days <= 0) {
@@ -3138,7 +3156,7 @@ function nextDay() {
   G.day++;
   for (const st of G.stations) st.fin = {};
   projectDay();
-  prodDay(); peopleDay(); newsroomDay(); trendDay(); awardsDay(); marketDay(); presaleDay(); rivalsDay(); formatDay();
+  prodDay(); peopleDay(); newsroomDay(); trendDay(); awardsDay(); marketDay(); presaleDay(); rivalsDay(); formatDay(); postQuotenReport(); frameDay();
   if (dateOf(G.day).getDate() === 1 && !G.event) setInterview(); // Interview zum Monatsbeginn
   if (G.mods.coverup && G.day >= G.mods.coverup.day) {
     const c = G.mods.coverup; G.mods.coverup = null;
@@ -3155,7 +3173,9 @@ function nextDay() {
   if (chk.firstBad != null) logMsg("Programmplanung", "Warnung", `Planungsvorlauf: Das Programm ist nur bis ${chk.until >= G.day ? dateShort(chk.until) : "heute"} lückenlos – ${chk.holes} Stunde${chk.holes > 1 ? "n" : ""} offen oder ohne gültige Lizenz. Vor dem nächsten Sendetag müssen ${HORIZON / 7} Wochen geplant sein.`);
   logMsg("Programmhandel", "Programm", "Neue Filme und Serienlizenzen sind eingetroffen.");
   startDay();
+  if (G.adAuto !== false) adAutoBook(me());
   pickEvent();
+  if (!G.event && G.evQ && G.evQ.length) G.event = G.evQ.shift();
   go("overview", true);
   if (G.event) showEvent();
 }
@@ -3270,7 +3290,7 @@ function applyClubColors() {
 function render(top) {
   if (!G) return;
   renderNav(); renderTop();
-  const pages = { overview, inbox, plan: planPage, archiv, market, filmmarket: filmMarketPage, chiefs: rivalsPage, stream: streamPage, catalog, smarket, rights: rightsPage, myrights, contracts, agency, ticker, table: tablePage, ratings, landscape, board, finance, jury, rivals, live: livePage, studio, newprod: newProdPage, casting, newsroom, export: exportPage };
+  const pages = { overview, inbox, plan: planPage, archiv, market, filmmarket: filmMarketPage, chiefs: rivalsPage, adsales: adsalesPage, stream: streamPage, catalog, smarket, rights: rightsPage, myrights, contracts, agency, ticker, table: tablePage, ratings, landscape, board, finance, jury, rivals, live: livePage, studio, newprod: newProdPage, casting, newsroom, export: exportPage };
   const sc = $("content").scrollTop;
   $("content").innerHTML = (pages[page] || overview)(me());
   if (!top) $("content").scrollTop = sc;
@@ -3289,7 +3309,7 @@ function messagesPanel(limit) {
   let h = "", lastDay = null;
   for (const l of list) {
     if (l.day !== lastDay) { h += `<div class="mday">${dateShort(l.day)}</div>`; lastDay = l.day; }
-    h += `<div class="msg ${l.read ? "" : "new"}"><span class="from">${esc(l.from)}</span><span class="chip tag">${esc(l.tag)}</span><span class="txt">${esc(l.msg)}</span><time>${l.t}</time></div>`;
+    h += `<div class="msg ${l.read ? "" : "new"}"><span class="from">${esc(l.from)}</span><span class="chip tag">${esc(l.tag)}</span><span class="txt">${l.rep ? repCard(l.rep) : esc(l.msg)}</span><time>${l.t}</time></div>`;
   }
   return `<section class="panel"><div class="ph"><h2>Nachrichten</h2></div>
     <div class="pad" style="padding-bottom:10px"><div class="pills">${filters.map(([k, n]) => `<button data-act="filter" data-k="${k}" class="${msgFilter === k ? "on" : ""}">${n}${k === "unread" ? ` (${G.log.filter(x => !x.read).length})` : ""}</button>`).join("")}</div></div>
@@ -3495,7 +3515,7 @@ function planPage(P) {
     h += `<tr class="${i === 20 || i === 21 ? "prime" : ""}"><td class="hr">${hh(i)}</td>
       <td class="cw">${p && !c.cont && p.kind !== "sport" ? `<span class="cell-i" data-title="${P.id}|${p.id}" title="Formatprofil">i</span>` : ""}<button class="cell ${c.cont ? "cont" : ""} ${!p || youth || badSet.has(i) ? "bad" : ""}" data-act="pickProg" data-i="${i}" data-k="${d}" ${lock || c.live ? "disabled" : ""}><span class="t">${c.live && !c.cont ? "● LIVE · " : ""}${p ? (c.cont ? "↳ " : "") + esc(p.title) : "Testbild – nichts geplant"}</span>
         <span class="s">${p && badSet.has(i) && !c.cont ? "Lizenz bis dahin ausgeschöpft – bitte ersetzen" : youth ? `Jugendschutz: FSK ${p.fsk} zu früh!` : p ? (p.kind === "sport" ? esc(p.comp) : esc(p.genre) + ` · <span class="stars">${stars(fit(p.genre, i))}</span> · Q ${p.q} · Akt. ${Math.round(p.topic * 100)} %`) : "Kaum Zuschauer"}</span></button></td>
-      <td><button class="cell ${ad && ad.min > exp ? "bad" : ""}" data-act="pickAd" data-i="${i}" data-k="${d}" ${lock || !p || !allowed || (p && p.genre === "Teleshopping") ? "disabled" : ""}><span class="t">${!allowed ? '<span class="muted">Werbeverbot</span>' : p && p.genre === "Teleshopping" ? '<span class="muted">Dauerwerbung</span>' : ad ? esc(ad.brand) : '<span class="muted">Keine Werbung</span>'}</span><span class="s">${!allowed ? "ÖRR" : ad ? "mind. " + mio(ad.min) + " Mio. · " + eur(ad.pay) : ""}</span></button></td>
+      <td><button class="cell ${ad && adNeed(ad) > exp ? "bad" : ""}" data-act="pickAd" data-i="${i}" data-k="${d}" ${lock || !p || !allowed || (p && p.genre === "Teleshopping") ? "disabled" : ""}><span class="t">${!allowed ? '<span class="muted">Werbeverbot</span>' : p && p.genre === "Teleshopping" ? '<span class="muted">Dauerwerbung</span>' : ad ? esc(ad.brand) : '<span class="muted">Keine Werbung</span>'}</span><span class="s">${!allowed ? "ÖRR" : ad ? "mind. " + mio(ad.min) + " Mio. · " + eur(ad.pay) : ""}</span></button></td>
       <td class="r muted">${mio(exp)}</td><td class="r">${r ? resDot(r) : P.last[i] && !isToday ? `<span class="muted">${mio(P.last[i])}</span>` : '<span class="muted">–</span>'}</td></tr>`;
   });
   return h + `</tbody></table></div></section>` + promoPanel(P);
@@ -3521,7 +3541,8 @@ function stagePanel() {
       <div class="row-s"><span class="muted">${meur(s.cost)} · ${s.days} Tage · Server ${eur(s.server)}/Tag</span>${next && allowed && !done ? `<button class="btn hot" data-act="project" data-k="${s.n}" ${P.money < s.cost || planLocked() ? "disabled" : ""}>Starten</button>` : ""}</div></div>`;
   }).join("")}</div></section>`;
 }
-function streamPage(P) {
+const streamPage = P => streamPage0(P) + (G.stream ? streamDeepPanels(G.stream) : "");
+function streamPage0(P) {
   const S = G.stream;
   if (!S) return title("Streaming", `<span class="muted">Noch kein eigener Streamer</span>`) + `<p class="lead mb">Sie starten als reiner Fernsehsender. Ein eigener Streamer ist ein teures Großprojekt: Erst nach Monaten trägt er sich, bis dahin muss das Fernsehgeschäft die Verluste ausgleichen.</p>` + stagePanel();
   const h = S.hist, last = h[h.length - 1];
@@ -3565,7 +3586,7 @@ function catalog(P) {
   if (!S) return streamPage(P);
   const items = streamItems();
   const wname = { stream: "Streaming-First", linear: "Linear-First", dd: "Day-and-Date", excl: "Exklusiv", catchup: "Mediathek (7 Tage)" };
-  let h = title("Katalog", `<span class="muted">${items.length} Titel auf ${esc(S.name)}</span>`);
+  let h = title("Katalog", `<span class="muted">${items.length} Titel auf ${esc(S.name)}</span>`) + (S.stage >= 2 ? homePanel(S) + placeTable(S) : "");
   h += `<section class="panel mb"><div class="ph"><h2>Online</h2><span class="aside">Abrufe gestern</span></div>${items.length ? `<div class="tbl"><table><thead><tr><th>Titel</th><th>Genre</th><th class="num">Qual.</th><th>Fenster</th><th class="num">Online seit</th><th class="num">Abrufe</th><th></th></tr></thead><tbody>
     ${items.sort((a, b) => (S.views[b.c.id] || 0) - (S.views[a.c.id] || 0)).map(({ c, p }) => `<tr><td class="title">${esc(p.title)}</td><td>${esc(p.genre)}</td><td class="num">${attr(p.q)}</td><td><span class="chip ${c.window === "excl" || c.window === "stream" ? "good" : ""}">${wname[c.window]}</span></td><td class="num">${G.day - c.added} T.</td><td class="num">${(S.views[c.id] || 0).toLocaleString("de-DE")}</td><td class="num">${c.window === "catchup" ? "" : `<button class="btn" data-act="unstream" data-id="${p.id}">Entfernen</button>`}</td></tr>`).join("")}
   </tbody></table></div>` : '<div class="pad"><p class="lead">Noch keine Titel. In der Mediathek erscheinen gesendete Programme automatisch für 7 Tage.</p></div>'}</section>`;
@@ -3621,11 +3642,11 @@ function myrights(P) {
 function adTable(list, extra) {
   if (!list.length) return `<div class="pad"><p class="lead">Keine Verträge.</p></div>`;
   return `<div class="tbl"><table><thead><tr><th>Kunde</th><th class="num">Mindestreichweite</th><th class="num">Spots</th><th class="num">Frist</th><th class="num">Pro Spot</th><th class="num">Strafe</th><th class="num"></th></tr></thead><tbody>
-    ${list.map(a => `<tr><td class="title">${esc(a.brand)}</td><td class="num">${mio(a.min)} Mio.</td><td class="num">${a.done ? `<span class="chip good">${a.done}/${a.spots}</span>` : a.spots}</td>
+    ${list.map(a => `<tr><td class="title">${esc(a.brand)}${a.frame ? ' <span class="chip real">Rahmenvertrag</span>' : ""}${a.prime ? ' <span class="chip warn">Premium 20–23 Uhr</span>' : ""}${a.cat ? `<div class="muted">${esc(a.cat)} · mag ${esc(a.env.slice(0, 3).join(", "))}${a.avoid.length ? ` · meidet ${esc(a.avoid.join(", "))}` : ""}</div>` : ""}</td><td class="num">${mio(a.min)} Mio.${a.tg && a.tg !== "all" ? `<div class="muted">${AD_TG[a.tg][0]}</div>` : ""}</td><td class="num">${a.done ? `<span class="chip good">${a.done}/${a.spots}</span>` : a.spots}</td>
       <td class="num ${a.days <= 1 ? "down" : ""}">${a.days} T.</td><td class="num">${eur(a.pay)}</td><td class="num muted">${eur(a.penalty)}</td><td class="num">${extra(a)}</td></tr>`).join("")}
   </tbody></table></div>`;
 }
-function contracts(P) { return title("Werbeverträge", `<span class="muted">${P.contracts.length} / ${MAX_ADS} aktiv</span>`) + `<p class="lead mb">Spots planen Sie im Sendekalender pro Stunde ein. Der Assistent verteilt sie automatisch.</p><section class="panel">${adTable(P.contracts, a => `<span class="muted">${Array.from({ length: HORIZON }, (_, k) => schedFor(P, G.day + k)).reduce((n, d) => n + d.filter(c => c.ad === a.id).length, 0)} im Kalender</span>`)}</section>`; }
+function contracts(P) { return title("Werbeverträge", `<span class="muted">${P.contracts.length} / ${MAX_ADS} aktiv</span>`) + `<p class="lead mb">Spots planen Sie im Sendekalender pro Stunde ein. Die Disposition (Seite „Vermarktung“) bucht offene Spots automatisch auf passende Plätze der nächsten zehn Tage – Zielgruppe, Umfeld und Premium-Zeiten werden beachtet. <button class="btn small hot" data-act="adBook">Jetzt einbuchen</button></p><section class="panel">${adTable(P.contracts, a => `<span class="muted">${Array.from({ length: HORIZON }, (_, k) => schedFor(P, G.day + k)).reduce((n, d) => n + d.filter(c => c.ad === a.id).length, 0)} im Kalender</span>`)}</section>`; }
 function agency(P) {
   return title("Werbeagentur", `<span class="muted">Spotfabrik</span>`) + lockNote() + `<p class="lead mb">${P.type === "oer" ? "Öffentlich-rechtlich: Werbung nur werktags vor 20 Uhr. " : "Werbung ist Ihre Haupteinnahmequelle. "}Ein Spot wird nur bezahlt, wenn die Sendung die Mindestreichweite erreicht. Wer bis zur Frist nicht alle Spots sendet, zahlt eine Strafe. Höchstens ${MAX_ADS} Verträge.</p>
     <section class="panel"><div class="ph"><h2>Angebote heute</h2></div>${adTable(G.adOffers, a => `<button class="btn hot" data-act="ad" data-id="${a.id}" ${P.contracts.length >= MAX_ADS || planLocked() ? "disabled" : ""}>Annehmen</button>`)}</section>`;
@@ -3776,7 +3797,7 @@ function openPicker(kind, i, wd, live) {
       P.contracts.map(a => {
         const left = a.spots - a.done - sc.filter(c => c.ad === a.id).length + (sc[i].ad === a.id ? 1 : 0);
         return `<button class="pick" data-act="setAd" data-i="${i}" data-k="${wd}" data-id="${a.id}" ${left <= 0 ? "disabled" : ""}><b>${esc(a.brand)} · ${eur(a.pay)}</b>
-          <span class="meta"><span class="chip ${a.min <= exp * 0.95 ? "good" : "warn"}">mind. ${mio(a.min)} Mio.</span><span>${a.done}/${a.spots} gesendet</span><span>noch ${Math.max(0, left)} an diesem Tag einplanbar</span><span>Frist ${a.days} T.</span></span></button>`;
+          <span class="meta"><span class="chip ${adNeed(a) <= exp * 0.95 ? "good" : "warn"}">mind. ${mio(a.min)} Mio.${a.tg && a.tg !== "all" ? " " + AD_TG[a.tg][0] : ""}</span>${a.prime ? '<span class="chip warn">nur 20–23 Uhr</span>' : ""}${a.cat ? `<span>${esc(a.cat)}</span>` : ""}<span>${a.done}/${a.spots} gesendet</span><span>noch ${Math.max(0, left)} an diesem Tag einplanbar</span><span>Frist ${a.days} T.</span></span></button>`;
       }).join("");
   }
   openModal(`<header><h2>${live ? "" : dateShort(wd)} ${hh(i)} · ${kind === "prog" ? (live ? "Notfall-Wiederholung" : "Programm wählen") : "Werbespot wählen"}</h2><button class="btn" data-act="close">Abbrechen</button></header><div class="dbody"><div class="picklist">${list}</div></div>`, true);
@@ -3867,13 +3888,15 @@ function act(b) {
   const wd = b.dataset.k !== undefined ? +b.dataset.k : null;
   switch (k) {
     case "close": profStack = []; closeModal(); return;
-    case "fmOpt": { const t = (G.tenders || []).find(x => String(x.id) === b.dataset.k); if (t && !planLocked()) { const [k2, v] = b.dataset.v.split(":"); t.opt[k2] = k2 === "excl" ? v === "1" : v; } break; }
+    case "fmOpt": { const t = (G.tenders || []).find(x => String(x.id) === b.dataset.k); if (t && !planLocked()) { const [k2, v] = b.dataset.v.split(":"); t.opt[k2] = ["excl", "slot", "cash"].includes(k2) ? v === "1" : v; } break; }
     case "fmBid": {
       const t = (G.tenders || []).find(x => String(x.id) === b.dataset.k); if (!t || planLocked()) return;
       const v = r1000(+($("fm-" + t.id).value || 0)), min = r1000(t.min * optFactor(t.opt));
+      if (t.out || (t.phase > 1 && !t.bid)) { toast("Sie sind in diesem Verfahren nicht mehr dabei."); return; }
+      if (t.phase > 1 && v < t.bid) { toast(`Ab der Shortlist sind Gebote bindend – mindestens ${meur(t.bid)}.`); return; }
       if (v < min) { toast(`Mindestgebot: ${meur(min)}.`); return; }
       if ((t.type === "output" ? v / t.years : v) > P.money + 15e6 - P.credit) { toast("Das können Sie nicht finanzieren."); return; }
-      t.bid = v; toast(`Gebot über ${meur(v)} abgegeben – Entscheidung am ${dateShort(t.close)}.`); break;
+      t.bid = v; t.declined = false; t.myBids = (t.myBids || []).concat([[G.day, t.phase, v]]); toast(`${T_PHASES[t.phase - 1][0]}: ${meur(v)} abgegeben – Frist ${dateShort(t.close)}.`); break;
     }
     case "profBack": profStack.pop(); profTab = "overview"; renderProfile(); return;
     case "profTab": profTab = b.dataset.k; renderProfile(); return;
@@ -3902,7 +3925,7 @@ function act(b) {
       buildToday(P); toast(`${dateShort(wd)} wurde auf alle ${WDL[weekday(wd)]}e im Planungszeitraum kopiert.`); break;
     }
     case "buy": { const p = G.market.find(x => x.id === id), yrs = b.dataset.k === "2" ? 2 : 1; if (p && licPrice(p, yrs) <= P.money && !planLocked()) { book(P, "Programmkäufe", -licPrice(p, yrs)); applyLicense(p, yrs); P.progs.push(p); G.market = G.market.filter(x => x !== p); toast(`„${p.title}“ für ${yrs === 2 ? "2 Jahre" : "1 Jahr"} lizenziert (bis ${dateShort(p.until)}).`); } break; }
-    case "ad": { const a = G.adOffers.find(x => x.id === id); if (a && P.contracts.length < MAX_ADS && !planLocked()) { P.contracts.push(a); G.adOffers = G.adOffers.filter(x => x !== a); toast(`Vertrag mit ${a.brand} geschlossen.`); } break; }
+    case "ad": { const a = G.adOffers.find(x => x.id === id); if (a && P.contracts.length < MAX_ADS && !planLocked()) { P.contracts.push(a); G.adOffers = G.adOffers.filter(x => x !== a); const nb = G.adAuto !== false ? adAutoBook(P) : 0; toast(`Vertrag mit ${a.brand} geschlossen.${nb ? ` ${nb} Spots eingebucht.` : ""}`); } break; }
     case "news": { const n = G.newsOffers.find(x => x.id === id); if (n && P.news.length < 3 && !planLocked()) { book(P, "Programmkäufe", -n.price); P.news.push(n); G.newsOffers = G.newsOffers.filter(x => x !== n); toast("Meldung gekauft."); } break; }
     case "sell": { const p = P.progs.find(x => x.id === id); if (p && !planLocked() && !p.home) { book(P, "Programmkäufe", r1000(p.price * 0.4)); P.progs = P.progs.filter(x => x !== p); if (G.stream) G.stream.catalog = G.stream.catalog.filter(c => c.id !== id); toast(`„${p.title}“ verkauft.`); } break; }
     case "credit": P.money += 2.5e6; P.credit += 2.5e6; toast("Kredit über 2,5 Mio. € erhalten."); break;
@@ -3948,6 +3971,15 @@ function act(b) {
     case "negoPoach": { const p = person(nego.id), fee = abloese(p); if (P.money < fee || planLocked()) return; rivalEvent(p.holder, -Math.round(15 + p.fame / 4), `${p.name} abgeworben`); unbind(p); const old = holderName(p.holder); book(P, "Redaktion & Gagen", -fee); p.holder = null; p.until = 0; p.ct = null;
       logMsg("Branchendienst", "Konkurrenz", `${P.name} zahlt ${meur(fee)} Ablöse an ${old} für ${p.name} – jetzt beginnt der Gagen-Poker.`, true); renderNego(); return; }
     case "decide": decide(+b.dataset.k); return;
+    case "adAuto": G.adAuto = G.adAuto === false; toast(`Disposition ${G.adAuto ? "automatisch" : "manuell"}.`); break;
+    case "adBook": if (!planLocked()) toast(`${adAutoBook(P)} Spots eingebucht.`); break;
+    case "adList": if (!planLocked()) { G.adList = +b.dataset.k; toast(`Preisliste ${Math.round(G.adList * 100)} % – gilt für neue Angebote.`); } break;
+    case "adFrame": { const a = (G.frameOffers || []).find(x => x.id === id); if (a && P.contracts.length < MAX_ADS && !planLocked()) { P.contracts.push(a); G.frameOffers = G.frameOffers.filter(x => x !== a); const nb = G.adAuto !== false ? adAutoBook(P) : 0; toast(`Rahmenvertrag mit ${a.brand}: ${a.spots} Spots in 84 Tagen.${nb ? ` ${nb} Spots eingebucht.` : ""}`); } break; }
+    case "sOpt": if (G.stream && !planLocked()) setStreamOpt(b.dataset.k); break;
+    case "sHero": if (G.stream) { const pl = sPlace(G.stream); pl.hero = pl.hero === id ? null : id; pl.row = pl.row.filter(x => x !== id); } break;
+    case "sRow": if (G.stream) { const pl = sPlace(G.stream); if (pl.row.includes(id)) pl.row = pl.row.filter(x => x !== id); else if (pl.row.length < 5) { pl.row.push(id); if (pl.hero === id) pl.hero = null; } } break;
+    case "sUnplace": if (G.stream) { const pl = sPlace(G.stream); pl.row = pl.row.filter(x => x !== id); } break;
+    case "sRel": { const p = P.progs.find(x => x.id === id); if (p) p.release = b.dataset.k; break; }
     case "stream": if (G.stream && G.stream.stage >= 2) { addToStream(id, b.dataset.k); toast(b.dataset.k === "excl" ? "Titel läuft jetzt exklusiv im Stream." : "Titel zum Katalog hinzugefügt."); } break;
     case "unstream": if (G.stream) { G.stream.catalog = G.stream.catalog.filter(c => c.id !== id); const p = P.progs.find(x => x.id === id); if (p) p.exclusive = false; } break;
     case "bid": {
@@ -4042,21 +4074,164 @@ function openStation(id) {
     <section class="panel"><div class="ph"><h2>Aktuelle Meldungen</h2></div>${newsList(stationNews(st.name))}</section>
   </div>`);
 }
+// =====================================================================
+// Streaming-Markt in der Tiefe: Pakete und Preise der Konkurrenz, Strategien, eigene Startseite, Release-Modelle, Abo-Optionen
+// Preise und Abozahlen sind Spielwerte, grob an typischen Paketmodellen orientiert.
+// =====================================================================
+const S_TIERS = {
+  netflix: [["Standard mit Werbung", 4.99], ["Standard", 13.99], ["Premium", 19.99]],
+  prime: [["Prime-Mitgliedschaft mit Werbung", 8.99], ["Werbefrei-Option", 11.98]],
+  disney: [["Standard mit Werbung", 5.99], ["Standard", 9.99], ["Premium", 15.99]],
+  rtlplus: [["Basic", 4.99], ["Premium", 7.99], ["Max", 12.99]],
+  wow: [["Filme & Serien", 9.98], ["Live-Sport", 29.99]],
+  dazn: [["Standard", 34.99], ["Unlimited", 44.99]],
+  joyn: [["Free mit Werbung", 0], ["PLUS+", 6.99]],
+  paramount: [["Basic mit Werbung", 5.99], ["Standard", 7.99]],
+  mediathek: [["kostenlos", 0]],
+};
+const S_FOCUS = { netflix: "globale Originals, Serien-Events, Daten-getriebene Empfehlungen", prime: "Teil der Prime-Mitgliedschaft, große Fantasy- und Action-Originals, Sport-Spitzenspiele", disney: "Marken-Franchises (Marvel, Star Wars, Pixar), Familie",
+  rtlplus: "Senderfamilie RTL: Reality, Soaps, Vorab-Premieren, Musik & Hörbücher", wow: "Premium-Serien, Filme nach Kinostart, Live-Sport", dazn: "Live-Sport fast rund um die Uhr", joyn: "Senderfamilie ProSiebenSat.1: Shows, Live-TV, AVoD-first",
+  paramount: "Franchises und US-Serien", mediathek: "öffentlich-rechtliches Angebot ohne Abo" };
+const stdPrice = id => { const t = S_TIERS[id] || [["Abo", 0]]; return t[Math.min(1, t.length - 1)][1]; };
+function sState(m) { if (!m.tiers) m.tiers = (S_TIERS[m.id] || [["Abo", 0]]).map(x => x[1]); m.hist = m.hist || []; m.news = m.news || []; return m; }
+const sNews = (m, text) => { m.news.unshift({ day: G.day, text }); m.news.length = Math.min(m.news.length, 12); };
+// Tägliche Strategie der KI-Streamer: Preiserhöhungen, Original-Starts, Passwort-Regeln
+function streamerAIDay() {
+  for (const m of G.streamers) {
+    sState(m);
+    if (m.player || m.id === "mediathek") { m.hist.push(+m.subs.toFixed(3)); if (m.hist.length > 90) m.hist.shift(); continue; }
+    const s = STREAMERS.find(x => x.id === m.id), name = s.name;
+    if (m.launch >= G.day) m.subs *= 1.0012;
+    if (m.shock >= G.day) m.subs *= 0.9988;
+    if (Math.random() < 0.01 && G.day - (m.hike || -999) > 120 && m.tiers.some(x => x > 0)) {
+      m.hike = G.day; m.shock = G.day + 30; m.tiers = m.tiers.map(x => x ? Math.round(x * rnd(1.07, 1.13)) - 0.01 : 0);
+      sNews(m, `Preiserhöhung: ${(S_TIERS[m.id] || []).map((t, k) => `${t[0]} ${m.tiers[k].toFixed(2).replace(".", ",")} €`).join(" · ")}`);
+      logMsg("Branchendienst", "Streaming", `${name} erhöht die Preise – der Standard-Tarif kostet jetzt ${m.tiers[Math.min(1, m.tiers.length - 1)].toFixed(2).replace(".", ",")} €. Wechselwillige Kunden sind jetzt leichter zu gewinnen.`);
+    } else if (Math.random() < 0.02 && !(m.launch >= G.day)) {
+      const t = pick(s.hits); m.launch = G.day + 14; m.lastLaunch = t;
+      sNews(m, `Großer Start: „${t}“ – zwei Wochen Marketing-Offensive.`);
+      if (m.subs > 3) logMsg("Branchendienst", "Streaming", `${name} startet „${t}“ mit großer Kampagne – die Konkurrenz spürt mehr Kündigungen.`);
+    } else if (Math.random() < 0.004 && !m.sharing) {
+      m.sharing = true; m.subs *= 0.98; m.launch = G.day + 20;
+      sNews(m, "Gebühr für Zusatzmitglieder außerhalb des Haushalts eingeführt – kurzfristig Kündigungen, danach mehr zahlende Konten.");
+      logMsg("Branchendienst", "Streaming", `${name} geht gegen Account-Sharing vor: Zusatzmitglieder kosten künftig extra.`);
+    }
+    m.hist.push(+m.subs.toFixed(3)); if (m.hist.length > 90) m.hist.shift();
+  }
+}
+// Konkurrenzdruck: laufende Original-Starts großer Anbieter erhöhen den eigenen Churn
+const compLaunches = () => G.streamers.filter(m => !m.player && m.launch >= G.day && m.subs > 3).length;
+const compStdAvg = () => { const l = G.streamers.filter(m => !m.player && ["netflix", "disney", "rtlplus", "wow", "joyn", "paramount"].includes(m.id)).map(m => sState(m).tiers[Math.min(1, m.tiers.length - 1)]); return l.reduce((a, b) => a + b, 0) / l.length; };
+// Startseite: Hero-Banner und Reihe „Neu & Angesagt“
+const sPlace = S => (S.place = S.place || { hero: null, row: [] });
+function placeF(S, id) { const pl = sPlace(S); return pl.hero === id ? 2 : pl.row.includes(id) ? 1.45 : 1; }
+// Release-Modell bei Serien: alles auf einmal (Binge) oder wöchentlich
+const relMode = p => p.kind === "serie" ? (p.release || "binge") : null;
+const relDecay = p => relMode(p) === "weekly" ? 0.012 : relMode(p) === "binge" ? 0.032 : 0.02;
+const relBoost = (p, age) => relMode(p) === "binge" ? (age < 7 ? 1.4 : 1) : relMode(p) === "weekly" ? (age < 7 ? 0.9 : 1.05) : 1;
+const sOpts = S => (S.opts = S.opts || { annual: false, bundle: false, sharing: false });
+// Abschlussrate (wie viele Abrufer bis zum Ende schauen) – Spielwert aus Qualität, Format und Alter
+const completion = (p, age) => clamp(Math.round(30 + p.q * 0.6 + (p.kind === "serie" ? 4 : 0) - age * 0.15), 15, 96);
+function churnParts(S) {
+  const dry = Math.floor((G.day - (S.lastHit || G.day)) / 14), o = sOpts(S);
+  const weekly = streamItems().filter(({ c, p }) => relMode(p) === "weekly" && G.day - c.added < (p.eps || 8) * 7).length;
+  const parts = [["Grundrauschen", 2], ["Content-Mangel", dry * 4], ["Konkurrenz-Starts", Math.min(1.5, compLaunches() * 0.4)], ["Preisniveau", Math.max(0, (avgPrice(S) - compStdAvg()) / compStdAvg() * 3)],
+    ["Marktereignisse", G.mods.churnUp >= G.day ? 2 : 0], ["Wöchentliche Serien", -Math.min(1, weekly * 0.3)], ["Jahresabos", o.annual ? -0.6 : 0]];
+  return parts.filter(([, v]) => Math.abs(v) >= 0.05);
+}
+function setStreamOpt(k) {
+  const S = G.stream, P = me(), o = sOpts(S);
+  if (k === "bundle" && !o.bundle) { if (P.money < 1e6) { toast("Einrichtung kostet 1 Mio. €."); return; } book(P, "Streaming-Aufbau", -1e6); }
+  if (k === "sharing" && !o.sharing) { const lost = S.subs * rnd(0.03, 0.05); S.subs -= lost; logMsg("Digitalvorstand", "Streaming", `Zusatzmitglieder kosten ab sofort extra: ${Math.round(lost * 1e6).toLocaleString("de-DE")} Konten kündigen, die übrigen zahlen mehr – und Mitnutzer schließen eigene Abos ab.`, true); }
+  o[k] = !o[k];
+  const n = { annual: "Jahresabo (−15 % bei Jahreszahlung)", bundle: "Bundle mit Kabel- und Mobilfunkanbietern", sharing: "Gebühr für Zusatzmitglieder" }[k];
+  logMsg("Digitalvorstand", "Streaming", `${n}: ${o[k] ? "eingeführt" : "beendet"}.`);
+}
+function lineSvg(vals, color, fmt) {
+  if (vals.length < 2) return '<p class="fine">Verlauf ab dem zweiten Tag.</p>';
+  const W = 600, H = 150, L = 70, T = 10, B = 18, mx = Math.max(...vals), mn = Math.min(...vals), span = mx - mn || mx * 0.1 || 1;
+  const X = k => L + (W - L - 8) * k / (vals.length - 1), Y = v => T + (H - T - B) * (1 - (v - mn) / span);
+  return `<svg class="machart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Verlauf"><line x1="${L}" x2="${W - 8}" y1="${Y(mx)}" y2="${Y(mx)}" class="grid"/><line x1="${L}" x2="${W - 8}" y1="${Y(mn)}" y2="${Y(mn)}" class="grid"/>
+    <text x="${L - 6}" y="${Y(mx) + 4}" class="ax" text-anchor="end">${fmt(mx)}</text><text x="${L - 6}" y="${Y(mn) + 4}" class="ax" text-anchor="end">${fmt(mn)}</text>
+    <path d="${vals.map((v, k) => `${k ? "L" : "M"}${X(k).toFixed(1)},${Y(v).toFixed(1)}`).join("")}" class="l" style="stroke:${color}"/>
+    ${vals.map((v, k) => `<rect x="${X(k) - (W - L) / vals.length / 2}" y="${T}" width="${(W - L) / vals.length}" height="${H - T - B}" class="hit"><title>${dateShort(G.day - vals.length + 1 + k)}: ${fmt(v)}</title></rect>`).join("")}</svg>`;
+}
+// Streamer-Profil mit Reitern
 function openStreamer(id) {
   const s = STREAMERS.find(x => x.id === id), m = G.streamers.find(x => x.id === id);
-  if (!s) return;
-  const rights = G.rights.filter(r => r.pay && r.pay.startsWith(s.name.split(" ")[0]) || (r.alp && String(r.alp).includes(s.name.split(" ")[0])));
+  if (!s || !m) return;
+  sState(m);
+  const S = G.stream, mine = m.player && S, tabs = [["overview", "Übersicht"], ["tiers", "Preise & Pakete"], ["prog", "Programm & Rechte"], ["news", "Strategie & Meldungen"]];
+  if (!tabs.some(([k]) => k === profTab)) profTab = "overview";
   const owners = STATIONS.filter(x => x.streamer === id).map(x => x.name);
-  openModal(`<header>${sbadge(id, 22)}<h2>${esc(s.name)}</h2><button class="btn" data-act="close">Schließen</button></header><div class="dbody">
-    <div class="tiles">
-      <div class="tile"><small>Abonnenten DACH</small><b>${m && m.subs ? `${mio(m.subs)} Mio.` : "–"}</b><span>${m && m.trend ? `${m.trend > 0 ? "▲" : "▼"} ${(Math.abs(m.trend) * 3000).toFixed(1).replace(".", ",")} % pro Monat` : "stabil"}</span></div>
-      <div class="tile"><small>Modell</small><b style="font-size:18px">${esc(s.model)}</b><span>${s.price ? `${eur(s.price).replace(" €", "")} € / Monat` : "kostenlos"}</span></div>
+  const all = G.streamers.filter(x => x.id !== "mediathek").reduce((a, x) => a + (x.player && G.stream && sFree(G.stream) ? 0 : x.subs), 0) || 1;
+  const rights = G.rights.filter(r => r.pay && r.pay.startsWith(s.name.split(" ")[0]) || (r.alp && String(r.alp).includes(s.name.split(" ")[0])));
+  const held = (G.payHeld || []).filter(x => x.owner === id && x.until >= G.day), deals = (G.deals || []).filter(d => d.owner === id);
+  const tierNames = mine && S.tiers ? TIER_DEF.map(t => t.name) : (S_TIERS[id] || [["Abo"]]).map(t => t[0]), prices = mine && S.tiers ? S.tiers : m.tiers;
+  const hist = m.hist.slice(-60), d30 = hist.length > 30 ? (hist[hist.length - 1] - hist[hist.length - 31]) / hist[hist.length - 31] * 100 : null;
+  let body = "";
+  if (profTab === "overview") body = `<div class="tiles">
+      <div class="tile"><small>Abonnenten DACH</small><b>${m.subs ? `${mio(m.subs)} Mio.` : "–"}</b><span>${d30 != null ? `${d30 >= 0 ? "▲ +" : "▼ "}${d30.toFixed(1).replace(".", ",")} % in 30 Tagen` : "Trend ab 30 Tagen"}</span></div>
+      <div class="tile"><small>Marktanteil Abos</small><b>${id === "mediathek" ? "–" : pct(m.subs / all * 100)}</b><span>unter allen Bezahl-Diensten</span></div>
+      <div class="tile"><small>Standard-Tarif</small><b>${prices.length ? (prices[Math.min(1, prices.length - 1)] || 0).toFixed(2).replace(".", ",") + " €" : "–"}</b><span>pro Monat</span></div>
       <div class="tile"><small>Gehört zu</small><b style="font-size:18px">${owners.length ? esc(owners.join(", ")) : "eigenständig"}</b><span>${owners.length ? "Senderfamilie" : "internationaler Anbieter"}</span></div>
     </div>
-    <section class="panel"><div class="ph"><h2>Aushängeschilder</h2></div><div class="tbl"><table><tbody>${s.hits.map((h, k) => `<tr><td class="title"><b>${titleLink(`@${s.id}|${k}`, h)}</b>${imdbChip(h)}${DESC[h] ? `<div class="muted desc">${esc(DESC[h])}</div>` : ""}</td></tr>`).join("")}</tbody></table></div></section>
-    ${rights.length ? `<section class="panel"><div class="ph"><h2>Sportrechte</h2></div><div class="tbl"><table><tbody>${rights.map(r => `<tr><td class="title">${esc(RDEF(r.id).name)}</td><td class="muted">${r.pay ? "Gesamtpaket (Pay-TV)" : "Österreich & Schweiz"}</td><td class="num muted">bis ${dateShort(G.day + r.days)}</td></tr>`).join("")}</tbody></table></div></section>` : ""}
-    <section class="panel"><div class="ph"><h2>Aktuelle Meldungen</h2></div>${newsList(stationNews(s.name.split(" ")[0]))}</section>
-  </div>`);
+    <section class="panel" style="margin-top:12px"><div class="ph"><h2>Aushängeschilder</h2></div><div class="pad fm-titles">${s.hits.map((h, k) => `<span class="fm-t">${titleLink(`@${s.id}|${k}`, h)}${imdbChip(h)}</span>`).join("")}</div></section>
+    <section class="panel" style="margin-top:12px"><div class="ph"><h2>Abonnenten-Entwicklung</h2><span class="aside">letzte ${hist.length} Tage</span></div><div class="pad">${lineSvg(hist, "#b265ff", v => mio(v) + " Mio.")}</div></section>
+    <section class="panel" style="margin-top:12px"><div class="ph"><h2>Profil</h2></div><div class="slist">
+      <div class="srow"><b>Strategie</b><em></em><span>${esc(S_FOCUS[id] || "")}</span></div>
+      <div class="srow"><b>Modell</b><em></em><span>${esc(mine ? (sFree(S) ? "Mediathek" : "Abo mit drei Paketen") : s.model)}</span></div>
+      <div class="srow"><b>Aktuelle Offensive</b><em></em><span>${m.launch >= G.day ? `„${esc(m.lastLaunch)}“ bis ${dateShort(m.launch)}` : "keine"}</span></div>
+      <div class="srow"><b>Account-Sharing</b><em></em><span>${m.sharing ? "Zusatzmitglieder kostenpflichtig" : "geduldet"}</span></div></div></section>`;
+  if (profTab === "tiers") body = `<section class="panel"><div class="ph"><h2>Pakete</h2><span class="aside">pro Monat</span></div><div class="tbl"><table><tbody>${tierNames.map((n, k) => `<tr><td>${esc(n)}</td><td class="num"><b>${(prices[k] || 0).toFixed(2).replace(".", ",")} €</b></td></tr>`).join("")}</tbody></table></div></section>
+    ${!mine && G.stream && G.stream.tiers ? `<section class="panel" style="margin-top:12px"><div class="ph"><h2>Vergleich mit ${esc(G.stream.name)}</h2></div><div class="pad"><p style="margin:0">Ihr Durchschnittspreis: <b>${avgPrice(G.stream).toFixed(2).replace(".", ",")} €</b> · ${esc(s.name)} Standard: <b>${stdPrice(id) ? m.tiers[Math.min(1, m.tiers.length - 1)].toFixed(2).replace(".", ",") : "0,00"} €</b>. ${avgPrice(G.stream) < m.tiers[Math.min(1, m.tiers.length - 1)] ? "Sie sind günstiger – das zieht Wechselkunden an." : "Sie sind teurer – achten Sie auf den Churn."}</p></div></section>` : ""}
+    ${m.hike ? `<p class="fine pad">Letzte Preiserhöhung am ${dateShort(m.hike)}.</p>` : ""}`;
+  if (profTab === "prog") body = `<section class="panel"><div class="ph"><h2>Aushängeschilder</h2></div><div class="tbl"><table><tbody>${s.hits.map((h, k) => `<tr><td class="title"><b>${titleLink(`@${s.id}|${k}`, h)}</b>${imdbChip(h)}${DESC[h] ? `<div class="muted desc">${esc(DESC[h])}</div>` : ""}</td></tr>`).join("")}</tbody></table></div></section>
+    ${held.length ? `<section class="panel" style="margin-top:12px"><div class="ph"><h2>Pay-Fenster (Filmrechte)</h2><span class="aside">${held.length} Titel</span></div><div class="tbl"><table><tbody>${held.slice(0, 20).map(x => `<tr><td class="title">${esc(x.title)}${imdbChip(x.title)}</td><td class="num muted">bis ${dateShort(x.until)}</td></tr>`).join("")}</tbody></table></div></section>` : ""}
+    ${deals.length ? `<section class="panel" style="margin-top:12px"><div class="ph"><h2>Output Deals</h2></div><div class="tbl"><table><tbody>${deals.map(d => `<tr><td>${esc(STUDIO(d.studio).name)}</td><td class="num muted">bis ${dateShort(d.until)}</td></tr>`).join("")}</tbody></table></div></section>` : ""}
+    ${rights.length ? `<section class="panel" style="margin-top:12px"><div class="ph"><h2>Sportrechte</h2></div><div class="tbl"><table><tbody>${rights.map(r => `<tr><td class="title">${esc(RDEF(r.id).name)}</td><td class="muted">${r.pay ? "Gesamtpaket (Pay-TV)" : "Österreich & Schweiz"}</td><td class="num muted">bis ${dateShort(G.day + r.days)}</td></tr>`).join("")}</tbody></table></div></section>` : ""}`;
+  if (profTab === "news") body = `<section class="panel"><div class="ph"><h2>Strategische Schritte</h2></div>${m.news.length ? `<div class="tbl"><table><tbody>${m.news.map(n => `<tr><td class="muted">${dateShort(n.day)}</td><td>${esc(n.text)}</td></tr>`).join("")}</tbody></table></div>` : '<p class="fine pad">Bisher keine Schritte beobachtet.</p>'}</section>
+    <section class="panel" style="margin-top:12px"><div class="ph"><h2>Aktuelle Meldungen</h2></div>${newsList(stationNews(s.name.split(" ")[0]))}</section>`;
+  openModal(`<header>${sbadge(id, 22)}<h2>${esc(mine ? S.name : s.name)}</h2><button class="btn" data-act="close">Schließen</button></header><div class="dbody">
+    <div class="ptabs">${tabs.map(([k, n]) => `<button data-act="profTab" data-k="${k}" class="${profTab === k ? "on" : ""}">${n}</button>`).join("")}</div><div style="margin-top:12px">${body}</div></div>`);
+}
+// Eigener Dienst: Abo-Optionen, Kündigungsgründe, Preisvergleich
+function streamDeepPanels(S) {
+  if (sFree(S)) return "";
+  const o = sOpts(S), parts = churnParts(S), tot = parts.reduce((a, [, v]) => a + v, 0);
+  const comp = G.streamers.filter(m => !m.player && m.id !== "mediathek" && m.id !== "dazn").map(m => [m.id, sState(m).tiers[Math.min(1, m.tiers.length - 1)]]).sort((a, b) => a[1] - b[1]);
+  const opt = (k, n, d) => `<div class="srow"><b>${n}</b><em><button class="btn small ${o[k] ? "red" : "hot"}" data-act="sOpt" data-k="${k}" ${planLocked() ? "disabled" : ""}>${o[k] ? "Beenden" : "Einführen"}</button></em><span>${d}</span></div>`;
+  return `<div class="grid two" style="margin-top:14px">
+    <section class="panel"><div class="ph"><h2>Abo-Optionen</h2></div><div class="slist">
+      ${opt("annual", "Jahresabo", "15 % Rabatt bei Jahreszahlung: weniger Kündigungen (−20 % Churn), etwas weniger Umsatz pro Abo.")}
+      ${opt("bundle", "Bundle mit Kabel & Mobilfunk", "Einrichtung 1 Mio. €: +35 % Neukunden über Partner, dafür 10 % weniger Erlös je Abo.")}
+      ${opt("sharing", "Gebühr für Zusatzmitglieder", "Einmalig 3–5 % Kündigungen, danach +7 % Umsatz und mehr eigene Abos der Mitnutzer.")}
+    </div></section>
+    <section class="panel"><div class="ph"><h2>Kündigungsgründe</h2><span class="aside">Churn ${pct(Math.max(0.5, tot))} / Monat</span></div><div class="pad">
+      ${parts.map(([n, v]) => `<div class="agebar"><span style="width:auto">${n}</span><div class="track"><i style="width:${Math.min(100, Math.abs(v) / Math.max(4, tot) * 100)}%;${v < 0 ? "background:var(--good)" : ""}"></i></div><b>${v > 0 ? "+" : ""}${v.toFixed(1).replace(".", ",")}</b></div>`).join("")}</div></section>
+    <section class="panel"><div class="ph"><h2>Preisvergleich Standard-Tarif</h2><span class="aside">Ihr Ø-Preis ${avgPrice(S).toFixed(2).replace(".", ",")} €</span></div><div class="tbl"><table><tbody>
+      ${comp.map(([id, p]) => `<tr><td><span class="sn">${sbadge(id)}${esc(STREAMERS.find(x => x.id === id).name)}</span></td><td class="num">${p.toFixed(2).replace(".", ",")} €</td><td class="num ${p < avgPrice(S) ? "down" : "up"}">${p < avgPrice(S) ? "günstiger" : "teurer"}</td></tr>`).join("")}</tbody></table></div></section>
+    <section class="panel"><div class="ph"><h2>Konkurrenz-Offensiven</h2></div>${G.streamers.filter(m => !m.player && m.launch >= G.day).length ? `<div class="tbl"><table><tbody>${G.streamers.filter(m => !m.player && m.launch >= G.day).map(m => `<tr><td><span class="sn">${sbadge(m.id)}</span></td><td class="title">„${esc(m.lastLaunch || "")}“</td><td class="num muted">bis ${dateShort(m.launch)}</td></tr>`).join("")}</tbody></table></div>` : '<p class="fine pad">Derzeit keine großen Starts der Konkurrenz.</p>'}</section>
+  </div>`;
+}
+// Katalog: Startseite gestalten und Release-Modell
+function homePanel(S) {
+  const pl = sPlace(S), P = me(), items = streamItems().filter(x => x.c.window !== "catchup"), byId = id => P.progs.find(p => p.id === id);
+  const hero = pl.hero && byId(pl.hero);
+  return `<section class="panel mb"><div class="ph"><h2>Startseite</h2><span class="aside">Platzierung steuert die Abrufe</span></div><div class="pad">
+    <div class="home-hero">${hero ? `<small>Hero-Banner</small><b>${esc(hero.title)}</b><span>${esc(hero.genre)} · ×2 Abrufe, steigert die Bekanntheit des Dienstes</span>` : '<small>Hero-Banner</small><b class="muted">frei</b><span>Wählen Sie unten einen Titel als Aufmacher.</span>'}</div>
+    <div class="home-row">${[0, 1, 2, 3, 4].map(k => { const p = pl.row[k] && byId(pl.row[k]); return `<div class="home-tile">${p ? `<b>${esc(p.title)}</b><span>${esc(p.genre)}</span><button class="btn small" data-act="sUnplace" data-id="${p.id}">entfernen</button>` : '<span class="muted">Neu & Angesagt – frei</span>'}</div>`; }).join("")}</div>
+    <p class="fine" style="margin:8px 0 0">Hero ×2 Abrufe, „Neu & Angesagt“ ×1,45. ${items.length ? "" : "Fügen Sie zuerst Titel aus dem Archiv hinzu."}</p></div></section>`;
+}
+function placeTable(S) {
+  const pl = sPlace(S), items = streamItems().filter(x => x.c.window !== "catchup"), tv = Object.values(S.views).reduce((a, b) => a + b, 0) || 1;
+  if (!items.length) return "";
+  return `<section class="panel mb"><div class="ph"><h2>Platzierung & Veröffentlichung</h2><span class="aside">Abschlussrate · Anteil an Abrufen</span></div><div class="tbl"><table><thead><tr><th>Titel</th><th class="num">Abschluss</th><th class="num">Abruf-Anteil</th><th>Release</th><th>Startseite</th></tr></thead><tbody>
+    ${items.map(({ c, p }) => { const age = G.day - c.added, onRow = pl.row.includes(p.id), hero = pl.hero === p.id; return `<tr><td class="title">${titleLink(`${me().id}|${p.id}`, p.title)}<div class="muted">${esc(p.genre)} · seit ${age} T.</div></td>
+      <td class="num">${completion(p, age)} %</td><td class="num">${pct((S.views[c.id] || 0) / tv * 100)}</td>
+      <td>${p.kind === "serie" ? `<div class="pills"><button data-act="sRel" data-id="${p.id}" data-k="binge" class="${relMode(p) === "binge" ? "on" : ""}">alle Folgen</button><button data-act="sRel" data-id="${p.id}" data-k="weekly" class="${relMode(p) === "weekly" ? "on" : ""}">wöchentlich</button></div>` : '<span class="muted">–</span>'}</td>
+      <td><div class="pills"><button data-act="sHero" data-id="${p.id}" class="${hero ? "on" : ""}">Hero</button><button data-act="sRow" data-id="${p.id}" class="${onRow ? "on" : ""}" ${!onRow && pl.row.length >= 5 ? "disabled" : ""}>Neu & Angesagt</button></div></td></tr>`; }).join("")}
+  </tbody></table></div><p class="fine pad" style="margin:0">„Alle Folgen“: großer Start, schnelles Abflauen. „Wöchentlich“: ruhiger Start, hält Abonnenten länger (weniger Churn, solange die Staffel läuft).</p></section>`;
 }
 
 // =====================================================================
@@ -4231,6 +4406,155 @@ function switchStation(id) {
   logMsg("Senderleitung", "Vertrag", `Neuer Job: Sie wechseln von ${old.name} zu ${P.name}. Saisonziel ${pct(P.target)} bis ${dateShort(G.seasonEnd)}. Planen Sie zuerst die nächsten sechs Wochen.`, true);
   logMsg("Branchendienst", "Konkurrenz", `Personalien: Die Programmdirektion von ${old.name} wechselt zu ${P.name}.`);
   go("overview");
+}
+// =====================================================================
+// Quoten-News am Folgetag (Branchendienst im Stil der Medienfachpresse, fiktiver Name)
+// =====================================================================
+function quotenReport() {
+  const all = [];
+  for (const st of G.stations) {
+    let cur = null;
+    G.today.forEach((row, i) => {
+      if (!row) return; const r = row[st.i];
+      if (cur && cur.title === r.title) { cur.v += r.v; cur.ma += r.ma; cur.n++; return; }
+      if (cur) all.push(cur);
+      cur = { st: st.i, h: i, title: r.title, v: r.v, ma: r.ma, n: 1 };
+    });
+    if (cur) all.push(cur);
+  }
+  const top = all.filter(x => x.title !== "Testbild").map(x => ({ ...x, v: x.v / x.n, ma: x.ma / x.n })).sort((a, b) => b.v - a.v).slice(0, 5)
+    .map(x => [x.st, x.h, x.title.replace(/ \(Folge \d+\)$/, ""), +x.v.toFixed(2), +x.ma.toFixed(1)]);
+  const ma = G.stations.map(s => [s.i, +s.dayMA.toFixed(1)]).sort((a, b) => b[1] - a[1]);
+  const P = me(), rank = ma.findIndex(x => x[0] === P.i) + 1, best = top[0];
+  const prev = P.hist.length > 1 ? P.hist[P.hist.length - 2].ma : null;
+  const mineTop = all.filter(x => x.st === P.i && x.title !== "Testbild").map(x => ({ ...x, v: x.v / x.n, ma: x.ma / x.n })).sort((a, b) => b.v - a.v)[0];
+  const lines = [
+    best ? `Der Abend gehörte ${G.stations[best[0]].name}: „${best[2]}“ war mit ${mio(best[3])} Millionen Zuschauern (${pct(best[4])}) die meistgesehene Sendung des Tages.` : "",
+    `Tagessieger beim Gesamtpublikum: ${G.stations[ma[0][0]].name} mit ${pct(ma[0][1])}.`,
+    `${P.name} landet mit ${pct(P.dayMA)} auf Rang ${rank}${prev != null ? ` (${P.dayMA >= prev ? "+" : ""}${(P.dayMA - prev).toFixed(1).replace(".", ",")} Punkte zum Vortag)` : ""}${mineTop ? `; stärkste eigene Sendung war „${mineTop.title.replace(/ \(Folge \d+\)$/, "")}“ um ${hh(mineTop.h)} Uhr mit ${mio(mineTop.v)} Mio. (${pct(mineTop.ma)})` : ""}.`,
+  ].filter(Boolean);
+  G.repPending = { day: G.day, ma: ma.slice(0, 5), top, lines };
+}
+function postQuotenReport() {
+  const r = G.repPending; if (!r) return; G.repPending = null;
+  logMsg("Quotenticker · TV-Reichweiten", "Quote", `TV-Reichweiten vom ${dateOf(r.day).toLocaleDateString("de-DE")}: ${r.lines[0] || ""}`);
+  G.log[0].rep = r;
+}
+function repCard(r) {
+  const mx = Math.max(...r.ma.map(x => x[1]));
+  return `<div class="rep"><h3 class="rep-h">TV-Reichweiten vom ${dateOf(r.day).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" })}</h3>
+    <div class="rep-grid"><div><h4>Top 5 Marktanteile (alle Zuschauer)</h4><div class="rep-bars">${r.ma.map(([i, v]) => `<div class="rep-bar"><div class="rep-col"><i style="height:${v / mx * 100}%;background:${G.stations[i].color}"></i></div><b>${pct(v)}</b>${crest(i, 22)}<span>${esc(G.stations[i].name)}</span></div>`).join("")}</div></div>
+    <div><h4>Top 5 Einschaltquoten (alle Zuschauer)</h4><div class="tbl"><table><tbody>${r.top.map(([i, h, t, v, ma]) => `<tr class="${i === G.me ? "mine" : ""}"><td>${crest(i, 20)}</td><td>${hh(h)}</td><td class="title rep-t">${esc(t)}</td><td class="num">${mio(v)} Mio</td><td class="num">${pct(ma)}</td></tr>`).join("")}</tbody></table></div></div></div>
+    <div class="rep-txt">${r.lines.map(l => `<p>${esc(l)}</p>`).join("")}</div></div>`;
+}
+// =====================================================================
+// Werbevermarktung: Zielgruppen, Branchen, Werbeumfeld, Saison, Kundenbeziehungen, Rahmenverträge, Preisliste
+// Alle Werbekunden sind frei erfunden; Preise sind Spielwerte.
+// =====================================================================
+const AD_TG = { all: ["Gesamt", 1], young: ["14–49", 1.35], old: ["50+", 0.85] };
+const AD_CAT = {
+  Lebensmittel: { brands: ["Knusperflocken Kalle", "Kaffee Morgenrot", "Katzenfutter Miezi"], likes: ["Show", "Soap", "Reality", "Komödie"], avoid: [] },
+  Getränke: { brands: ["Limo Prickel", "Brauerei Gipfelglück"], likes: ["Sport", "Show", "Action"], avoid: ["Kultur"] },
+  Auto: { brands: ["Autohaus Brummer"], likes: ["Sport", "Action", "Nachrichten", "Krimi"], avoid: ["Reality"] },
+  Finanzen: { brands: ["Bausparkasse Eigenheim+", "Versicherung Sorgenfrei"], likes: ["Nachrichten", "Doku", "Magazin", "Krimi"], avoid: ["Reality", "Sitcom"] },
+  Drogerie: { brands: ["Zahncreme Strahlweiß", "Waschmittel Blütenrein"], likes: ["Soap", "Show", "Liebesfilm", "Serie"], avoid: [] },
+  Handel: { brands: ["Baumarkt Hammerhart", "Möbel Gemütlich"], likes: ["Show", "Reality", "Sport"], avoid: [] },
+  Reisen: { brands: ["Reisebüro Fernweh"], likes: ["Doku", "Liebesfilm", "Show"], avoid: ["Nachrichten"] },
+  Energie: { brands: ["Strom von Wattmann"], likes: ["Nachrichten", "Magazin", "Sport"], avoid: [] },
+};
+const catOf = brand => Object.keys(AD_CAT).find(k => AD_CAT[k].brands.includes(brand)) || "Handel";
+// Saisonkurve des Werbemarkts (Jan–Dez): Weihnachtsgeschäft teuer, Sommerloch günstig
+const AD_SEASON = [0.8, 0.88, 1.0, 1.02, 1.05, 0.95, 0.8, 0.78, 1.0, 1.1, 1.22, 1.3];
+const adSeason = (day = G.day) => AD_SEASON[dateOf(day).getMonth()];
+// Anteil einer Zielgruppe an den Zuschauern einer Sendung
+function tgFrac(st, p, tg) {
+  if (tg === "all" || !p) return 1;
+  const y = clamp(0.36 * youthIdx(st, p), 0.1, 0.78);
+  return tg === "young" ? y : clamp(1 - y - 0.06, 0.12, 0.85);
+}
+// Benötigte Gesamtreichweite für die Planung (typischer Zielgruppenanteil)
+const adNeed = ad => ad.min / (ad.tg === "young" ? 0.4 : ad.tg === "old" ? 0.5 : 1);
+const advOf = brand => { G.adv = G.adv || {}; return (G.adv[brand] = G.adv[brand] || { rel: 50, rev: 0, spots: 0, cat: catOf(brand) }); };
+const adList = () => (G.adList || 1);
+function makeAd2(scale, kind) {
+  const P = me(), tg = P.type === "oer" ? "all" : pick(["all", "all", "young", "young", "old"]), brand = pick(BRANDS), cat = catOf(brand), adv = advOf(brand);
+  const mins = [0.2, 0.3, 0.5, 0.8, 1.0, 1.5, 2.0, 2.5, 3.0, 4.0].map(m => m * (tg === "young" ? 0.4 : tg === "old" ? 0.5 : 1)).filter(m => m <= scale * 1.4 * (tg === "young" ? 0.4 : tg === "old" ? 0.5 : 1) + 0.2);
+  const min = +pick(mins.length ? mins : [0.2]).toFixed(2);
+  const f = G.mods && G.mods.adCut && G.mods.adCut.until >= G.day ? G.mods.adCut.f : 1;
+  const frame = kind === "frame", prime = !frame && Math.random() < 0.18 && P.type === "privat";
+  const spots = frame ? ri(24, 40) : ri(3, 9);
+  const base = (min / (tg === "young" ? 0.4 : tg === "old" ? 0.5 : 1) * 60000 * rnd(0.85, 1.2) + 4000) * AD_TG[tg][1] * adSeason() * adList() * (0.9 + adv.rel / 250) * f;
+  const pay = r1000(base * (frame ? 0.82 : 1) * (prime ? 1.3 : 1));
+  return { id: uid(), brand, cat, tg, min, spots, done: 0, days: frame ? 84 : Math.ceil(spots / 2) + ri(1, 3), pay, penalty: r1000(pay * spots * (frame ? 0.25 : 0.5)), frame, prime, env: AD_CAT[cat].likes, avoid: AD_CAT[cat].avoid };
+}
+// Werbeumfeld: passende Genres bringen Aufschlag, unpassende verärgern den Kunden
+function adEnv(ad, p) {
+  if (!p || !ad.cat) return [1, 0];
+  if ((ad.avoid || []).includes(p.genre)) return [0.6, -4];
+  if ((ad.env || []).includes(p.genre)) return [1.15, 1];
+  return [1, 0];
+}
+function adPaid(st, ad, p, i, v) {
+  const adv = advOf(ad.brand), [ef, dr] = adEnv(ad, p), pay = r1000(ad.pay * ef * newsroomCalc().adF);
+  adv.rel = clamp(adv.rel + dr * 0.5, 0, 100); adv.rev += pay; adv.spots++;
+  (G.adLog = G.adLog || []).push([G.day, i, pay, Math.round(v * 1000) / 1000]); if (G.adLog.length > 400) G.adLog.shift();
+  if (dr < 0 && i >= LIVE_FROM) logMsg("Werbezeitenvermarktung", "Werbung", `${ad.brand} beschwert sich: Spot lief im Umfeld „${p.genre}“ – nur ${Math.round(ef * 100)} % des Preises.`);
+  return pay;
+}
+const adDelivered = ad => { if (ad.cat) { const a = advOf(ad.brand); a.rel = clamp(a.rel + (ad.frame ? 10 : 4), 0, 100); } };
+const adFailed = ad => { if (ad.cat) { const a = advOf(ad.brand); a.rel = clamp(a.rel - (ad.frame ? 20 : 10), 0, 100); } };
+// Rahmenverträge (Upfronts): monatlich neue Volumenangebote der Mediaagenturen, im Herbst besonders viele
+function frameDay() {
+  const dt = dateOf(G.day), P = me();
+  if (dt.getDate() !== 1 && G.frameOffers) return;
+  const n = [8, 9].includes(dt.getMonth()) ? 3 : 1;
+  G.frameOffers = Array.from({ length: n }, () => makeAd2(expectedPrime(P), "frame"));
+  if ([8, 9].includes(dt.getMonth()) && dt.getDate() === 1) logMsg("Werbezeitenvermarktung", "Werbung", "Jahresgespräche mit den Mediaagenturen: Neue Rahmenverträge liegen auf dem Tisch – Volumen gegen Rabatt.", true);
+}
+// Disposition: offene Spots auf passende Werbeplätze der nächsten Tage verteilen, ohne das Programm anzutasten
+function adAutoBook(P) {
+  let n = 0;
+  const booked = c => { let k = 0; for (let d = G.day; d < G.day + c.days; d++) k += calDay(P, d).filter(x => x.ad === c.id).length; return k; };
+  for (let d = G.day; d < G.day + 10; d++) {
+    if (d === G.day && planLocked()) continue;
+    const sc = calDay(P, d), wd = weekday(d);
+    for (const i of HOURS.slice().sort((a, b) => BASE[b] - BASE[a])) {
+      const c0 = sc[i], p = c0.p && progOf(P, c0.p);
+      if (!p || c0.ad || c0.cont || !adAllowed(P, i, wd) || p.genre === "Teleshopping") continue;
+      const exp = expected(P, i) * 0.95;
+      const best = P.contracts.filter(c => d < G.day + c.days && c.spots - c.done - booked(c) > 0 && adNeed(c) <= exp && !(c.prime && (i < 20 || i > 22)) && !(c.avoid || []).includes(p.genre))
+        .sort((a, b) => b.pay * adEnv(b, p)[0] - a.pay * adEnv(a, p)[0])[0];
+      if (best) { c0.ad = best.id; n++; }
+    }
+  }
+  if (n) buildToday(P);
+  return n;
+}
+function adsalesPage(P) {
+  const log = (G.adLog || []).filter(x => x[0] > G.day - 30), sum = (d) => log.filter(x => x[0] > G.day - d).reduce((a, x) => a + x[2], 0);
+  const contacts = log.reduce((a, x) => a + x[3], 0), tkp = contacts ? sum(30) / (contacts * 1000) : 0;
+  const allowedH = HOURS.filter(i => adAllowed(P, i)).length, booked = P.sched.filter(c => c.ad).length;
+  const byPart = [["Morgen 6–12", 6, 12], ["Mittag 12–17", 12, 17], ["Vorabend 17–20", 17, 20], ["Primetime 20–23", 20, 23], ["Nacht 23–6", 23, 30]].map(([n, a, b]) => [n, log.filter(x => (x[1] >= a && x[1] < b) || (b > 24 && x[1] < b - 24)).reduce((s, x) => s + x[2], 0)]);
+  const mx = Math.max(1, ...byPart.map(x => x[1]));
+  const advs = Object.entries(G.adv || {}).sort((a, b) => b[1].rev - a[1].rev);
+  const month = dateOf(G.day).getMonth();
+  return title("Werbevermarktung", `<span class="muted">Saison-Index ${adSeason().toFixed(2).replace(".", ",")}</span>`) + lockNote() +
+    `<div class="tiles mb">
+      <div class="tile"><small>Werbeerlöse 7 Tage</small><b>${meur(sum(7))}</b><span>30 Tage: ${meur(sum(30))}</span></div>
+      <div class="tile"><small>Ø TKP (brutto)</small><b>${tkp ? tkp.toFixed(2).replace(".", ",") + " €" : "–"}</b><span>Preis je 1.000 Kontakte</span></div>
+      <div class="tile"><small>Auslastung heute</small><b>${pct(booked / Math.max(1, allowedH) * 100)}</b><span>${booked} von ${allowedH} Werbestunden belegt</span></div>
+      <div class="tile"><small>Disposition</small><b>${G.adAuto !== false ? "automatisch" : "manuell"}</b><span><button class="btn small" data-act="adAuto" ${planLocked() ? "disabled" : ""}>${G.adAuto !== false ? "auf manuell" : "auf automatisch"}</button> <button class="btn small hot" data-act="adBook" ${planLocked() ? "disabled" : ""}>jetzt einbuchen</button></span></div>
+      <div class="tile"><small>Preisliste</small><b>${Math.round(adList() * 100)} %</b><span>${adList() > 1 ? "teuer – weniger Angebote" : adList() < 1 ? "Rabatt – mehr Angebote" : "Standard"}</span></div>
+    </div>
+    <div class="grid two">
+      <section class="panel"><div class="ph"><h2>Erlöse nach Tageszeit</h2><span class="aside">30 Tage</span></div><div class="pad">${byPart.map(([n, v]) => `<div class="agebar" style="grid-template-columns:120px 1fr 90px"><span>${n}</span><div class="track"><i style="width:${v / mx * 100}%"></i></div><b>${meur(v)}</b></div>`).join("")}</div></section>
+      <section class="panel"><div class="ph"><h2>Saisonkurve</h2><span class="aside">Preisniveau je Monat</span></div><div class="pad"><div class="season">${AD_SEASON.map((v, k) => `<div class="${k === month ? "on" : ""}" title="${["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"][k]}: ${Math.round(v * 100)} %"><i style="height:${v / 1.3 * 100}%"></i><span>${"JFMAMJJASOND"[k]}</span></div>`).join("")}</div><p class="fine">Im Herbst und vor Weihnachten zahlen Kunden bis zu 30 % mehr, im Sommerloch gut 20 % weniger.</p></div></section>
+      <section class="panel"><div class="ph"><h2>Preisliste</h2></div><div class="pad"><div class="pills">${[0.85, 0.95, 1, 1.1, 1.2].map(v => `<button data-act="adList" data-k="${v}" class="${Math.abs(adList() - v) < 0.01 ? "on" : ""}" ${planLocked() ? "disabled" : ""}>${Math.round(v * 100)} %</button>`).join("")}</div>
+        <p class="fine" style="margin-top:8px">Höhere Listenpreise bringen mehr pro Spot, aber weniger Angebote. Rabatte füllen das Inventar. Gilt für neue Angebote ab morgen.</p></div></section>
+    </div>
+      <section class="panel" style="margin-top:14px"><div class="ph"><h2>Rahmenverträge</h2><span class="aside">Volumen gegen Rabatt · 84 Tage</span></div>${(G.frameOffers || []).length ? adTable(G.frameOffers, a => `<button class="btn hot small" data-act="adFrame" data-id="${a.id}" ${P.contracts.length >= MAX_ADS || planLocked() ? "disabled" : ""}>Abschließen</button>`) : '<p class="fine pad">Neue Rahmenverträge zum Monatsersten.</p>'}</section>
+    <section class="panel" style="margin-top:14px"><div class="ph"><h2>Werbekunden</h2><span class="aside">Beziehung steuert Preise und Angebote</span></div>${advs.length ? `<div class="tbl"><table><thead><tr><th>Kunde</th><th>Branche</th><th>Bevorzugtes Umfeld</th><th class="num">Spots</th><th class="num">Umsatz</th><th>Beziehung</th></tr></thead><tbody>
+      ${advs.map(([b, a]) => `<tr><td class="title">${esc(b)}</td><td>${esc(a.cat)}</td><td class="muted">${esc(AD_CAT[a.cat].likes.join(", "))}${AD_CAT[a.cat].avoid.length ? ` · meidet ${esc(AD_CAT[a.cat].avoid.join(", "))}` : ""}</td><td class="num">${a.spots}</td><td class="num">${meur(a.rev)}</td><td><div class="goal" style="padding:0;min-width:110px"><div class="track"><i style="width:${a.rel}%;background:${a.rel >= 65 ? "var(--good)" : a.rel < 35 ? "var(--bad)" : "var(--mid)"}"></i></div></div></td></tr>`).join("")}</tbody></table></div>` : '<p class="fine pad">Noch keine Kunden – nehmen Sie in der Werbeagentur Aufträge an.</p>'}</section>`;
 }
 // =====================================================================
 // Formatprofil: Quotenverlauf, Publikum, Analyse und Maßnahmen je Sendung
@@ -4658,7 +4982,7 @@ function makeTender(studioId, type, window) {
   const years = type === "output" ? 3 : type === "presale" ? 2 : pick([1, 2, 3]);
   const sum = titles.reduce((a, r) => a + titleValue(r), 0);
   const base = type === "presale" ? r1000(rnd(0.8, 2.2) * 1e6) : type === "output" ? r1000(sum * 1.4) : r1000(sum * (type === "block" ? 0.8 : 0.72));
-  const t = { id: uid(), studio: studioId, type, window, titles: titles.map(r => r[0]), years, min: r1000(base * (window === "pay" ? 1.6 : 1) * (years === 1 ? 0.6 : years === 2 ? 1 : 1.3)), close: G.day + 14, bid: 0, opt: { terr: "dach", excl: true }, note };
+  const t = { id: uid(), studio: studioId, type, window, titles: titles.map(r => r[0]), years, min: r1000(base * (window === "pay" ? 1.6 : 1) * (years === 1 ? 0.6 : years === 2 ? 1 : 1.3)), close: G.day + T_PHASES[0][1], phase: 1, bid: 0, opt: { terr: "dach", excl: true, slot: false, cash: false }, note };
   if (type === "presale") { const ppl = shuffle(G.people.filter(p => p.role === "Schauspiel" && !p.custom && p.fame > 55)).slice(0, 2); t.pre = { title: pick(PRESALE_TITLES), genre: pick(["Krimi", "Drama", "Komödie", "Action", "Liebesfilm"]), stars: ppl.map(p => p.id), delivery: ri(60, 140), lo: ri(35, 55), hi: ri(70, 92) }; t.titles = [t.pre.title]; }
   return t;
 }
@@ -4670,14 +4994,18 @@ function marketDay() {
   const add = (studio, type, window) => { const t = makeTender(studio, type, window); if (t) { t.fair = fair ? fair[0] : null; G.tenders.push(t); } return t; };
   if (fair || G.tenders.length === 0) {
     const made = [add(pick(["disney", "warner", "universal", "paramount"]), "volume", "free"), add("sony", pick(["output", "block"]), pick(["pay", "free"])), add(pick(["lionsgate", "studiocanal", "constantin", "world"]), pick(["volume", "block"]), "free"), add(pick(["constantin", "a24", "studiocanal"]), "presale", "free")].filter(Boolean);
-    logMsg("Rechteagentur", "Programm", `${fair ? `${fair[0]}: ` : ""}${made.length} neue Filmpakete im Angebot – ${made.map(t => `${STUDIO(t.studio).name} (${DEAL[t.type].name})`).join(", ")}. Gebote bis ${dateShort(G.day + 14)}.`, !!fair);
+    logMsg("Rechteagentur", "Programm", `${fair ? `${fair[0]}: ` : ""}${made.length} neue Filmpakete im Angebot – ${made.map(t => `${STUDIO(t.studio).name} (${DEAL[t.type].name})`).join(", ")}. Indikative Angebote bis ${dateShort(G.day + T_PHASES[0][1])}.`, !!fair);
+    const star = made.slice().sort((a, b) => b.min - a.min)[0];
+    if (fair && star) tenderEvent(star, `Einladung: ${fair[0]}`, `${STUDIO(star.studio).name} lädt zum Bieterverfahren für ${star.type === "presale" ? `den Pre-Sale „${star.pre.title}“` : `einen ${DEAL[star.type].name} mit ${star.titles.length} Titeln${star.note ? ` (${star.note})` : ""}`} ein. Ablauf: indikatives Angebot bis ${dateShort(star.close)}, dann Shortlist, Verhandlungsrunde und Best and Final Offer.`,
+      [["Zum Filmmarkt", "Unterlagen sichten und ein erstes Angebot abgeben."], ["Später entscheiden", "Die Ausschreibung bleibt offen."], ["Absagen", "Kein Interesse an diesem Paket."]], "invite");
   } else if (G.day % 9 === 0 && G.tenders.length < 6) {
     const t = add(pick(["world", "lionsgate", "studiocanal", "constantin"]), pick(["volume", "block"]), "free");
-    if (t) logMsg("Rechteagentur", "Programm", `Neues Filmpaket: ${STUDIO(t.studio).name} bietet einen ${DEAL[t.type].name} mit ${t.titles.length} Titeln an (Gebote bis ${dateShort(t.close)}).`);
+    if (t) logMsg("Rechteagentur", "Programm", `Neues Filmpaket: ${STUDIO(t.studio).name} bietet einen ${DEAL[t.type].name} mit ${t.titles.length} Titeln an (indikative Angebote bis ${dateShort(t.close)}).`);
   }
   // Ausschreibungen entscheiden
-  for (const t of G.tenders.filter(x => x.close <= G.day)) resolveTender(t);
-  G.tenders = G.tenders.filter(x => x.close > G.day);
+  for (const t of G.tenders.filter(x => x.close <= G.day && !x.done)) { t.phase = t.phase || 1; advanceTender(t); }
+  G.tenders = G.tenders.filter(x => !x.done);
+  instalDay();
   // Output Deals liefern alle 30 Tage Neuheiten – auch Flops
   for (const d of G.deals.filter(x => x.until >= G.day && G.day >= x.next)) {
     d.next = G.day + 30;
@@ -4704,37 +5032,114 @@ function deliver(owner, rows, window, years, deal) {
   if (st) { for (const r of rows) { const p = realFilm(r); applyLicense(p, years); st.progs.push(p); } return; }
   for (const t of names) G.payHeld.push({ title: t, owner, until: G.day + years * 365 }); // Streamer halten das Pay-Fenster
 }
-function resolveTender(t) {
-  const P = me(), S = STUDIO(t.studio), bids = [];
-  const value = t.min / optFactor({ terr: "dach", excl: true });
-  // Sender bieten auf Free-TV, Streamer auf Pay-Fenster; Majors verkaufen nicht an konkurrierende Streamer
-  const bidders = t.window === "pay"
+// Bieterverfahren in Runden wie bei echten Rechteausschreibungen:
+// 1 Indikatives Angebot (unverbindlich) → Shortlist → 2 Verhandlungsrunde mit Rückmeldung → 3 Best and Final Offer → ggf. Stechen → Zuschlag
+const T_PHASES = [["Indikatives Angebot", 6], ["Verhandlungsrunde", 5], ["Best and Final Offer", 3], ["Stechen", 1]];
+const tenderValue = t => t.min / optFactor({ terr: "dach", excl: true });
+// Bewertung durch das Studio: Preis (bereinigt um Territorium/Exklusivität) plus Zusagen
+const tScore = (bid, opt) => bid / optFactor(opt) * (1 + (opt.slot ? 0.05 : 0) + (opt.cash ? 0.03 : 0));
+function tenderBidders(t) {
+  const S = STUDIO(t.studio), value = tenderValue(t);
+  const list = t.window === "pay"
     ? STREAMERS.filter(s => ["netflix", "prime", "disney", "wow", "rtlplus", "joyn", "paramount"].includes(s.id) && !(S.type === "own" && S.streamer !== s.id)).map(s => ({ id: s.id, name: s.name, w: s.subs / 8 + 0.6 }))
     : G.stations.filter(s => !isMe(s) && s.base >= 2.5).map(s => ({ id: s.id, name: s.name, w: s.base / 8 + 0.5 }));
-  for (const b of bidders) {
-    if (Math.random() > 0.55) continue;
-    let v = value * rnd(0.85, 1.35) * Math.min(1.4, b.w);
-    if (t.bid && typeof rivalHate === "function") v *= 1 + rivalHate(b.id) * 0.25; // Erzfeinde bieten gegen Sie
-    bids.push({ ...b, bid: r1000(v) });
+  // Jeder Bieter hat eine geheime Schmerzgrenze; Erzfeinde bieten aggressiver gegen Sie
+  return list.filter(() => Math.random() < 0.6).map(b => ({ id: b.id, name: b.name, max: r1000(value * rnd(0.85, 1.35) * Math.min(1.4, b.w) * (1 + rivalHate(b.id) * 0.25)), bid: 0 }));
+}
+function tenderRanking(t) {
+  const rows = (t.ai || []).filter(a => a.bid && !a.out).map(a => ({ id: a.id, name: a.name, s: a.bid, bid: a.bid }));
+  if (t.bid && !t.out) rows.push({ id: me().id, name: me().name + " (Sie)", s: tScore(t.bid, t.opt), bid: t.bid, me: true });
+  return rows.sort((a, b) => b.s - a.s);
+}
+const gapWord = (mine, top) => { const g = (top - mine) / top; return g <= 0 ? "vorn" : g < 0.04 ? "knapp dahinter" : g < 0.12 ? "spürbar dahinter" : "deutlich dahinter"; };
+function tenderEvent(t, title, text, opts, kind) {
+  const ev = { id: "tender", type: "Rechte", title, text, opts, data: { t: t.id, kind } };
+  if (G.event) (G.evQ = G.evQ || []).push(ev); else G.event = ev;
+}
+function advanceTender(t) {
+  const P = me(), S = STUDIO(t.studio), value = tenderValue(t), label = `${S.name} · ${DEAL[t.type].name}`;
+  if (t.phase === 1) {
+    t.ai = tenderBidders(t);
+    for (const a of t.ai) a.bid = r1000(a.max * rnd(0.68, 0.85));
+    const rank = tenderRanking(t).filter(r => r.s >= value * 0.7), short = rank.slice(0, 3);
+    if (!short.length) { logMsg("Rechteagentur", "Programm", `${label}: Das Studio zieht das Paket zurück – keine ausreichenden Angebote.`, !!t.bid); t.done = true; return; }
+    for (const a of t.ai) if (!short.some(r => r.id === a.id)) a.out = true;
+    t.short = short.map(r => r.name);
+    t.phase = 2; t.close = G.day + T_PHASES[1][1];
+    if (t.bid) {
+      const pos = short.findIndex(r => r.me);
+      if (pos < 0) { t.out = true; logMsg("Rechteagentur", "Programm", `${label}: Sie sind nach der ersten Runde ausgeschieden. Auf der Shortlist: ${t.short.join(", ")}.`, true); return; }
+      t.fb = `Shortlist mit ${short.length} Bietern – Sie sind ${gapWord(short[pos].s, short[0].s)}.`;
+      tenderEvent(t, `Shortlist: ${label}`, `Das Studio hat Sie in die Verhandlungsrunde eingeladen. Mitbieter: ${t.short.filter(n => !n.includes("(Sie)")).join(", ") || "keine"}. Ihr indikatives Angebot (${meur(t.bid)}) liegt ${gapWord(short[pos].s, short[0].s)}. Bis ${dateShort(t.close)} können Sie nachbessern.`,
+        [["Um 10 % erhöhen", `Neues Gebot ${meur(r1000(t.bid * 1.1))}.`], ["Primetime-Garantie zusagen", "Studio wertet Ihr Angebot um 5 % höher – die Filme müssen um 20:15 laufen."], ["Gebot halten", "Sie pokern und warten ab."], ["Aussteigen", "Sie ziehen Ihr Angebot zurück."]], "short");
+    } else logMsg("Rechteagentur", "Programm", `${label}: Shortlist steht (${t.short.join(", ")}). Ohne indikatives Angebot sind Sie nicht mehr dabei.`);
+    return;
   }
-  if (t.bid) bids.push({ id: P.id, name: P.name + " (Sie)", bid: t.bid / optFactor(t.opt), real: t.bid, me: true });
-  bids.sort((a, b) => b.bid - a.bid);
-  const win = bids[0] && bids[0].bid >= value * 0.95 ? bids[0] : null;
+  if (t.phase === 2) {
+    for (const a of t.ai.filter(x => !x.out)) { a.bid = Math.max(a.bid, r1000(a.max * rnd(0.85, 0.95))); if (Math.random() < 0.15) a.out = true; }
+    t.phase = 3; t.close = G.day + T_PHASES[2][1];
+    const rank = tenderRanking(t);
+    if (t.bid && !t.out) {
+      const pos = rank.findIndex(r => r.me);
+      t.fb = `Zwischenstand: Platz ${pos + 1} von ${rank.length} – ${gapWord(rank[pos].s, rank[0].s)}.`;
+      tenderEvent(t, `Best and Final Offer: ${label}`, `Das Studio bittet um verbindliche Schlussangebote bis ${dateShort(t.close)}. Ihr Stand: Platz ${pos + 1} von ${rank.length}, ${gapWord(rank[pos].s, rank[0].s)}. Danach gibt es keine Nachverhandlung.`,
+        [["Knock-out-Gebot: +20 %", `Schlussangebot ${meur(r1000(t.bid * 1.2))} – soll die Konkurrenz aus dem Rennen werfen.`], ["Solide nachlegen: +8 %", `Schlussangebot ${meur(r1000(t.bid * 1.08))}.`], ["Sofortzahlung anbieten", "Volle Zahlung bei Zuschlag statt Raten – Studio wertet 3 % höher."], ["Bei aktuellem Gebot bleiben", "Kein weiteres Geld."]], "bafo");
+    }
+    return;
+  }
+  if (t.phase === 3) {
+    for (const a of t.ai.filter(x => !x.out)) a.bid = Math.max(a.bid, r1000(a.max * rnd(0.93, 1.0)));
+    const rank = tenderRanking(t);
+    if (t.bid && !t.out && rank.length > 1 && !t.tie) {
+      const me1 = rank.findIndex(r => r.me), other = me1 === 0 ? rank[1] : rank[0];
+      if (me1 <= 1 && Math.abs(rank[0].s - rank[1].s) / rank[0].s < 0.03) {
+        t.tie = true; t.phase = 4; t.close = G.day + 1;
+        tenderEvent(t, `Stechen: ${label}`, `Kopf-an-Kopf mit ${other.name}! Das Studio gibt beiden Bietern 24 Stunden für ein letztes Wort.`,
+          [["+5 % nachlegen", `Letztes Gebot ${meur(r1000(t.bid * 1.05))}.`], ["+12 % – jetzt oder nie", `Letztes Gebot ${meur(r1000(t.bid * 1.12))}.`], ["Nicht nachlegen", "Das Studio entscheidet nach Aktenlage."]], "tie");
+        return;
+      }
+    }
+  }
+  if (t.phase === 4) for (const a of t.ai.filter(x => !x.out)) if (Math.random() < 0.5) a.bid = Math.min(a.max * 1.05, r1000(a.bid * rnd(1.02, 1.08)));
+  finalizeTender(t);
+}
+function finalizeTender(t) {
+  t.done = true;
+  const P = me(), S = STUDIO(t.studio), value = tenderValue(t), rank = tenderRanking(t);
+  const win = rank[0] && rank[0].s >= value * 0.95 ? rank[0] : null;
   const rows = t.titles.map(n => FILM_DB.concat(importedFilms()).find(r => r[0] === n)).filter(Boolean);
-  if (t.bid) logMsg("Rechteagentur", "Programm", `Umschläge geöffnet – ${S.name}, ${DEAL[t.type].name}: ${bids.length ? bids.map(b => `${b.name} ${meur(b.real || b.bid)}`).join(" · ") : "keine Gebote"}.`);
-  if (!win) { if (t.bid) logMsg("Rechteagentur", "Programm", `Kein Zuschlag für das Paket von ${S.name} – alle Gebote unter der Erwartung des Studios.`); return; }
+  if (t.bid && !t.out) logMsg("Rechteagentur", "Programm", `Zuschlagsentscheidung ${S.name}: ${rank.map((b, k) => `${k + 1}. ${b.name} ${meur(b.bid)}`).join(" · ")}.`);
+  if (!win) { logMsg("Rechteagentur", "Programm", `Kein Zuschlag für das Paket von ${S.name} – alle Gebote unter der Erwartung des Studios.`, !!t.bid); return; }
   if (win.me) {
-    book(P, "Programmkäufe", -(t.type === "output" ? r1000(t.bid / t.years) : t.bid));
-    if (typeof rivalEvent === "function") for (const b of bids.filter(x => !x.me)) rivalEvent(b.id, -12, `Filmpaket ${S.name}`);
-    if (t.type === "presale") { (G.presales = G.presales || []).push({ ...t.pre, due: G.day + t.pre.delivery, years: t.years, studio: t.studio }); logMsg("Rechteagentur", "Programm", `Zuschlag! Pre-Sale „${t.pre.title}“ (${S.name}) gesichert – Lieferung in ${t.pre.delivery} Tagen.`, true); return; }
-    if (t.type === "output") { G.deals.push({ studio: t.studio, owner: P.id, window: t.window, years: 1, until: G.day + t.years * 365, next: G.day + 30, fee: t.bid }); logMsg("Rechteagentur", "Programm", `Zuschlag! Output Deal mit ${S.name} für ${t.years} Jahre (${meur(t.bid / t.years)} pro Jahr). Neuheiten kommen alle 30 Tage.`, true); }
-    else logMsg("Rechteagentur", "Programm", `Zuschlag! ${DEAL[t.type].name} von ${S.name} für ${meur(t.bid)} – ${rows.length} Titel, ${t.years} ${t.years > 1 ? "Jahre" : "Jahr"} ${t.opt.excl ? "exklusiv" : "nicht exklusiv"}, ${t.opt.terr === "dach" ? "DACH" : "nur Deutschland"}.`, true);
+    const total = t.type === "output" ? r1000(t.bid / t.years) : t.bid;
+    if (t.opt.cash) book(P, "Programmkäufe", -total);
+    else { book(P, "Programmkäufe", -r1000(total / 2)); (G.instal = G.instal || []).push({ day: G.day + 90, amt: total - r1000(total / 2), what: `${S.name}, ${DEAL[t.type].name}` }); }
+    for (const b of rank.filter(x => !x.me)) rivalEvent(b.id, -12, `Filmpaket ${S.name}`);
+    const terms = `${t.opt.cash ? "Sofortzahlung" : "zahlbar in zwei Raten"}${t.opt.slot ? ", Primetime-Garantie" : ""}`;
+    if (t.type === "presale") { (G.presales = G.presales || []).push({ ...t.pre, due: G.day + t.pre.delivery, years: t.years, studio: t.studio }); logMsg("Rechteagentur", "Programm", `Zuschlag! Pre-Sale „${t.pre.title}“ (${S.name}) für ${meur(t.bid)} gesichert (${terms}) – Lieferung in ${t.pre.delivery} Tagen.`, true); return; }
+    if (t.type === "output") { G.deals.push({ studio: t.studio, owner: P.id, window: t.window, years: 1, until: G.day + t.years * 365, next: G.day + 30, fee: t.bid }); logMsg("Rechteagentur", "Programm", `Zuschlag! Output Deal mit ${S.name} für ${t.years} Jahre (${meur(t.bid / t.years)} pro Jahr, ${terms}). Neuheiten kommen alle 30 Tage.`, true); }
+    else logMsg("Rechteagentur", "Programm", `Zuschlag! ${DEAL[t.type].name} von ${S.name} für ${meur(t.bid)} – ${rows.length} Titel, ${t.years} ${t.years > 1 ? "Jahre" : "Jahr"} ${t.opt.excl ? "exklusiv" : "nicht exklusiv"}, ${t.opt.terr === "dach" ? "DACH" : "nur Deutschland"} (${terms}).`, true);
     deliver(P.id, rows, t.window, t.years);
     return;
   }
   if (t.type === "output") G.deals.push({ studio: t.studio, owner: win.id, window: t.window, years: 1, until: G.day + t.years * 365, next: G.day + 30, fee: win.bid });
   deliver(win.id, t.type === "presale" ? [] : rows, t.window, t.years);
-  logMsg("Branchendienst", "Konkurrenz", `${win.name} sichert sich ${DEAL[t.type].name === "Output Deal" ? `den Output Deal mit ${S.name}` : `das Filmpaket von ${S.name}`}${t.note ? ` (${t.note})` : ""} für ${meur(win.bid)}.${t.bid ? ` Ihr Gebot: ${meur(t.bid)}.` : ""}`, !!t.bid);
+  logMsg("Branchendienst", "Konkurrenz", `${win.name} sichert sich ${t.type === "output" ? `den Output Deal mit ${S.name}` : `das Filmpaket von ${S.name}`}${t.note ? ` (${t.note})` : ""} für ${meur(win.bid)}.${t.bid && !t.out ? ` Ihr letztes Gebot: ${meur(t.bid)}.` : ""}`, !!t.bid);
+}
+EVENTS.push({ id: "tender", type: "Rechte", when: () => false, make: () => ({}), fn: (k, d) => {
+  const t = (G.tenders || []).find(x => x.id === d.t); if (!t || t.done) return;
+  const raise = f => { t.bid = r1000(t.bid * f); };
+  if (d.kind === "invite") { if (k === 0) setTimeout(() => go("filmmarket"), 0); if (k === 2) t.declined = true; return; }
+  if (d.kind === "short") { if (k === 0) raise(1.1); if (k === 1) t.opt.slot = true; if (k === 3) t.out = true; }
+  if (d.kind === "bafo") { if (k === 0) raise(1.2); if (k === 1) raise(1.08); if (k === 2) t.opt.cash = true; }
+  if (d.kind === "tie") { if (k === 0) raise(1.05); if (k === 1) raise(1.12); }
+  if (t.bid) t.myBids = (t.myBids || []).concat([[G.day, t.phase, t.bid]]);
+} });
+// Raten aus Rechtekäufen
+function instalDay() {
+  const P = me();
+  for (const r of (G.instal || []).filter(x => x.day <= G.day)) { book(P, "Programmkäufe", -r.amt); logMsg("Lizenzabteilung", "Programm", `Zweite Rate fällig: ${meur(r.amt)} für ${r.what}.`); }
+  G.instal = (G.instal || []).filter(x => x.day > G.day);
 }
 // Pre-Sales: fertiger Film kommt mit ungewisser Qualität
 function presaleDay() {
@@ -4750,17 +5155,20 @@ function filmMarketPage(P) {
   const next = FILM_MARKETS.map(([n, m, d]) => { for (let k = G.day; k < G.day + 370; k++) { const dt = dateOf(k); if (dt.getMonth() === m && dt.getDate() === d) return [n, k]; } return [n, 0]; }).sort((a, b) => a[1] - b[1]);
   const rowsOf = t => t.titles.map(n => FILM_DB.concat(importedFilms()).find(r => r[0] === n)).filter(Boolean);
   const card = t => { const S = STUDIO(t.studio), min = r1000(t.min * optFactor(t.opt)), rows = rowsOf(t);
-    return `<section class="panel fm-card"><div class="ph"><h2>${esc(S.name)} · ${DEAL[t.type].name}</h2><span class="aside">${t.fair ? esc(t.fair) + " · " : ""}Gebote bis ${dateShort(t.close)}</span></div>
+    return `<section class="panel fm-card"><div class="ph"><h2>${esc(S.name)} · ${DEAL[t.type].name}</h2><span class="aside">${t.fair ? esc(t.fair) + " · " : ""}${T_PHASES[(t.phase || 1) - 1][0]} bis ${dateShort(t.close)}</span></div>
+      <div class="tsteps">${T_PHASES.slice(0, 3).map(([n], k) => `<span class="${(t.phase || 1) - 1 === k || (k === 2 && t.phase === 4) ? "on" : (t.phase || 1) - 1 > k ? "done" : ""}">${k + 1} ${n}</span>`).join("")}<span class="${t.phase === 4 ? "on" : ""}">Zuschlag</span></div>
+      ${t.out ? '<p class="pad down" style="margin:0">Sie sind aus diesem Verfahren ausgeschieden.</p>' : t.fb ? `<p class="pad" style="margin:0"><b>Rückmeldung des Studios:</b> ${esc(t.fb)}${t.short ? ` <span class="muted">Shortlist: ${esc(t.short.join(", "))}</span>` : ""}</p>` : t.declined ? '<p class="pad muted" style="margin:0">Abgesagt – Sie können bis zum Ende der ersten Runde doch noch bieten.</p>' : ""}
       <div class="pad"><p class="fine" style="margin:0 0 8px">${esc(DEAL[t.type].desc)} <span class="chip ${t.window === "pay" ? "real" : ""}">${WINDOWS[t.window]}</span> <span class="chip">${t.years} ${t.years > 1 ? "Jahre" : "Jahr"}${t.type === "output" ? " Laufzeit" : ""}</span>${t.note ? ` <span class="chip warn">${esc(t.note)}</span>` : ""}</p>
       ${t.type === "presale" ? `<p style="margin:0 0 8px"><b>„${esc(t.pre.title)}“</b> (${esc(t.pre.genre)}) – Drehbuch und zwei Stars auf dem Papier: ${t.pre.stars.map(id => personLink(person(id))).join(" & ")}. Lieferung in ca. ${t.pre.delivery} Tagen, Qualität ${t.pre.lo}–${t.pre.hi} erwartet.</p>`
         : `<div class="fm-titles">${rows.map(r => `<span class="fm-t">${esc(r[0])}${imdbChip(r[0])} <span class="muted">${esc(r[1])}</span></span>`).join("")}${t.type === "output" ? '<span class="fm-t muted">… und alle weiteren Neuheiten der Laufzeit</span>' : ""}</div>`}
       <div class="fm-opts">
         <div class="pkgs"><button class="pkg ${t.opt.terr === "dach" ? "on" : ""}" data-act="fmOpt" data-k="${t.id}" data-v="terr:dach"><b>DACH</b><span>voller Preis</span></button><button class="pkg ${t.opt.terr === "de" ? "on" : ""}" data-act="fmOpt" data-k="${t.id}" data-v="terr:de"><b>nur DE</b><span>−22 %</span></button></div>
         <div class="pkgs"><button class="pkg ${t.opt.excl ? "on" : ""}" data-act="fmOpt" data-k="${t.id}" data-v="excl:1"><b>Exklusiv</b><span>blockiert Konkurrenz</span></button><button class="pkg ${!t.opt.excl ? "on" : ""}" data-act="fmOpt" data-k="${t.id}" data-v="excl:0"><b>Nicht exkl.</b><span>−40 %</span></button></div>
-        <div class="actions"><input type="number" id="fm-${t.id}" min="${min}" step="250000" value="${t.bid || min}" ${planLocked() ? "disabled" : ""}><button class="btn hot" data-act="fmBid" data-k="${t.id}" ${planLocked() || (t.window === "pay" && !(G.stream && G.stream.stage >= 2)) ? "disabled" : ""}>${t.bid ? "Gebot ändern" : "Bieten"}</button>${t.bid ? `<span class="chip good">${meur(t.bid)}</span>` : ""}</div>
-      </div><p class="fine" style="margin:6px 0 0">Mindestgebot ${meur(min)}${t.type === "output" ? ` (gesamt, ${meur(min / t.years)} pro Jahr)` : ""}.${t.window === "pay" && !(G.stream && G.stream.stage >= 2) ? " Pay-Fenster nur mit eigenem Abo-Streamer." : ""}</p></div></section>`; };
+        <div class="pkgs"><button class="pkg ${t.opt.slot ? "on" : ""}" data-act="fmOpt" data-k="${t.id}" data-v="slot:${t.opt.slot ? 0 : 1}"><b>Primetime-Garantie</b><span>+5 % Wertung</span></button><button class="pkg ${t.opt.cash ? "on" : ""}" data-act="fmOpt" data-k="${t.id}" data-v="cash:${t.opt.cash ? 0 : 1}"><b>Sofortzahlung</b><span>+3 % Wertung</span></button></div>
+        <div class="actions"><input type="number" id="fm-${t.id}" min="${min}" step="250000" value="${t.bid || min}" ${planLocked() ? "disabled" : ""}><button class="btn hot" data-act="fmBid" data-k="${t.id}" ${planLocked() || (t.window === "pay" && !(G.stream && G.stream.stage >= 2)) ? "disabled" : ""}>${t.phase > 1 ? "Gebot erhöhen" : t.bid ? "Angebot ändern" : "Indikatives Angebot"}</button>${t.bid ? `<span class="chip good">${meur(t.bid)}</span>` : ""}</div>
+      </div>${(t.myBids || []).length ? `<p class="fine" style="margin:6px 0 0">Ihre Gebote: ${t.myBids.map(([d, ph, v]) => `${dateShort(d)} R${ph} ${meur(v)}`).join(" → ")}</p>` : ""}<p class="fine" style="margin:6px 0 0">Mindestgebot ${meur(min)}${t.type === "output" ? ` (gesamt, ${meur(min / t.years)} pro Jahr)` : ""}.${t.window === "pay" && !(G.stream && G.stream.stage >= 2) ? " Pay-Fenster nur mit eigenem Abo-Streamer." : ""}</p></div></section>`; };
   return title("Filmrechte", `<span class="muted">Content-Akquisition · Pakete von Studios und Weltvertrieben</span>`) + lockNote() +
-    `<p class="lead mb">Filme werden in Fenstern verwertet: Kino → Pay-/Streaming-Erstverwertung → zweites Pay-Fenster → Free-TV. Majors mit eigenem Streamer (Disney, Warner, Universal, Paramount) behalten die Erstverwertung und verkaufen nur Katalog; Sony verkauft alles an den Meistbietenden; Independents wie Constantin oder StudioCanal verkaufen länderweise. Auf den Filmmärkten kommen die meisten Pakete auf den Tisch. Geboten wird verdeckt – Territorium und Exklusivität verändern den Preis.</p>
+    `<p class="lead mb">Filme werden in Fenstern verwertet: Kino → Pay-/Streaming-Erstverwertung → zweites Pay-Fenster → Free-TV. Majors mit eigenem Streamer (Disney, Warner, Universal, Paramount) behalten die Erstverwertung und verkaufen nur Katalog; Sony verkauft alles an den Meistbietenden; Independents wie Constantin oder StudioCanal verkaufen länderweise. Auf den Filmmärkten kommen die meisten Pakete auf den Tisch. Jede Ausschreibung läuft in Runden: unverbindliches indikatives Angebot, Shortlist der besten drei, Verhandlungsrunde mit Rückmeldung des Studios, verbindliches Best and Final Offer – bei Gleichstand ein Stechen. Neben dem Preis zählen Territorium, Exklusivität, Primetime-Garantie und Zahlungsweise; ohne Sofortzahlung wird in zwei Raten gezahlt.</p>
     <div class="grid two mb"><section class="panel"><div class="ph"><h2>Nächste Filmmärkte</h2></div><div class="tbl"><table><tbody>${next.map(([n, d]) => `<tr><td>${esc(n)}</td><td class="num">${dateShort(d)} <span class="muted">in ${d - G.day} T.</span></td></tr>`).join("")}</tbody></table></div></section>
     <section class="panel"><div class="ph"><h2>Studios</h2></div><div class="tbl"><table><tbody>${STUDIOS.map(s => { const d = (G.deals || []).find(x => x.studio === s.id); return `<tr><td class="title"><b>${esc(s.name)}</b><div class="muted">${esc(s.note)}</div></td><td>${s.type === "own" ? `<span class="chip real">eigener Streamer</span>` : s.type === "indep" ? '<span class="chip warn">verkauft an alle</span>' : '<span class="chip">Independent</span>'}</td><td class="muted">${d ? `Output Deal: ${esc(d.owner === P.id ? "Sie" : holderName(d.owner))} bis ${dateShort(d.until)}` : ""}</td></tr>`; }).join("")}</tbody></table></div></section></div>
     ${G.tenders.length ? G.tenders.map(card).join("") : '<section class="panel mb"><div class="pad"><p class="lead">Derzeit keine offenen Pakete – der nächste Filmmarkt kommt bestimmt.</p></div></section>'}
