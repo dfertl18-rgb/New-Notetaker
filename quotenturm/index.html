@@ -403,6 +403,7 @@ img.avatar.photo { border-radius: 50%; object-fit: cover; flex: 0 0 auto; }
 @media (max-width: 900px) { .pp-head { grid-template-columns: auto minmax(0, 1fr); } .acols { grid-template-columns: minmax(0, 1fr); } .ttl-head { flex-direction: column; } }
 .chip.imdb { background: #f5c518; border-color: #f5c518; color: #111; font-weight: 700; }
 .imdb-tile b { color: #f5c518; } .imdb-tile b span { font-size: 14px; color: var(--muted); }
+.bio p { margin: 0 0 8px; max-width: 80ch; } .bio a { color: var(--hot); }
 .pkgs { display: flex; gap: 4px; }
 .pkg { background: var(--panel-2); border: 1px solid var(--line); border-radius: 4px; padding: 4px 8px; display: grid; text-align: left; min-width: 74px; }
 .pkg b { font-family: var(--font-head); font-size: 15px; } .pkg span { font-size: 11px; color: var(--muted); }
@@ -2200,7 +2201,10 @@ function assignCasts() {
 // Titel aus „Bekannt aus“; auch Titel mit Komma (z. B. „Good Bye, Lenin!“) werden erkannt
 function knownKeys(known) {
   const seg = String(known).split(/[;|]|,(?=\s)/).map(x => x.trim()).filter(Boolean), out = new Set();
-  seg.forEach((x, i) => { out.add(normT(x)); if (seg[i + 1]) out.add(normT(`${x}, ${seg[i + 1]}`)); });
+  seg.forEach((x, i) => {
+    out.add(normT(x)); if (seg[i + 1]) out.add(normT(`${x}, ${seg[i + 1]}`));
+    const main = x.split(/\s[–—-]\s/)[0]; if (main !== x && main.length > 3) out.add(normT(main)); // „Alarm für Cobra 11 – Die Autobahnpolizei“ → „Alarm für Cobra 11“
+  });
   out.delete(""); return out;
 }
 const normT = t => String(t || "").toLowerCase().replace(/\(.*?\)|[„“"'*]/g, "").replace(/[^a-z0-9äöüß]+/g, " ").trim();
@@ -2218,15 +2222,26 @@ function titleCast(prog, title) {
   if (prog && prog.prod) { const pr = G.prods.find(x => x.id === prog.prod); if (pr) pr.cast.forEach((id, k) => add(id, FORMATS[pr.kind] && FORMATS[pr.kind].roles[k] ? FORMATS[pr.kind].roles[k][1] : "Besetzung")); }
   if (prog && prog.cast) prog.cast.forEach(c => add(c.id, c.role));
   const probe = prog || { genre: "Serie", kind: "serie" };
-  const hits = (knownIndex().get(normT(title || (prog && prog.title))) || []).map(person).filter(q => q && (!prog || roleFits(q, probe)) && (!prog || !prog.home || stationFits(q, ownerOfProg(prog))));
-  for (const q of hits.sort((a, b) => b.fame - a.fame).slice(0, 6)) add(q.id, q.role === "Schauspiel" ? "Darsteller*in" : q.role === "Moderation" ? "Moderation" : q.role === "Nachrichten" ? "Anchor" : "Mitwirkende*r");
+  const hits = (knownIndex().get(normT(title || (prog && prog.title))) || []).map(person).filter(q => q && (!prog || roleFits(q, probe) || q.hasVita) && (!prog || !prog.home || stationFits(q, ownerOfProg(prog))));
+  for (const q of hits.sort((a, b) => b.fame - a.fame).slice(0, 8)) add(q.id, q.role === "Schauspiel" ? "Darsteller*in" : q.role === "Moderation" ? "Moderation" : q.role === "Nachrichten" ? "Anchor" : "Mitwirkende*r");
   return out;
 }
 // Vita: aktuelle Engagements aus dem Spiel, frühere Stationen deterministisch aus dem Personen-Code
+let EDB_IDX = null, EDB_IDX_N = -1;
+function edbEntry(p) {
+  const D = loadDB();
+  if (!EDB_IDX || EDB_IDX_N !== D.people.length) { EDB_IDX = new Map(D.people.map(e => [e.eindeutige_id, e])); EDB_IDX_N = D.people.length; }
+  return EDB_IDX.get(p.code) || null;
+}
 function computeVita(p) {
   const out = [], year = dateOf(G.day).getFullYear();
   for (const st of G.stations) for (const prog of st.progs) if (prog.cast && prog.cast.some(c => c.id === p.id)) out.push({ y: p.custom ? "aktuell" : `seit ${year - 1 - (hashStr(p.code + prog.title) % 6)}`, t: prog.title, s: st.name, r: prog.cast.find(c => c.id === p.id).role, cur: true });
   for (const pr of G.prods) if (pr.cast.includes(p.id)) out.push({ y: String(year), t: pr.title, s: me().name, r: "Eigenproduktion", cur: true });
+  const ed = p.custom && edbEntry(p);
+  if (ed && ed.werke) {
+    for (const w of ed.werke.split("; ")) { const [t, r] = w.split("|"); if (t && !out.some(x => normT(x.t) === normT(t))) out.push({ y: "", t, s: "", r: r || "Mitwirkung" }); }
+    return out;
+  }
   if (p.known) {
     const all = new Set(FILM_DB.concat(SERIES_DB).map(r => normT(r[0]))), seg = p.known.split(/[;|]|,(?=\s)/).map(x => x.trim()).filter(Boolean), titles = [];
     for (let i = 0; i < seg.length; i++) { const two = seg[i + 1] ? `${seg[i]}, ${seg[i + 1]}` : null; if (two && all.has(normT(two))) { titles.push(two); i++; } else titles.push(seg[i]); }
@@ -2288,13 +2303,13 @@ function linkImported() {
     const s = STREAMERS.find(x => at.includes(x.name.split(" ")[0].toLowerCase()) && x.hits.some(h => keys.has(normT(h))));
     if (s) { p.holder = s.id; p.until = G.day + ri(180, 900); }
   }
-  for (const p of G.people) {
-    if (!p.custom || !p.known || p.show || (p.holder && SIDX[p.holder] === undefined)) continue;
+  for (const p of G.people.filter(q => q.custom && q.known).sort((a, b) => b.fame - a.fame)) {
+    if (p.show || (p.holder && SIDX[p.holder] === undefined)) continue;
     for (const k of knownKeys(p.known)) {
       const hit = idx.get(k); if (!hit) continue;
       const [st, prog] = hit;
       if (p.holder && p.holder !== st.id) break;
-      if (!roleFits(p, prog) || !stationFits(p, st.id)) continue;
+      if ((!roleFits(p, prog) && !p.hasVita) || !stationFits(p, st.id)) continue;
       prog.cast = prog.cast || [];
       if (prog.cast.filter(c => person(c.id) && person(c.id).custom).length >= castNeed(prog).length) continue;
       if (!prog.cast.some(c => c.id === p.id)) prog.cast.unshift({ id: p.id, role: (castNeed(prog).find(([r]) => r === p.role) || [null, p.role === "Schauspiel" ? "Hauptrolle" : "Moderation"])[1] });
@@ -4263,11 +4278,12 @@ function applyEditorPeople() {
   const D = loadDB(); if (!D.people.length || !G || !G.people) return;
   const idx = new Map(G.people.map(p => [p.id, p]));
   for (const e of D.people) {
+    if (!playable(e)) continue;
     const id = "x_" + e.eindeutige_id, old = idx.get(id);
     const p = old || { genres: e.rolle === "Schauspiel" ? ["Drama", "Krimi"] : e.rolle === "Moderation" ? ["Show"] : e.rolle === "Reality" ? ["Reality"] : e.rolle === "Nachrichten" ? ["Nachrichten"] : ["Doku"],
       trait: e.ruhestand ? "Im Ruhestand" : pick(TRAITS[e.rolle]), lean: 0, holder: null, until: 0, busy: 0, ban: 0 };
     Object.assign(p, { id, code: e.eindeutige_id, name: e.name, role: e.rolle, talent: e.talent, buzz: e.charisma, rel: 110 - e.skandal, gage: e.gage, custom: true,
-      age: e.alter || p.age, origin: e.herkunft || p.origin, langs: e.sprachen || p.langs, known: e.bekannt_aus || p.known, knownAt: e.sender || p.knownAt });
+      age: e.alter || p.age, origin: e.herkunft || p.origin, langs: e.sprachen || p.langs || "", known: e.bekannt_aus || p.known, knownAt: e.sender || p.knownAt, hasVita: !!e.vita });
     if (e.bekanntheit) { p.fame = e.bekanntheit; p.pop = p.pop || clamp(Math.round(e.bekanntheit * 0.8 + 10), 5, 100); }
     ensurePerson(p);
     if (!old) { G.people.push(p); idx.set(id, p); }
@@ -4285,7 +4301,7 @@ async function readUpload(input, kind) {
   }
   if (kind === "people") {
     edMsg = [`Lese „${f.name}“ …`, "warn"]; renderEditor();
-    try { const r = await importPeopleFile(f); edMsg = [`Import „${f.name}“: ${r.rows.toLocaleString("de-DE")} Zeilen, ${r.add} neu, ${r.upd} aktualisiert, ${r.dup} doppelte Namen zusammengeführt, bei ${r.gen} generierten Einträgen die erfundenen Mitwirkungen verworfen${r.bad ? `, ${r.bad} ohne ID/Name übersprungen` : ""}. Codes beginnen mit ${r.prefix}. Upsert, keine Duplikate.${r.prefix === "INT-" ? " Bereinigt: unplausibler Ruhestand korrigiert, zufällige Serienzuordnungen nicht übernommen." : ""}`, "good"]; if (G) { applyEditorPeople(); linkImported(); } }
+    try { const r = await importPeopleFile(f); edMsg = [`Import „${f.name}“: ${r.rows.toLocaleString("de-DE")} Zeilen, ${r.add} neu, ${r.upd} aktualisiert, ${r.dup} doppelte Namen zusammengeführt, bei ${r.gen} generierten Einträgen die erfundenen Mitwirkungen verworfen${r.bad ? `, ${r.bad} ohne ID/Name übersprungen` : ""}. Codes: ${r.prefix}. Upsert, keine Duplikate.${r.vita ? ` ${r.playable.toLocaleString("de-DE")} davon spielen im laufenden Spiel mit (internationale Schauspieler nur mit Bezug zu Titeln im Spiel), alle sind im Editor durchsuchbar. Fähigkeiten und Bekanntheit sind Spielwerte, abgeleitet aus den belegten Arbeiten.` : ""}${r.prefix === "INT-" ? " Bereinigt: unplausibler Ruhestand korrigiert, zufällige Serienzuordnungen nicht übernommen." : ""}`, "good"]; if (G) { applyEditorPeople(); linkImported(); } }
     catch (e) { edMsg = [`Import fehlgeschlagen: ${e.message}`, "bad"]; }
     renderEditor(); return;
   }
@@ -4465,14 +4481,18 @@ function openPerson(id) {
   const tabs = [["overview", "Übersicht"], ["vita", "Vita"], ["contract", "Vertrag"]];
   let body = "";
   if (profTab === "overview") body = `<div class="acols">
+    ${p.custom ? '<p class="fine" style="grid-column:1/-1;margin:0">Fähigkeits- und Marktwerte sind Spielwerte, abgeleitet aus den belegten Arbeiten – keine Bewertung der realen Person.</p>' : ""}
     ${attrCol("Können", [["Talent", attr20(p.talent)], ["Charisma", attr20(p.buzz)], ["Ausstrahlung", attr20((p.buzz + p.fame) / 2)], ["Zuverlässigkeit", attr20(p.rel)], ["Skandalfaktor", attr20(110 - p.rel), true]])}
     ${attrCol("Markt", [["Bekanntheit", attr20(p.fame)], ["Beliebtheit", attr20(p.pop)], ["Werbewert", attr20((p.fame + p.pop) / 2)], ["Social Media", attr20(p.buzz * 0.7 + (p.age && p.age < 35 ? 30 : 5))]])}
     <section class="acol acol-info"><h3>Info</h3>
-      <div class="irow"><small>Herkunft</small><b>${esc(p.origin)}</b></div><div class="irow"><small>Sprachen</small><b>${esc(p.langs)}</b></div>
+      <div class="irow"><small>Herkunft</small><b>${esc(p.origin || "–")}${p.custom && edbEntry(p) && edbEntry(p).geburtsort ? ` · geboren in ${esc(edbEntry(p).geburtsort)}` : ""}</b></div><div class="irow"><small>Sprachen</small><b>${esc(p.langs)}</b></div>
       <div class="irow"><small>Fach</small><b>${esc((p.genres || []).join(", ") || SPEC_NAME[p.role])}</b></div><div class="irow"><small>Eigenschaft</small><b>${esc(p.trait || "–")}</b></div>
       ${p.role === "Nachrichten" ? `<div class="irow"><small>Haltung</small><b>${LINES[p.lean + 2]}</b></div>` : ""}
       <div class="irow"><small>Sonderwunsch</small><b>${pClause(p) ? CLAUSES[pClause(p)].name : "keiner"}</b></div></section></div>`;
-  if (profTab === "vita") { const v = computeVita(p); body = v.length ? `<div class="tbl"><table><thead><tr><th>Zeitraum</th><th>Titel</th><th>Sender</th><th>Funktion</th></tr></thead><tbody>${v.map(x => `<tr class="${x.cur ? "mine" : ""}"><td>${esc(x.y)}</td><td class="title">${esc(x.t)}</td><td class="muted">${esc(x.s)}</td><td>${esc(x.r)}</td></tr>`).join("")}</tbody></table></div>` : '<p class="fine">Noch keine Stationen bekannt.</p>'; }
+  if (profTab === "vita") { const v = computeVita(p), ed = p.custom && edbEntry(p);
+    body = (ed && ed.vita ? `<div class="bio"><p>${esc(ed.vita)}</p>${ed.ausbildung ? `<p class="fine">Ausbildung: ${esc(ed.ausbildung)}</p>` : ""}${ed.institutionen ? `<p class="fine">Stationen: ${esc(ed.institutionen)}</p>` : ""}
+      <p class="fine">Quelle: ${ed.quelle ? `<a href="${esc(ed.quelle)}" target="_blank" rel="noopener">Wikipedia/Wikidata</a>` : "Wikidata"} – automatisch zusammengestellt, nicht einzeln geprüft.${ed.imdb_url ? ` · <a href="${esc(ed.imdb_url)}" target="_blank" rel="noopener">IMDb-Profil</a>` : ""}</p></div>` : "") +
+      (v.length ? `<div class="tbl"><table><thead><tr><th>Zeitraum</th><th>Titel</th><th>Sender</th><th>Funktion</th></tr></thead><tbody>${v.map(x => `<tr class="${x.cur ? "mine" : ""}"><td>${esc(x.y)}</td><td class="title">${esc(x.t)}</td><td class="muted">${esc(x.s)}</td><td>${esc(x.r)}</td></tr>`).join("")}</tbody></table></div>` : '<p class="fine">Noch keine Stationen bekannt.</p>'); }
   if (profTab === "contract") body = `<div class="slist">
       <div class="srow"><b>Status</b><em style="font-size:15px">${esc(st.label)}</em><span>${p.holder ? `gebunden an ${esc(holderLabel(p.holder))}` : "kann frei verhandelt werden"}</span></div>
       ${showProg ? `<div class="srow"><b>Sendung</b><em style="font-size:15px">${titleLink(`${showProg[0].id}|${showProg[1].id}`, showProg[1].title)}</em><span>Vertrag bis ${dateShort(p.until)}</span></div>` : ""}
@@ -4582,10 +4602,44 @@ function loadXLSX() {
 async function readSheetRows(file) {
   const X = await loadXLSX();
   const wb = X.read(await file.arrayBuffer(), { type: "array" });
-  return X.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: "" });
+  const sheet = wb.SheetNames.includes("Profile") ? "Profile" : wb.SheetNames[0]; // Vita-Dateien: Blatt „Profile“
+  return X.utils.sheet_to_json(wb.Sheets[sheet], { defval: "" });
 }
 const starCount = v => { const s = String(v ?? ""); const n = (s.match(/[⭐★]/g) || []).length; return n || num(s, 0); };
 // Zeile aus den Personen-Tabellen (Moderatoren / Schauspieler DACH / International) in einen Editor-Eintrag umwandeln
+// ---------------------------------------------------------------------
+// Vita-Format (Wikidata/Wikipedia): Geburtsjahr, Herkunft, Kurzvita, belegte Arbeiten mit Rolle, IMDb-Link
+// Bekanntheit und Fähigkeiten gibt es dort nicht – das Spiel leitet Spielwerte aus den belegten Arbeiten ab.
+// ---------------------------------------------------------------------
+const GAME_YEAR = 2026;
+const COUNTRY = { deutschland: "DE", österreich: "AT", schweiz: "CH", "vereinigte staaten": "US", "vereinigtes königreich": "GB", frankreich: "FR", italien: "IT", spanien: "ES", kanada: "CA", australien: "AU", irland: "IE", niederlande: "NL", belgien: "BE", dänemark: "DK", schweden: "SE", norwegen: "NO", polen: "PL", türkei: "TR", japan: "JP", "südkorea": "KR", mexiko: "MX", neuseeland: "NZ", indien: "IN", brasilien: "BR" };
+let GAME_TITLES = null;
+const gameTitleSet = () => GAME_TITLES || (GAME_TITLES = new Set(FILM_DB.concat(SERIES_DB).map(r => normT(r[0]))));
+function rowToVitaPerson(o) {
+  const name = String(pickKey(o, ["name"]) ?? "").trim().slice(0, 60);
+  const wd = String(pickKey(o, ["wikidata-id"]) ?? "").trim(), id = wd || String(pickKey(o, ["id"]) ?? "").trim();
+  if (!name || !id) return null;
+  const works = String(pickKey(o, ["ausgewählte arbeiten / stationen"]) ?? "").trim();
+  const items = works.split(";").map(x => { const m = x.match(/^(.*?)\s*\[([^\]]*)\]\s*$/); return m ? [m[1].trim(), m[2].trim()] : [x.trim(), ""]; }).filter(x => x[0]);
+  const fields = String(pickKey(o, ["berufsfelder (datenbank)"]) ?? "").toLowerCase();
+  const role = /nachrichten/.test(fields) ? "Nachrichten" : /moderation/.test(fields) ? "Moderation" : /journalis/.test(fields) ? "Journalismus" : "Schauspiel";
+  const year = Math.round(num(pickKey(o, ["geburtsjahr"]), 0));
+  const country = String(pickKey(o, ["staatsangehörigkeit / landbezug"]) ?? "").split(/[;,/]/)[0].trim();
+  // Spielwert Bekanntheit: Zahl der belegten Arbeiten, Treffer im Spiel, Popularität laut IMDb-Wertungen (falls importiert)
+  let hits = 0, votes = 0;
+  for (const [t] of items) { const k = normT(t); if (gameTitleSet().has(k)) hits++; const s = IMDB_SCORES.get(k); if (s) { hits++; votes = Math.max(votes, s[1]); } }
+  const r = seeded(hashStr(id));
+  const fame = clamp(Math.round(16 + items.length * 5 + hits * 12 + (votes ? Math.log10(votes) * 4 : 0) + r() * 8), 8, 97);
+  const talent = clamp(Math.round(30 + fame * 0.45 + r() * 22), 15, 96), charisma = clamp(Math.round(25 + fame * 0.5 + r() * 20), 15, 96);
+  return { eindeutige_id: wd ? wd : "VITA-" + id, name, rolle: role, talent, charisma, skandal: 30, gage: autoGage(talent, charisma), manual: false,
+    alter: year > 1900 ? GAME_YEAR - year : null, herkunft: COUNTRY[country.toLowerCase()] || country.slice(0, 14) || "", sprachen: "",
+    bekanntheit: fame, bekannt_aus: items.map(x => x[0]).slice(0, 12).join("; "), sender: "", treffer: hits,
+    vita: String(pickKey(o, ["kurzvita (deutsch)"]) ?? "").slice(0, 900), werke: items.slice(0, 20).map(x => x.join("|")).join("; "),
+    ausbildung: String(pickKey(o, ["ausbildung / hochschule (belegt)"]) ?? "").slice(0, 200), institutionen: String(pickKey(o, ["berufliche institutionen (belegt)"]) ?? "").slice(0, 200),
+    imdb_url: String(pickKey(o, ["imdb-profil"]) ?? "").slice(0, 80), quelle: String(pickKey(o, ["biografiequelle"]) ?? "").slice(0, 160), geburtsort: String(pickKey(o, ["geburtsort / geburtsregion"]) ?? "").slice(0, 60) };
+}
+// Personen aus dem lokalen Datenbestand, die ins laufende Spiel übernommen werden (internationale nur mit Bezug zu Titeln im Spiel)
+const playable = e => !e.vita || e.herkunft === "DE" || e.herkunft === "AT" || e.herkunft === "CH" || e.rolle !== "Schauspiel" || (e.treffer || 0) > 0;
 function rowToPerson(o, prefix, clean) {
   const id = String(pickKey(o, ["eindeutige_id", "id"]) ?? "").trim(), name = String(pickKey(o, ["name"]) ?? "").trim().slice(0, 60);
   if (!id || !name) return null;
@@ -4623,6 +4677,24 @@ async function importPeopleFile(file) {
     const r = upsert(loadDB().people, clean, "eindeutige_id");
     await storeDBAsync();
     return { rows: rows.length, add: r.add, upd: r.upd, dup: 0, bad: rows.length - clean.length, gen: 0, prefix: "(eigene IDs)" };
+  }
+  // Vita-Format: Wikidata-ID als eindeutige_id; vorhandene Einträge gleichen Namens werden ergänzt statt doppelt angelegt
+  if (rows.length && pickKey(rows[0], ["ausgewählte arbeiten / stationen"]) !== undefined) {
+    const D = loadDB(), byName = new Map(D.people.map(e => [e.name.toLowerCase(), e]));
+    let add = 0, upd = 0, bad = 0;
+    const fresh = [];
+    for (const o of rows) {
+      const e = rowToVitaPerson(o); if (!e) { bad++; continue; }
+      const old = byName.get(e.name.toLowerCase());
+      if (old) { // vorhandene Angaben behalten, Titel zusammenführen
+        const known = [...new Set(String(old.bekannt_aus || "").split(/;\s*/).concat(e.bekannt_aus.split(/;\s*/)).filter(Boolean))].join("; ");
+        Object.assign(old, e, { eindeutige_id: old.eindeutige_id, rolle: old.rolle || e.rolle, bekannt_aus: known, sender: old.sender || e.sender, herkunft: old.herkunft || e.herkunft, bekanntheit: Math.max(old.bekanntheit || 0, e.bekanntheit) }); upd++;
+      }
+      else { fresh.push(e); byName.set(e.name.toLowerCase(), e); }
+    }
+    const r = upsert(D.people, fresh, "eindeutige_id"); add = r.add; upd += r.upd;
+    await storeDBAsync();
+    return { rows: rows.length, add, upd, dup: 0, bad, gen: 0, prefix: "Wikidata-ID (Q…)", vita: true, playable: fresh.filter(playable).length };
   }
   const prefix = importPrefix(file.name), clean = prefix === "INT-";
   const seen = new Set(), out = []; let dup = 0, bad = 0, gen = 0;
