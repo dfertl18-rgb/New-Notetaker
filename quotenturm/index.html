@@ -411,6 +411,7 @@ td.cw { position: relative; } .cell-i { position: absolute; right: 8px; top: 8px
 .home-row { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; margin-top: 8px; } .home-tile { background: var(--panel-2); border-radius: 6px; padding: 10px; min-height: 76px; display: grid; gap: 3px; align-content: start; font-size: 13px; } .home-tile span { color: var(--muted); font-size: 12px; } .home-tile .btn { justify-self: start; }
 @media (max-width: 700px) { .home-row { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .season { display: grid; grid-template-columns: repeat(12, 1fr); gap: 4px; height: 110px; align-items: end; } .season div { display: grid; grid-template-rows: 1fr auto; height: 100%; justify-items: center; gap: 3px; } .season i { width: 70%; align-self: end; background: var(--line); border-radius: 3px 3px 0 0; display: block; } .season .on i { background: var(--hot); } .season span { font-size: 11px; color: var(--muted); }
+.tsel { position: absolute; right: 34px; top: 8px; z-index: 1; background: var(--panel); color: var(--muted); border: 1px solid var(--line); border-radius: 4px; font-size: 12px; padding: 1px 2px; max-width: 74px; } .cell .tt { color: var(--text); font-variant-numeric: tabular-nums; }
 .ptabs button.on { color: var(--hot); } .ptabs button.on::after { content: ""; position: absolute; left: 10px; right: 10px; bottom: -1px; height: 2px; background: var(--hot); }
 .acols { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 .acol h3 { margin: 0 0 6px; font-family: var(--font-head); font-size: 16px; color: var(--muted); border-bottom: 1px solid var(--line); padding-bottom: 4px; }
@@ -1257,6 +1258,8 @@ const meur = v => (v < 0 ? "−" : "") + (Math.abs(v) / 1e6).toLocaleString("de-
 const mio = v => v.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const pct = v => v.toLocaleString("de-DE", { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + " %";
 const hh = h => String(h).padStart(2, "0") + ":00";
+const tOpts = (i, t) => { let o = `<option value="">auto</option>`; for (let m = i * 60 - 55; m <= i * 60 + 55; m += 5) if (m >= 0) o += `<option value="${m}" ${t === m ? "selected" : ""}>${hhmm(m)}</option>`; return o; };
+const tH = x => Number.isInteger(x) ? hh(x) : hhmm(Math.round(x * 60));
 const hhmm = m => String(Math.floor(m / 60) % 24).padStart(2, "0") + ":" + String(Math.floor(m % 60)).padStart(2, "0");
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 function fit(genre, h) {
@@ -1685,7 +1688,14 @@ function editPlan(d, fn) {
 // Quoten berechnen
 // =====================================================================
 function attractiveness(st, i) {
-  const c = st.sched[i];
+  const c = st.sched[i], p = c.p ? progOf(st, c.p) : null, segs = hourSegs(st, i);
+  if (!segs.length) return attrCell(st, i, c);
+  const parts = segs.map(sg => ({ sg, a: sg.gap ? st.brand * (sg.end - sg.start <= 10 ? 0.25 : 0.4) : attrCell(st, i, { p: sg.p.id, cont: !sg.startsHere, ad: c.ad, live: sg.c.live }).A }));
+  let A = parts.reduce((a, x) => a + x.a * x.sg.min / 60, 0);
+  const am = adMinH(st, i); if (am > 6) A *= 1 - (am - 6) * 0.01; // hohe Werbelast vertreibt Zuschauer
+  return { p, c, A, parts };
+}
+function attrCell(st, i, c) {
   const p = c.p ? progOf(st, c.p) : null;
   const newsMult = 1 + Math.min(st.news.reduce((a, n) => a + n.q, 0) / 3, 100) / 1250;
   let A = st.brand * 0.08;
@@ -1706,6 +1716,13 @@ function attractiveness(st, i) {
 }
 function airHour(i) {
   const res = G.stations.map(st => ({ st, ...attractiveness(st, i) }));
+  // Wer früher anfängt, fängt Umschalter ab; wer deutlich später beginnt, verliert sie
+  if (i >= 17) {
+    const st0 = res.map(r => { const m = (r.parts || []).find(x => !x.sg.gap && x.sg.startsHere && x.sg.min >= 20); return m ? m.sg.start : null; });
+    const strong = res.map((r, k) => [k, r.A]).sort((a, b) => b[1] - a[1]).slice(0, 4).map(x => x[0]);
+    res.forEach((r, k) => { if (st0[k] == null) return; const o = strong.filter(j => j !== k && st0[j] != null).map(j => st0[j]); if (!o.length) return; const first = Math.min(...o);
+      if (st0[k] <= first - 5) { r.A *= 1.05; r.early = first - st0[k]; } else if (st0[k] >= first + 10) r.A *= 0.96; });
+  }
   const sum = res.reduce((a, r) => a + r.A, 0);
   const tv = BASE[i] * (1 - otherShare());
   for (const r of res) {
@@ -1748,7 +1765,8 @@ function airHour(i) {
         }
       } else logMsg("Werbezeitenvermarktung", "Werbung", `${hh(i)} – Spot „${ad.brand}“ verfehlt: ${mio(reach)} statt ${mio(ad.min)} Mio.${ad.tg && ad.tg !== "all" ? ` (Zielgruppe ${AD_TG[ad.tg][0]})` : ""}${ad.prime && (i < 20 || i > 22) ? " – Premium-Spot nur 20–23 Uhr" : ""}${ad.alc && i >= 6 && i < 20 ? " – Alkohol/Erotik erst ab 20 Uhr" : ""}`, i >= LIVE_FROM);
     }
-    if (G.adBreak[i]) { const extra = r1000(r.v * 45000); book(st, "TV-Werbung", extra); logMsg("Live-Regie", "Werbung", `${hh(i)} – Zusatz-Werbeblock: +${eur(extra)}, dafür weniger Zuschauer.`); }
+    { const blk = adBlockRevenue(st, i, r.v, r.p); if (blk.pay) { book(st, "TV-Werbung", blk.pay); (G.adLog = G.adLog || []).push([G.day, i, blk.pay, Math.round(blk.k)]); if (G.adLog.length > 600) G.adLog.shift(); } }
+    if (G.adBreak[i]) { const add = Math.max(0, Math.min(3, 12 - adMinH(st, i))), extra = add ? adBlockRevenue(st, i, r.v, r.p, add).pay : 0; book(st, "TV-Werbung", extra); logMsg("Live-Regie", "Werbung", `${hh(i)} – Zusatz-Werbeblock: +${eur(extra)}, dafür weniger Zuschauer.`); }
     if (!r.p) logMsg("Sendetechnik", "Warnung", `${hh(i)} – Sendeloch! Testbild auf Sendung.`, i >= LIVE_FROM);
   }
   const sorted = [...res].sort((a, b) => b.v - a.v);
@@ -2970,7 +2988,7 @@ function promoPanel(P) {
 // =====================================================================
 function startDay() {
   G.min = 6 * 60; G.phase = "plan"; G.adBreak = {};
-  G.today = HOURS.map(() => null);
+  G.today = HOURS.map(() => null); G.daySeg = [];
   for (const st of G.stations) { st.fin = {}; st.moneyStart = st.money; st.news = []; }
   placeEvents();
   for (const st of G.stations) buildToday(st);
@@ -3053,8 +3071,8 @@ function endDay() {
     book(st, "Personal & Verwaltung", -r1000(120000 + st.base * 22000));
     staffCosts(st);
     book(st, "Sendetechnik & Verbreitung", -r1000(60000 + st.base * 8000));
-    if (st.type === "oer") book(st, "Rundfunkbeitrag", r1000(150000 + st.base * 52000));
-    else book(st, "Distribution (HD/Kabel)", r1000(30000 + st.base * 9000));
+    if (st.type === "oer") book(st, "Rundfunkbeitrag", r1000(150000 + st.base * 130000));
+    else { book(st, "Distribution (HD/Kabel)", r1000(30000 + st.base * 9000)); book(st, "Programmetat (Lizenzbestand & Auftragsproduktionen)", -r1000(st.base * 230000)); } // laufende Programmkosten privater Sender
     if (st.credit) book(st, "Zinsen", -r1000(st.credit * 0.0015));
     for (const c of [...st.contracts]) {
       c.days--;
@@ -3342,7 +3360,8 @@ function eveningTable(P) {
   return `<div class="tbl"><table><thead><tr><th>Zeit</th><th>Programm</th><th class="num">Erw.</th><th>Ergebnis</th></tr></thead><tbody>
     ${HOURS.filter(i => i >= 17).map(i => {
       const c = P.sched[i], p = c.p && progOf(P, c.p), r = G.today[i];
-      return `<tr><td>${hh(i)}</td><td class="title">${c.live && !c.cont ? '<span class="chip live">LIVE</span> ' : ""}${p ? (c.cont ? '<span class="muted">↳ </span>' : "") + (p.kind === "sport" ? esc(p.title) : titleLink(`${P.id}|${p.id}`, p.title)) : '<span class="down">Testbild</span>'}</td><td class="num muted">${mio(expected(P, i))}</td><td>${r ? resDot(r) : '<span class="muted">–</span>'}</td></tr>`;
+      const it = !c.cont && cellTime(P, P.sched, i);
+      return `<tr><td>${it ? hhmm(it.start) : c.cont ? "" : hh(i)}</td><td class="title">${c.live && !c.cont ? '<span class="chip live">LIVE</span> ' : ""}${p ? (c.cont ? '<span class="muted">↳ </span>' : "") + (p.kind === "sport" ? esc(p.title) : titleLink(`${P.id}|${p.id}`, p.title)) : '<span class="down">Testbild</span>'}</td><td class="num muted">${mio(expected(P, i))}</td><td>${r ? resDot(r) : '<span class="muted">–</span>'}</td></tr>`;
     }).join("")}</tbody></table></div>`;
 }
 function standings() {
@@ -3471,7 +3490,7 @@ function eveningTimeline(P, wd, sc, isToday, lock, d) {
     const c = sc[i], p = c.p && progOf(P, c.p);
     return `<div class="tl-slot ${spyH === i ? "on" : ""} ${p ? "" : "empty"}">
       <div class="tl-wm" aria-hidden="true">${crest(P.i, 58)}</div>
-      <button class="tl-main" data-act="spyH" data-k="${i}"><small>${hh(i)}${c.live ? " · LIVE" : ""}</small><b>${p ? (c.cont ? "↳ " : "") + esc(p.title) : "Testbild"}</b>
+      <button class="tl-main" data-act="spyH" data-k="${i}"><small>${(() => { const it = !c.cont && cellTime(P, sc, i, wd); return it ? tRange(it) : hh(i); })()}${c.live ? " · LIVE" : ""}</small><b>${p ? (c.cont ? "↳ " : "") + esc(p.title) : "Testbild"}</b>
         <span>${p ? `${esc(p.genre)} · Q ${p.q}${p.fsk >= 16 ? ` · FSK ${p.fsk}` : ""}` : "Noch nicht belegt"}</span></button>
       ${p && inStream(p) ? `<span class="tl-stream">${STREAMERS.some(x => x.id === S.id) ? sbadge(S.id, 14) : esc(S.name)}</span>` : ""}
       <button class="btn small" data-act="pickProg" data-i="${i}" data-k="${d}" ${lock || c.live ? "disabled" : ""}>${p ? "Ändern" : "Belegen"}</button></div>`;
@@ -3505,6 +3524,9 @@ function planPage(P) {
   h += `<p class="lead mb">${notes.join(" · ")}. ${isToday ? "Ergebnisse von heute erscheinen nach der Ausstrahlung." : `Planung für ${WDL[wd]}, ${dateShort(d)}.`}</p>`;
   h += `<section class="panel"><div class="tbl"><table class="plan"><thead><tr><th>Zeit</th><th>Programm</th><th>Werbung</th><th class="num">Erwartet</th><th class="num">${isToday ? "Ergebnis" : "Zuletzt"}</th></tr></thead><tbody>`;
   let lastPart = "";
+  const rd = rundown(P, sc, wd);
+  const gaps = rd.filter(x => x.gap && x.end - x.start >= 10 && x.start >= 6 * 60);
+  if (gaps.length) h += `<tr class="dp"><td colspan="5" style="white-space:normal"><span class="muted">Lücken: ${gaps.map(x => `${hhmm(x.start)}–${hhmm(x.end % 1440)} ${gapName(x.end - x.start)}`).join(" · ")} – Startzeiten anpassen oder Programm umplanen</span></td></tr>`;
   sc.forEach((c, i) => {
     const part = daypart(i);
     if (part !== lastPart) { h += `<tr class="dp"><td colspan="5">${part}</td></tr>`; lastPart = part; }
@@ -3513,7 +3535,8 @@ function planPage(P) {
     const allowed = adAllowed(P, i, wd);
     const youth = p && !c.cont && !youthOk(p, i);
     h += `<tr class="${i === 20 || i === 21 ? "prime" : ""}"><td class="hr">${hh(i)}</td>
-      <td class="cw">${p && !c.cont && p.kind !== "sport" ? `<span class="cell-i" data-title="${P.id}|${p.id}" title="Formatprofil">i</span>` : ""}<button class="cell ${c.cont ? "cont" : ""} ${!p || youth || badSet.has(i) ? "bad" : ""}" data-act="pickProg" data-i="${i}" data-k="${d}" ${lock || c.live ? "disabled" : ""}><span class="t">${c.live && !c.cont ? "● LIVE · " : ""}${p ? (c.cont ? "↳ " : "") + esc(p.title) : "Testbild – nichts geplant"}</span>
+      <td class="cw">${p && !c.cont && p.kind !== "sport" ? `<span class="cell-i" data-title="${P.id}|${p.id}" title="Formatprofil">i</span>` : ""}${p && !c.cont && !c.live && !lock ? `<select class="tsel" data-tsel="${d}|${i}" title="Startzeit">${tOpts(i, c.t)}</select>` : ""}<button class="cell ${c.cont ? "cont" : ""} ${!p || youth || badSet.has(i) ? "bad" : ""}" data-act="pickProg" data-i="${i}" data-k="${d}" ${lock || c.live ? "disabled" : ""}><span class="t">${c.live && !c.cont ? "● LIVE · " : ""}${p ? (c.cont ? "↳ " : "") + esc(p.title) : "Testbild – nichts geplant"}</span>
+        ${p && !c.cont ? (() => { const it = rd.find(x => x.i === i); return it ? `<span class="s"><b class="tt">${tRange(it)}</b> · ${it.end - it.start} Min.${it.late > 0 ? ` · <span class="down">+${it.late} Min. verspätet</span>` : ""}${it.cut ? ` · <span class="muted">${it.cut} Werbemin. gekürzt</span>` : ""}${it.end - it.start < netDur(p) ? ' · <span class="down">vorzeitig beendet (Live-Sport)</span>' : ""}${adMinH(P, i, wd) && grossDur(P, p, i, wd) > netDur(p) ? ` · netto ${netDur(p)}` : ""}</span>` : ""; })() : ""}
         <span class="s">${p && badSet.has(i) && !c.cont ? "Lizenz bis dahin ausgeschöpft – bitte ersetzen" : youth ? `Jugendschutz: FSK ${p.fsk} zu früh!` : p ? (p.kind === "sport" ? esc(p.comp) : esc(p.genre) + ` · <span class="stars">${stars(fit(p.genre, i))}</span> · Q ${p.q} · Akt. ${Math.round(p.topic * 100)} %`) : "Kaum Zuschauer"}</span></button></td>
       <td><button class="cell ${ad && adNeed(ad) > exp ? "bad" : ""}" data-act="pickAd" data-i="${i}" data-k="${d}" ${lock || !p || !allowed || (p && p.genre === "Teleshopping") ? "disabled" : ""}><span class="t">${!allowed ? '<span class="muted">Werbeverbot</span>' : p && p.genre === "Teleshopping" ? '<span class="muted">Dauerwerbung</span>' : ad ? esc(ad.brand) : '<span class="muted">Keine Werbung</span>'}</span><span class="s">${!allowed ? "ÖRR" : ad ? "mind. " + mio(ad.min) + " Mio. · " + eur(ad.pay) : ""}</span></button></td>
       <td class="r muted">${mio(exp)}</td><td class="r">${r ? resDot(r) : P.last[i] && !isToday ? `<span class="muted">${mio(P.last[i])}</span>` : '<span class="muted">–</span>'}</td></tr>`;
@@ -3711,7 +3734,7 @@ function rivals() {
   return title("Konkurrenz", `<select id="rivalSel" aria-label="Sender wählen">${others.map(o => `<option value="${o.i}" ${o === s ? "selected" : ""}>${esc(o.name)}</option>`).join("")}</select>`) +
     `<p class="lead mb">Scouting-Bericht: der bekannte Tagesplan. Die Konkurrenz plant zum Sendestart noch einmal um.</p>
     <section class="panel"><div class="ph">${crest(s.i, 26)}<h2>${esc(s.name)}</h2><span class="aside">${s.type === "oer" ? "öffentlich-rechtlich" : "privat"} · ${s.progs.length} Programme · Sportrechte: ${G.rights.filter(r => r.owner === s.id).map(r => RDEF(r.id).sport).join(", ") || "keine"}</span></div>
-    <div class="tbl"><table><tbody>${s.sched.map((c, i) => { const p = c.p && progOf(s, c.p); return `<tr><td>${hh(i)}</td><td class="title">${c.live && !c.cont ? '<span class="chip live">LIVE</span> ' : ""}${p ? (p.kind === "sport" ? esc(p.title) : titleLink(`${s.id}|${p.id}`, p.title)) + (c.cont ? ' <span class="muted">(Forts.)</span>' : "") : '<span class="muted">–</span>'}</td><td class="muted">${p ? esc(p.genre) : ""}</td><td class="num">${p ? attr(p.q) : ""}</td></tr>`; }).join("")}</tbody></table></div></section>`;
+    <div class="tbl"><table><tbody>${s.sched.map((c, i) => { const p = c.p && progOf(s, c.p), it = p && !c.cont && cellTime(s, s.sched, i); return `<tr><td>${it ? hhmm(it.start) : hh(i)}</td><td class="title">${c.live && !c.cont ? '<span class="chip live">LIVE</span> ' : ""}${p ? (p.kind === "sport" ? esc(p.title) : titleLink(`${s.id}|${p.id}`, p.title)) + (c.cont ? ' <span class="muted">(Forts.)</span>' : "") : '<span class="muted">–</span>'}</td><td class="muted">${p ? esc(p.genre) : ""}</td><td class="num">${p ? attr(p.q) : ""}</td></tr>`; }).join("")}</tbody></table></div></section>`;
 }
 
 // =====================================================================
@@ -4412,27 +4435,17 @@ function switchStation(id) {
 // Quoten-News am Folgetag (Branchendienst im Stil der Medienfachpresse, fiktiver Name)
 // =====================================================================
 function quotenReport() {
-  const all = [];
-  for (const st of G.stations) {
-    let cur = null;
-    G.today.forEach((row, i) => {
-      if (!row) return; const r = row[st.i];
-      if (cur && cur.title === r.title) { cur.v += r.v; cur.ma += r.ma; cur.n++; return; }
-      if (cur) all.push(cur);
-      cur = { st: st.i, h: i, title: r.title, v: r.v, ma: r.ma, n: 1 };
-    });
-    if (cur) all.push(cur);
-  }
-  const top = all.filter(x => x.title !== "Testbild").map(x => ({ ...x, v: x.v / x.n, ma: x.ma / x.n })).sort((a, b) => b.v - a.v).slice(0, 5)
-    .map(x => [x.st, x.h, x.title.replace(/ \(Folge \d+\)$/, ""), +x.v.toFixed(2), +x.ma.toFixed(1)]);
+  const all = (G.daySeg || []).filter(d => d.min >= 5).map(d => ({ st: d.st, h: d.start, title: d.title, v: d.vs / d.min, ma: d.vs / d.bs * 100, n: 1 }));
+  const top = all.filter(x => x.title !== "Testbild").sort((a, b) => b.v - a.v).slice(0, 5)
+    .map(x => [x.st, hhmm(x.h), x.title.replace(/ \(Folge \d+\)$/, ""), +x.v.toFixed(2), +x.ma.toFixed(1)]);
   const ma = G.stations.map(s => [s.i, +s.dayMA.toFixed(1)]).sort((a, b) => b[1] - a[1]);
   const P = me(), rank = ma.findIndex(x => x[0] === P.i) + 1, best = top[0];
   const prev = P.hist.length > 1 ? P.hist[P.hist.length - 2].ma : null;
-  const mineTop = all.filter(x => x.st === P.i && x.title !== "Testbild").map(x => ({ ...x, v: x.v / x.n, ma: x.ma / x.n })).sort((a, b) => b.v - a.v)[0];
+  const mineTop = all.filter(x => x.st === P.i && x.title !== "Testbild").sort((a, b) => b.v - a.v)[0];
   const lines = [
     best ? `Der Abend gehörte ${G.stations[best[0]].name}: „${best[2]}“ war mit ${mio(best[3])} Millionen Zuschauern (${pct(best[4])}) die meistgesehene Sendung des Tages.` : "",
     `Tagessieger beim Gesamtpublikum: ${G.stations[ma[0][0]].name} mit ${pct(ma[0][1])}.`,
-    `${P.name} landet mit ${pct(P.dayMA)} auf Rang ${rank}${prev != null ? ` (${P.dayMA >= prev ? "+" : ""}${(P.dayMA - prev).toFixed(1).replace(".", ",")} Punkte zum Vortag)` : ""}${mineTop ? `; stärkste eigene Sendung war „${mineTop.title.replace(/ \(Folge \d+\)$/, "")}“ um ${hh(mineTop.h)} Uhr mit ${mio(mineTop.v)} Mio. (${pct(mineTop.ma)})` : ""}.`,
+    `${P.name} landet mit ${pct(P.dayMA)} auf Rang ${rank}${prev != null ? ` (${P.dayMA >= prev ? "+" : ""}${(P.dayMA - prev).toFixed(1).replace(".", ",")} Punkte zum Vortag)` : ""}${mineTop ? `; stärkste eigene Sendung war „${mineTop.title.replace(/ \(Folge \d+\)$/, "")}“ um ${hhmm(mineTop.h)} Uhr mit ${mio(mineTop.v)} Mio. (${pct(mineTop.ma)})` : ""}.`,
   ].filter(Boolean);
   G.repPending = { day: G.day, ma: ma.slice(0, 5), top, lines };
 }
@@ -4445,7 +4458,7 @@ function repCard(r) {
   const mx = Math.max(...r.ma.map(x => x[1]));
   return `<div class="rep"><h3 class="rep-h">TV-Reichweiten vom ${dateOf(r.day).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" })}</h3>
     <div class="rep-grid"><div><h4>Top 5 Marktanteile (alle Zuschauer)</h4><div class="rep-bars">${r.ma.map(([i, v]) => `<div class="rep-bar"><div class="rep-col"><i style="height:${v / mx * 100}%;background:${G.stations[i].color}"></i></div><b>${pct(v)}</b>${crest(i, 22)}<span>${esc(G.stations[i].name)}</span></div>`).join("")}</div></div>
-    <div><h4>Top 5 Einschaltquoten (alle Zuschauer)</h4><div class="tbl"><table><tbody>${r.top.map(([i, h, t, v, ma]) => `<tr class="${i === G.me ? "mine" : ""}"><td>${crest(i, 20)}</td><td>${hh(h)}</td><td class="title rep-t">${esc(t)}</td><td class="num">${mio(v)} Mio</td><td class="num">${pct(ma)}</td></tr>`).join("")}</tbody></table></div></div></div>
+    <div><h4>Top 5 Einschaltquoten (alle Zuschauer)</h4><div class="tbl"><table><tbody>${r.top.map(([i, h, t, v, ma]) => `<tr class="${i === G.me ? "mine" : ""}"><td>${crest(i, 20)}</td><td>${typeof h === "string" ? h : hh(h)}</td><td class="title rep-t">${esc(t)}</td><td class="num">${mio(v)} Mio</td><td class="num">${pct(ma)}</td></tr>`).join("")}</tbody></table></div></div></div>
     <div class="rep-txt">${r.lines.map(l => `<p>${esc(l)}</p>`).join("")}</div></div>`;
 }
 // =====================================================================
@@ -4485,7 +4498,7 @@ function makeAd2(scale, kind) {
   const f = G.mods && G.mods.adCut && G.mods.adCut.until >= G.day ? G.mods.adCut.f : 1;
   const frame = kind === "frame", prime = !frame && Math.random() < 0.18 && P.type === "privat";
   const spots = frame ? ri(24, 40) : ri(3, 9);
-  const base = (min / (tg === "young" ? 0.4 : tg === "old" ? 0.5 : 1) * 60000 * rnd(0.85, 1.2) + 4000) * AD_TG[tg][1] * adSeason() * adList() * (0.9 + adv.rel / 250) * f;
+  const base = (campaignPay(min / (tg === "young" ? 0.4 : tg === "old" ? 0.5 : 1)) * rnd(0.85, 1.2) + 1500) * AD_TG[tg][1] * adSeason() * adList() * (0.9 + adv.rel / 250) * f;
   const pay = r1000(base * (frame ? 0.82 : 1) * (prime ? 1.3 : 1));
   return { id: uid(), brand, cat, tg, min, spots, done: 0, days: frame ? 84 : Math.ceil(spots / 2) + ri(1, 3), pay, penalty: r1000(pay * spots * (frame ? 0.25 : 0.5)), frame, prime, env: AD_CAT[cat].likes, avoid: AD_CAT[cat].avoid };
 }
@@ -4499,7 +4512,7 @@ function adEnv(ad, p) {
 function adPaid(st, ad, p, i, v) {
   const adv = advOf(ad.brand, ad.cat), [ef, dr] = adEnv(ad, p), pay = r1000(ad.pay * ef * newsroomCalc().adF);
   adv.rel = clamp(adv.rel + dr * 0.5, 0, 100); adv.rev += pay; adv.spots++;
-  (G.adLog = G.adLog || []).push([G.day, i, pay, Math.round(v * 1000) / 1000]); if (G.adLog.length > 400) G.adLog.shift();
+  (G.adLog = G.adLog || []).push([G.day, i, pay, Math.round(v * 1000)]); if (G.adLog.length > 400) G.adLog.shift();
   if (dr < 0 && i >= LIVE_FROM) logMsg("Werbezeitenvermarktung", "Werbung", `${ad.brand} beschwert sich: Spot lief im Umfeld „${p.genre}“ – nur ${Math.round(ef * 100)} % des Preises.`);
   return pay;
 }
@@ -4534,7 +4547,7 @@ function adAutoBook(P) {
 }
 function adsalesPage(P) {
   const log = (G.adLog || []).filter(x => x[0] > G.day - 30), sum = (d) => log.filter(x => x[0] > G.day - d).reduce((a, x) => a + x[2], 0);
-  const contacts = log.reduce((a, x) => a + x[3], 0), tkp = contacts ? sum(30) / (contacts * 1000) : 0;
+  const contacts = log.reduce((a, x) => a + x[3], 0), tkp = contacts ? sum(30) / contacts : 0;
   const allowedH = HOURS.filter(i => adAllowed(P, i)).length, booked = P.sched.filter(c => c.ad).length;
   const byPart = [["Morgen 6–12", 6, 12], ["Mittag 12–17", 12, 17], ["Vorabend 17–20", 17, 20], ["Primetime 20–23", 20, 23], ["Nacht 23–6", 23, 30]].map(([n, a, b]) => [n, log.filter(x => (x[1] >= a && x[1] < b) || (b > 24 && x[1] < b - 24)).reduce((s, x) => s + x[2], 0)]);
   const mx = Math.max(1, ...byPart.map(x => x[1]));
@@ -4543,7 +4556,7 @@ function adsalesPage(P) {
   return title("Werbevermarktung", `<span class="muted">Saison-Index ${adSeason().toFixed(2).replace(".", ",")}</span>`) + lockNote() +
     `<div class="tiles mb">
       <div class="tile"><small>Werbeerlöse 7 Tage</small><b>${meur(sum(7))}</b><span>30 Tage: ${meur(sum(30))}</span></div>
-      <div class="tile"><small>Ø TKP (brutto)</small><b>${tkp ? tkp.toFixed(2).replace(".", ",") + " €" : "–"}</b><span>Preis je 1.000 Kontakte</span></div>
+      <div class="tile"><small>Ø TKP netto</small><b>${tkp ? tkp.toFixed(2).replace(".", ",") + " €" : "–"}</b><span>je 1.000 Kontakte · Liste brutto ${tkpBrutto(P, 20, null).toFixed(0)} € (Prime)</span></div>
       <div class="tile"><small>Auslastung heute</small><b>${pct(booked / Math.max(1, allowedH) * 100)}</b><span>${booked} von ${allowedH} Werbestunden belegt</span></div>
       <div class="tile"><small>Disposition</small><b>${G.adAuto !== false ? "automatisch" : "manuell"}</b><span><button class="btn small" data-act="adAuto" ${planLocked() ? "disabled" : ""}>${G.adAuto !== false ? "auf manuell" : "auf automatisch"}</button> <button class="btn small hot" data-act="adBook" ${planLocked() ? "disabled" : ""}>jetzt einbuchen</button></span></div>
       <div class="tile"><small>Preisliste</small><b>${Math.round(adList() * 100)} %</b><span>${adList() > 1 ? "teuer – weniger Angebote" : adList() < 1 ? "Rabatt – mehr Angebote" : "Standard"}</span></div>
@@ -4551,8 +4564,12 @@ function adsalesPage(P) {
     <div class="grid two">
       <section class="panel"><div class="ph"><h2>Erlöse nach Tageszeit</h2><span class="aside">30 Tage</span></div><div class="pad">${byPart.map(([n, v]) => `<div class="agebar" style="grid-template-columns:120px 1fr 90px"><span>${n}</span><div class="track"><i style="width:${v / mx * 100}%"></i></div><b>${meur(v)}</b></div>`).join("")}</div></section>
       <section class="panel"><div class="ph"><h2>Saisonkurve</h2><span class="aside">Preisniveau je Monat</span></div><div class="pad"><div class="season">${AD_SEASON.map((v, k) => `<div class="${k === month ? "on" : ""}" title="${["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"][k]}: ${Math.round(v * 100)} %"><i style="height:${v / 1.3 * 100}%"></i><span>${"JFMAMJJASOND"[k]}</span></div>`).join("")}</div><p class="fine">Im Herbst und vor Weihnachten zahlen Kunden bis zu 30 % mehr, im Sommerloch gut 20 % weniger.</p></div></section>
+      <section class="panel"><div class="ph"><h2>Werbelast</h2><span class="aside">${P.type === "oer" ? "max. 20 Min. werktags vor 20 Uhr" : "max. 12 Min. pro Stunde"}</span></div><div class="slist">
+        ${P.type === "oer" ? [15, 16, 17, 18, 19].map(h => `<div class="srow"><b>${hh(h)}</b><em><select data-adl="${h}" ${planLocked() ? "disabled" : ""}>${[0, 2, 4, 5, 6, 7, 8, 10].map(v => `<option ${adLoad(P)[h] === v || (!adLoad(P)[h] && v === 0) ? "selected" : ""}>${v}</option>`).join("")}</select></em><span>Min. · gesamt ${Object.values(adLoad(P)).reduce((a, b) => a + b, 0)} von 20</span></div>`).join("")
+          : DAYPARTS.map(([k, n]) => `<div class="srow"><b>${n}</b><em><select data-adl="${k}" ${planLocked() ? "disabled" : ""}>${[0, 4, 6, 8, 10, 12].map(v => `<option ${adLoad(P)[k] === v ? "selected" : ""}>${v}</option>`).join("")}</select></em><span>Min./Std. · Liste ${tkpBrutto(P, DAYPARTS.find(x => x[0] === k)[2][0], null).toFixed(0)} € TKP</span></div>`).join("")}</div>
+        <p class="fine pad" style="margin:0">Mehr Werbeminuten bringen mehr Erlös, verlängern aber die Sendungen und kosten ab 7 Minuten pro Stunde Zuschauer.</p></section>
       <section class="panel"><div class="ph"><h2>Preisliste</h2></div><div class="pad"><div class="pills">${[0.85, 0.95, 1, 1.1, 1.2].map(v => `<button data-act="adList" data-k="${v}" class="${Math.abs(adList() - v) < 0.01 ? "on" : ""}" ${planLocked() ? "disabled" : ""}>${Math.round(v * 100)} %</button>`).join("")}</div>
-        <p class="fine" style="margin-top:8px">Höhere Listenpreise bringen mehr pro Spot, aber weniger Angebote. Rabatte füllen das Inventar. Gilt für neue Angebote ab morgen.</p></div></section>
+        <p class="fine" style="margin-top:8px">Höhere Listenpreise bringen mehr pro Spot, aber weniger Angebote und eine geringere Auslastung des Werbeinventars. Rabatte füllen das Inventar. Aktuelle Auslastung: ${pct(sellThrough() * 100)}.</p></div></section>
     </div>
       <section class="panel" style="margin-top:14px"><div class="ph"><h2>Rahmenverträge</h2><span class="aside">Volumen gegen Rabatt · 84 Tage</span></div>${(G.frameOffers || []).length ? adTable(G.frameOffers, a => `<button class="btn hot small" data-act="adFrame" data-id="${a.id}" ${P.contracts.length >= MAX_ADS || planLocked() ? "disabled" : ""}>Abschließen</button>`) : '<p class="fine pad">Neue Rahmenverträge zum Monatsersten.</p>'}</section>
     <section class="panel" style="margin-top:14px"><div class="ph"><h2>Werbekunden</h2><span class="aside">Beziehung steuert Preise und Angebote</span></div>${advs.length ? `<div class="tbl"><table><thead><tr><th>Kunde</th><th>Branche</th><th>Bevorzugtes Umfeld</th><th class="num">Spots</th><th class="num">Umsatz</th><th>Beziehung</th></tr></thead><tbody>
@@ -4607,7 +4624,7 @@ async function importAdsFile(f) {
     let pen = anum(ag(o, "strafe_eur"));
     if (!(pen > 0)) pen = Math.round(pay * (anum(ag(o, "straf_faktor_spiel")) || 1.5) / 500) * 500;
     out.push({ id, brand, camp: String(ag(o, "kampagne")).trim().slice(0, 80), cat: String(ag(o, "branche")).trim().slice(0, 40) || "Handel",
-      min: Math.round(reach / 1e4) / 100, spots: Math.round(spots), days: Math.max(2, Math.round(anum(ag(o, "frist_tage")) || 5)), pay, pen, sec: anum(ag(o, "spotdauer_sekunden")) || 30, alc: String(ag(o, "alkohol_oder_erotik_filter")).trim() === "1" });
+      min: Math.round(reach / 1e4) / 100, spots: Math.round(spots), days: Math.max(2, Math.round(anum(ag(o, "frist_tage")) || 5)), pay, pen, sec: anum(ag(o, "spotdauer_sekunden")) || 30, bf: (anum(ag(o, "branchenfaktor_spiel")) || 1) * (anum(ag(o, "variationsfaktor_spiel")) || 1), sf: anum(ag(o, "straf_faktor_spiel")) || 1.5, alc: String(ag(o, "alkohol_oder_erotik_filter")).trim() === "1" });
   }
   if (!out.length) throw new Error("Keine Werbeverträge erkannt (Spalten vertrag_id, kunde, mindestreichweite, spots).");
   const pool = AD_POOL || [], r = upsert(pool, out, "id");
@@ -4623,11 +4640,115 @@ function adFromPool(scale, kind) {
   const f = G.mods && G.mods.adCut && G.mods.adCut.until >= G.day ? G.mods.adCut.f : 1;
   const mult = adSeason() * adList() * (0.9 + adv.rel / 250) * f;
   if (kind === "frame") {
-    const spots = ri(24, 40), pay = r1000(r.pay * 0.82 * mult);
+    const spots = ri(24, 40), pay = r1000(campaignPay(r.min, r.sec) * (r.bf || 1) * 0.82 * mult);
     return { id: uid(), brand: r.brand, camp: r.camp, cat: r.cat, tg: "all", min: r.min, spots, done: 0, days: 84, pay, penalty: r1000(pay * spots * 0.25), frame: true, prime: false, alc: r.alc, sec: r.sec, env: env.likes, avoid: env.avoid };
   }
-  return { id: uid(), src: r.id, brand: r.brand, camp: r.camp, cat: r.cat, tg: "all", min: r.min, spots: r.spots, done: 0, days: r.days, pay: r1000(r.pay * mult), penalty: r1000(r.pen * f), frame: false, prime: false, alc: r.alc, sec: r.sec, env: env.likes, avoid: env.avoid };
+  return { id: uid(), src: r.id, brand: r.brand, camp: r.camp, cat: r.cat, tg: "all", min: r.min, spots: r.spots, done: 0, days: r.days, pay: r1000(campaignPay(r.min, r.sec) * (r.bf || 1) * mult), penalty: r1000(campaignPay(r.min, r.sec) * (r.bf || 1) * (r.sf || 1.5) * f), frame: false, prime: false, alc: r.alc, sec: r.sec, env: env.likes, avoid: env.avoid };
 }
+// =====================================================================
+// Sendeablauf auf 5 Minuten genau
+// Jede Sendung hat eine Nettolänge; bei Werbeunterbrechungen verlängert sie sich (Bruttolänge).
+// Sendungen schließen aneinander an, Nachrichten und Live-Sport starten zur vollen Stunde,
+// die Primetime beginnt per Konvention um 20:15. Jede Startzeit lässt sich in 5-Minuten-Schritten setzen.
+// =====================================================================
+const NET_DUR = { "Tagesschau": 15, "Tagesthemen": 30, "heute": 20, "heute journal": 30, "RTL Aktuell": 25, "RTLZWEI News": 10, "ARTE Journal": 20, "Nachrichten aus der Region": 30,
+  "Gute Zeiten, schlechte Zeiten": 25, "Unter uns": 25, "Alles was zählt": 25, "Berlin – Tag & Nacht": 25, "Sturm der Liebe": 50, "Rote Rosen": 50, "Brisant": 30, "Leute heute": 15, "Explosiv": 25,
+  "Markus Lanz": 75, "maischberger": 75, "Tatort": 90, "Der Bergdoktor": 45, "SOKO Leipzig": 45, "Die Rosenheim-Cops": 45, "Wer weiß denn sowas?": 50, "Das perfekte Dinner": 55, "Bares für Rares": 50,
+  "Morgenmagazin": 120, "Punkt 12": 60, "taff": 55, "Galileo": 55, "Terra X": 45, "Sportschau": 90, "Wer wird Millionär?": 90, "Die Höhle der Löwen": 120, "Let's Dance": 180 };
+const ceil5 = m => Math.ceil(m / 5) * 5;
+const hashId = id => { let h = 0; const s = String(id); for (let k = 0; k < s.length; k++) h = (h * 31 + s.charCodeAt(k)) | 0; return Math.abs(h); };
+function netDur(p) {
+  if (!p) return 60;
+  if (p.dur) return p.dur;
+  const L = (p.len || 1) * 60;
+  let d = NET_DUR[p.title];
+  if (!d) {
+    if (p.kind === "sport") d = L;
+    else if (p.kind === "film") d = L - (p.len >= 3 ? 20 : 20) + (hashId(p.id) % 3) * 5;
+    else if (p.kind === "serie") d = ["Soap", "Sitcom"].includes(p.genre) ? 25 : p.len > 1 ? L - 15 : 45;
+    else d = { Nachrichten: 15, Magazin: 30, Talk: 60, Reality: 45, Doku: 45, Kultur: 45, Teleshopping: 60 }[p.genre] || L - 15;
+  }
+  return (p.dur = Math.max(10, Math.min(d, L)));
+}
+// Werbeminuten je Stunde: privat bis 12 (EU-Regel: 20 % der Sendezeit), öffentlich-rechtlich nur werktags vor 20 Uhr, höchstens 20 Minuten am Tag
+const DAYPARTS = [["nacht", "Nacht 0–6", [0, 6]], ["morgen", "Morgen 6–12", [6, 12]], ["tag", "Tag 12–17", [12, 17]], ["vorabend", "Vorabend 17–20", [17, 20]], ["prime", "Primetime 20–23", [20, 23]], ["spaet", "Spät 23–24", [23, 24]]];
+const dpOf = i => DAYPARTS.find(([, , [a, b]]) => i >= a && i < b)[0];
+const AD_LOAD_DEF = { nacht: 6, morgen: 8, tag: 10, vorabend: 12, prime: 12, spaet: 10 };
+const OER_AD_DEF = { 17: 7, 18: 7, 19: 6 };
+function adLoad(st) {
+  if (st.type === "oer") return (st.oerAds = st.oerAds || { ...OER_AD_DEF });
+  return (st.adLoad = st.adLoad || { ...AD_LOAD_DEF });
+}
+function adMinH(st, i, wd = weekday(G.day)) {
+  if (st.type === "oer") return i < 20 && wd !== 0 ? (adLoad(st)[i] || 0) : 0;
+  return adLoad(st)[dpOf(i)] || 0;
+}
+// Bruttolänge: Nettolänge plus Werbeunterbrechungen (Nachrichten ohne Unterbrechung)
+function grossDur(st, p, i, wd) {
+  const n = netDur(p);
+  if (!p || p.kind === "sport" || p.genre === "Nachrichten" || p.genre === "Teleshopping") return ceil5(n);
+  const a = Math.min(12, adMinH(st, i, wd));
+  return ceil5(n * 60 / (60 - a));
+}
+const anchored = p => p && (p.genre === "Nachrichten" || p.kind === "sport");
+// Ablauf eines Tages: [{i, p, start, end, planned, late}] plus Lücken als {gap: true}
+function rundown(st, sc, wd = weekday(G.day)) {
+  // 1. geplante Startzeiten; 2. Werbung kürzen, wenn eine Sendung sonst in die nächste hineinläuft
+  const items = [];
+  for (let i = 0; i < 24; i++) {
+    const c = sc[i]; if (!c || !c.p || c.cont) continue;
+    const p = progOf(st, c.p); if (!p) continue;
+    const fixed = c.t != null || anchored(p) || c.live || i === 20;
+    items.push({ i, p, c, fixed, base: c.t != null ? c.t : i === 20 && !anchored(p) && !c.live ? 20 * 60 + 15 : i * 60 });
+  }
+  const out = []; let prevEnd = 0;
+  items.forEach((it, k) => {
+    let start = Math.max(it.base, prevEnd);
+    if (!it.fixed && start - prevEnd >= 40) start = ceil5(prevEnd); // große Lücken schließen: Sendung rückt nach vorn
+    if (start >= 1440) return;
+    if (start > prevEnd) out.push({ gap: true, start: prevEnd, end: start });
+    const next = items[k + 1], net = it.c.live ? netDur(it.p) : ceil5(netDur(it.p)), gross = it.c.live ? net : grossDur(st, it.p, it.i, wd);
+    const window = next ? next.base - start : 1440 - start;
+    // vor Live-Sport wird notfalls abgekürzt – der Anpfiff wartet nicht
+    const dur = gross <= window ? gross : next && (next.c.live || next.p.kind === "sport") ? Math.max(5, window) : Math.max(net, window);
+    out.push({ i: it.i, p: it.p, c: it.c, start, end: start + dur, planned: it.base, late: start - it.base, cut: gross - dur > 0 && dur >= net ? gross - dur : 0 });
+    prevEnd = start + dur;
+  });
+  if (prevEnd < 1440) out.push({ gap: true, start: prevEnd, end: 1440 });
+  return out;
+}
+const gapName = m => m <= 10 ? "Werbung & Trailer" : m <= 30 ? "Wetter & Programmhinweise" : "Kurzmagazin (Lückenfüller)";
+const rdCache = new Map();
+function rdToday(st) { return rundown(st, st.sched); }
+// Startzeit einer Sendung in einer Stundenzelle (Anzeige)
+function cellTime(st, sc, i, wd) { const it = rundown(st, sc, wd).find(x => x.i === i); return it ? it : null; }
+const tRange = it => `${hhmm(it.start)}–${hhmm(it.end % 1440)}`;
+// Segmente einer Stunde für die Quote: Minutenanteile je Sendung bzw. Lücke
+function hourSegs(st, i) {
+  const a = i * 60, b = a + 60, segs = [];
+  for (const it of rdToday(st)) {
+    const s = Math.max(a, it.start), e = Math.min(b, it.end);
+    if (e > s) segs.push({ ...it, min: e - s, startsHere: it.start >= a && it.start < b });
+  }
+  return segs;
+}
+// ---------------------------------------------------------------------
+// Werbeerlöse realistisch: Werbeminuten × Kontakte × TKP
+// Brutto-TKP (30 s, Zuschauer ab 3 Jahren) als Spielwert in der Größenordnung des deutschen TV-Markts;
+// netto bleibt nach Rabatten und Agenturprovision gut die Hälfte.
+// ---------------------------------------------------------------------
+const TKP_BASE = 16, NET_F = 0.55;
+const TKP_DP = { nacht: 0.55, morgen: 0.75, tag: 0.85, vorabend: 1.1, prime: 1.35, spaet: 1.0 };
+const tkpBrutto = (st, i, p) => TKP_BASE * TKP_DP[dpOf(i)] * (p ? clamp(0.75 + 0.25 * youthIdx(st, p), 0.6, 1.6) : 1) * (0.85 + 0.15 * adSeason());
+// Auslastung des Werbeinventars: Saison und Preisliste
+const sellThrough = () => clamp(0.2 + 0.55 * adSeason(), 0.35, 0.95) * clamp(2 - adList(), 0.6, 1.2);
+function adBlockRevenue(st, i, v, p, minutes = adMinH(st, i)) {
+  if (!minutes || !v) return { pay: 0, k: 0 };
+  const k = minutes * 2 * v * 1000 * sellThrough(); // verkaufte Kontakte in Tausend (zwei 30-s-Spots je Minute)
+  return { pay: r1000(k * tkpBrutto(st, i, p) * NET_F * adList()), k };
+}
+// Kampagnenpreis: Garantie-Kampagnen kosten einen Aufschlag auf den Netto-TKP
+const campaignPay = (needMio, sec = 30) => needMio * 1000 * TKP_BASE * 1.15 * (sec / 30) * NET_F * 1.3;
 // =====================================================================
 // Formatprofil: Quotenverlauf, Publikum, Analyse und Maßnahmen je Sendung
 // =====================================================================
@@ -4644,24 +4765,34 @@ function ageMix(st, p) {
 }
 // Eintrag je Ausstrahlung: [Tag, Stunde, Mio., MA %, MA 14–49 %, Platz, Stunden, (eigener Sender:) Gegner-Sender, Gegner-Titel, Folge]
 function recordHour(res, sorted, i) {
+  G.daySeg = G.daySeg || [];
   for (const r of res) {
-    const p = r.p; if (!p || p.kind === "sport") continue;
-    const ma = r.v / BASE[i] * 100, y = Math.min(60, ma * youthIdx(r.st, p) * rnd(0.93, 1.07));
-    p.hist = p.hist || [];
-    const last = p.hist[p.hist.length - 1];
-    if (r.c.cont && last && last[0] === G.day) {
-      const n = last[6] + 1;
-      last[2] = +((last[2] * (n - 1) + r.v) / n).toFixed(2); last[3] = +((last[3] * (n - 1) + ma) / n).toFixed(1); last[4] = +((last[4] * (n - 1) + y) / n).toFixed(1); last[6] = n;
-      continue;
+    const parts = r.parts || (r.p ? [{ sg: { p: r.p, c: r.c, start: i * 60, min: 60, startsHere: !r.c.cont }, a: 1 }] : []);
+    const tot = parts.reduce((a, x) => a + x.a * x.sg.min, 0) || 1, rank = sorted.indexOf(r) + 1, top = sorted[0] === r ? sorted[1] : sorted[0];
+    for (const x of parts) {
+      if (x.sg.gap) continue;
+      const p = x.sg.p, v = r.v * x.a * 60 / tot, ma = v / BASE[i] * 100, min = x.sg.min, start = x.sg.start;
+      // Tagesbilanz je Ausstrahlung (für die Quoten-News)
+      const ds = G.daySeg.find(d => d.st === r.st.i && d.id === p.id && d.start === start);
+      if (ds) { ds.vs += v * min; ds.bs += BASE[i] * min; ds.min += min; } else G.daySeg.push({ st: r.st.i, id: p.id, start, title: p.title, vs: v * min, bs: BASE[i] * min, min });
+      if (p.kind === "sport") continue;
+      const y = Math.min(60, ma * youthIdx(r.st, p) * rnd(0.93, 1.07));
+      p.hist = p.hist || [];
+      const last = p.hist[p.hist.length - 1], key = +(start / 60).toFixed(3);
+      if (last && last[0] === G.day && last[1] === key) {
+        const n = last[6] + min;
+        last[2] = +((last[2] * last[6] + v * min) / n).toFixed(2); last[3] = +((last[3] * last[6] + ma * min) / n).toFixed(1); last[4] = +((last[4] * last[6] + y * min) / n).toFixed(1); last[6] = n;
+        continue;
+      }
+      const ent = [G.day, key, +v.toFixed(2), +ma.toFixed(1), +y.toFixed(1), rank, min];
+      if (isMe(r.st)) {
+        ent.push(top.st.i, top.p ? top.p.title : "Testbild", p.kind === "serie" ? ((p.ep - 1) % p.eps) + 1 : 0);
+        if (p.sponsor && r.st.type === "privat") book(r.st, "TV-Werbung", r1000(5000 + v * 3000));
+        if (p.boost && !p.boost.day) p.boost.day = G.day;
+      }
+      p.hist.push(ent);
+      if (p.hist.length > (isMe(r.st) ? 40 : 16)) p.hist.shift();
     }
-    const top = sorted[0] === r ? sorted[1] : sorted[0], ent = [G.day, i, +r.v.toFixed(2), +ma.toFixed(1), +y.toFixed(1), sorted.indexOf(r) + 1, 1];
-    if (isMe(r.st)) {
-      ent.push(top.st.i, top.p ? top.p.title : "Testbild", p.kind === "serie" ? ((p.ep - 1) % p.eps) + 1 : 0);
-      if (p.sponsor && r.st.type === "privat") book(r.st, "TV-Werbung", r1000(20000 + r.v * 9000));
-      if (p.boost && !p.boost.day) p.boost.day = G.day;
-    }
-    p.hist.push(ent);
-    if (p.hist.length > (isMe(r.st) ? 40 : 16)) p.hist.shift();
   }
 }
 // Kennzahlen aus dem Verlauf
@@ -4674,7 +4805,7 @@ function fmtStats(p) {
 const stationAvgMA = st => st.maDays ? st.maSum / st.maDays : st.base;
 const twenty = v => clamp(Math.round(v), 1, 20);
 const castFame = p => { const c = titleCast(p, p.title); return c.length ? c.reduce((s, x) => s + (person(x.id).fame || 0), 0) / c.length : 0; };
-const mainSlot = (st, p) => { const h = (p.hist || []).slice(-6); if (h.length) { const cnt = {}; h.forEach(x => cnt[x[1]] = (cnt[x[1]] || 0) + 1); return +Object.entries(cnt).sort((a, b) => b[1] - a[1])[0][0]; } return GENRES[p.genre] ? GENRES[p.genre][0] : 20; };
+const mainSlot = (st, p) => { const h = (p.hist || []).slice(-6); if (h.length) { const cnt = {}; h.forEach(x => cnt[Math.floor(x[1])] = (cnt[Math.floor(x[1])] || 0) + 1); return +Object.entries(cnt).sort((a, b) => b[1] - a[1])[0][0]; } return GENRES[p.genre] ? GENRES[p.genre][0] : 20; };
 const bestSlots = p => HOURS.map(i => [i, fit(p.genre, i) * BASE[i]]).sort((a, b) => b[1] - a[1]).filter(([i]) => fit(p.genre, i) >= 0.85).slice(0, 3).map(x => x[0]).sort((a, b) => a - b);
 // Formatzustand im Stil eines Spielerprofils (1–20)
 function fmtAttrs(st, p) {
@@ -4779,7 +4910,7 @@ function maChart(st, p) {
     <path d="${line(4)}" class="l young"/><path d="${line(3)}" class="l all"/>
     ${h.map((x, k) => `<circle cx="${X(k)}" cy="${Y(x[3])}" r="4" class="pt"/>`).join("")}
     <text x="${X(0)}" y="${H - 6}" class="ax">${dateShort(h[0][0])}</text><text x="${X(h.length - 1)}" y="${H - 6}" class="ax" text-anchor="end">${dateShort(h[h.length - 1][0])}</text>
-    ${h.map((x, k) => `<rect x="${X(k) - cw / 2}" y="${T}" width="${cw}" height="${H - T - B}" class="hit"><title>${dateShort(x[0])}, ${hh(x[1])} Uhr – ${pct(x[3])} gesamt · ${pct(x[4])} 14–49 · ${mio(x[2])} Mio. · Platz ${x[5]}</title></rect>`).join("")}
+    ${h.map((x, k) => `<rect x="${X(k) - cw / 2}" y="${T}" width="${cw}" height="${H - T - B}" class="hit"><title>${dateShort(x[0])}, ${tH(x[1])} Uhr – ${pct(x[3])} gesamt · ${pct(x[4])} 14–49 · ${mio(x[2])} Mio. · Platz ${x[5]}</title></rect>`).join("")}
   </svg>`;
 }
 function fmtStrengths(st, p) {
@@ -4816,7 +4947,7 @@ function fmtTabBody(t, tab) {
   const p = t.prog, st = t.st, mine = st && isMe(st), s = fmtStats(p), known = researched(p);
   if (tab === "ratings") return `<section class="panel"><div class="ph"><h2>Quotenverlauf</h2><span class="aside">letzte ${Math.min(30, s.n)} Ausstrahlungen</span></div><div class="pad">${maChart(st, p)}</div></section>
     ${s.n ? `<section class="panel"><div class="ph"><h2>Ausstrahlungen</h2></div><div class="tbl"><table><thead><tr><th>Datum</th><th>Zeit</th>${p.kind === "serie" && mine ? "<th>Folge</th>" : ""}<th class="num">Zuschauer</th><th class="num">MA gesamt</th><th class="num">MA 14–49</th><th class="num">Platz</th>${mine ? "<th>Stärkstes Gegenprogramm</th>" : ""}</tr></thead><tbody>
-      ${(p.hist || []).slice().reverse().map(x => `<tr><td>${dateShort(x[0])}</td><td>${hh(x[1])}</td>${p.kind === "serie" && mine ? `<td>${x[9] || "–"}</td>` : ""}<td class="num">${mio(x[2])} Mio.</td><td class="num"><b>${pct(x[3])}</b></td><td class="num">${pct(x[4])}</td><td class="num">${x[5]}.</td>${mine ? `<td class="title">${x.length > 7 ? `${esc(x[8])} <span class="muted">(${esc(G.stations[x[7]].name)})</span>` : ""}</td>` : ""}</tr>`).join("")}</tbody></table></div></section>` : ""}`;
+      ${(p.hist || []).slice().reverse().map(x => `<tr><td>${dateShort(x[0])}</td><td>${tH(x[1])}</td>${p.kind === "serie" && mine ? `<td>${x[9] || "–"}</td>` : ""}<td class="num">${mio(x[2])} Mio.</td><td class="num"><b>${pct(x[3])}</b></td><td class="num">${pct(x[4])}</td><td class="num">${x[5]}.</td>${mine ? `<td class="title">${x.length > 7 ? `${esc(x[8])} <span class="muted">(${esc(G.stations[x[7]].name)})</span>` : ""}</td>` : ""}</tr>`).join("")}</tbody></table></div></section>` : ""}`;
   if (tab === "audience") {
     const mix = ageMix(st, p), y = youthIdx(st, p), mx = Math.max(...mix), r = v => known ? pct(v) : `≈ ${Math.round(v / 5) * 5} %`;
     return `<div class="grid two"><section class="panel"><div class="ph"><h2>Altersstruktur</h2><span class="aside">${known ? "Marktforschung" : "Schätzung"}</span></div><div class="pad">
@@ -4833,7 +4964,7 @@ function fmtTabBody(t, tab) {
     const [plus, minus] = fmtStrengths(st, p), comp = mine ? fmtCompetition(st, p) : [], dates = fmtDates(st, p);
     return `<div class="grid two"><section class="panel"><div class="ph"><h2>Stärken</h2></div><ul class="plans pad" style="padding-left:28px">${plus.map(x => `<li>${esc(x)}</li>`).join("") || '<li class="muted">Keine besonderen Stärken.</li>'}</ul></section>
       <section class="panel"><div class="ph"><h2>Schwächen</h2></div><ul class="plans pad" style="padding-left:28px">${minus.map(x => `<li>${esc(x)}</li>`).join("") || '<li class="muted">Keine auffälligen Schwächen.</li>'}</ul></section></div>
-      <div class="grid two" style="margin-top:12px"><section class="panel"><div class="ph"><h2>Nächste Sendetermine</h2></div>${dates.length ? `<div class="tbl"><table><tbody>${dates.map(([d, i]) => `<tr><td>${dateShort(d)}</td><td class="num">${hh(i)} Uhr</td></tr>`).join("")}</tbody></table></div>` : '<p class="fine pad">In den nächsten zwei Wochen nicht eingeplant.</p>'}</section>
+      <div class="grid two" style="margin-top:12px"><section class="panel"><div class="ph"><h2>Nächste Sendetermine</h2></div>${dates.length ? `<div class="tbl"><table><tbody>${dates.map(([d, i]) => `<tr><td>${dateShort(d)}</td><td class="num">${(() => { const it = cellTime(st, isMe(st) ? calDay(st, d) : st.week[weekday(d)], i, weekday(d)); return it ? hhmm(it.start) : hh(i); })()} Uhr</td></tr>`).join("")}</tbody></table></div>` : '<p class="fine pad">In den nächsten zwei Wochen nicht eingeplant.</p>'}</section>
       <section class="panel"><div class="ph"><h2>${mine ? "Gegenprogramme" : "Empfehlung der Programmforschung"}</h2></div>
         ${mine ? (comp.length ? `<div class="tbl"><table><tbody>${comp.map(c => `<tr><td class="title">${esc(c.t)}</td><td>${sname(c.st)}</td><td class="num muted">${c.n}× stärkste Konkurrenz</td></tr>`).join("")}</tbody></table></div>` : '<p class="fine pad">Noch keine Daten.</p>')
           : `<p class="pad" style="margin:0">${(() => { const v = fmtStats(p); return v.n && v.ma > stationAvgMA(me()) ? `Starkes Format der Konkurrenz (Ø ${pct(v.ma)}). Gegenprogramm mit einer anderen Zielgruppe planen statt frontal dagegenzuhalten.` : "Angreifbar: Mit einem starken Format im selben Genre lässt sich hier Publikum abwerben."; })()}</p>`}</section></div>`;
@@ -5493,7 +5624,10 @@ document.addEventListener("change", async e => {
   const ph = e.target.dataset && e.target.dataset.photo;
   if (ph && e.target.files && e.target.files[0]) { if (await savePhoto(ph, e.target.files[0])) { toast("Foto gespeichert."); renderProfile(); render(); } return; }
 });
-document.addEventListener("change", e => { const u = e.target.dataset && e.target.dataset.upload; if (u) readUpload(e.target, u); else if (e.target.dataset && e.target.dataset.ed) edUpdateField(e.target); });
+document.addEventListener("change", e => {
+  if (e.target.dataset && e.target.dataset.tsel && G) { const [d, i] = e.target.dataset.tsel.split("|").map(Number), v = e.target.value; editPlan(d, sc => { if (v === "") delete sc[i].t; else sc[i].t = +v; }); render(); return; }
+  if (e.target.dataset && e.target.dataset.adl && G) { const L = adLoad(me()), k = e.target.dataset.adl, v = +e.target.value; if (me().type === "oer") { const other = Object.entries(L).filter(([h]) => h !== k).reduce((a, [, x]) => a + x, 0); L[k] = Math.max(0, Math.min(v, 20 - other)); } else L[k] = clamp(v, 0, 12); render(); return; }
+  const u = e.target.dataset && e.target.dataset.upload; if (u) readUpload(e.target, u); else if (e.target.dataset && e.target.dataset.ed) edUpdateField(e.target); });
 document.addEventListener("input", e => {
   if (e.target.id === "edSearch") { edQuery = e.target.value; const pos = e.target.selectionStart; renderEditor(); const s = $("edSearch"); s.focus(); s.setSelectionRange(pos, pos); return; }
   if (e.target.dataset && e.target.dataset.ed && e.target.type === "range") edUpdateField(e.target);
@@ -5520,7 +5654,7 @@ function renderProfile() {
 function openSched(id) {
   const st = G.stations[SIDX[id]], sc = isMe(st) ? st.sched : st.sched && st.sched.length ? st.sched : st.week[weekday(G.day)];
   openModal(`<header>${crest(st.i, 30)}<h2>${esc(st.name)} · Programm heute</h2><button class="btn" data-act="close">Schließen</button></header><div class="dbody"><div class="tbl"><table><thead><tr><th>Zeit</th><th>Sendung</th><th>Mitwirkende</th><th class="num">Qual.</th></tr></thead><tbody>
-    ${sc.map((c, i) => { const p = c.p && progOf(st, c.p); if (!p || c.cont) return ""; const cast = titleCast(p, p.title).slice(0, 3); return `<tr class="${i === 20 || i === 21 ? "mine" : ""}"><td>${hh(i)}</td><td class="title">${titleLink(`${st.id}|${p.id}`, p.title)}<div class="muted">${esc(p.genre)}</div></td><td class="title">${cast.map(x => personLink(person(x.id))).join(", ") || '<span class="muted">–</span>'}</td><td class="num">${attr(p.q)}</td></tr>`; }).join("")}
+    ${sc.map((c, i) => { const p = c.p && progOf(st, c.p); if (!p || c.cont) return ""; const cast = titleCast(p, p.title).slice(0, 3), it = cellTime(st, sc, i); return `<tr class="${i === 20 || i === 21 ? "mine" : ""}"><td>${it ? tRange(it) : hh(i)}</td><td class="title">${titleLink(`${st.id}|${p.id}`, p.title)}<div class="muted">${esc(p.genre)}</div></td><td class="title">${cast.map(x => personLink(person(x.id))).join(", ") || '<span class="muted">–</span>'}</td><td class="num">${attr(p.q)}</td></tr>`; }).join("")}
   </tbody></table></div></div>`);
 }
 const titleLink = (key, t) => `<span class="tlink" data-title="${esc(key)}">${esc(t)}</span>`;
