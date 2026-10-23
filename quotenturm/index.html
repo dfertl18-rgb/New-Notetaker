@@ -382,6 +382,25 @@ label { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .ens-card { display: flex; gap: 10px; align-items: center; background: var(--panel-2); border: 1px solid var(--line); border-radius: 4px; padding: 10px; }
 .ens-card .grow { flex: 1; min-width: 0; display: grid; gap: 2px; } .ens-card .grow span { font-size: 12px; }
 .pm { display: flex; flex-wrap: wrap; gap: 4px; justify-content: flex-end; align-items: center; }
+.plink, .tlink { cursor: pointer; } .plink:hover, .tlink:hover { color: var(--hot); text-decoration: underline; text-underline-offset: 3px; }
+img.avatar.photo { border-radius: 50%; object-fit: cover; flex: 0 0 auto; }
+.ttl-head { display: flex; gap: 16px; align-items: flex-start; } .ttl-head .grow { flex: 1; min-width: 0; }
+.ttl-side { display: grid; gap: 4px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 4px; padding: 10px 12px; min-width: 150px; } .ttl-side small { color: var(--muted); font-size: 12px; }
+.stars5 { color: #f5c542; letter-spacing: 1px; white-space: nowrap; }
+.pp-head { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; gap: 16px; align-items: center; background: linear-gradient(120deg, rgba(123,47,247,.18), var(--panel-2) 60%); border: 1px solid var(--line); border-radius: 4px; padding: 14px; }
+.pp-photo img, .pp-photo .avatar { width: 92px; height: 92px; border-radius: 6px; object-fit: cover; }
+.pp-main h3 { margin: 0 0 6px; font-family: var(--font-head); font-size: 28px; } .pp-code { font-family: var(--font-body); font-size: 13px; cursor: copy; border: 1px dashed var(--line); padding: 1px 6px; border-radius: 3px; }
+.pp-tags { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; font-size: 13px; margin-bottom: 6px; } .pp-club { font-size: 14px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.pp-val { display: grid; gap: 2px; text-align: right; } .pp-val small { color: var(--muted); font-size: 12px; } .pp-val b { font-family: var(--font-head); font-size: 20px; }
+.pp-ab { display: grid; grid-template-columns: auto auto; gap: 4px 14px; font-size: 13px; } .pp-ab small { display: block; color: var(--muted); font-size: 11px; }
+.ptabs { display: flex; gap: 2px; border-bottom: 1px solid var(--line); } .ptabs button { background: none; border: 0; padding: 10px 14px; color: var(--muted); font-weight: 600; position: relative; }
+.ptabs button.on { color: var(--hot); } .ptabs button.on::after { content: ""; position: absolute; left: 10px; right: 10px; bottom: -1px; height: 2px; background: var(--hot); }
+.acols { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.acol h3 { margin: 0 0 6px; font-family: var(--font-head); font-size: 16px; color: var(--muted); border-bottom: 1px solid var(--line); padding-bottom: 4px; }
+.arow { display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; background: var(--row); border-bottom: 1px solid var(--bg); } .arow.hi { box-shadow: inset 3px 0 0 var(--good); }
+.arow b { font-family: var(--font-head); font-size: 17px; min-width: 28px; text-align: right; }
+.irow { display: grid; gap: 1px; padding: 5px 0; border-bottom: 1px solid var(--line); } .irow small { color: var(--muted); font-size: 12px; } .irow b { font-weight: 600; font-size: 14px; }
+@media (max-width: 900px) { .pp-head { grid-template-columns: auto minmax(0, 1fr); } .acols { grid-template-columns: minmax(0, 1fr); } .ttl-head { flex-direction: column; } }
 .pkgs { display: flex; gap: 4px; }
 .pkg { background: var(--panel-2); border: 1px solid var(--line); border-radius: 4px; padding: 4px 8px; display: grid; text-align: left; min-width: 74px; }
 .pkg b { font-family: var(--font-head); font-size: 15px; } .pkg span { font-size: 11px; color: var(--muted); }
@@ -1132,7 +1151,7 @@ const DESC = {
   "Miami Vice": "Zwei Drogenfahnder in Miami.",
 };
 // Erweiterung anhängen, ohne Titel doppelt aufzunehmen
-for (const [db, more] of [[FILM_DB, FILM_MORE], [SERIES_DB, SERIES_MORE]]) { const have = new Set(FILM_DB.concat(SERIES_DB).map(r => r[0])); for (const r of more) if (!have.has(r[0])) db.push(r); }
+for (const [db, more] of [[FILM_DB, FILM_MORE], [SERIES_DB, SERIES_MORE]]) { const have = new Set(FILM_DB.concat(SERIES_DB).map(r => r[0])); for (const r of more) if (!have.has(r[0]) && !STREAMERS.some(s => s.hits.includes(r[0]))) db.push(r); } // Streaming-Exklusives nicht im TV-Handel
 // Füllprogramme ohne Originaltitel (z. B. für die Nacht)
 const FILLERS = {
   "Teleshopping": ["Teleshopping-Fenster", "Shopping-Nacht", "Dauerwerbesendung"], "Doku": ["Expedition Nordsee", "Geheimnisvolle Alpen", "Planet Wasser", "Mythos Rhein"],
@@ -1260,7 +1279,7 @@ function sbadge(id, size = 18) {
   return `<span class="sbadge" data-streamer="${s.id}" style="--c:${s.color}">${esc(s.name.split(" ")[0])}</span>`;
 }
 const sname = i => `<span class="sn" data-station="${STATIONS[i].id}">${crest(i, 16)}${esc(STATIONS[i].name)}</span>`;
-const holderName = id => !id ? "frei" : STATIONS[SIDX[id]].name;
+const holderName = id => !id ? "frei" : SIDX[id] !== undefined ? STATIONS[SIDX[id]].name : (STREAMERS.find(s => s.id === id) || { name: String(id) }).name;
 
 // =====================================================================
 // Spielzustand
@@ -1367,6 +1386,8 @@ function newGame(stationId) {
   G.project = null; G.mods = {}; G.event = null; G.eventLog = [];
   initPeople();
   applyEditorPeople();
+  linkImported();
+  assignCasts();
   const nImp = seedImportedTitles();
   if (nImp) logMsg("Branchendienst", "Konkurrenz", `Importierte Titeldatenbank: ${nImp} Filme und Serien laufen ab sofort bei der Konkurrenz – Krimi und Anspruch bei den Öffentlich-Rechtlichen, Unterhaltung bei den Privaten.`);
   for (const st of G.stations) { for (const wd of WEEK) planDayFor(st, wd); }
@@ -1546,6 +1567,7 @@ function calendarGrid(P, sel, chk) {
 function planDayFor(st, wd, sc = st.week[wd], opts = {}) {
   const rem = opts.rem;
   if (!opts.keep) sc.forEach(c => { c.p = null; c.cont = false; c.ad = null; c.live = false; });
+  if (!isMe(st)) applySchema(st, wd, sc);
   const used = {};
   const order = HOURS.slice().sort((a, b) => BASE[b] - BASE[a]);
   for (const i of order) {
@@ -1557,7 +1579,9 @@ function planDayFor(st, wd, sc = st.week[wd], opts = {}) {
       if (blocked) continue;
       let s = p.q * fit(p.genre, i) * (0.35 + 0.65 * p.topic);
       if (p.genre === "Teleshopping") s = i < 6 ? 60 : 1;
-      if (used[p.id]) s *= p.kind === "show" ? 0.8 : 0.3;
+      const n = Math.max(used[p.id] || 0, sc.filter(c => c.p === p.id && !c.cont).length);
+      if (n >= (p.filler || p.genre === "Teleshopping" ? 6 : 2)) continue; // kein Format mehr als zweimal am Tag
+      if (n) s *= p.genre === "Nachrichten" ? 0.15 : p.kind === "show" ? 0.55 : 0.3;
       if (s > bestS) { bestS = s; best = p; }
     }
     if (best) { placeAt(st, sc, i, best); used[best.id] = (used[best.id] || 0) + 1; if (rem) rem.take(best); }
@@ -2085,7 +2109,7 @@ const baseGage = (talent, cha) => r1000(20000 + Math.pow(talent * 0.6 + cha * 0.
 const marketValue = p => p.gage * 1.5;
 // Ablöse: Marktwert, steigt mit der Restlaufzeit des Vertrags
 const abloese = p => r1000(marketValue(p) * (1 + Math.max(0, p.until - G.day) / 120));
-function castingEngine(n = 1000) {
+function castingEngine(n = 4000) {
   const names = new Set(), out = [];
   while (out.length < n && names.size < FIRST_NAMES.length * LAST_NAMES.length) {
     const name = `${pick(FIRST_NAMES)} ${pick(LAST_NAMES)}`;
@@ -2096,15 +2120,199 @@ function castingEngine(n = 1000) {
     const talent = stat(), buzz = role === "Reality" ? Math.round(25 + stat() * 0.75) : stat(), scandal = role === "Reality" ? Math.round(30 + stat() * 0.7) : role === "Nachrichten" ? Math.max(10, Math.round(stat() * 0.6)) : stat();
     const genres = role === "Schauspiel" ? shuffle(ACT_GENRES.slice()).slice(0, 2) : role === "Moderation" ? (Math.random() < 0.4 ? ["Show", "Talk"] : ["Show"]) : role === "Reality" ? ["Reality"] : role === "Nachrichten" ? ["Nachrichten"] : ["Doku"];
     const leanR = Math.random();
-    out.push({ id: "c" + Math.random().toString(36).slice(2, 9), name, role, talent, buzz, rel: 110 - scandal, gage: baseGage(talent, buzz), genres, trait: pick(TRAITS[role]),
+    out.push({ id: "c" + Math.random().toString(36).slice(2, 9), code: `QT-${String(out.length + 1).padStart(5, "0")}`, name, role, talent, buzz, rel: 110 - scandal, gage: baseGage(talent, buzz), genres, trait: pick(TRAITS[role]),
       lean: role === "Nachrichten" ? (leanR < 0.6 ? 0 : leanR < 0.75 ? -1 : leanR < 0.9 ? 1 : leanR < 0.95 ? -2 : 2) : 0, holder: null, until: 0, busy: 0, ban: 0 });
   }
   return out;
 }
 let PIDX = null, PIDX_SRC = null;
 const person = id => { if (PIDX_SRC !== G.people) { PIDX = new Map(G.people.map(p => [p.id, p])); PIDX_SRC = G.people; } return PIDX.get(id); };
+// =====================================================================
+// Personen-Datenbank 2.0: Code für Fotos, Bekanntheit, Beliebtheit, Herkunft, Vita
+// Alle generierten Personen sind frei erfunden. Ein Geschlecht wird bewusst nicht gespeichert.
+// =====================================================================
+FIRST_NAMES.push("Alexander", "Andrea", "Anja", "Ayşe", "Benedikt", "Bettina", "Christian", "Claudia", "Deniz", "Dominik", "Elena", "Emil", "Eva", "Fabian", "Franziska", "Frederik", "Gabriele", "Hendrik",
+  "Ines", "Isabel", "Jasper", "Jelena", "Jonathan", "Josefine", "Kai", "Karim", "Kerstin", "Konstantin", "Lara", "Lea", "Linus", "Luisa", "Marco", "Mareike", "Markus", "Merle", "Milan", "Nora", "Oliver",
+  "Patrick", "Petra", "Philipp", "Rebecca", "Robert", "Ronja", "Samira", "Sandra", "Selin", "Simon", "Stefanie", "Susanne", "Thomas", "Tanja", "Valentin", "Vera", "Viktoria", "Yannick", "Zoe", "Nikola", "Amir");
+LAST_NAMES.push("Albrecht", "Arnold", "Bauer", "Berger", "Böhm", "Brandt", "Busch", "Dietrich", "Engel", "Frank", "Graf", "Günther", "Haas", "Hansen", "Hartwig", "Heinrich", "Herrmann", "Horn", "Jäger", "Kraus",
+  "Kühn", "Lorenz", "Ludwig", "Martin", "Mayer", "Moser", "Nagel", "Otto", "Pohl", "Roth", "Sauer", "Schäfer", "Schuster", "Seidel", "Simon", "Sommer", "Stein", "Thomas", "Vogt", "Winter", "Wolff", "Ziegler",
+  "Öztürk", "Şahin", "Aydın", "Popović", "Jovanović", "Kovač", "Schwab", "Egger", "Gruber", "Steiner", "Hofer", "Brunner", "Gerber", "Baumann", "Frei", "Ammann", "Marino", "Ferrari");
+const ORIGINS = [["DE", 0.74], ["AT", 0.13], ["CH", 0.1], ["IT", 0.01], ["TR", 0.01], ["PL", 0.01]];
+const AGE_RANGE = { Schauspiel: [18, 76], Moderation: [24, 70], Reality: [19, 46], Nachrichten: [27, 66], Journalismus: [27, 70] };
+// Deterministischer Zufall je Person (Vita bleibt stabil, ohne gespeichert zu werden)
+function hashStr(s) { let h = 2166136261; for (const c of s) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; }
+function seeded(seed) { let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) >>> 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+// Ergänzt fehlende Felder – für neue Spiele und ältere Spielstände gleichermaßen
+function ensurePerson(p, k) {
+  if (p._ok) return p;
+  p._ok = 1;
+  const r = seeded(hashStr(p.id || p.name));
+  p.code = p.code || (k != null ? `QT-${String(k + 1).padStart(5, "0")}` : `QT-${(hashStr(p.id) % 900000 + 100000)}`);
+  let o = r(), origin = "DE"; for (const [c, w] of ORIGINS) { if (o < w) { origin = c; break; } o -= w; }
+  p.origin = p.origin || origin;
+  const [a0, a1] = AGE_RANGE[p.role] || [20, 70];
+  p.age = p.age || (p.custom ? null : Math.round(a0 + (a1 - a0) * Math.pow(r(), 1.2))); // echte Personen: kein erfundenes Alter
+  p.langs = p.langs || ["Deutsch", r() < 0.8 ? "Englisch" : null, origin === "CH" && r() < 0.5 ? "Französisch" : null, origin === "TR" ? "Türkisch" : origin === "IT" ? "Italienisch" : origin === "PL" ? "Polnisch" : null].filter(Boolean).join(", ");
+  p.fame = p.fame || clamp(Math.round(p.buzz * 0.5 + p.talent * 0.3 + (r() - 0.5) * 30 + (p.age > 40 ? 6 : 0)), 3, 100);
+  p.pop = p.pop || clamp(Math.round(p.fame * 0.4 + p.rel * 0.45 + (r() - 0.5) * 20), 3, 100);
+  p.pot = p.pot || (p.age && p.age < 30 ? Math.min(100, p.talent + Math.round(5 + r() * 30)) : p.talent);
+  return p;
+}
+const stars5 = v => { const n = Math.max(0.5, Math.round(v / 10) / 2); return "★".repeat(Math.floor(n)) + (n % 1 ? "½" : "") + "☆".repeat(5 - Math.ceil(n)); };
+const attr20 = v => clamp(Math.round(v / 5), 1, 20);
+const holderLabel = id => !id ? "vertragsfrei" : SIDX[id] !== undefined ? STATIONS[SIDX[id]].name : (STREAMERS.find(s => s.id === id) || { name: id }).name;
+
+// ---------------------------------------------------------------------
+// Besetzung: wer wirkt in welchem Programm mit?
+// ---------------------------------------------------------------------
+// Formate, die nach einer realen Person benannt sind, bekommen keine erfundene Moderation
+const EPONYM = ["Markus Lanz", "maischberger", "Barbara Salesch – Das Strafgericht", "Joko & Klaas gegen ProSieben", "Die Geissens"];
+function castNeed(p) {
+  if (p.kind === "sport" || p.genre === "Teleshopping") return [];
+  if (p.genre === "Nachrichten") return [["Nachrichten", "Anchor"], ["Nachrichten", "Co-Anchor"]];
+  if (["Talk", "Show"].includes(p.genre)) return [["Moderation", "Moderation"], ["Moderation", "Co-Moderation"]].slice(0, p.genre === "Talk" ? 1 : 2);
+  if (p.genre === "Magazin") return [["Moderation", "Moderation"]];
+  if (p.genre === "Reality") return [["Moderation", "Moderation"], ["Reality", "Protagonist*in"], ["Reality", "Protagonist*in"]];
+  if (["Doku", "Kultur"].includes(p.genre)) return [["Journalismus", "Autor*in & Präsentation"]];
+  return [["Schauspiel", "Hauptrolle"], ["Schauspiel", "Hauptrolle"], ["Schauspiel", "Nebenrolle"], ["Schauspiel", "Nebenrolle"]];
+}
+// Eigenformate der Sender (Tatort, GZSZ, Lanz …) werden mit Personen aus der Datenbank besetzt und an den Sender gebunden
+function assignCasts() {
+  const free = role => G.people.filter(p => p.role === role && !p.holder && !p.show);
+  for (const st of G.stations) for (const prog of st.progs) {
+    if (!(prog.home || prog.filler) || EPONYM.includes(prog.title)) continue;
+    prog.cast = prog.cast || [];
+    // bereits verknüpfte echte Personen behalten, nur freie Rollen ergänzen
+    for (const [role, label] of castNeed(prog).slice(prog.cast.length)) {
+      const fit = q => (q.genres || []).includes(prog.genre) || (q.genres || []).includes(prog.kind === "serie" ? "Serie" : prog.genre) ? 40 : 0;
+      const pool = free(role).filter(q => !q.custom).sort((a, b) => (b.fame + b.talent + fit(b)) - (a.fame + a.talent + fit(a)));
+      const p = pool[Math.min(pool.length - 1, Math.floor(Math.pow(Math.random(), prog.filler ? 0.5 : 2.5) * Math.min(pool.length, 400)))];
+      if (!p) continue;
+      p.holder = st.id; p.show = prog.id; p.until = G.day + ri(90, 900);
+      p.gage = Math.max(p.gage, r1000(baseGage(p.talent, p.buzz) * (prog.q / 70)));
+      prog.cast.push({ id: p.id, role: label });
+    }
+  }
+}
+// Bekannt-aus-Verknüpfung: importierte Personen erscheinen automatisch in der Besetzung passender Titel
+// Titel aus „Bekannt aus“; auch Titel mit Komma (z. B. „Good Bye, Lenin!“) werden erkannt
+function knownKeys(known) {
+  const seg = String(known).split(/[;|]|,(?=\s)/).map(x => x.trim()).filter(Boolean), out = new Set();
+  seg.forEach((x, i) => { out.add(normT(x)); if (seg[i + 1]) out.add(normT(`${x}, ${seg[i + 1]}`)); });
+  out.delete(""); return out;
+}
+const normT = t => String(t || "").toLowerCase().replace(/\(.*?\)|[„“"'*]/g, "").replace(/[^a-z0-9äöüß]+/g, " ").trim();
+let KNOWN = null, KNOWN_SRC = null;
+function knownIndex() {
+  if (KNOWN && KNOWN_SRC === G.people) return KNOWN;
+  KNOWN = new Map(); KNOWN_SRC = G.people;
+  for (const p of G.people) if (p.known) for (const k of knownKeys(p.known)) (KNOWN.get(k) || KNOWN.set(k, []).get(k)).push(p.id);
+  return KNOWN;
+}
+const ownerOfProg = prog => { for (const st of G.stations) if (st.progs.includes(prog)) return st.id; return null; };
+function titleCast(prog, title) {
+  const out = [], seen = new Set();
+  const add = (id, role) => { if (!seen.has(id) && person(id)) { seen.add(id); out.push({ id, role }); } };
+  if (prog && prog.prod) { const pr = G.prods.find(x => x.id === prog.prod); if (pr) pr.cast.forEach((id, k) => add(id, FORMATS[pr.kind] && FORMATS[pr.kind].roles[k] ? FORMATS[pr.kind].roles[k][1] : "Besetzung")); }
+  if (prog && prog.cast) prog.cast.forEach(c => add(c.id, c.role));
+  const probe = prog || { genre: "Serie", kind: "serie" };
+  const hits = (knownIndex().get(normT(title || (prog && prog.title))) || []).map(person).filter(q => q && (!prog || roleFits(q, probe)) && (!prog || !prog.home || stationFits(q, ownerOfProg(prog))));
+  for (const q of hits.sort((a, b) => b.fame - a.fame).slice(0, 6)) add(q.id, q.role === "Schauspiel" ? "Darsteller*in" : q.role === "Moderation" ? "Moderation" : q.role === "Nachrichten" ? "Anchor" : "Mitwirkende*r");
+  return out;
+}
+// Vita: aktuelle Engagements aus dem Spiel, frühere Stationen deterministisch aus dem Personen-Code
+function computeVita(p) {
+  const out = [], year = dateOf(G.day).getFullYear();
+  for (const st of G.stations) for (const prog of st.progs) if (prog.cast && prog.cast.some(c => c.id === p.id)) out.push({ y: p.custom ? "aktuell" : `seit ${year - 1 - (hashStr(p.code + prog.title) % 6)}`, t: prog.title, s: st.name, r: prog.cast.find(c => c.id === p.id).role, cur: true });
+  for (const pr of G.prods) if (pr.cast.includes(p.id)) out.push({ y: String(year), t: pr.title, s: me().name, r: "Eigenproduktion", cur: true });
+  if (p.known) {
+    const all = new Set(FILM_DB.concat(SERIES_DB).map(r => normT(r[0]))), seg = p.known.split(/[;|]|,(?=\s)/).map(x => x.trim()).filter(Boolean), titles = [];
+    for (let i = 0; i < seg.length; i++) { const two = seg[i + 1] ? `${seg[i]}, ${seg[i + 1]}` : null; if (two && all.has(normT(two))) { titles.push(two); i++; } else titles.push(seg[i]); }
+    for (const t of titles.slice(0, 6)) if (!out.some(x => normT(x.t) === normT(t))) out.push({ y: "", t, s: p.knownAt || "", r: "bekannt aus" });
+  }
+  if (!p.custom) {
+    const r = seeded(hashStr(p.code)), pool = SERIES_DB.filter(x => x[4] && castNeed({ genre: x[1], kind: x[3] ? "serie" : "show" }).some(([role]) => role === p.role));
+    const n = Math.min(pool.length, Math.round(1 + r() * Math.min(5, (p.age - 18) / 6)));
+    let y = year - 1;
+    for (let k = 0; k < n; k++) {
+      const x = pool[Math.floor(r() * pool.length)], len = 1 + Math.floor(r() * 4);
+      y -= len + Math.floor(r() * 3);
+      if (y < year - (p.age - 18)) break;
+      if (out.some(o => o.t === x[0])) continue;
+      out.push({ y: `${y}–${y + len}`, t: x[0], s: STATIONS[SIDX[x[4]]] ? STATIONS[SIDX[x[4]]].name : "", r: castNeed({ genre: x[1], kind: x[3] ? "serie" : "show" }).find(([role]) => role === p.role)[1] });
+    }
+  }
+  return out;
+}
+// Realistisches Sendeschema: Eigenformate der Sender auf ihren angestammten Sendeplätzen (Werktag / Wochenende)
+const SCHEMA = {
+  ard: { wk: { 6: "Morgenmagazin", 7: "Morgenmagazin", 15: "Sturm der Liebe", 16: "Rote Rosen", 17: "Brisant", 18: "Wer weiß denn sowas?", 20: "Tagesschau", 22: "Tagesthemen", 23: "maischberger" }, we: { 18: "Sportschau", 20: "Tagesschau", 21: "Tatort", 22: "Tagesthemen" } },
+  zdf: { wk: { 17: "Leute heute", 18: "SOKO Leipzig", 19: "heute", 21: "Der Bergdoktor", 22: "heute journal", 23: "Markus Lanz" }, we: { 17: "Bares für Rares", 19: "heute", 20: "Terra X", 22: "heute journal" } },
+  rtl: { wk: { 12: "Punkt 12", 17: "Explosiv", 18: "Alles was zählt", 19: "Gute Zeiten, schlechte Zeiten", 20: "Wer wird Millionär?", 23: "RTL Aktuell" }, we: { 18: "RTL Aktuell", 20: "Let's Dance" } },
+  sat1: { wk: { 6: "Sat.1-Frühstücksfernsehen", 7: "Sat.1-Frühstücksfernsehen", 8: "Sat.1-Frühstücksfernsehen", 16: "Auf Streife", 17: "Die Ruhrpottwache" }, we: { 20: "The Voice of Germany" } },
+  vox: { wk: { 19: "Das perfekte Dinner", 20: "Die Höhle der Löwen" }, we: { 18: "Goodbye Deutschland" } },
+  pro7: { wk: { 17: "taff", 18: "Galileo" }, we: { 20: "Joko & Klaas gegen ProSieben" } },
+  rtl2: { wk: { 19: "Berlin – Tag & Nacht", 20: "RTLZWEI News" }, we: { 20: "Die Geissens" } },
+  kabel1: { wk: { 18: "Achtung Kontrolle!", 19: "Mein Lokal, Dein Lokal" }, we: { 19: "Abenteuer Leben" } },
+  arte: { wk: { 19: "ARTE Journal", 20: "ARTE-Themenabend" }, we: { 20: "Opernabend live" } },
+  dritte: { wk: { 19: "Nachrichten aus der Region", 18: "Landesschau", 21: "Visite" }, we: { 19: "Nachrichten aus der Region" } },
+};
+function applySchema(st, wd, sc) {
+  const sch = SCHEMA[st.id]; if (!sch) return;
+  const slots = (wd === 0 || wd === 6) ? sch.we : sch.wk;
+  for (const [h, title] of Object.entries(slots)) {
+    const p = st.progs.find(x => x.title === title), i = +h;
+    if (p && !sc[i].p && !canPlace(st, sc, p, i) && youthOk(p, i)) placeAt(st, sc, i, p);
+  }
+}
+// Passt die Senderangabe einer importierten Person zum Sender des Formats?
+const ST_ALIAS = { ard: ["ard", "das erste"], zdf: ["zdf"], dritte: ["wdr", "ndr", "br", "swr", "mdr", "hr", "rbb", "sr ", "dritte"], rtl: ["rtl"], sat1: ["sat.1", "sat1", "sat 1"], vox: ["vox"], pro7: ["prosieben", "pro7", "pro 7"],
+  kabel1: ["kabel eins", "kabel1"], zdfneo: ["zdfneo", "zdf neo"], rtl2: ["rtlzwei", "rtl zwei", "rtl2", "rtl ii"], nitro: ["nitro"], arte: ["arte"] };
+function stationFits(p, stId) {
+  const at = String(p.knownAt || "").toLowerCase();
+  if (!at) return true;
+  if (stId === "rtl" && /rtl ?(zwei|2|ii)|rtlzwei/.test(at) && !/(^|[^a-z])rtl(?! ?(zwei|2|ii))/.test(at)) return false;
+  return (ST_ALIAS[stId] || [stId]).some(a => at.includes(a));
+}
+const roleFits = (p, prog) => castNeed(prog).some(([r]) => r === p.role);
+// Importierte Personen mit „Bekannt aus“ an die passenden Eigenformate der Sender binden (Rolle und Sender müssen passen)
+function linkImported() {
+  const idx = new Map();
+  for (const st of G.stations) for (const prog of st.progs) if (prog.home) idx.set(normT(prog.title), [st, prog]);
+  // Stars von Streaming-Titeln an ihren Streamer binden (z. B. exklusiv bei Netflix)
+  for (const p of G.people) {
+    if (!p.custom || !p.known || p.holder) continue;
+    const keys = knownKeys(p.known), at = String(p.knownAt || "").toLowerCase();
+    const s = STREAMERS.find(x => at.includes(x.name.split(" ")[0].toLowerCase()) && x.hits.some(h => keys.has(normT(h))));
+    if (s) { p.holder = s.id; p.until = G.day + ri(180, 900); }
+  }
+  for (const p of G.people) {
+    if (!p.custom || !p.known || p.show || (p.holder && SIDX[p.holder] === undefined)) continue;
+    for (const k of knownKeys(p.known)) {
+      const hit = idx.get(k); if (!hit) continue;
+      const [st, prog] = hit;
+      if (p.holder && p.holder !== st.id) break;
+      if (!roleFits(p, prog) || !stationFits(p, st.id)) continue;
+      prog.cast = prog.cast || [];
+      if (prog.cast.filter(c => person(c.id) && person(c.id).custom).length >= castNeed(prog).length) continue;
+      if (!prog.cast.some(c => c.id === p.id)) prog.cast.unshift({ id: p.id, role: (castNeed(prog).find(([r]) => r === p.role) || [null, p.role === "Schauspiel" ? "Hauptrolle" : "Moderation"])[1] });
+      p.holder = st.id; p.show = prog.id; p.until = Math.max(p.until || 0, G.day + ri(180, 900));
+      break;
+    }
+  }
+}
+// Person verlässt eine Sendung (Vertragsende oder Abwerbung)
+function unbind(p) {
+  if (!p.show) return;
+  for (const st of G.stations) for (const prog of st.progs) if (prog.id === p.show && prog.cast) {
+    prog.cast = prog.cast.filter(c => c.id !== p.id);
+    if (!isMe(st)) prog.q = Math.max(20, prog.q - Math.round(p.fame / 25));
+  }
+  p.show = null;
+}
 function initPeople() {
-  G.people = castingEngine(1000);
+  G.people = castingEngine(4000);
+  G.people.forEach(ensurePerson);
   // Exklusivitäts-Logik: 30 % der Top-Stars (nach Marktwert) sind bei der Konkurrenz unter Vertrag
   const top = G.people.slice().sort((a, b) => b.gage - a.gage).slice(0, 300);
   const rivals = ["rtl", "pro7", "sat1", "ard", "zdf"].filter(id => id !== me().id);
@@ -2216,7 +2424,9 @@ function reviews(pr) {
 function peopleDay() {
   const P = me();
   for (const p of G.people) {
-    if (p.holder && p.until <= G.day) { if (p.holder === P.id) { logMsg("Casting", "Personal", `Der Exklusivvertrag mit ${p.name} ist ausgelaufen.`); if (G.newsroom.anchor === p.id) G.newsroom.anchor = null; } p.holder = null; p.ct = null; }
+    // KI-Sender verlängern meist mit ihren Gesichtern; sonst verlässt die Person die Sendung
+    if (p.holder && p.holder !== P.id && p.until <= G.day && p.show && Math.random() < 0.8) p.until = G.day + ri(180, 700);
+    if (p.holder && p.until <= G.day) { unbind(p); if (p.holder === P.id) { logMsg("Casting", "Personal", `Der Exklusivvertrag mit ${p.name} ist ausgelaufen.`); if (G.newsroom.anchor === p.id) G.newsroom.anchor = null; } p.holder = null; p.ct = null; }
     if (p.pat !== undefined && p.pat < 100) p.pat = Math.min(100, p.pat + 4); // Geduld erholt sich langsam
     if (p.holder && p.holder !== P.id && p.busy <= G.day && Math.random() < 0.08) p.busy = G.day + ri(3, 12); // Konkurrenz dreht
     else if (!p.holder && p.busy <= G.day && Math.random() < 0.01) p.busy = G.day + ri(3, 12); // freie Stars drehen für andere
@@ -2445,6 +2655,8 @@ function firstSlot(F, d, r) {
 }
 // Avatar mit Initialen, Farbe aus dem Namen
 function avatar(p, size = 40) {
+  const ph = p.code && PHOTO.get(p.code);
+  if (ph) return `<img class="avatar photo" src="${ph}" alt="" style="width:${size}px;height:${size}px">`;
   const h = [...p.name].reduce((a, c) => (a * 31 + c.charCodeAt(0)) % 360, 7);
   const ini = p.name.split(/\s+/).map(w => w[0]).slice(0, 2).join("");
   return `<span class="avatar" style="--h:${h};width:${size}px;height:${size}px;font-size:${Math.round(size * 0.38)}px">${esc(ini)}</span>`;
@@ -2517,7 +2729,7 @@ function personRow(p, action) {
   const st = pState(p);
   return `<div class="prow ${st.k === "mine" ? "mine" : ""}">
     ${avatar(p, 46)}
-    <div class="prow-main"><b>${esc(p.name)}</b><span class="muted">${SPEC_NAME[p.role]} · ${esc(p.trait)}${p.role === "Nachrichten" ? ` · ${LINES[p.lean + 2]}` : ["Schauspiel", "Moderation"].includes(p.role) ? ` · ${p.genres.join(", ")}` : ""}</span></div>
+    <div class="prow-main"><b class="plink" data-person="${p.id}">${esc(p.name)}</b><span class="muted">${SPEC_NAME[p.role]} · ${esc(p.trait)}${p.role === "Nachrichten" ? ` · ${LINES[p.lean + 2]}` : ["Schauspiel", "Moderation"].includes(p.role) ? ` · ${p.genres.join(", ")}` : ""}</span></div>
     <div class="prow-stats"><span>Talent</span>${bar(p.talent, "#22c55e")}<em>${p.talent}</em><span>Charisma</span>${bar(p.buzz, "#7c3aed")}<em>${p.buzz}</em><span>Skandal</span>${bar(110 - p.rel, "#ef4444")}<em>${110 - p.rel}</em></div>
     <div class="prow-side"><b>${meur(p.gage)}</b><span class="status"><i style="background:${st.color}"></i>${esc(st.label)}</span>${st.k === "rival" ? `<span class="muted">Ablöse ${meur(abloese(p))}</span>` : ""}</div>
     <div class="prow-act">${action(p, st)}</div></div>`;
@@ -2943,10 +3155,10 @@ document.addEventListener("click", e => {
   if (p && G) { go(p.dataset.page); return; }
   const b = e.target.closest("[data-act]");
   if (b && !b.disabled) { act(b); return; }
-  const stn = e.target.closest("[data-station]");
-  if (stn && G) { openStation(stn.dataset.station); return; }
-  const smr = e.target.closest("[data-streamer]");
-  if (smr && G) openStreamer(smr.dataset.streamer);
+  for (const [attr, type] of [["data-person", "person"], ["data-title", "title"], ["data-station", "station"], ["data-streamer", "streamer"]]) {
+    const el = e.target.closest(`[${attr}]`);
+    if (el && G) { if ($("modal").hidden) profStack = []; openProfile(type, el.getAttribute(attr)); return; }
+  }
 });
 document.addEventListener("input", e => {
   if (e.target.id === "dirSearch") { dirQuery = e.target.value; dirLimit = 40; renderDirectory(); return; }
@@ -3161,7 +3373,7 @@ function umfang(p) {
 function progTable(list, extra, head = "") {
   if (!list.length) return `<div class="pad"><p class="lead">Keine Programme vorhanden.</p></div>`;
   return `<div class="tbl"><table><thead><tr><th>Titel</th><th>Genre</th><th class="num">Qual.</th><th>Aktualität</th><th>Umfang</th><th>Beste Zeit</th><th class="num">${head}</th></tr></thead><tbody>
-    ${list.map(p => `<tr><td class="title">${esc(p.title)} ${p.fsk >= 16 ? `<span class="chip fsk">FSK ${p.fsk}</span>` : p.fsk ? `<span class="chip">FSK ${p.fsk}</span>` : ""}${p.own ? ' <span class="chip good">Eigenproduktion</span>' : p.home ? ' <span class="chip real">Eigenformat</span>' : p.kind === "serie" ? ' <span class="chip real">Serienlizenz</span>' : ""}${G.stream && G.stream.catalog.some(c => c.id === p.id) ? ' <span class="chip good">im Stream</span>' : ""}${DESC[p.title] ? `<div class="muted desc">${esc(DESC[p.title])}</div>` : ""}</td><td>${esc(p.genre)}</td><td class="num">${attr(p.q)}</td>
+    ${list.map(p => `<tr><td class="title">${titleLink(G.market.includes(p) ? `m|${p.id}` : `${me().id}|${p.id}`, p.title)} ${p.fsk >= 16 ? `<span class="chip fsk">FSK ${p.fsk}</span>` : p.fsk ? `<span class="chip">FSK ${p.fsk}</span>` : ""}${p.own ? ' <span class="chip good">Eigenproduktion</span>' : p.home ? ' <span class="chip real">Eigenformat</span>' : p.kind === "serie" ? ' <span class="chip real">Serienlizenz</span>' : ""}${G.stream && G.stream.catalog.some(c => c.id === p.id) ? ' <span class="chip good">im Stream</span>' : ""}${DESC[p.title] ? `<div class="muted desc">${esc(DESC[p.title])}</div>` : ""}</td><td>${esc(p.genre)}</td><td class="num">${attr(p.q)}</td>
       <td><span class="mbar"><i style="width:${Math.round(p.topic * 100)}%"></i></span> <span class="muted">${Math.round(p.topic * 100)} %</span></td>
       <td class="muted">${umfang(p)}</td><td class="muted">${GENRES[p.genre].length > 6 ? "live" : GENRES[p.genre].map(h => h).join("/") + " Uhr"}</td><td class="num">${extra(p)}</td></tr>`).join("")}
   </tbody></table></div>`;
@@ -3184,7 +3396,7 @@ function eveningTimeline(P, wd, sc, isToday, lock, d) {
   const rivals = G.stations.filter(s => !isMe(s)).sort((a, b) => b.base - a.base).slice(0, 6).map(st => {
     const c = (isToday ? st.sched : st.week[wd])[spyH], p = c && c.p && progOf(st, c.p);
     const risk = !p ? ["Kein Programm", "muted"] : p.q >= 85 ? ["Hype-Gegner", "down"] : mine && p.q > mine.q ? ["Stärker als Ihr Programm", "down"] : mine ? ["Schwächer als Ihr Programm", "up"] : ["Gegenprogramm", "muted"];
-    return `<tr><td>${sname(st.i)}</td><td class="title">${p ? esc(p.title) : "–"}${p ? `<div class="muted">${esc(p.genre)}</div>` : ""}</td><td class="num">${p ? attr(p.q) : ""}</td><td class="${risk[1]}">${risk[0]}</td></tr>`;
+    return `<tr><td>${sname(st.i)}</td><td class="title">${p ? titleLink(`${st.id}|${p.id}`, p.title) : "–"}${p ? `<div class="muted">${esc(p.genre)}</div>` : ""}</td><td class="num">${p ? attr(p.q) : ""}</td><td class="${risk[1]}">${risk[0]}</td></tr>`;
   }).join("");
   return `<section class="panel mb"><div class="ph"><h2>Abend-Zeitleiste · ${dateLabel(d)}</h2><span class="aside">Sendeplatz antippen für den Konkurrenz-Check</span></div>
     <div class="tl">${ZONES.map(([n, t, hs]) => `<div class="tl-zone ${n === "Primetime" ? "prime" : ""}"><div class="tl-head"><b>${n}</b><span>${t}</span></div>${hs.map(slot).join("")}</div>`).join("")}</div>
@@ -3578,15 +3790,20 @@ function act(b) {
   if (k === "choose") { showChoose(); return; }
   if (k === "back") { showStart(); return; }
   if (k === "editor") { showEditor(); return; }
+  if (k === "edCodes") { exportCodes(); return; }
   if (["edClose", "edRole", "edPick", "edNew", "edSave", "edDelete", "edClearTitles", "edClearPeople"].includes(k)) { edAct(k, b); return; }
   if (k === "pickStation") { closeModal(); hist = []; fut = []; planDay = null; newGame(b.dataset.k); go("overview", true); return; }
-  if (k === "load") { if (load()) { closeModal(); hist = []; fut = []; planDay = null; startDay(); go("overview", true); } return; }
+  if (k === "load") { load().then(ok => { if (ok) { closeModal(); hist = []; fut = []; planDay = null; startDay(); go("overview", true); } else toast("Spielstand konnte nicht geladen werden."); }); return; }
   if (!G) return;
   const P = me();
   const id = b.dataset.id ? +b.dataset.id : null, i = b.dataset.i !== undefined && b.dataset.i !== "undefined" ? +b.dataset.i : null;
   const wd = b.dataset.k !== undefined ? +b.dataset.k : null;
   switch (k) {
-    case "close": closeModal(); return;
+    case "close": profStack = []; closeModal(); return;
+    case "profBack": profStack.pop(); profTab = "overview"; renderProfile(); return;
+    case "profTab": profTab = b.dataset.k; renderProfile(); return;
+    case "stProg": openProfile("sched", b.dataset.k); return;
+    case "copyCode": try { navigator.clipboard.writeText(b.dataset.k); toast(`Code ${b.dataset.k} kopiert – Foto als ${b.dataset.k}.jpg speichern.`); } catch (e) { toast(b.dataset.k); } return;
     case "planWith": if (!planLocked()) planWith(b.dataset.k); return;
     case "progCut": case "progBoost": { const p = P.progs.find(x => x.id === id); if (p && p.epCost && !planLocked()) progCost(P, p, k === "progCut" ? 0.7 : 1.3, k === "progCut" ? -6 : 4); break; }
     case "progSwap": { if (planLocked()) return; openDirectory(b.dataset.k, "swap"); dirCtx.pid = id; return; }
@@ -3651,7 +3868,7 @@ function act(b) {
     case "negoClause": { const c = b.dataset.k; nego.clauses = nego.clauses.includes(c) ? nego.clauses.filter(x => x !== c) : nego.clauses.concat(c); renderNego(); return; }
     case "negoSubmit": negoSubmit(); return;
     case "negoCancel": nego = null; closeModal(); render(); return;
-    case "negoPoach": { const p = person(nego.id), fee = abloese(p); if (P.money < fee || planLocked()) return; const old = holderName(p.holder); book(P, "Redaktion & Gagen", -fee); p.holder = null; p.until = 0; p.ct = null;
+    case "negoPoach": { const p = person(nego.id), fee = abloese(p); if (P.money < fee || planLocked()) return; unbind(p); const old = holderName(p.holder); book(P, "Redaktion & Gagen", -fee); p.holder = null; p.until = 0; p.ct = null;
       logMsg("Branchendienst", "Konkurrenz", `${P.name} zahlt ${meur(fee)} Ablöse an ${old} für ${p.name} – jetzt beginnt der Gagen-Poker.`, true); renderNego(); return; }
     case "decide": decide(+b.dataset.k); return;
     case "stream": if (G.stream && G.stream.stage >= 2) { addToStream(id, b.dataset.k); toast(b.dataset.k === "excl" ? "Titel läuft jetzt exklusiv im Stream." : "Titel zum Katalog hinzugefügt."); } break;
@@ -3724,10 +3941,10 @@ function openStation(id) {
   const stars = G.people.filter(p => p.holder === st.id).sort((a, b) => b.gage - a.gage);
   const top = st.progs.filter(p => !p.filler && p.kind !== "sport").sort((a, b) => b.q - a.q).slice(0, 10);
   const avg = st.maDays ? st.maSum / st.maDays : st.base;
-  const prime = WEEK.map(wd => { const sc = isMe(st) ? schedFor(st, G.day + ((wd - weekday(G.day) + 7) % 7)) : st.week[wd]; const ps = [20, 21].map(h => sc[h] && sc[h].p && !sc[h].cont && progOf(st, sc[h].p)).filter(Boolean); return `<tr><td>${WDL[wd]}</td><td class="title">${ps.length ? ps.map(p => `${esc(p.title)} <span class="muted">${esc(p.genre)}</span>`).join("<br>") : "–"}</td><td class="num">${ps.length ? attr(Math.max(...ps.map(p => p.q))) : ""}</td></tr>`; }).join("");
+  const prime = WEEK.map(wd => { const sc = isMe(st) ? schedFor(st, G.day + ((wd - weekday(G.day) + 7) % 7)) : st.week[wd]; const ps = [20, 21].map(h => sc[h] && sc[h].p && !sc[h].cont && progOf(st, sc[h].p)).filter(Boolean); return `<tr><td>${WDL[wd]}</td><td class="title">${ps.length ? ps.map(p => `${titleLink(`${st.id}|${p.id}`, p.title)} <span class="muted">${esc(p.genre)}</span>`).join("<br>") : "–"}</td><td class="num">${ps.length ? attr(Math.max(...ps.map(p => p.q))) : ""}</td></tr>`; }).join("");
   const rights = G.rights.filter(r => r.owner === st.id || (r.next && r.next.owner === st.id));
   const sm = G.streamers.find(s => s.id === d.streamer), smDef = STREAMERS.find(s => s.id === d.streamer);
-  openModal(`<header>${crest(st.i, 34)}<h2>${esc(st.name)}${mine ? " · Ihr Sender" : ""}</h2><button class="btn" data-act="close">Schließen</button></header><div class="dbody">
+  openModal(`<header>${crest(st.i, 34)}<h2>${esc(st.name)}${mine ? " · Ihr Sender" : ""}</h2><button class="btn" data-act="stProg" data-k="${st.id}">Ganzes Programm</button><button class="btn" data-act="close">Schließen</button></header><div class="dbody">
     <div class="tiles">
       <div class="tile"><small>Marktanteil gestern</small><b>${st.maDays ? pct(st.dayMA) : "–"}</b><span>Ø Saison ${pct(avg)}</span></div>
       <div class="tile"><small>Typ</small><b>${st.type === "oer" ? "ÖRR" : "Privat"}</b><span>${esc(d.profile.join(", "))}</span></div>
@@ -3741,7 +3958,7 @@ function openStation(id) {
     </div>
     <section class="panel"><div class="ph"><h2>Stars</h2><span class="aside">${stars.length} Personen</span></div>${stars.length ? `<div class="plist">${stars.slice(0, 12).map(p => personRow(p, (q, s) => mine ? `<span class="chip good">bis ${dateShort(q.until)}</span>` : `<button class="btn small" data-act="nego" data-k="${q.id}" data-v="cast" ${planLocked() ? "disabled" : ""}>Abwerben · ${meur(abloese(q))}</button>`)).join("")}</div>` : '<p class="fine pad">Keine exklusiven Stars.</p>'}</section>
     <div class="grid two">
-      <section class="panel"><div class="ph"><h2>Programm-Highlights</h2></div><div class="tbl"><table><tbody>${top.map(p => `<tr><td class="title"><b>${esc(p.title)}</b>${DESC[p.title] ? `<div class="muted desc">${esc(DESC[p.title])}</div>` : ""}</td><td class="muted">${esc(p.genre)}</td><td class="num">${attr(p.q)}</td></tr>`).join("")}</tbody></table></div></section>
+      <section class="panel"><div class="ph"><h2>Programm-Highlights</h2></div><div class="tbl"><table><tbody>${top.map(p => `<tr><td class="title"><b>${titleLink(`${st.id}|${p.id}`, p.title)}</b>${DESC[p.title] ? `<div class="muted desc">${esc(DESC[p.title])}</div>` : ""}</td><td class="muted">${esc(p.genre)}</td><td class="num">${attr(p.q)}</td></tr>`).join("")}</tbody></table></div></section>
       <section class="panel"><div class="ph"><h2>Sportrechte</h2></div>${rights.length ? `<div class="tbl"><table><tbody>${rights.map(r => `<tr><td class="title">${esc(RDEF(r.id).name)}</td><td class="num muted">${r.owner === st.id ? `bis ${dateShort(G.day + r.days)}` : `ab ${dateShort(G.day + r.days)}`}</td></tr>`).join("")}</tbody></table></div>` : '<p class="fine pad">Keine Sportrechte.</p>'}</section>
     </div>
     <section class="panel"><div class="ph"><h2>Aktuelle Meldungen</h2></div>${newsList(stationNews(st.name))}</section>
@@ -3758,7 +3975,7 @@ function openStreamer(id) {
       <div class="tile"><small>Modell</small><b style="font-size:18px">${esc(s.model)}</b><span>${s.price ? `${eur(s.price).replace(" €", "")} € / Monat` : "kostenlos"}</span></div>
       <div class="tile"><small>Gehört zu</small><b style="font-size:18px">${owners.length ? esc(owners.join(", ")) : "eigenständig"}</b><span>${owners.length ? "Senderfamilie" : "internationaler Anbieter"}</span></div>
     </div>
-    <section class="panel"><div class="ph"><h2>Aushängeschilder</h2></div><div class="tbl"><table><tbody>${s.hits.map(h => `<tr><td class="title"><b>${esc(h)}</b>${DESC[h] ? `<div class="muted desc">${esc(DESC[h])}</div>` : ""}</td></tr>`).join("")}</tbody></table></div></section>
+    <section class="panel"><div class="ph"><h2>Aushängeschilder</h2></div><div class="tbl"><table><tbody>${s.hits.map((h, k) => `<tr><td class="title"><b>${titleLink(`@${s.id}|${k}`, h)}</b>${DESC[h] ? `<div class="muted desc">${esc(DESC[h])}</div>` : ""}</td></tr>`).join("")}</tbody></table></div></section>
     ${rights.length ? `<section class="panel"><div class="ph"><h2>Sportrechte</h2></div><div class="tbl"><table><tbody>${rights.map(r => `<tr><td class="title">${esc(RDEF(r.id).name)}</td><td class="muted">${r.pay ? "Gesamtpaket (Pay-TV)" : "Österreich & Schweiz"}</td><td class="num muted">bis ${dateShort(G.day + r.days)}</td></tr>`).join("")}</tbody></table></div></section>` : ""}
     <section class="panel"><div class="ph"><h2>Aktuelle Meldungen</h2></div>${newsList(stationNews(s.name.split(" ")[0]))}</section>
   </div>`);
@@ -3792,7 +4009,7 @@ function planWith(id) {
 function ensemblePanel(P) {
   const list = G.people.filter(p => p.holder === P.id).sort((a, b) => b.gage - a.gage);
   return `<section class="panel mb"><div class="ph"><h2>Ihr Ensemble</h2><span class="aside">${list.length} Stars unter Vertrag · ${eur(list.reduce((a, p) => a + (p.ct ? p.ct.wk : p.gage * 0.35), 0))} pro Woche</span></div>
-    ${list.length ? `<div class="ens">${list.map(p => { const st = pState(p); return `<div class="ens-card">${avatar(p, 48)}<div class="grow"><b>${esc(p.name)}</b><span class="muted">${SPEC_NAME[p.role]} · ${esc(p.trait)}</span>
+    ${list.length ? `<div class="ens">${list.map(p => { const st = pState(p); return `<div class="ens-card">${avatar(p, 48)}<div class="grow"><b class="plink" data-person="${p.id}">${esc(p.name)}</b><span class="muted">${SPEC_NAME[p.role]} · ${esc(p.trait)}</span>
       <span class="muted">Talent ${p.talent} · Charisma ${p.buzz} · bis ${dateShort(p.until)}</span>${p.ct && p.ct.clauses.length ? `<span class="chip real" style="justify-self:start">${p.ct.clauses.map(k => CLAUSES[k].name).join(" · ")}</span>` : ""}</div>
       <div class="act2"><button class="btn hot small" data-act="planWith" data-k="${p.id}" ${planLocked() || st.k === "busy" ? "disabled" : ""}>${p.role === "Nachrichten" ? "Als Anchor" : st.k === "busy" ? "Im Dreh" : "Projekt planen"}</button><button class="btn small" data-act="nego" data-k="${p.id}" data-v="cast" ${planLocked() ? "disabled" : ""}>Verlängern</button></div></div>`; }).join("")}</div>`
       : '<p class="fine pad">Noch keine eigenen Stars. Verpflichten Sie Personen über die Casting-Kartei.</p>'}</section>`;
@@ -3941,7 +4158,7 @@ function switchStation(id) {
 // Editor & Datenimport (Hauptmenü): eigene Darsteller-Tabellen und TMDb-Titellisten
 // Alles bleibt lokal im Browser. Abgleich per Upsert über „eindeutige_id“ – keine Duplikate.
 // =====================================================================
-const DB_KEY = "quotenturm-db-v1", TITLE_KEY = "quotenturm-titles-v1", TITLE_MAX = 5000;
+const DB_KEY = "quotenturm-db-v1", TITLE_KEY = "quotenturm-titles-v1", TITLE_MAX = 20000;
 const ROLE_ALIASES = { schauspiel: "Schauspiel", schauspieler: "Schauspiel", schauspielerin: "Schauspiel", actor: "Schauspiel", moderation: "Moderation", moderator: "Moderation", moderatorin: "Moderation", entertainer: "Moderation", host: "Moderation",
   reality: "Reality", nachrichten: "Nachrichten", nachrichtensprecher: "Nachrichten", nachrichtensprecherin: "Nachrichten", news: "Nachrichten", journalismus: "Journalismus", journalist: "Journalismus", journalistin: "Journalismus" };
 const TMDB_GENRES = { crime: "Krimi", mystery: "Krimi", krimi: "Krimi", comedy: "Komödie", family: "Komödie", animation: "Komödie", komödie: "Komödie", drama: "Drama", history: "Drama", romance: "Liebesfilm", liebesfilm: "Liebesfilm",
@@ -3962,8 +4179,8 @@ function loadTitles() {
   if (!Array.isArray(TITLES)) TITLES = [];
   return TITLES;
 }
-function storeDB() { try { localStorage.setItem(DB_KEY, JSON.stringify(EDB)); return true; } catch (e) { return false; } }
-function storeTitles() { try { localStorage.setItem(TITLE_KEY, JSON.stringify(TITLES)); return true; } catch (e) { return false; } }
+function storeDB() { if (IDB.db) { idbSet(DB_KEY, EDB).catch(() => {}); return true; } try { localStorage.setItem(DB_KEY, JSON.stringify(EDB)); return true; } catch (e) { return false; } }
+function storeTitles() { if (IDB.db) { idbSet(TITLE_KEY, TITLES).catch(() => {}); return true; } try { localStorage.setItem(TITLE_KEY, JSON.stringify(TITLES)); return true; } catch (e) { return false; } }
 // Upsert: vorhandene IDs werden aktualisiert, nur unbekannte angehängt (auch Doppelte innerhalb einer Datei fallen zusammen)
 function upsert(list, rows, key) {
   const idx = new Map(list.map((r, k) => [r[key], k]));
@@ -3991,6 +4208,7 @@ function parseCSV(text) {
   return rows.filter(r => r.some(c => c.trim())).map(r => Object.fromEntries(head.map((h, k) => [h, (r[k] || "").trim()])));
 }
 function parseFile(text, name) {
+  text = String(text).replace(/^\ufeff/, ""); // Excel-CSV mit BOM
   if (/\.json$/i.test(name) || /^\s*[[{]/.test(text)) {
     const j = JSON.parse(text);
     return Array.isArray(j) ? j : j.people || j.darsteller || j.results || j.titles || [];
@@ -4041,16 +4259,34 @@ function seedImportedTitles() {
 // Eigene Darsteller-Tabelle per Upsert in die Casting-Kartei des Spiels schreiben (Spielstart und Laden)
 function applyEditorPeople() {
   const D = loadDB(); if (!D.people.length || !G || !G.people) return;
-  const rows = D.people.map(e => {
-    const old = G.people.find(p => p.id === "x_" + e.eindeutige_id);
-    return Object.assign(old ? {} : { genres: e.rolle === "Schauspiel" ? ["Drama", "Krimi"] : e.rolle === "Moderation" ? ["Show"] : e.rolle === "Reality" ? ["Reality"] : e.rolle === "Nachrichten" ? ["Nachrichten"] : ["Doku"],
-      trait: pick(TRAITS[e.rolle]), lean: 0, holder: null, until: 0, busy: 0, ban: 0 },
-      { id: "x_" + e.eindeutige_id, name: e.name, role: e.rolle, talent: e.talent, buzz: e.charisma, rel: 110 - e.skandal, gage: e.gage, custom: true });
-  });
-  upsert(G.people, rows, "id");
+  const idx = new Map(G.people.map(p => [p.id, p]));
+  for (const e of D.people) {
+    const id = "x_" + e.eindeutige_id, old = idx.get(id);
+    const p = old || { genres: e.rolle === "Schauspiel" ? ["Drama", "Krimi"] : e.rolle === "Moderation" ? ["Show"] : e.rolle === "Reality" ? ["Reality"] : e.rolle === "Nachrichten" ? ["Nachrichten"] : ["Doku"],
+      trait: e.ruhestand ? "Im Ruhestand" : pick(TRAITS[e.rolle]), lean: 0, holder: null, until: 0, busy: 0, ban: 0 };
+    Object.assign(p, { id, code: e.eindeutige_id, name: e.name, role: e.rolle, talent: e.talent, buzz: e.charisma, rel: 110 - e.skandal, gage: e.gage, custom: true,
+      age: e.alter || p.age, origin: e.herkunft || p.origin, langs: e.sprachen || p.langs, known: e.bekannt_aus || p.known, knownAt: e.sender || p.knownAt });
+    if (e.bekanntheit) { p.fame = e.bekanntheit; p.pop = p.pop || clamp(Math.round(e.bekanntheit * 0.8 + 10), 5, 100); }
+    ensurePerson(p);
+    if (!old) { G.people.push(p); idx.set(id, p); }
+  }
+  KNOWN = null;
 }
-function readUpload(input, kind) {
-  const f = input.files && input.files[0]; if (!f) return;
+async function readUpload(input, kind) {
+  const files = [...(input.files || [])], f = files[0]; if (!f) return;
+  if (kind === "photos") { const r = await bulkPhotos(files); edMsg = [`${r.ok} Fotos zugeordnet${r.miss.length ? `, ${r.miss.length} ohne passenden Code (z. B. ${r.miss.slice(0, 3).join(", ")})` : ""}.`, r.ok ? "good" : "bad"]; renderEditor(); if (G) render(); return; }
+  if (kind === "imdb") {
+    edMsg = ["IMDb-Import läuft … das kann bei den großen Dateien einige Minuten dauern.", "warn"]; renderEditor();
+    try { const r = await importIMDb(files, TITLE_MAX, m => { edMsg = [`IMDb-Import läuft … ${m}`, "warn"]; renderEditor(); }); edMsg = [`IMDb-Import fertig: ${r.add} neue, ${r.upd} aktualisierte Titel. Im Speicher: ${r.total.toLocaleString("de-DE")} Titel. Sie erscheinen in neuen Spielen bei der Konkurrenz und im Programmhandel.`, "good"]; }
+    catch (e) { edMsg = [`IMDb-Import fehlgeschlagen: ${e.message}`, "bad"]; }
+    renderEditor(); return;
+  }
+  if (kind === "people") {
+    edMsg = [`Lese „${f.name}“ …`, "warn"]; renderEditor();
+    try { const r = await importPeopleFile(f); edMsg = [`Import „${f.name}“: ${r.rows.toLocaleString("de-DE")} Zeilen, ${r.add} neu, ${r.upd} aktualisiert, ${r.dup} doppelte Namen zusammengeführt, bei ${r.gen} generierten Einträgen die erfundenen Mitwirkungen verworfen${r.bad ? `, ${r.bad} ohne ID/Name übersprungen` : ""}. Codes beginnen mit ${r.prefix}. Upsert, keine Duplikate.${r.prefix === "INT-" ? " Bereinigt: unplausibler Ruhestand korrigiert, zufällige Serienzuordnungen nicht übernommen." : ""}`, "good"]; if (G) { applyEditorPeople(); linkImported(); } }
+    catch (e) { edMsg = [`Import fehlgeschlagen: ${e.message}`, "bad"]; }
+    renderEditor(); return;
+  }
   if (f.size > 60e6) { edMsg = ["Datei ist größer als 60 MB.", "bad"]; renderEditor(); return; }
   const rd = new FileReader();
   rd.onload = () => {
@@ -4083,8 +4319,11 @@ function renderEditor() {
   const d = $("dialog"); d.className = "dialog wide"; $("modal").hidden = false;
   d.innerHTML = `<header><h2>Editor & Datenimport</h2><button class="btn" data-act="edClose">Schließen</button></header><div class="dbody">
     <div class="ed-bar">
-      <label class="btn hot">Darsteller-Tabelle hochladen<input type="file" accept=".csv,.json,text/csv,application/json" data-upload="people" hidden></label>
-      <label class="btn">Filme & Serien (TMDb) hochladen<input type="file" accept=".csv,.json,text/csv,application/json" data-upload="titles" hidden></label>
+      <label class="btn hot">Personen-Tabelle (Excel/CSV/JSON)<input type="file" accept=".xlsx,.xls,.csv,.json" data-upload="people" hidden></label>
+      <label class="btn">Fotos (Dateiname = Code)<input type="file" accept="image/*" multiple data-upload="photos" hidden></label>
+      <label class="btn">Filme & Serien (TMDb)<input type="file" accept=".csv,.json,text/csv,application/json" data-upload="titles" hidden></label>
+      <label class="btn">IMDb-Dateien<input type="file" accept=".tsv,.gz" multiple data-upload="imdb" hidden></label>
+      <button class="btn" data-act="edCodes">Codeliste (CSV)</button>
       <button class="btn" data-act="edNew">Neuer Eintrag</button>
       <span class="chip good">Duplikat-Check aktiv · Upsert über eindeutige_id</span>
       <span class="muted">${D.people.length} eigene Personen · ${T.length.toLocaleString("de-DE")} Titel</span>
@@ -4149,6 +4388,10 @@ function edAct(k, b) {
   if (k === "edClearPeople") { D.people = []; edSel = null; storeDB(); edMsg = ["Eigene Personen gelöscht.", "good"]; }
   renderEditor();
 }
+document.addEventListener("change", async e => {
+  const ph = e.target.dataset && e.target.dataset.photo;
+  if (ph && e.target.files && e.target.files[0]) { if (await savePhoto(ph, e.target.files[0])) { toast("Foto gespeichert."); renderProfile(); render(); } return; }
+});
 document.addEventListener("change", e => { const u = e.target.dataset && e.target.dataset.upload; if (u) readUpload(e.target, u); else if (e.target.dataset && e.target.dataset.ed) edUpdateField(e.target); });
 document.addEventListener("input", e => {
   if (e.target.id === "edSearch") { edQuery = e.target.value; const pos = e.target.selectionStart; renderEditor(); const s = $("edSearch"); s.focus(); s.setSelectionRange(pos, pos); return; }
@@ -4156,23 +4399,314 @@ document.addEventListener("input", e => {
 });
 
 // =====================================================================
+// Klickpfad wie im Fußball-Manager: Sender → Sendung → Mitwirkende → Personenprofil
+// =====================================================================
+let profStack = [], profTab = "overview";
+function openProfile(type, id) {
+  profStack.push([type, id]); profTab = "overview";
+  renderProfile();
+}
+function renderProfile() {
+  const top = profStack[profStack.length - 1];
+  if (!top) { closeModal(); return; }
+  const [type, id] = top;
+  ({ station: openStation, streamer: openStreamer, title: openTitle, person: openPerson, sched: openSched })[type](id);
+  // Kopfzeile: Zurück-Knopf, solange es einen vorherigen Eintrag gibt
+  const h = document.querySelector("#dialog > header");
+  if (h && profStack.length > 1 && !h.querySelector("[data-act=profBack]")) h.insertAdjacentHTML("afterbegin", '<button class="btn" data-act="profBack" aria-label="Zurück">‹</button>');
+}
+// Tagesprogramm eines Senders 0–24 Uhr mit Besetzung
+function openSched(id) {
+  const st = G.stations[SIDX[id]], sc = isMe(st) ? st.sched : st.sched && st.sched.length ? st.sched : st.week[weekday(G.day)];
+  openModal(`<header>${crest(st.i, 30)}<h2>${esc(st.name)} · Programm heute</h2><button class="btn" data-act="close">Schließen</button></header><div class="dbody"><div class="tbl"><table><thead><tr><th>Zeit</th><th>Sendung</th><th>Mitwirkende</th><th class="num">Qual.</th></tr></thead><tbody>
+    ${sc.map((c, i) => { const p = c.p && progOf(st, c.p); if (!p || c.cont) return ""; const cast = titleCast(p, p.title).slice(0, 3); return `<tr class="${i === 20 || i === 21 ? "mine" : ""}"><td>${hh(i)}</td><td class="title">${titleLink(`${st.id}|${p.id}`, p.title)}<div class="muted">${esc(p.genre)}</div></td><td class="title">${cast.map(x => personLink(person(x.id))).join(", ") || '<span class="muted">–</span>'}</td><td class="num">${attr(p.q)}</td></tr>`; }).join("")}
+  </tbody></table></div></div>`);
+}
+const titleLink = (key, t) => `<span class="tlink" data-title="${esc(key)}">${esc(t)}</span>`;
+const personLink = p => `<span class="plink" data-person="${p.id}">${esc(p.name)}</span>`;
+function resolveTitle(key) {
+  const [owner, ref] = key.split("|");
+  if (owner.startsWith("@")) { const s = STREAMERS.find(x => x.id === owner.slice(1)); return { title: s.hits[+ref], ownerName: s.name, owner: owner.slice(1), prog: null, streamer: true }; }
+  if (owner === "m") { const p = G.market.find(x => String(x.id) === ref); return p ? { title: p.title, ownerName: "Programmhandel", prog: p } : null; }
+  const st = G.stations[SIDX[owner]]; const p = st && st.progs.find(x => String(x.id) === ref);
+  return p ? { title: p.title, ownerName: st.name, owner, prog: p, st } : null;
+}
+function openTitle(key) {
+  const t = resolveTitle(key);
+  if (!t) { toast("Dieser Titel ist nicht mehr im Programm."); profStack.pop(); renderProfile(); return; }
+  const p = t.prog, cast = titleCast(p, t.title);
+  const kindName = p ? ({ film: "Spielfilm", serie: "Serie", show: p.genre === "Nachrichten" ? "Nachrichtensendung" : "Format", sport: "Live-Sport" }[p.kind] || "Sendung") : "Streaming-Titel";
+  openModal(`<header><h2>${esc(t.title)}</h2><button class="btn" data-act="close">Schließen</button></header><div class="dbody">
+    <div class="ttl-head"><div class="grow"><span class="chip real">${kindName}</span>${p ? ` <span class="chip">${esc(p.genre)}</span>` : ""}${p && p.own ? ' <span class="chip good">Eigenproduktion</span>' : p && p.home ? ' <span class="chip real">Eigenformat</span>' : ""}
+      <p class="lead" style="margin-top:8px">${esc(DESC[t.title] || (p && p.own ? "Eigenproduktion des Senders." : "Keine Beschreibung vorhanden."))}</p></div>
+      <div class="ttl-side"><small>Läuft bei</small><b>${t.owner && SIDX[t.owner] !== undefined ? sname(SIDX[t.owner]) : t.streamer ? sbadge(t.owner, 18) : esc(t.ownerName)}</b></div></div>
+    ${p ? `<div class="tiles">
+      <div class="tile"><small>Qualität</small><b>${p.q}</b><span>${stars5(p.q)}</span></div>
+      <div class="tile"><small>Bester Marktanteil</small><b>${p.bestMA ? pct(p.bestMA) : "–"}</b><span>${p.aired ? `${p.aired}× gesendet` : "noch nicht gesendet"}</span></div>
+      <div class="tile"><small>Umfang</small><b style="font-size:18px">${p.kind === "serie" ? `${p.eps} Folgen` : p.kind === "film" ? `${p.len} Std.` : "Dauerformat"}</b><span>${p.until ? `Lizenz bis ${dateShort(p.until)}` : p.home || p.own ? "eigene Rechte" : ""}</span></div>
+      ${p.fsk ? `<div class="tile"><small>Freigabe</small><b>FSK ${p.fsk}</b><span>${p.fsk >= 16 ? "ab 22 Uhr" : "jederzeit"}</span></div>` : ""}
+    </div>` : ""}
+    <section class="panel"><div class="ph"><h2>Mitwirkende</h2><span class="aside">${cast.length} Personen</span></div>
+      ${cast.length ? `<div class="tbl"><table><thead><tr><th></th><th>Name</th><th>Rolle</th><th>Bekanntheit</th><th>Vertrag</th></tr></thead><tbody>${cast.map(c => { const q = ensurePerson(person(c.id)); const st = pState(q); return `<tr><td>${avatar(q, 34)}</td><td class="title">${personLink(q)}<div class="muted">${SPEC_NAME[q.role]}${q.age ? ` · ${q.age} J.` : ""} · ${q.origin}</div></td><td>${esc(c.role)}</td><td class="stars5">${stars5(q.fame)}</td><td><span class="status"><i style="background:${st.color}"></i>${esc(st.label)}</span></td></tr>`; }).join("")}</tbody></table></div>`
+        : `<p class="fine pad">Keine Besetzungsdaten. Personen mit „Bekannt aus: ${esc(t.title)}“ lassen sich im Editor importieren – sie erscheinen dann automatisch hier.</p>`}</section>
+  </div>`);
+}
+function attrCol(title, rows) {
+  return `<section class="acol"><h3>${title}</h3>${rows.map(([l, v, bad]) => `<div class="arow ${v >= 16 ? "hi" : ""}"><span>${l}</span><b class="${bad ? (v >= 14 ? "down" : "") : v >= 15 ? "up" : v <= 6 ? "down" : ""}">${v}</b></div>`).join("")}</section>`;
+}
+function openPerson(id) {
+  const p = ensurePerson(person(id)); if (!p) return;
+  const st = pState(p), P = me(), mine = p.holder === P.id;
+  const showProg = p.show && G.stations.flatMap(s => s.progs.map(x => [s, x])).find(([, x]) => x.id === p.show);
+  const mv = p.gage * 1.5, photo = PHOTO.get(p.code);
+  const tabs = [["overview", "Übersicht"], ["vita", "Vita"], ["contract", "Vertrag"]];
+  let body = "";
+  if (profTab === "overview") body = `<div class="acols">
+    ${attrCol("Können", [["Talent", attr20(p.talent)], ["Charisma", attr20(p.buzz)], ["Ausstrahlung", attr20((p.buzz + p.fame) / 2)], ["Zuverlässigkeit", attr20(p.rel)], ["Skandalfaktor", attr20(110 - p.rel), true]])}
+    ${attrCol("Markt", [["Bekanntheit", attr20(p.fame)], ["Beliebtheit", attr20(p.pop)], ["Werbewert", attr20((p.fame + p.pop) / 2)], ["Social Media", attr20(p.buzz * 0.7 + (p.age && p.age < 35 ? 30 : 5))]])}
+    <section class="acol acol-info"><h3>Info</h3>
+      <div class="irow"><small>Herkunft</small><b>${esc(p.origin)}</b></div><div class="irow"><small>Sprachen</small><b>${esc(p.langs)}</b></div>
+      <div class="irow"><small>Fach</small><b>${esc((p.genres || []).join(", ") || SPEC_NAME[p.role])}</b></div><div class="irow"><small>Eigenschaft</small><b>${esc(p.trait || "–")}</b></div>
+      ${p.role === "Nachrichten" ? `<div class="irow"><small>Haltung</small><b>${LINES[p.lean + 2]}</b></div>` : ""}
+      <div class="irow"><small>Sonderwunsch</small><b>${pClause(p) ? CLAUSES[pClause(p)].name : "keiner"}</b></div></section></div>`;
+  if (profTab === "vita") { const v = computeVita(p); body = v.length ? `<div class="tbl"><table><thead><tr><th>Zeitraum</th><th>Titel</th><th>Sender</th><th>Funktion</th></tr></thead><tbody>${v.map(x => `<tr class="${x.cur ? "mine" : ""}"><td>${esc(x.y)}</td><td class="title">${esc(x.t)}</td><td class="muted">${esc(x.s)}</td><td>${esc(x.r)}</td></tr>`).join("")}</tbody></table></div>` : '<p class="fine">Noch keine Stationen bekannt.</p>'; }
+  if (profTab === "contract") body = `<div class="slist">
+      <div class="srow"><b>Status</b><em style="font-size:15px">${esc(st.label)}</em><span>${p.holder ? `gebunden an ${esc(holderLabel(p.holder))}` : "kann frei verhandelt werden"}</span></div>
+      ${showProg ? `<div class="srow"><b>Sendung</b><em style="font-size:15px">${titleLink(`${showProg[0].id}|${showProg[1].id}`, showProg[1].title)}</em><span>Vertrag bis ${dateShort(p.until)}</span></div>` : ""}
+      <div class="srow"><b>Gage</b><em>${meur(p.gage)}</em><span>pro Produktion · Exklusiv ca. ${eur(r1000(p.gage * 0.35))} / Woche</span></div>
+      ${st.k === "rival" ? `<div class="srow"><b>Ablöse</b><em>${meur(abloese(p))}</em><span>steigt mit der Restlaufzeit</span></div>` : ""}
+      ${p.ct ? `<div class="srow"><b>Ihr Vertrag</b><em>${eur(p.ct.wk)}</em><span>pro Woche${p.ct.clauses.length ? " · " + p.ct.clauses.map(k => CLAUSES[k].name).join(", ") : ""}</span></div>` : ""}
+      <div class="srow"><b>Agentur</b><em style="font-size:15px">${moodText(pPat(p))[0]}</em><span>Stimmung bei Verhandlungen</span></div></div>`;
+  openModal(`<header><h2>Personenprofil</h2><button class="btn" data-act="close">Schließen</button></header><div class="dbody">
+    <div class="pp-head">
+      <div class="pp-photo">${photo ? `<img src="${photo}" alt="">` : avatar(p, 92)}</div>
+      <div class="pp-main"><h3>${esc(p.name)} <span class="muted pp-code" data-act="copyCode" data-k="${p.code}" title="Code für Fotos – zum Kopieren klicken">${esc(p.code)}</span></h3>
+        <div class="pp-tags"><span class="chip real">${SPEC_NAME[p.role]}</span><span class="chip">${p.origin}</span><span>${p.age ? `${p.age} Jahre` : "Alter unbekannt"}</span>${p.custom ? '<span class="chip warn">Eigene Datenbank</span>' : ""}</div>
+        <div class="pp-club">${p.holder && SIDX[p.holder] !== undefined ? sname(SIDX[p.holder]) : p.holder ? sbadge(p.holder, 16) : '<span class="muted">vertragsfrei</span>'}${showProg ? ` · ${titleLink(`${showProg[0].id}|${showProg[1].id}`, showProg[1].title)}` : ""}${p.holder ? ` <span class="muted">bis ${dateShort(p.until)}</span>` : ""}</div></div>
+      <div class="pp-val"><small>Marktwert</small><b>${meur(mv * 0.8)} – ${meur(mv * 1.3)}</b><small>Gage ${meur(p.gage)}</small></div>
+      <div class="pp-ab"><div><small>Fähigkeit</small><span class="stars5">${stars5(p.talent)}</span></div><div><small>Potenzial</small><span class="stars5">${stars5(p.pot)}</span></div>
+        <div><small>Bekanntheit</small><span class="stars5">${stars5(p.fame)}</span></div><div><small>Beliebtheit</small><span class="stars5">${stars5(p.pop)}</span></div></div>
+    </div>
+    <div class="actions">
+      ${mine ? `<button class="btn hot" data-act="planWith" data-k="${p.id}" ${planLocked() ? "disabled" : ""}>${p.role === "Nachrichten" ? "Als Anchor einsetzen" : "Projekt planen"}</button><button class="btn" data-act="nego" data-k="${p.id}" data-v="cast">Vertrag verlängern</button>`
+        : st.k === "rival" ? `<button class="btn hot" data-act="nego" data-k="${p.id}" data-v="cast" ${planLocked() ? "disabled" : ""}>Abwerben · Ablöse ${meur(abloese(p))}</button>`
+        : st.k === "ban" ? `<button class="btn red" disabled>Gesperrt bis ${dateShort(p.ban)}</button>` : `<button class="btn hot" data-act="nego" data-k="${p.id}" data-v="cast" ${planLocked() ? "disabled" : ""}>Verhandeln</button>`}
+      <label class="btn">Foto hochladen<input type="file" accept="image/*" data-photo="${p.code}" hidden></label>
+    </div>
+    <div class="ptabs">${tabs.map(([k, n]) => `<button data-act="profTab" data-k="${k}" class="${profTab === k ? "on" : ""}">${n}</button>`).join("")}</div>
+    ${body}
+  </div>`);
+}
+// =====================================================================
+// Lokaler Speicher (IndexedDB): Spielstand, eigene Datenbank, Titel, Fotos
+// Fällt auf localStorage zurück, wenn IndexedDB nicht verfügbar ist. Nichts verlässt das Gerät.
+// =====================================================================
+const IDB = { db: null };
+const PHOTO = new Map(); // Personen-Code → Bild-URL
+function idbOpen() {
+  return new Promise(res => {
+    try {
+      const rq = indexedDB.open("quotenturm", 1);
+      rq.onupgradeneeded = () => { const db = rq.result; if (!db.objectStoreNames.contains("kv")) db.createObjectStore("kv"); if (!db.objectStoreNames.contains("photos")) db.createObjectStore("photos"); };
+      rq.onsuccess = () => res(IDB.db = rq.result);
+      rq.onerror = () => res(null);
+    } catch (e) { res(null); }
+  });
+}
+function idbReq(store, mode, fn) {
+  return new Promise((res, rej) => {
+    if (!IDB.db) { rej(new Error("IndexedDB nicht verfügbar")); return; }
+    try { const tx = IDB.db.transaction(store, mode), rq = fn(tx.objectStore(store)); tx.oncomplete = () => res(rq && rq.result); tx.onerror = () => rej(tx.error); } catch (e) { rej(e); }
+  });
+}
+const idbGet = (k, store = "kv") => idbReq(store, "readonly", s => s.get(k));
+const idbSet = (k, v, store = "kv") => idbReq(store, "readwrite", s => s.put(v, k));
+const idbDel = (k, store = "kv") => idbReq(store, "readwrite", s => s.delete(k));
+async function initStorage() {
+  await idbOpen();
+  if (!IDB.db) return;
+  try {
+    EDB = (await idbGet(DB_KEY)) || null; TITLES = (await idbGet(TITLE_KEY)) || null;
+    // Übernahme älterer Daten aus localStorage
+    if (!EDB) { loadDB(); if (EDB.people.length) await idbSet(DB_KEY, EDB); }
+    if (!TITLES) { loadTitles(); if (TITLES.length) await idbSet(TITLE_KEY, TITLES); }
+    const keys = await idbReq("photos", "readonly", s => s.getAllKeys()), blobs = await idbReq("photos", "readonly", s => s.getAll());
+    keys.forEach((k, i) => PHOTO.set(String(k), URL.createObjectURL(blobs[i])));
+  } catch (e) { /* ohne IndexedDB weiter mit localStorage */ }
+}
+async function savePhoto(code, file) {
+  if (!IDB.db) { toast("Fotos brauchen IndexedDB – in diesem Browser nicht verfügbar."); return false; }
+  await idbSet(code, file, "photos");
+  if (PHOTO.has(code)) URL.revokeObjectURL(PHOTO.get(code));
+  PHOTO.set(code, URL.createObjectURL(file));
+  return true;
+}
+// Sammel-Upload: Dateiname = Personen-Code (z. B. QT-00042.jpg oder MOD-0001.png)
+async function bulkPhotos(files) {
+  const codes = new Map();
+  for (const p of (G ? G.people : [])) codes.set(String(p.code).toLowerCase(), p.code);
+  for (const e of loadDB().people) codes.set(String(e.eindeutige_id).toLowerCase(), e.eindeutige_id);
+  let ok = 0, miss = [];
+  for (const f of files) {
+    const base = f.name.replace(/\.[a-z0-9]+$/i, "").trim().toLowerCase(), code = codes.get(base);
+    if (code && await savePhoto(code, f)) ok++; else miss.push(f.name);
+  }
+  return { ok, miss };
+}
+// Liste aller Codes als CSV (zum Benennen der Fotos)
+function exportCodes() {
+  const rows = [["code", "name", "rolle", "sender"]].concat((G ? G.people : []).map(p => [p.code, p.name, SPEC_NAME[p.role], p.holder ? holderLabel(p.holder) : ""]));
+  const csv = rows.map(r => r.map(x => `"${String(x).replace(/"/g, '""')}"`).join(";")).join("\n");
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" }));
+  a.download = "quotenturm_personen_codes.csv"; document.body.appendChild(a); a.click(); a.remove();
+}
+
+// ---------------------------------------------------------------------
+// Excel-Import (xlsx) über SheetJS – wird nur bei Bedarf geladen
+// ---------------------------------------------------------------------
+const XLSX_SRC = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";
+function loadXLSX() {
+  if (window.XLSX) return Promise.resolve(window.XLSX);
+  return new Promise((res, rej) => { const s = document.createElement("script"); s.src = XLSX_SRC; s.onload = () => res(window.XLSX); s.onerror = () => rej(new Error("Excel-Modul konnte nicht geladen werden (offline?). Alternativ als CSV speichern.")); document.head.appendChild(s); });
+}
+async function readSheetRows(file) {
+  const X = await loadXLSX();
+  const wb = X.read(await file.arrayBuffer(), { type: "array" });
+  return X.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: "" });
+}
+const starCount = v => { const s = String(v ?? ""); const n = (s.match(/[⭐★]/g) || []).length; return n || num(s, 0); };
+// Zeile aus den Personen-Tabellen (Moderatoren / Schauspieler DACH / International) in einen Editor-Eintrag umwandeln
+function rowToPerson(o, prefix, clean) {
+  const id = String(pickKey(o, ["eindeutige_id", "id"]) ?? "").trim(), name = String(pickKey(o, ["name"]) ?? "").trim().slice(0, 60);
+  if (!id || !name) return null;
+  const genre = String(pickKey(o, ["genre", "genre & inhalt"]) ?? ""), langs = String(pickKey(o, ["sprachkenntnisse", "sprachen"]) ?? "");
+  let role = ROLE_ALIASES[String(pickKey(o, ["rolle", "role"]) ?? "").toLowerCase()];
+  if (!role) role = /nachricht/i.test(genre) ? "Nachrichten" : /reality/i.test(genre) ? "Reality" : /doku|reportage/i.test(genre) ? "Journalismus" : langs ? "Schauspiel" : "Moderation";
+  const stars = starCount(pickKey(o, ["bekanntheitsgrad", "rating", "bekanntheit"]));
+  const fame = clamp(stars <= 5 ? stars * 19 : stars, 5, 100);
+  const r = seeded(hashStr(prefix + id));
+  let age = Math.round(num(pickKey(o, ["alter (2026)", "alter", "age"]), 0)) || null;
+  let status = String(pickKey(o, ["beschäftigungsstatus", "status"]) ?? "");
+  let known = String(pickKey(o, ["hauptformat / bekannt aus", "hauptformat", "bekannt aus", "bekannt_aus"]) ?? "").replace(/\*/g, "").trim();
+  const at = String(pickKey(o, ["primärer sender/plattform", "primäre plattform/studio", "sender", "plattform"]) ?? "").trim();
+  if (clean) {
+    if (age && (age < 16 || age > 95)) age = clamp(age, 16, 95);
+    if (/ruhestand/i.test(status) && age && age < 60) status = "Aktiv (Freischaffend)";
+    known = ""; // zufällige Zuordnungen zu echten Serien nicht übernehmen
+  }
+  const origin = String(pickKey(o, ["herkunft", "origin"]) ?? "").trim();
+  const talent = clamp(Math.round(fame * 0.65 + 15 + r() * 20), 10, 100), charisma = clamp(Math.round(fame * 0.7 + 10 + r() * 20), 10, 100);
+  return { eindeutige_id: prefix + id, name, rolle: role, talent, charisma, skandal: 35, gage: autoGage(talent, charisma), manual: false,
+    alter: age, herkunft: ({ Deutschland: "DE", Österreich: "AT", Schweiz: "CH" })[origin] || origin.slice(0, 12) || "DE", sprachen: langs.replace(/\s*\([^)]*\)/g, "").slice(0, 80) || "Deutsch",
+    bekanntheit: fame, bekannt_aus: known.slice(0, 160), sender: at.slice(0, 40), status: status.slice(0, 40), ruhestand: /ruhestand/i.test(status) };
+}
+// Muster generierter Einträge: „Der Bergdoktor (ORF)“, „*WDR Kulturreport*“, „Kinofilm …“, „Erfolgreiche Netflix-Original-Serie …“
+const FAKE_CREDIT = /\((ARD|ZDF|ORF|SRF|RTL|Sat\.1|ProSieben|VOX|Netflix|Sky|3sat|ARTE|ServusTV|Prime)[^)]*\)|^\s*Kinofilm |Erfolgreiche|Original-Serie|\*/i;
+function importPrefix(fname) { const f = fname.toLowerCase(); return f.includes("moderator") ? "MOD-" : f.includes("international") ? "INT-" : f.includes("dach") || f.includes("schauspiel") ? "DACH-" : "IMP-"; }
+async function importPeopleFile(file) {
+  const rows = /\.xlsx?$/i.test(file.name) ? await readSheetRows(file) : parseFile(await file.text(), file.name);
+  // Editor-Format (Talent, Charisma, Gage …): IDs unverändert, nur gelieferte Felder überschreiben
+  if (rows.length && ["talent", "charisma", "skandal", "basis_gage", "gage"].some(k => pickKey(rows[0], [k]) !== undefined)) {
+    const have = new Map(loadDB().people.map(e => [e.eindeutige_id, e]));
+    const clean = rows.map(o => { const eid = String(pickKey(o, ["eindeutige_id", "id"]) ?? "").trim(), e = have.get(eid);
+      return cleanPerson(e ? { eindeutige_id: e.eindeutige_id, name: e.name, rolle: e.rolle, talent: e.talent, charisma: e.charisma, skandal: e.skandal, basis_gage: e.manual ? e.gage : undefined, ...o } : o); }).filter(Boolean);
+    const r = upsert(loadDB().people, clean, "eindeutige_id");
+    await storeDBAsync();
+    return { rows: rows.length, add: r.add, upd: r.upd, dup: 0, bad: rows.length - clean.length, gen: 0, prefix: "(eigene IDs)" };
+  }
+  const prefix = importPrefix(file.name), clean = prefix === "INT-";
+  const seen = new Set(), out = []; let dup = 0, bad = 0, gen = 0;
+  // Namen, die mehrfach vorkommen, stammen aus einem Generator – ihre angeblichen Mitwirkungen werden nicht übernommen
+  const count = new Map(); for (const o of rows) { const n = String(pickKey(o, ["name"]) ?? "").trim().toLowerCase(); count.set(n, (count.get(n) || 0) + 1); }
+  for (const o of rows) {
+    const e = rowToPerson(o, prefix, clean);
+    if (!e) { bad++; continue; }
+    const key = e.name.toLowerCase();
+    if (seen.has(key)) { dup++; continue; } // gleiche Namen zusammenführen
+    if (e.bekannt_aus && FAKE_CREDIT.test(e.bekannt_aus)) { e.bekannt_aus = ""; e.generiert = true; gen++; }
+    seen.add(key); out.push(e);
+  }
+  const r = upsert(loadDB().people, out, "eindeutige_id");
+  await storeDBAsync();
+  return { rows: rows.length, add: r.add, upd: r.upd, dup, bad, gen, prefix };
+}
+
+// ---------------------------------------------------------------------
+// IMDb-Import: offizielle Dateien title.ratings, title.basics (optional title.akas) – .tsv oder .tsv.gz
+// Nur für den privaten Gebrauch; die Dateien lädt der Spieler selbst von IMDb herunter.
+// ---------------------------------------------------------------------
+async function* tsvLines(file) {
+  let stream = file.stream();
+  if (/\.gz$/i.test(file.name)) stream = stream.pipeThrough(new DecompressionStream("gzip"));
+  const reader = stream.pipeThrough(new TextDecoderStream()).getReader();
+  let buf = "";
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buf += value;
+    let i;
+    while ((i = buf.indexOf("\n")) >= 0) { yield buf.slice(0, i); buf = buf.slice(i + 1); }
+  }
+  if (buf) yield buf;
+}
+const IMDB_GENRE = { crime: "Krimi", mystery: "Krimi", comedy: "Komödie", family: "Komödie", animation: "Komödie", drama: "Drama", history: "Drama", biography: "Drama", war: "Action", romance: "Liebesfilm", action: "Action", adventure: "Action", thriller: "Action", western: "Action", horror: "Action", "sci-fi": "Science-Fiction", fantasy: "Science-Fiction", documentary: "Doku", "reality-tv": "Reality", "talk-show": "Talk", news: "Nachrichten", "game-show": "Show", music: "Kultur", musical: "Kultur", sport: "Doku" };
+async function importIMDb(files, max, progress) {
+  const by = n => files.find(f => f.name.toLowerCase().includes(n));
+  const fr = by("title.ratings"), fb = by("title.basics"), fa = by("title.akas");
+  if (!fr || !fb) throw new Error("Bitte mindestens title.ratings und title.basics auswählen (gleichzeitig).");
+  const rat = new Map(); let n = 0;
+  for await (const l of tsvLines(fr)) { const [id, avg, votes] = l.split("\t"); if (+votes >= 3000) rat.set(id, [+avg, +votes]); if (++n % 200000 === 0) progress(`Bewertungen: ${n.toLocaleString("de-DE")} Zeilen`); }
+  const keep = [];
+  n = 0;
+  for await (const l of tsvLines(fb)) {
+    if (++n % 300000 === 0) progress(`Titel: ${n.toLocaleString("de-DE")} Zeilen`);
+    const c = l.split("\t"); const r = rat.get(c[0]);
+    if (!r || !["movie", "tvSeries", "tvMiniSeries", "tvMovie"].includes(c[1]) || c[4] === "1" || +c[5] < 1950) continue;
+    keep.push({ id: c[0], type: c[1], title: c[2], year: +c[5], mins: +c[7] || 100, genres: c[8], avg: r[0], votes: r[1] });
+  }
+  keep.sort((a, b) => b.votes - a.votes); keep.length = Math.min(keep.length, max);
+  if (fa) {
+    const want = new Map(keep.map(k => [k.id, k])); n = 0;
+    for await (const l of tsvLines(fa)) { if (++n % 500000 === 0) progress(`Deutsche Titel: ${n.toLocaleString("de-DE")} Zeilen`); const c = l.split("\t"); if (c[3] === "DE" && want.has(c[0]) && c[2]) want.get(c[0]).de = c[2]; }
+  }
+  const T = loadTitles(), rows = keep.map(k => {
+    const g = k.genres.split(",").map(x => IMDB_GENRE[x.toLowerCase()]).find(Boolean) || "Drama", tv = k.type !== "movie" && k.type !== "tvMovie";
+    return { eindeutige_id: "imdb_" + k.id, title: (k.de || k.title).slice(0, 80), genre: g, q: clamp(Math.round(20 + k.avg * 7.5), 20, 94), tv, eps: tv ? 13 : 0, len: k.mins > 140 ? 3 : 2, year: k.year, fsk: /horror/i.test(k.genres) ? 16 : ["Krimi", "Action"].includes(g) ? 12 : 0, pop: k.votes };
+  });
+  const r = upsert(T, rows, "eindeutige_id");
+  T.sort((a, b) => b.pop - a.pop); if (T.length > TITLE_MAX) T.length = TITLE_MAX;
+  await storeTitlesAsync();
+  return { add: r.add, upd: r.upd, total: T.length };
+}
+async function storeDBAsync() { if (IDB.db) { try { await idbSet(DB_KEY, EDB); return true; } catch (e) { /* weiter */ } } return storeDB(); }
+async function storeTitlesAsync() { if (IDB.db) { try { await idbSet(TITLE_KEY, TITLES); return true; } catch (e) { /* weiter */ } } return storeTitles(); }
+// =====================================================================
 // Speichern (nur lokal im Browser)
 // =====================================================================
 const KEY = "quotenturm-v7";
-function save() { try { localStorage.setItem(KEY, JSON.stringify(G)); } catch (e) { /* ohne Speicher spielbar */ } }
-function hasSave() { try { return !!localStorage.getItem(KEY); } catch (e) { return false; } }
-function load() {
+function save() {
+  if (IDB.db) { idbSet(KEY, G).catch(() => {}); try { localStorage.setItem(KEY + "-has", "1"); localStorage.removeItem(KEY); } catch (e) { /* egal */ } return; }
+  try { localStorage.setItem(KEY, JSON.stringify(G)); } catch (e) { /* ohne Speicher spielbar */ }
+}
+function hasSave() { try { return !!(localStorage.getItem(KEY + "-has") || localStorage.getItem(KEY)); } catch (e) { return false; } }
+async function load() {
   try {
-    const s = localStorage.getItem(KEY); if (!s) return false; G = JSON.parse(s);
+    let g = IDB.db ? await idbGet(KEY).catch(() => null) : null;
+    if (!g) { const s = localStorage.getItem(KEY); if (!s) return false; g = JSON.parse(s); }
+    G = g;
     G.mods = G.mods || {}; G.eventLog = G.eventLog || [];
     if (!G.people) initPeople();
-    applyEditorPeople();
+    G.people.forEach(p => ensurePerson(p));
+    applyEditorPeople(); linkImported();
+    if (!G.stations.some(st => st.progs.some(x => x.cast))) assignCasts();
     return true;
   } catch (e) { return false; }
 }
-function clearSave() { try { localStorage.removeItem(KEY); } catch (e) { /* egal */ } }
+function clearSave() { if (IDB.db) idbDel(KEY).catch(() => {}); try { localStorage.removeItem(KEY); localStorage.removeItem(KEY + "-has"); } catch (e) { /* egal */ } }
 
-function start(data) {
+async function start(data) {
+  await initStorage();
   probeLogos();
   if (data && data.G && !data.G.over) { G = data.G; if (G.phase !== "plan") startDay(); go("overview", true); }
   else showStart();

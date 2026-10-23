@@ -17,6 +17,10 @@ fs.writeFileSync(path.join(out, "fonts.css"), css);
 
 let html = fs.readFileSync(path.join(src, "index.html"), "utf8");
 html = html.replace(/<link rel="preconnect"[^>]*>\n?/g, "").replace(/<link rel="stylesheet" href="https:\/\/fonts\.googleapis\.com[^>]*>/, '<link rel="stylesheet" href="fonts.css">');
+// Excel-Modul (SheetJS) lokal beilegen, damit der Import offline funktioniert
+fs.mkdirSync(path.join(out, "vendor"), { recursive: true });
+fs.copyFileSync(path.join(__dirname, "node_modules", "xlsx", "dist", "xlsx.full.min.js"), path.join(out, "vendor", "xlsx.full.min.js"));
+html = html.replace("https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js", "vendor/xlsx.full.min.js");
 fs.writeFileSync(path.join(out, "index.html"), html);
 
 const logos = path.join(src, "logos");
