@@ -1,11 +1,14 @@
-// Windows-Hülle für Quotenturm: ein Fenster, kein Menü, Spielstand bleibt im Benutzerprofil
+// Windows-Hülle für Medienmanager 2027: ein Fenster, kein Menü, Spielstand bleibt im Benutzerprofil
 const { app, BrowserWindow, shell } = require("electron");
 const path = require("path");
+
+// Spielstände aus der Zeit als „Quotenturm“ weiter nutzen
+app.setPath("userData", path.join(app.getPath("appData"), "Quotenturm"));
 
 function createWindow() {
   const win = new BrowserWindow({
     width: 1440, height: 900, minWidth: 1024, minHeight: 700,
-    title: "Quotenturm", backgroundColor: "#0b0e1c", autoHideMenuBar: true,
+    title: "Medienmanager 2027", backgroundColor: "#0b0e1c", autoHideMenuBar: true,
     webPreferences: { contextIsolation: true, sandbox: true },
   });
   win.removeMenu();

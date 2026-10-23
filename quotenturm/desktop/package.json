@@ -1,6 +1,6 @@
 {
   "name": "quotenturm",
-  "productName": "Quotenturm",
+  "productName": "Medienmanager 2027",
   "version": "1.0.0",
   "description": "TV- & Streaming-Manager",
   "main": "main.js",
@@ -20,7 +20,7 @@
   },
   "build": {
     "appId": "de.private.quotenturm",
-    "productName": "Quotenturm",
+    "productName": "Medienmanager 2027",
     "files": [
       "main.js",
       "app/**/*"
@@ -36,13 +36,13 @@
       "signAndEditExecutable": false
     },
     "portable": {
-      "artifactName": "Quotenturm-${version}-portable.exe"
+      "artifactName": "Medienmanager-2027-${version}-portable.exe"
     },
     "nsis": {
-      "artifactName": "Quotenturm-${version}-Setup.exe",
+      "artifactName": "Medienmanager-2027-${version}-Setup.exe",
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
-      "shortcutName": "Quotenturm"
+      "shortcutName": "Medienmanager 2027"
     }
   },
   "repository": "github:dfertl18-rgb/New-Notetaker"

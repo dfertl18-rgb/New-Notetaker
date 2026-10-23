@@ -1,4 +1,4 @@
-name: Quotenturm Windows-Build
+name: Medienmanager 2027 Windows-Build
 
 on:
   workflow_dispatch:
@@ -24,7 +24,7 @@ jobs:
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
       - uses: actions/upload-artifact@v4
         with:
-          name: Quotenturm-Windows
+          name: Medienmanager-2027-Windows
           path: |
             quotenturm/desktop/dist/*.exe
           retention-days: 30
