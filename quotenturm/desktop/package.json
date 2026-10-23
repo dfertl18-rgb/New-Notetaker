@@ -8,8 +8,8 @@
   "scripts": {
     "prepare-app": "node prepare.js",
     "start": "npm run prepare-app && electron .",
-    "dist": "npm run prepare-app && electron-builder --win portable nsis",
-    "dist:portable": "npm run prepare-app && electron-builder --win portable"
+    "dist": "npm run prepare-app && electron-builder --win portable nsis --publish never",
+    "dist:portable": "npm run prepare-app && electron-builder --win portable --publish never"
   },
   "devDependencies": {
     "@fontsource/barlow-condensed": "^5.1.0",
