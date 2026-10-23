@@ -30,6 +30,12 @@ Ein TV- und Streaming-Manager für das iPad. Spielprinzip inspiriert von *Mad TV
 - **Krisen am Set:** Klausel-Bruch, Star-Allüren (je nach Zuverlässigkeit), Streik im Autorenzimmer (Nachwuchsteams) – jeweils mit drei Entscheidungen.
 - **DACH-Streaming:** Abos getrennt nach DE/AT/CH mit Marktpotenzial und Kaufkraft (CH × 1,3), Trend-Panel mit Woche/Monat. Sportrechte-Auktion in drei Paketen (Gesamt-DACH, nur DE, nur AT/CH); DAZN und Sky/WOW bieten aufs Gesamtpaket, Canal+ (AT) nur auf die Alpenregion. Wer nur DE hält, löst am Spieltag Geo-Blocking aus (+8 % Churn für 30 Tage in AT/CH).
 - **Abend-Zeitleiste im Wochenplan:** Vorabend, Primetime, Spätprogramm mit Senderlogo als Wasserzeichen und Konkurrenz-Check für den gewählten Sendeplatz.
+- **Titeldatenbank:** 244 Spielfilme und 192 Serien bzw. Senderformate, alle mit Kurzbeschreibung (Programmhandel, Archiv, Programmauswahl). Größerer Startbestand für alle Sender.
+- **Senderprofile:** Klick auf einen Sender oder Streamer öffnet Marktanteil, Primetime der Woche, Pläne & Gerüchte (Vertragsverlängerungen, Ausschreibungen, auslaufende Lizenzen), Stars mit Abwerben-Option, Programm-Highlights, Sportrechte und aktuelle Meldungen.
+- **Ensemble:** Der eigene Sender startet mit acht Stars unter Vertrag (Moderation, Schauspiel, Reality, News, Journalismus). „Projekt planen“ öffnet direkt ein passendes Projekt mit diesem Star.
+- **Fernsehpreise:** Grimme-Preis (April), Deutscher Fernsehpreis (September), Bambi (November), Goldene Henne (Dezember) zeichnen Programme aller Sender aus – Nominierungen zehn Tage vorher, Favoritenliste, Preisträger-Historie. Preise heben Qualität, Image und Vertrauen.
+- **Programme verwalten:** Eigene Shows und Serien haben Folgenkosten; Budget kürzen oder erhöhen, Moderation/Hauptrolle austauschen, Sendung absetzen.
+- **Senderwechsel:** Jobangebote je nach Ruf (Saisonleistung, Vertrauen, Preise).
 - **Editor & Datenimport (Hauptmenü):** Darsteller-Tabellen als CSV/JSON per Upsert über `eindeutige_id` (keine Duplikate), Regler für Talent, Charisma, Skandalfaktor und Gage mit Live-Auswirkungen; TMDb-Titellisten (bis 5.000 Titel) werden nach Genre an ÖRR (Krimi, Drama, Doku) bzw. Private (Unterhaltung) verteilt. Alles bleibt lokal im Browser.
 
 Alle Quoten, Preise, Abozahlen und Bewertungen sind simuliert. Sender-, Film- und Serientitel dienen als Kulisse einer privaten Spielversion.

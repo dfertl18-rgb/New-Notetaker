@@ -374,6 +374,14 @@ label { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .cal-d span { font-size: 11px; color: var(--muted); display: flex; gap: 4px; align-items: center; min-height: 12px; }
 .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; vertical-align: middle; }
 .dot.live { background: var(--hot-2); } .dot.pre { background: var(--mid); }
+.sn[data-station], .sbadge[data-streamer] { cursor: pointer; } .sn[data-station]:hover { color: var(--hot); }
+.dialog > header > svg, .dialog > header > img { flex: 0 0 auto; }
+.desc { font-size: 12px; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; max-width: 60ch; white-space: normal; }
+.plans { margin: 0; padding: 0 14px 14px 32px; display: grid; gap: 6px; font-size: 14px; }
+.ens { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 8px; padding: 0 14px 14px; }
+.ens-card { display: flex; gap: 10px; align-items: center; background: var(--panel-2); border: 1px solid var(--line); border-radius: 4px; padding: 10px; }
+.ens-card .grow { flex: 1; min-width: 0; display: grid; gap: 2px; } .ens-card .grow span { font-size: 12px; }
+.pm { display: flex; flex-wrap: wrap; gap: 4px; justify-content: flex-end; align-items: center; }
 .pkgs { display: flex; gap: 4px; }
 .pkg { background: var(--panel-2); border: 1px solid var(--line); border-radius: 4px; padding: 4px 8px; display: grid; text-align: left; min-width: 74px; }
 .pkg b { font-family: var(--font-head); font-size: 15px; } .pkg span { font-size: 11px; color: var(--muted); }
@@ -603,6 +611,528 @@ const SERIES_DB = [
   ["Die Simpsons", "Sitcom", 80, 22, ""], ["Young Sheldon", "Sitcom", 76, 22, ""], ["King of Queens", "Sitcom", 74, 24, ""], ["Modern Family", "Sitcom", 68, 24, ""], ["Malcolm mittendrin", "Sitcom", 66, 22, ""],
   ["Doctor's Diary", "Komödie", 66, 24, ""], ["Danni Lowinski", "Komödie", 64, 13, ""], ["Hinter Gittern", "Serie", 58, 26, ""], ["Der Bulle von Tölz", "Krimi", 64, 20, ""],
 ];
+// Erweiterte Titeldatenbank: weitere Spielfilme und lizenzierbare Serien (Titel, Genre, Qualität, Länge in Std. bzw. Folgen, FSK/Heimatsender)
+const FILM_MORE = [
+  // Blockbuster & Action
+  ["Der Herr der Ringe: Die zwei Türme", "Science-Fiction", 88, 3, 12], ["Der Herr der Ringe: Die Rückkehr des Königs", "Science-Fiction", 90, 3, 12], ["Der Hobbit – Eine unerwartete Reise", "Science-Fiction", 78, 3, 12],
+  ["Harry Potter und die Kammer des Schreckens", "Science-Fiction", 82, 3, 12], ["Harry Potter und der Gefangene von Askaban", "Science-Fiction", 84, 2, 12], ["Harry Potter und der Feuerkelch", "Science-Fiction", 82, 3, 12],
+  ["Harry Potter und die Heiligtümer des Todes – Teil 2", "Science-Fiction", 86, 2, 12], ["Das Imperium schlägt zurück", "Science-Fiction", 88, 2, 12], ["Die Rückkehr der Jedi-Ritter", "Science-Fiction", 84, 2, 12],
+  ["Star Wars: Das Erwachen der Macht", "Science-Fiction", 82, 3, 12], ["E.T. – Der Außerirdische", "Science-Fiction", 84, 2, 6], ["Independence Day", "Science-Fiction", 76, 3, 12],
+  ["Men in Black", "Science-Fiction", 78, 2, 12], ["Inception", "Science-Fiction", 86, 3, 12], ["Interstellar", "Science-Fiction", 86, 3, 12], ["Der Marsianer – Rettet Mark Watney", "Science-Fiction", 80, 3, 12],
+  ["Gravity", "Science-Fiction", 78, 2, 12], ["Avengers: Endgame", "Science-Fiction", 84, 3, 12], ["Iron Man", "Action", 78, 2, 12], ["The Dark Knight", "Action", 88, 3, 16],
+  ["Batman Begins", "Action", 80, 3, 12], ["Spider-Man", "Action", 76, 2, 12], ["Black Panther", "Action", 76, 3, 12], ["Guardians of the Galaxy", "Science-Fiction", 80, 2, 12],
+  ["Fluch der Karibik 2", "Action", 76, 3, 12], ["Indiana Jones und der letzte Kreuzzug", "Action", 84, 2, 12], ["Indiana Jones und der Tempel des Todes", "Action", 78, 2, 16], ["Die Mumie", "Action", 74, 2, 12],
+  ["James Bond 007 – Skyfall", "Action", 84, 3, 12], ["James Bond 007 – GoldenEye", "Action", 78, 3, 12], ["James Bond 007 – Goldfinger", "Action", 80, 2, 12], ["James Bond 007 – Keine Zeit zu sterben", "Action", 78, 3, 12],
+  ["Mission: Impossible – Fallout", "Action", 82, 3, 12], ["Top Gun: Maverick", "Action", 84, 3, 12], ["Speed", "Action", 76, 2, 16], ["Con Air", "Action", 72, 2, 16],
+  ["The Rock – Fels der Entscheidung", "Action", 76, 3, 16], ["Lethal Weapon – Zwei stahlharte Profis", "Action", 76, 2, 16], ["Bad Boys – Harte Jungs", "Action", 70, 2, 16], ["Fast & Furious – Neues Modell. Originalteile.", "Action", 68, 2, 12],
+  ["Mad Max: Fury Road", "Action", 82, 2, 16], ["John Wick", "Action", 76, 2, 18], ["Die Bourne Identität", "Action", 80, 2, 12], ["Der Staatsfeind Nr. 1", "Action", 76, 3, 12],
+  ["Twister", "Action", 70, 2, 12], ["Armageddon – Das jüngste Gericht", "Action", 72, 3, 12], ["Der Soldat James Ryan", "Drama", 88, 3, 16], ["Black Hawk Down", "Action", 76, 3, 16],
+  ["Last Samurai", "Monumental", 78, 3, 16], ["Königreich der Himmel", "Monumental", 74, 3, 16], ["Kleopatra", "Monumental", 70, 3, 12], ["Spartacus", "Monumental", 76, 3, 12],
+  ["Die zehn Gebote", "Monumental", 72, 3, 12], ["Lawrence von Arabien", "Monumental", 82, 3, 12], ["Vom Winde verweht", "Monumental", 82, 3, 12], ["Der mit dem Wolf tanzt", "Monumental", 82, 3, 12],
+  // Krimi & Thriller
+  ["Die üblichen Verdächtigen", "Krimi", 84, 2, 16], ["Heat", "Krimi", 84, 3, 16], ["Departed – Unter Feinden", "Krimi", 84, 3, 16], ["Good Fellas – Drei Jahrzehnte in der Mafia", "Krimi", 84, 3, 16],
+  ["Der Pate – Teil II", "Krimi", 88, 3, 16], ["Catch Me If You Can", "Krimi", 82, 3, 6], ["Ocean's Eleven", "Krimi", 80, 2, 12], ["Knives Out – Mord ist Familiensache", "Krimi", 80, 2, 12],
+  ["Mord im Orient-Express", "Krimi", 74, 2, 12], ["Zodiac – Die Spur des Killers", "Krimi", 78, 3, 16], ["Gone Girl – Das perfekte Opfer", "Krimi", 80, 3, 16], ["Prisoners", "Krimi", 80, 3, 16],
+  ["Shutter Island", "Krimi", 82, 3, 16], ["Memento", "Krimi", 80, 2, 16], ["Fargo", "Krimi", 82, 2, 16], ["No Country for Old Men", "Krimi", 82, 2, 16],
+  ["Der Fremde im Zug", "Krimi", 76, 2, 12], ["Das Fenster zum Hof", "Krimi", 84, 2, 12], ["Psycho", "Krimi", 82, 2, 16], ["Der unsichtbare Dritte", "Krimi", 82, 3, 12],
+  ["Die Vögel", "Krimi", 76, 2, 16], ["Der Name der Rose", "Krimi", 82, 3, 16], ["Das Parfum – Die Geschichte eines Mörders", "Krimi", 78, 3, 16], ["Das Experiment", "Krimi", 74, 2, 16], ["Who Am I – Kein System ist sicher", "Krimi", 74, 2, 12], ["Der Baader Meinhof Komplex", "Drama", 76, 3, 16], ["Die Welle", "Drama", 78, 2, 12],
+  ["Joker", "Krimi", 82, 2, 16], ["Taxi Driver", "Krimi", 80, 2, 16], ["Der Clou", "Krimi", 80, 2, 12], ["Reservoir Dogs – Wilde Hunde", "Krimi", 78, 2, 18],
+  // Drama
+  ["Die Verurteilten", "Drama", 92, 3, 12], ["Der Club der toten Dichter", "Drama", 84, 3, 12], ["Rain Man", "Drama", 84, 3, 12], ["Philadelphia", "Drama", 80, 2, 12],
+  ["Good Will Hunting", "Drama", 82, 2, 12], ["The Green Mile", "Drama", 86, 3, 16], ["Einer flog über das Kuckucksnest", "Drama", 86, 3, 12], ["A Beautiful Mind – Genie und Wahnsinn", "Drama", 82, 3, 12],
+  ["The King's Speech – Die Rede des Königs", "Drama", 82, 2, 6], ["Oppenheimer", "Drama", 86, 3, 12], ["Bohemian Rhapsody", "Drama", 80, 3, 6], ["Rocketman", "Drama", 72, 2, 12],
+  ["Walk the Line", "Drama", 78, 3, 6], ["Rocky", "Drama", 80, 2, 12], ["Million Dollar Baby", "Drama", 82, 3, 12], ["Gran Torino", "Drama", 82, 2, 12],
+  ["Der Pianist", "Drama", 86, 3, 12], ["Das Wunder von Bern", "Drama", 76, 2, 6], ["Sophie Scholl – Die letzten Tage", "Drama", 80, 2, 12], ["Nirgendwo in Afrika", "Drama", 76, 3, 12],
+  ["Das weiße Band", "Drama", 80, 3, 12], ["Toni Erdmann", "Komödie", 76, 3, 12], ["Systemsprenger", "Drama", 80, 2, 12], ["Der Hauptmann von Köpenick", "Komödie", 74, 2, 6],
+  ["Die Blechtrommel", "Drama", 78, 3, 16], ["Lili Marleen", "Drama", 68, 2, 12], ["Honig im Kopf", "Komödie", 76, 3, 6], ["Ein ganzes halbes Jahr", "Liebesfilm", 76, 2, 12],
+  ["Slumdog Millionär", "Drama", 82, 2, 12], ["Titanic – Die Legende lebt", "Drama", 50, 2, 6], ["Hidden Figures – Unerkannte Heldinnen", "Drama", 80, 2, 0], ["Green Book – Eine besondere Freundschaft", "Drama", 82, 3, 6],
+  ["Der seltsame Fall des Benjamin Button", "Drama", 80, 3, 12], ["Life of Pi – Schiffbruch mit Tiger", "Drama", 80, 2, 12], ["Into the Wild", "Drama", 80, 3, 12], ["Cast Away – Verschollen", "Drama", 82, 3, 12],
+  ["Der Mann, der niemals lebte", "Krimi", 70, 3, 16], ["Lion – Der lange Weg nach Hause", "Drama", 78, 2, 12], ["Wunder einer Winternacht", "Drama", 62, 2, 0], ["Das Boot ist voll", "Drama", 66, 2, 12],
+  // Komödie & Familie
+  ["Der bewegte Mann", "Komödie", 74, 2, 12], ["Kokowääh", "Komödie", 72, 2, 6], ["Zweiohrküken", "Komödie", 68, 2, 12], ["Fack ju Göhte 2", "Komödie", 74, 2, 12],
+  ["(T)Raumschiff Surprise – Periode 1", "Komödie", 70, 2, 6], ["Der Wixxer", "Komödie", 66, 2, 12], ["Otto – Der Film", "Komödie", 74, 2, 6], ["Manta, Manta", "Komödie", 68, 2, 12],
+  ["Die Känguru-Chroniken", "Komödie", 66, 2, 6], ["Willkommen bei den Hartmanns", "Komödie", 72, 2, 12], ["Monsieur Claude und seine Töchter", "Komödie", 76, 2, 0], ["Willkommen bei den Sch'tis", "Komödie", 78, 2, 0],
+  ["Die fabelhafte Welt der Amélie", "Komödie", 82, 2, 6], ["Ein Fisch namens Wanda", "Komödie", 78, 2, 12], ["Die nackte Kanone", "Komödie", 76, 2, 12], ["Hangover", "Komödie", 76, 2, 12],
+  ["Täglich grüßt das Murmeltier", "Komödie", 82, 2, 6], ["Mrs. Doubtfire – Das stachelige Kindermädchen", "Komödie", 78, 3, 6], ["Ghostbusters – Die Geisterjäger", "Komödie", 78, 2, 12], ["Beverly Hills Cop", "Komödie", 76, 2, 16],
+  ["Zoolander", "Komödie", 66, 2, 12], ["Meine Braut, ihr Vater und ich", "Komödie", 72, 2, 6], ["Die Truman Show", "Komödie", 84, 2, 6], ["Liar Liar – Der Dummschwätzer", "Komödie", 72, 2, 6],
+  ["Sister Act – Eine himmlische Karriere", "Komödie", 74, 2, 0], ["Sein oder Nichtsein", "Komödie", 80, 2, 6], ["Manche mögen's heiß", "Komödie", 84, 2, 6], ["Kevin – Allein in New York", "Komödie", 76, 2, 6],
+  ["Der Grinch", "Komödie", 70, 2, 6], ["Schöne Bescherung", "Komödie", 74, 2, 6], ["Tatsächlich… Liebe", "Liebesfilm", 80, 3, 6], ["Ich – Einfach unverbesserlich", "Komödie", 78, 2, 0],
+  ["Die Monster AG", "Komödie", 80, 2, 0], ["Toy Story", "Komödie", 84, 2, 0], ["Oben", "Komödie", 82, 2, 0], ["Die Unglaublichen – The Incredibles", "Komödie", 82, 2, 6],
+  ["Ratatouille", "Komödie", 80, 2, 0], ["Die Eiskönigin – Völlig unverfroren", "Komödie", 80, 2, 0], ["Madagascar", "Komödie", 72, 2, 0], ["Coco – Lebendiger als das Leben!", "Komödie", 82, 2, 0],
+  ["Alles steht Kopf", "Komödie", 82, 2, 0], ["Zoomania", "Komödie", 80, 2, 0], ["Paddington", "Komödie", 78, 2, 0], ["Wickie und die starken Männer", "Komödie", 66, 2, 0],
+  ["Bibi & Tina – Der Film", "Komödie", 58, 2, 0], ["Die wilden Kerle", "Komödie", 64, 2, 0], ["Das Sams", "Komödie", 66, 2, 0], ["Hui Buh – Das Schlossgespenst", "Komödie", 60, 2, 6],
+  // Liebesfilm
+  ["Schlaflos in Seattle", "Liebesfilm", 76, 2, 0], ["E-Mail für Dich", "Liebesfilm", 74, 2, 0], ["Harry und Sally", "Liebesfilm", 80, 2, 6], ["Ghost – Nachricht von Sam", "Liebesfilm", 78, 2, 12],
+  ["Bodyguard", "Liebesfilm", 72, 3, 12], ["Die Brücken am Fluss", "Liebesfilm", 76, 3, 12], ["Wie ein einziger Tag", "Liebesfilm", 78, 2, 6], ["Stolz und Vorurteil", "Liebesfilm", 78, 3, 0],
+  ["La La Land", "Liebesfilm", 82, 2, 0], ["Casablanca", "Liebesfilm", 86, 2, 12], ["Frühstück bei Tiffany", "Liebesfilm", 80, 2, 6], ["Ein Herz und eine Krone", "Liebesfilm", 80, 2, 6],
+  ["Der Teufel trägt Prada", "Komödie", 76, 2, 0], ["Die Hochzeit meines besten Freundes", "Liebesfilm", 72, 2, 0], ["Sissi – Die junge Kaiserin", "Liebesfilm", 70, 2, 0],
+  ["Sissi – Schicksalsjahre einer Kaiserin", "Liebesfilm", 70, 2, 0], ["Ein Sommer in Kroatien", "Liebesfilm", 52, 2, 0], ["Der Club der singenden Metzger", "Drama", 62, 2, 12],
+];
+const SERIES_MORE = [
+  ["The Walking Dead", "Action", 76, 16, ""], ["Game of Thrones", "Science-Fiction", 88, 10, ""], ["Breaking Bad", "Krimi", 90, 13, ""], ["Better Call Saul", "Krimi", 84, 10, ""],
+  ["Die Sopranos", "Krimi", 86, 13, ""], ["The Crown", "Serie", 82, 10, ""], ["Downton Abbey", "Serie", 80, 8, ""], ["Mad Men", "Serie", 80, 13, ""],
+  ["Sherlock", "Krimi", 86, 3, ""], ["Doctor Who", "Science-Fiction", 72, 13, ""], ["Stranger Things", "Science-Fiction", 84, 9, ""], ["The Last of Us", "Science-Fiction", 84, 9, ""],
+  ["Dark", "Science-Fiction", 84, 10, ""], ["4 Blocks", "Krimi", 76, 6, ""], ["Deutschland 83", "Serie", 76, 8, ""], ["Charité", "Serie", 74, 6, ""],
+  ["Der Pass", "Krimi", 76, 8, ""], ["Weissensee", "Serie", 72, 6, ""], ["Unsere Mütter, unsere Väter", "Serie", 78, 3, ""], ["Das Boot (Serie)", "Serie", 74, 8, ""],
+  ["Pastewka", "Sitcom", 74, 10, ""], ["jerks.", "Komödie", 70, 8, ""], ["Merz gegen Merz", "Komödie", 66, 8, ""],
+  ["Türkisch für Anfänger", "Komödie", 70, 12, ""], ["Berlin, Berlin", "Komödie", 70, 24, ""], ["Hubert und Staller", "Krimi", 68, 16, ""],
+  ["Die Kanzlei", "Serie", 64, 13, ""], ["Um Himmels Willen", "Serie", 68, 13, ""], ["Der Landarzt", "Serie", 58, 26, ""],
+  ["Die Schwarzwaldklinik", "Serie", 66, 24, ""], ["Das Traumschiff", "Serie", 68, 4, ""], ["Derrick", "Krimi", 60, 26, ""], ["Ein Fall für zwei", "Krimi", 62, 26, ""],
+  ["Columbo", "Krimi", 80, 10, ""], ["Mord ist ihr Hobby", "Krimi", 72, 22, ""], ["Agatha Christie's Poirot", "Krimi", 76, 10, ""], ["Miss Marple", "Krimi", 74, 12, ""],
+  ["Death in Paradise", "Krimi", 72, 8, ""], ["Midsomer Murders", "Krimi", 70, 8, ""], ["Kommissar Rex", "Krimi", 70, 15, ""], ["CSI: Den Tätern auf der Spur", "Krimi", 74, 23, ""], ["Elementary", "Krimi", 70, 24, ""], ["Person of Interest", "Krimi", 72, 22, ""],
+  ["Prison Break", "Action", 76, 22, ""], ["24", "Action", 76, 24, ""], ["Homeland", "Krimi", 80, 12, ""], ["Jack Ryan", "Action", 74, 8, ""],
+  ["Scrubs – Die Anfänger", "Sitcom", 80, 24, ""], ["Die Nanny", "Sitcom", 72, 22, ""], ["Eine schrecklich nette Familie", "Sitcom", 74, 22, ""], ["Hör mal, wer da hämmert", "Sitcom", 70, 25, ""],
+  ["Alf", "Sitcom", 68, 26, ""], ["Der Prinz von Bel-Air", "Sitcom", 72, 24, ""], ["Seinfeld", "Sitcom", 76, 22, ""], ["The Office", "Sitcom", 78, 22, ""],
+  ["Brooklyn Nine-Nine", "Sitcom", 76, 22, ""], ["Mom", "Sitcom", 66, 22, ""], ["Mike & Molly", "Sitcom", 64, 22, ""], ["2 Broke Girls", "Sitcom", 64, 24, ""],
+  ["Futurama", "Sitcom", 74, 13, ""], ["Family Guy", "Sitcom", 70, 20, ""], ["American Dad", "Sitcom", 64, 20, ""], ["South Park", "Sitcom", 72, 10, ""],
+  ["Emergency Room – Die Notaufnahme", "Serie", 80, 22, ""], ["The Good Doctor", "Serie", 76, 18, ""], ["Chicago Med", "Serie", 68, 20, ""], ["New Amsterdam", "Serie", 72, 18, ""],
+  ["This Is Us – Das ist Leben", "Serie", 80, 18, ""], ["Gilmore Girls", "Serie", 78, 22, ""], ["Sex and the City", "Serie", 74, 18, ""], ["Big Little Lies", "Serie", 80, 7, ""],
+  ["Outlander", "Serie", 76, 13, ""], ["Vikings", "Action", 78, 10, ""], ["Babylon 5", "Science-Fiction", 66, 22, ""], ["Star Trek: Raumschiff Voyager", "Science-Fiction", 64, 26, ""],
+  ["Raumschiff Enterprise", "Science-Fiction", 66, 26, ""], ["Stargate – Kommando SG-1", "Science-Fiction", 66, 22, ""], ["Battlestar Galactica", "Science-Fiction", 76, 20, ""], ["The Mandalorian", "Science-Fiction", 80, 8, ""],
+  ["MacGyver", "Action", 64, 22, ""], ["Das A-Team", "Action", 64, 24, ""], ["Baywatch – Die Rettungsschwimmer von Malibu", "Action", 56, 22, ""], ["Miami Vice", "Action", 66, 22, ""],
+];
+// Kurzbeschreibungen (Programmzeitschrift-Stil); Titel ohne Eintrag zeigen nur Genre und Qualität
+const DESC = {
+  "Titanic": "Auf der Jungfernfahrt des Luxusliners verlieben sich der arme Künstler Jack und die verlobte Rose – bis das Schiff einen Eisberg rammt.",
+  "Der Pate": "Der alternde Mafiaboss Vito Corleone übergibt sein Imperium – und sein jüngster Sohn Michael wird vom Außenseiter zum eiskalten Nachfolger.",
+  "Pretty Woman": "Ein reicher Geschäftsmann engagiert eine Prostituierte für eine Woche in Los Angeles – aus dem Geschäft wird Liebe.",
+  "Stirb langsam": "Polizist John McClane sitzt in einem Hochhaus fest, das an Heiligabend von Gangstern besetzt wird.",
+  "Fluch der Karibik": "Der exzentrische Pirat Jack Sparrow hilft einem Schmied, die entführte Gouverneurstochter von verfluchten Piraten zu befreien.",
+  "Harry Potter und der Stein der Weisen": "Der Waisenjunge Harry erfährt, dass er ein Zauberer ist, und beginnt seine Ausbildung in Hogwarts.",
+  "Der Herr der Ringe: Die Gefährten": "Der Hobbit Frodo bricht mit acht Gefährten auf, um den Einen Ring im Feuer des Schicksalsbergs zu vernichten.",
+  "Zurück in die Zukunft": "Marty McFly landet mit einer Zeitmaschine im Jahr 1955 und muss dafür sorgen, dass sich seine Eltern verlieben.",
+  "Jurassic Park": "Auf einer Insel wurden Dinosaurier geklont – bei einem Stromausfall brechen sie aus ihren Gehegen aus.",
+  "Forrest Gump": "Ein gutherziger Mann mit einfachem Gemüt erlebt drei Jahrzehnte amerikanischer Geschichte hautnah.",
+  "Schindlers Liste": "Der Unternehmer Oskar Schindler rettet im Zweiten Weltkrieg über tausend Juden vor der Ermordung.",
+  "Das Boot": "Die Besatzung eines deutschen U-Boots erlebt 1941 die Enge, Angst und Zermürbung der Atlantikschlacht.",
+  "Der Schuh des Manitu": "Abahachi und sein Blutsbruder Ranger stolpern durch eine Parodie auf die Karl-May-Filme.",
+  "Keinohrhasen": "Ein Klatschreporter muss Sozialstunden in einer Kita ableisten – geleitet von einer Frau, die er als Kind gequält hat.",
+  "Fack ju Göhte": "Ein Ex-Häftling gibt sich als Aushilfslehrer aus, um an seine vergrabene Beute zu kommen – und übernimmt die schlimmste Klasse.",
+  "Good Bye, Lenin!": "Ein Sohn verheimlicht seiner herzkranken Mutter nach dem Mauerfall, dass es die DDR nicht mehr gibt.",
+  "Das Leben der Anderen": "Ein Stasi-Hauptmann hört einen Ost-Berliner Schriftsteller ab und beginnt, an seinem Auftrag zu zweifeln.",
+  "Lola rennt": "Lola hat 20 Minuten, um 100.000 Mark aufzutreiben und ihren Freund zu retten – dreimal, mit verschiedenem Ausgang.",
+  "Die Feuerzangenbowle": "Ein erfolgreicher Schriftsteller schleicht sich als Primaner in ein Gymnasium, um die verpassten Schulstreiche nachzuholen.",
+  "Sissi": "Die junge Herzogin Elisabeth in Bayern erobert das Herz des österreichischen Kaisers Franz Joseph.",
+  "Drei Haselnüsse für Aschenbrödel": "Mit drei Zaubernüssen gelingt es dem Aschenbrödel, den Prinzen zu erobern – der Weihnachtsklassiker.",
+  "Notting Hill": "Ein Londoner Buchhändler verliebt sich in einen Hollywood-Star, der zufällig seinen Laden betritt.",
+  "Dirty Dancing": "In einem Ferienresort lernt die junge Baby den Tanzlehrer Johnny kennen – und das Tanzen.",
+  "Mamma Mia!": "Auf einer griechischen Insel lädt eine junge Braut drei mögliche Väter zur Hochzeit ein – mit ABBA-Songs.",
+  "Terminator 2 – Tag der Abrechnung": "Ein umprogrammierter Terminator soll den jungen John Connor vor einer noch tödlicheren Maschine beschützen.",
+  "Matrix": "Hacker Neo erfährt, dass die Welt eine Simulation ist, und schließt sich dem Widerstand gegen die Maschinen an.",
+  "Krieg der Sterne": "Der Farmerjunge Luke Skywalker schließt sich den Rebellen an, um Prinzessin Leia zu befreien und den Todesstern zu zerstören.",
+  "Avatar – Aufbruch nach Pandora": "Ein querschnittsgelähmter Ex-Marine erkundet als Avatar den Mond Pandora und stellt sich auf die Seite der Ureinwohner.",
+  "Gladiator": "Ein verratener römischer Feldherr wird zum Sklaven und kämpft sich als Gladiator bis nach Rom zurück.",
+  "Troja": "Der Raub der schönen Helena löst den Krieg zwischen Griechen und Trojanern aus – mit Achilles im Mittelpunkt.",
+  "Ben Hur": "Ein jüdischer Prinz wird von seinem römischen Jugendfreund verraten und sinnt auf Rache – bis zum legendären Wagenrennen.",
+  "Braveheart": "Der Schotte William Wallace führt im 13. Jahrhundert den Aufstand gegen die englische Herrschaft an.",
+  "Das Schweigen der Lämmer": "Eine FBI-Anwärterin sucht beim inhaftierten Psychiater Hannibal Lecter Hilfe bei der Jagd auf einen Serienmörder.",
+  "Sieben": "Zwei Ermittler jagen einen Serienmörder, der seine Opfer nach den sieben Todsünden auswählt.",
+  "Pulp Fiction": "Verwobene Geschichten aus der Unterwelt von Los Angeles – Auftragskiller, ein Boxer und ein Gangsterboss.",
+  "Mission: Impossible": "Agent Ethan Hunt wird verdächtigt, sein eigenes Team verraten zu haben, und muss den wahren Maulwurf finden.",
+  "James Bond 007 – Casino Royale": "James Bonds erster Auftrag als Doppelnull-Agent führt ihn an einen Pokertisch in Montenegro.",
+  "Kevin – Allein zu Haus": "Der achtjährige Kevin wird über Weihnachten versehentlich zu Hause vergessen – und verteidigt das Haus gegen Einbrecher.",
+  "Shrek – Der tollkühne Held": "Ein mürrischer Oger soll eine Prinzessin befreien, um seinen Sumpf zurückzubekommen.",
+  "Der König der Löwen": "Löwenjunge Simba flieht nach dem Tod seines Vaters und muss Jahre später zurückkehren, um sein Reich einzufordern.",
+  "Findet Nemo": "Clownfisch Marlin durchquert den Ozean, um seinen entführten Sohn Nemo zu finden.",
+  "Ziemlich beste Freunde": "Ein querschnittsgelähmter Millionär stellt einen jungen Mann aus der Vorstadt als Pfleger ein – eine wahre Geschichte.",
+  "Ice Age": "Ein Mammut, ein Faultier und ein Säbelzahntiger bringen ein Menschenbaby zu seinem Stamm zurück.",
+  "Top Gun": "Ein Kampfpilot tritt in der Eliteschule der US-Navy gegen die Besten an.",
+  "Jäger des verlorenen Schatzes": "Archäologe Indiana Jones jagt die Bundeslade, bevor sie den Nationalsozialisten in die Hände fällt.",
+  "Der Untergang": "Die letzten Tage im Führerbunker im April 1945, erzählt aus der Sicht von Hitlers Sekretärin.",
+  "Im Westen nichts Neues": "Ein junger Soldat erlebt an der Westfront des Ersten Weltkriegs die Sinnlosigkeit des Krieges.",
+  "Saw": "Zwei Männer erwachen angekettet in einem Kellerraum – Opfer eines Killers, der tödliche Spiele inszeniert.",
+  "Scream – Schrei!": "Ein maskierter Mörder terrorisiert eine Kleinstadt und spielt mit den Regeln des Horrorfilms.",
+  "Rambo": "Ein traumatisierter Vietnam-Veteran wird von einem Kleinstadt-Sheriff schikaniert und setzt sich zur Wehr.",
+  "Die Hard 2": "John McClane muss an Heiligabend einen Flughafen vor Terroristen retten.",
+  "Der Herr der Ringe: Die zwei Türme": "Die Gefährten sind getrennt: Frodo und Sam ziehen nach Mordor, die anderen verteidigen Helms Klamm.",
+  "Der Herr der Ringe: Die Rückkehr des Königs": "Die letzte Schlacht um Mittelerde beginnt, während Frodo den Schicksalsberg erreicht.",
+  "Der Hobbit – Eine unerwartete Reise": "Bilbo Beutlin begleitet eine Gruppe Zwerge auf der Suche nach ihrem verlorenen Königreich.",
+  "Harry Potter und die Kammer des Schreckens": "In Hogwarts werden Schüler versteinert – Harry entdeckt das Geheimnis der Kammer des Schreckens.",
+  "Harry Potter und der Gefangene von Askaban": "Der gefährliche Sirius Black ist aus dem Zauberergefängnis geflohen – angeblich auf der Jagd nach Harry.",
+  "Harry Potter und der Feuerkelch": "Harry wird unerwartet Teilnehmer des gefährlichen Trimagischen Turniers.",
+  "Harry Potter und die Heiligtümer des Todes – Teil 2": "Die finale Schlacht um Hogwarts gegen Lord Voldemort.",
+  "Das Imperium schlägt zurück": "Die Rebellen fliehen vor dem Imperium, Luke lernt bei Yoda – und erfährt die Wahrheit über Darth Vader.",
+  "Die Rückkehr der Jedi-Ritter": "Die Rebellen greifen den neuen Todesstern an, Luke stellt sich Vader und dem Imperator.",
+  "Star Wars: Das Erwachen der Macht": "Dreißig Jahre nach dem Sieg über das Imperium bedroht die Erste Ordnung die Galaxis.",
+  "E.T. – Der Außerirdische": "Ein Junge versteckt einen gestrandeten Außerirdischen und hilft ihm, nach Hause zu telefonieren.",
+  "Independence Day": "Riesige Raumschiffe greifen die Erde an – die Menschheit schlägt am 4. Juli zurück.",
+  "Men in Black": "Eine Geheimorganisation überwacht Außerirdische auf der Erde – ein junger Polizist wird rekrutiert.",
+  "Inception": "Ein Dieb, der Geheimnisse aus Träumen stiehlt, soll einem Erben eine Idee einpflanzen.",
+  "Interstellar": "Astronauten suchen durch ein Wurmloch nach einer neuen Heimat für die Menschheit.",
+  "Der Marsianer – Rettet Mark Watney": "Ein Astronaut wird auf dem Mars zurückgelassen und muss mit Wissenschaft und Humor überleben.",
+  "Gravity": "Nach einer Katastrophe im Orbit kämpfen zwei Astronauten ums Überleben.",
+  "Avengers: Endgame": "Nach Thanos' Schlag versuchen die verbliebenen Avengers, die verlorene Hälfte des Universums zurückzuholen.",
+  "Iron Man": "Ein Waffenfabrikant baut sich in Gefangenschaft eine Rüstung und wird zum Superhelden.",
+  "The Dark Knight": "Batman stellt sich dem Joker, der Gotham City ins Chaos stürzen will.",
+  "Batman Begins": "Bruce Wayne kehrt nach Jahren der Ausbildung nach Gotham zurück und wird zu Batman.",
+  "Spider-Man": "Nach dem Biss einer genmanipulierten Spinne entdeckt Peter Parker übermenschliche Kräfte.",
+  "Black Panther": "T'Challa wird König des verborgenen Hightech-Staates Wakanda und muss seinen Thron verteidigen.",
+  "Guardians of the Galaxy": "Eine Bande von Außenseitern muss einen mächtigen Infinity-Stein vor einem Fanatiker schützen.",
+  "Fluch der Karibik 2": "Jack Sparrow schuldet dem gefürchteten Davy Jones seine Seele.",
+  "Indiana Jones und der letzte Kreuzzug": "Indiana Jones sucht mit seinem Vater den Heiligen Gral.",
+  "Indiana Jones und der Tempel des Todes": "In Indien legt sich Indy mit einem grausamen Kult an.",
+  "Die Mumie": "Bei Ausgrabungen in Ägypten wird ein verfluchter Hohepriester zum Leben erweckt.",
+  "James Bond 007 – Skyfall": "Ein Anschlag auf den MI6 führt Bond in die Vergangenheit von M.",
+  "James Bond 007 – GoldenEye": "Bond jagt eine Weltraumwaffe – und trifft auf einen totgeglaubten Kollegen.",
+  "James Bond 007 – Goldfinger": "Bond durchkreuzt die Pläne eines Goldmagnaten, Fort Knox auszurauben.",
+  "James Bond 007 – Keine Zeit zu sterben": "Bonds Ruhestand endet, als ein alter Freund vom CIA um Hilfe bittet.",
+  "Mission: Impossible – Fallout": "Ethan Hunt muss gestohlenes Plutonium zurückholen und einen Anschlag verhindern.",
+  "Top Gun: Maverick": "Pete „Maverick“ Mitchell soll junge Piloten für einen fast unmöglichen Einsatz ausbilden.",
+  "Speed": "Ein Bus darf nicht unter 50 Meilen pro Stunde fahren – sonst explodiert eine Bombe.",
+  "Con Air": "Ein entlassener Häftling sitzt in einem Gefangenentransporter fest, den Schwerverbrecher kapern.",
+  "The Rock – Fels der Entscheidung": "Ein Chemiker und ein Ex-Häftling müssen auf Alcatraz eine Giftgas-Bedrohung stoppen.",
+  "Lethal Weapon – Zwei stahlharte Profis": "Ein besonnener Familienvater und ein lebensmüder Draufgänger werden Partner bei der Polizei.",
+  "Bad Boys – Harte Jungs": "Zwei Drogenfahnder aus Miami müssen gestohlenes Heroin zurückholen.",
+  "Fast & Furious – Neues Modell. Originalteile.": "Ein Undercover-Agent und ein Straßenrennfahrer jagen einen Drogenbaron.",
+  "Mad Max: Fury Road": "In einer Wüsten-Endzeit hilft Max einer Kriegerin, fünf Frauen vor einem Tyrannen zu retten.",
+  "John Wick": "Ein Auftragskiller im Ruhestand nimmt Rache an Gangstern, die ihm alles genommen haben.",
+  "Die Bourne Identität": "Ein Mann ohne Gedächtnis entdeckt, dass er ein ausgebildeter Agent ist – und gejagt wird.",
+  "Der Staatsfeind Nr. 1": "Ein Anwalt gerät ins Visier eines Geheimdienstes, der ihn mit totaler Überwachung verfolgt.",
+  "Twister": "Sturmjäger fahren mitten in die gefährlichsten Tornados.",
+  "Armageddon – Das jüngste Gericht": "Ölbohrer sollen einen Asteroiden sprengen, der auf die Erde zurast.",
+  "Der Soldat James Ryan": "Nach der Landung in der Normandie soll ein Trupp einen einzelnen Soldaten finden und nach Hause bringen.",
+  "Black Hawk Down": "1993 geraten US-Soldaten in Mogadischu in einen stundenlangen Häuserkampf.",
+  "Last Samurai": "Ein US-Offizier soll in Japan Soldaten ausbilden und wird von Samurai gefangen genommen.",
+  "Königreich der Himmel": "Ein Schmied wird zur Zeit der Kreuzzüge zum Verteidiger Jerusalems.",
+  "Kleopatra": "Die ägyptische Königin, Julius Cäsar und Marcus Antonius – Monumentalkino der 1960er.",
+  "Spartacus": "Ein thrakischer Sklave führt einen Aufstand gegen das Römische Reich an.",
+  "Die zehn Gebote": "Moses führt das Volk Israel aus der ägyptischen Gefangenschaft.",
+  "Lawrence von Arabien": "Ein britischer Offizier vereint im Ersten Weltkrieg arabische Stämme gegen das Osmanische Reich.",
+  "Vom Winde verweht": "Die eigenwillige Scarlett O'Hara im amerikanischen Bürgerkrieg und danach.",
+  "Der mit dem Wolf tanzt": "Ein Offizier der Unionsarmee freundet sich mit den Lakota an.",
+  "Die üblichen Verdächtigen": "Ein Kleinganove erzählt der Polizei von einem Coup – und vom geheimnisvollen Keyser Söze.",
+  "Heat": "Ein Meisterdieb und ein besessener Polizist liefern sich in Los Angeles ein Duell.",
+  "Departed – Unter Feinden": "Ein Polizist schleust sich in die Mafia ein, während ein Gangster bei der Polizei arbeitet.",
+  "Good Fellas – Drei Jahrzehnte in der Mafia": "Aufstieg und Fall des Gangsters Henry Hill.",
+  "Der Pate – Teil II": "Michael Corleone festigt seine Macht, während Vitos Jugend in New York erzählt wird.",
+  "Catch Me If You Can": "Ein junger Hochstapler gibt sich als Pilot, Arzt und Anwalt aus – ein FBI-Agent ist ihm auf den Fersen.",
+  "Ocean's Eleven": "Danny Ocean plant mit elf Spezialisten den Raub von drei Casinos in Las Vegas.",
+  "Knives Out – Mord ist Familiensache": "Ein Krimiautor stirbt an seinem 85. Geburtstag – und jeder in der Familie ist verdächtig.",
+  "Mord im Orient-Express": "Hercule Poirot ermittelt in einem eingeschneiten Zug, in dem ein Passagier ermordet wurde.",
+  "Zodiac – Die Spur des Killers": "Journalisten und Polizisten jagen jahrzehntelang den Zodiac-Killer.",
+  "Gone Girl – Das perfekte Opfer": "Am fünften Hochzeitstag verschwindet eine Frau – ihr Mann gerät unter Verdacht.",
+  "Prisoners": "Als seine Tochter entführt wird, nimmt ein Vater das Gesetz selbst in die Hand.",
+  "Shutter Island": "Ein US-Marshal ermittelt in einer Psychiatrie auf einer Insel nach einer verschwundenen Patientin.",
+  "Memento": "Ein Mann ohne Kurzzeitgedächtnis sucht den Mörder seiner Frau – rückwärts erzählt.",
+  "Fargo": "Ein verschuldeter Autoverkäufer lässt seine Frau entführen – eine schwangere Polizistin ermittelt.",
+  "No Country for Old Men": "Ein Jäger findet Drogengeld – und wird von einem gnadenlosen Killer verfolgt.",
+  "Der Fremde im Zug": "Zwei Fremde scheinen im Zug einen Mordtausch zu vereinbaren – Hitchcock-Klassiker.",
+  "Das Fenster zum Hof": "Ein Fotograf mit Gipsbein beobachtet seine Nachbarn und glaubt, einen Mord gesehen zu haben.",
+  "Psycho": "Eine Sekretärin flieht mit Geld und übernachtet im Bates Motel.",
+  "Der unsichtbare Dritte": "Ein Werbefachmann wird mit einem Agenten verwechselt und quer durch die USA gejagt.",
+  "Die Vögel": "In einer kalifornischen Küstenstadt greifen Vögel plötzlich Menschen an.",
+  "Der Name der Rose": "In einer Benediktinerabtei des 14. Jahrhunderts ermittelt ein Franziskanermönch in einer Mordserie.",
+  "Das Parfum – Die Geschichte eines Mörders": "Ein Mann mit außergewöhnlichem Geruchssinn will den perfekten Duft erschaffen.",
+  "Das Experiment": "Freiwillige spielen in einem Gefängnisexperiment Wärter und Häftlinge – es eskaliert.",
+  "Who Am I – Kein System ist sicher": "Ein schüchterner Hacker gerät mit einer Hackergruppe ins Visier von Europol.",
+  "Der Baader Meinhof Komplex": "Entstehung und Terror der RAF von 1967 bis zum Deutschen Herbst.",
+  "Die Welle": "Ein Lehrer startet ein Experiment über Autokratie – die Schüler verlieren die Kontrolle.",
+  "Joker": "Die Verwandlung des gescheiterten Komikers Arthur Fleck in den Joker.",
+  "Taxi Driver": "Ein einsamer Vietnam-Veteran fährt nachts Taxi in New York und verliert den Halt.",
+  "Der Clou": "Zwei Trickbetrüger rächen sich im Chicago der 1930er-Jahre an einem Gangsterboss.",
+  "Reservoir Dogs – Wilde Hunde": "Nach einem missglückten Juwelenraub suchen die Gangster den Verräter in ihren Reihen.",
+  "Die Verurteilten": "Ein unschuldig verurteilter Banker findet im Gefängnis Freundschaft und Hoffnung.",
+  "Der Club der toten Dichter": "Ein unkonventioneller Englischlehrer begeistert die Schüler eines strengen Internats für Poesie.",
+  "Rain Man": "Ein egoistischer Autohändler entdeckt, dass er einen autistischen Bruder hat.",
+  "Philadelphia": "Ein Anwalt wird wegen seiner HIV-Erkrankung entlassen und zieht vor Gericht.",
+  "Good Will Hunting": "Ein hochbegabter Hausmeister am MIT findet mit Hilfe eines Therapeuten seinen Weg.",
+  "The Green Mile": "Ein Gefängniswärter begegnet einem Todeskandidaten mit wundersamen Fähigkeiten.",
+  "Einer flog über das Kuckucksnest": "Ein Kleinkrimineller lehnt sich in einer Psychiatrie gegen die strenge Oberschwester auf.",
+  "A Beautiful Mind – Genie und Wahnsinn": "Das Leben des Mathematikers John Nash zwischen Genie und Schizophrenie.",
+  "The King's Speech – Die Rede des Königs": "Der stotternde König Georg VI. arbeitet mit einem Sprachtherapeuten an seiner Kriegsrede.",
+  "Oppenheimer": "Der Physiker J. Robert Oppenheimer und die Entwicklung der Atombombe.",
+  "Bohemian Rhapsody": "Aufstieg der Band Queen und ihres Sängers Freddie Mercury bis zum Live-Aid-Konzert.",
+  "Rocketman": "Das Leben von Elton John als Musical-Fantasie.",
+  "Walk the Line": "Die Geschichte von Johnny Cash und June Carter.",
+  "Rocky": "Ein unbekannter Boxer aus Philadelphia bekommt die Chance auf einen Titelkampf.",
+  "Million Dollar Baby": "Ein alter Boxtrainer nimmt widerwillig eine junge Boxerin unter seine Fittiche.",
+  "Gran Torino": "Ein verbitterter Korea-Veteran freundet sich mit seinen Nachbarn aus einer Hmong-Familie an.",
+  "Der Pianist": "Der jüdische Pianist Władysław Szpilman überlebt im besetzten Warschau.",
+  "Das Wunder von Bern": "Die Fußball-WM 1954 aus Sicht einer Essener Familie, deren Vater aus Kriegsgefangenschaft heimkehrt.",
+  "Sophie Scholl – Die letzten Tage": "Die letzten Tage der Widerstandskämpferin der Weißen Rose 1943.",
+  "Nirgendwo in Afrika": "Eine jüdische Familie flieht 1938 nach Kenia und baut sich ein neues Leben auf.",
+  "Das weiße Band": "Rätselhafte Vorfälle in einem norddeutschen Dorf kurz vor dem Ersten Weltkrieg.",
+  "Toni Erdmann": "Ein Vater mit Hang zu Scherzen besucht überraschend seine Karriere-Tochter in Bukarest.",
+  "Systemsprenger": "Die neunjährige Benni wird von Einrichtung zu Einrichtung weitergereicht.",
+  "Der Hauptmann von Köpenick": "Ein Schuster ohne Papiere verkleidet sich als Hauptmann und besetzt das Rathaus.",
+  "Die Blechtrommel": "Oskar Matzerath beschließt mit drei Jahren, nicht mehr zu wachsen – nach Günter Grass.",
+  "Lili Marleen": "Eine Sängerin wird mit einem Soldatenlied im Zweiten Weltkrieg berühmt.",
+  "Honig im Kopf": "Ein Mädchen bricht mit ihrem an Alzheimer erkrankten Großvater nach Venedig auf.",
+  "Ein ganzes halbes Jahr": "Eine junge Frau pflegt einen querschnittsgelähmten Mann und will ihm neuen Lebensmut geben.",
+  "Slumdog Millionär": "Ein Junge aus den Slums von Mumbai steht vor dem Hauptgewinn einer Quizshow.",
+  "Titanic – Die Legende lebt": "Ein billiger Zeichentrickfilm über die Titanic mit singenden Tieren.",
+  "Hidden Figures – Unerkannte Heldinnen": "Drei afroamerikanische Mathematikerinnen bei der NASA in den 1960ern.",
+  "Green Book – Eine besondere Freundschaft": "Ein italoamerikanischer Türsteher fährt einen schwarzen Pianisten durch die Südstaaten.",
+  "Der seltsame Fall des Benjamin Button": "Ein Mann wird als Greis geboren und altert rückwärts.",
+  "Life of Pi – Schiffbruch mit Tiger": "Ein Junge treibt nach einem Schiffbruch mit einem Bengal-Tiger im Rettungsboot über den Pazifik.",
+  "Into the Wild": "Ein Hochschulabsolvent lässt alles hinter sich und zieht in die Wildnis Alaskas.",
+  "Cast Away – Verschollen": "Ein Logistik-Manager strandet nach einem Flugzeugabsturz auf einer einsamen Insel.",
+  "Der Mann, der niemals lebte": "Ein CIA-Agent jagt im Nahen Osten einen Terroristenführer.",
+  "Lion – Der lange Weg nach Hause": "Ein adoptierter Mann sucht per Satellitenbildern sein indisches Heimatdorf.",
+  "Wunder einer Winternacht": "Die Geschichte des Weihnachtsmanns als finnisches Märchen.",
+  "Das Boot ist voll": "Flüchtlinge suchen 1942 in der Schweiz Zuflucht.",
+  "Der bewegte Mann": "Ein Frauenheld zieht nach dem Rauswurf bei einem schwulen Mann ein.",
+  "Kokowääh": "Ein Drehbuchautor erfährt, dass er eine achtjährige Tochter hat.",
+  "Zweiohrküken": "Ludo und Anna sind zusammen – doch der Alltag stellt die Beziehung auf die Probe.",
+  "Fack ju Göhte 2": "Zeki Müller und seine Chaosklasse auf Klassenfahrt nach Thailand.",
+  "(T)Raumschiff Surprise – Periode 1": "Eine schräge Crew reist in die Vergangenheit, um die Erde zu retten – Parodie.",
+  "Der Wixxer": "Parodie auf die Edgar-Wallace-Filme: Scotland Yard jagt einen maskierten Mörder.",
+  "Otto – Der Film": "Ostfriese Otto muss in Hamburg 9.000 Mark Schulden auftreiben.",
+  "Manta, Manta": "Ruhrpott-Kult: Ein Autorennen um Ehre, Liebe und einen Opel Manta.",
+  "Die Känguru-Chroniken": "Ein Kleinkünstler und ein kommunistisches Känguru werden zur WG.",
+  "Willkommen bei den Hartmanns": "Eine Münchner Familie nimmt einen Geflüchteten aus Nigeria auf.",
+  "Monsieur Claude und seine Töchter": "Ein konservativer Franzose verzweifelt, weil seine vier Töchter Männer verschiedenster Herkunft heiraten.",
+  "Willkommen bei den Sch'tis": "Ein Postbeamter wird zur Strafe in den ungeliebten Norden Frankreichs versetzt.",
+  "Die fabelhafte Welt der Amélie": "Eine schüchterne Kellnerin in Paris beschließt, heimlich das Leben anderer zu verbessern.",
+  "Ein Fisch namens Wanda": "Ein Juwelenraub, ein Anwalt und vier Ganoven, die sich gegenseitig betrügen.",
+  "Die nackte Kanone": "Der tollpatschige Polizist Frank Drebin soll ein Attentat auf die Queen verhindern.",
+  "Hangover": "Nach einem Junggesellenabschied in Las Vegas fehlt der Bräutigam – und die Erinnerung.",
+  "Täglich grüßt das Murmeltier": "Ein zynischer Wettermann erlebt denselben Tag immer wieder.",
+  "Mrs. Doubtfire – Das stachelige Kindermädchen": "Ein geschiedener Vater verkleidet sich als Haushälterin, um bei seinen Kindern zu sein.",
+  "Ghostbusters – Die Geisterjäger": "Drei Wissenschaftler gründen in New York ein Geisterjäger-Unternehmen.",
+  "Beverly Hills Cop": "Ein Polizist aus Detroit ermittelt auf eigene Faust in Beverly Hills.",
+  "Zoolander": "Ein dümmliches Männermodel wird zum Attentäter umprogrammiert.",
+  "Meine Braut, ihr Vater und ich": "Ein Krankenpfleger muss den misstrauischen Vater seiner Freundin überzeugen.",
+  "Die Truman Show": "Truman ahnt nicht, dass sein ganzes Leben eine weltweit ausgestrahlte Fernsehshow ist.",
+  "Liar Liar – Der Dummschwätzer": "Ein Anwalt kann 24 Stunden lang nicht lügen.",
+  "Sister Act – Eine himmlische Karriere": "Eine Barsängerin versteckt sich als Nonne im Kloster und bringt den Chor auf Trab.",
+  "Sein oder Nichtsein": "Eine Warschauer Theatertruppe führt 1939 die Gestapo an der Nase herum.",
+  "Manche mögen's heiß": "Zwei Musiker verkleiden sich als Frauen, um Gangstern zu entkommen.",
+  "Kevin – Allein in New York": "Kevin steigt in den falschen Flieger und erlebt Weihnachten allein in New York.",
+  "Der Grinch": "Ein griesgrämiges Wesen will den Bewohnern von Whoville das Weihnachtsfest stehlen.",
+  "Schöne Bescherung": "Familie Griswold will das perfekte Weihnachtsfest – und alles geht schief.",
+  "Tatsächlich… Liebe": "Zehn Liebesgeschichten in London in den Wochen vor Weihnachten.",
+  "Ich – Einfach unverbesserlich": "Ein Superschurke adoptiert drei Waisenmädchen für seinen Plan, den Mond zu stehlen.",
+  "Die Monster AG": "Monster erschrecken Kinder, um Energie zu gewinnen – bis ein Mädchen in ihre Welt gelangt.",
+  "Toy Story": "Cowboy Woody bekommt Konkurrenz durch den Astronauten Buzz Lightyear.",
+  "Oben": "Ein alter Mann lässt sein Haus mit Luftballons nach Südamerika fliegen.",
+  "Die Unglaublichen – The Incredibles": "Eine Superheldenfamilie muss aus dem Ruhestand zurückkehren.",
+  "Ratatouille": "Eine Ratte mit großem Kochtalent hilft einem Küchenjungen in Paris.",
+  "Die Eiskönigin – Völlig unverfroren": "Prinzessin Anna sucht ihre Schwester Elsa, die das Königreich in ewigen Winter getaucht hat.",
+  "Madagascar": "Vier Zootiere aus New York stranden auf Madagaskar.",
+  "Coco – Lebendiger als das Leben!": "Ein mexikanischer Junge gelangt am Tag der Toten ins Reich seiner Vorfahren.",
+  "Alles steht Kopf": "Die Gefühle eines Mädchens geraten durcheinander, als die Familie umzieht.",
+  "Zoomania": "Eine Häsin wird Polizistin in der Tiermetropole Zoomania und löst einen Vermisstenfall.",
+  "Paddington": "Ein Bär aus Peru findet in London eine Familie.",
+  "Wickie und die starken Männer": "Der kluge Wikingerjunge Wickie rettet die Kinder seines Dorfes.",
+  "Bibi & Tina – Der Film": "Junghexe Bibi und Tina erleben Abenteuer auf dem Martinshof.",
+  "Die wilden Kerle": "Eine Kinderfußballmannschaft kämpft um ihren Bolzplatz.",
+  "Das Sams": "Ein schüchterner Mann bekommt Besuch von einem frechen Wesen, das Wünsche erfüllt.",
+  "Hui Buh – Das Schlossgespenst": "Ein tollpatschiges Gespenst muss sein Schloss vor dem Verkauf retten.",
+  "Schlaflos in Seattle": "Ein Junge sucht über eine Radiosendung eine neue Frau für seinen verwitweten Vater.",
+  "E-Mail für Dich": "Zwei Konkurrenten verlieben sich anonym per E-Mail.",
+  "Harry und Sally": "Können Männer und Frauen befreundet sein? Zwölf Jahre einer Freundschaft.",
+  "Ghost – Nachricht von Sam": "Ein ermordeter Mann versucht, seine Freundin aus dem Jenseits zu beschützen.",
+  "Bodyguard": "Ein Ex-Secret-Service-Agent beschützt einen Popstar vor einem Stalker.",
+  "Die Brücken am Fluss": "Eine Farmersfrau und ein Fotograf erleben vier Tage einer großen Liebe.",
+  "Wie ein einziger Tag": "Ein alter Mann liest einer demenzkranken Frau eine Liebesgeschichte vor.",
+  "Stolz und Vorurteil": "Elizabeth Bennet und der stolze Mr. Darcy – nach Jane Austen.",
+  "La La Land": "Eine Schauspielerin und ein Jazzpianist verlieben sich in Los Angeles – ein modernes Musical.",
+  "Casablanca": "Ein Barbesitzer in Marokko trifft 1941 seine verlorene Liebe wieder.",
+  "Frühstück bei Tiffany": "Das New Yorker Partygirl Holly Golightly und ihr Nachbar, ein junger Schriftsteller.",
+  "Ein Herz und eine Krone": "Eine Prinzessin entkommt in Rom ihren Pflichten und verbringt einen Tag mit einem Reporter.",
+  "Der Teufel trägt Prada": "Eine junge Journalistin wird Assistentin der gefürchteten Chefin eines Modemagazins.",
+  "Die Hochzeit meines besten Freundes": "Eine Frau will die Hochzeit ihres besten Freundes verhindern.",
+  "Sissi – Die junge Kaiserin": "Sissi muss sich am Wiener Hof gegen ihre strenge Schwiegermutter behaupten.",
+  "Sissi – Schicksalsjahre einer Kaiserin": "Krankheit und Reisen: Sissi findet Erholung in Madeira und Venedig.",
+  "Ein Sommer in Kroatien": "Leichte Urlaubsromanze an der Adria.",
+  "Der Club der singenden Metzger": "Ein deutscher Metzger wandert nach Amerika aus und gründet einen Gesangsverein.",
+  // Serien & Formate
+  "Tagesschau": "Die Hauptnachrichten der ARD – seit 1952 der Klassiker um 20 Uhr.",
+  "Tagesthemen": "Das Nachrichtenmagazin am späten Abend mit Hintergründen und Kommentaren.",
+  "Morgenmagazin": "Nachrichten, Wetter und Gespräche am Morgen.",
+  "Brisant": "Boulevardmagazin am Vorabend.",
+  "Tatort": "Die Krimireihe am Sonntagabend – wechselnde Teams aus verschiedenen Städten.",
+  "Polizeiruf 110": "Die zweite große Krimireihe mit Ermittlerteams in Ost und West.",
+  "Nord bei Nordwest": "Ein Tierarzt und ehemaliger Polizist löst Fälle an der Ostseeküste.",
+  "Mord mit Aussicht": "Eine Kölner Kommissarin wird in die Eifel versetzt – Krimi mit viel Humor.",
+  "Hubert ohne Staller": "Bayerische Krimikomödie um ein Polizistenteam in Wolfratshausen.",
+  "In aller Freundschaft": "Krankenhausserie aus der Sachsenklinik in Leipzig.",
+  "Babylon Berlin": "Ein Kommissar ermittelt im Berlin der späten 1920er-Jahre.",
+  "Sturm der Liebe": "Telenovela um Liebe und Intrigen im Hotel „Fürstenhof“.",
+  "Rote Rosen": "Telenovela um Frauen über 40 in Lüneburg.",
+  "Wer weiß denn sowas?": "Quiz um kuriose Wissensfragen mit zwei prominenten Teamkapitänen.",
+  "maischberger": "Politischer Talk mit Gästen aus Politik und Gesellschaft.",
+  "Sportschau": "Die Bundesliga-Zusammenfassung am Samstag.",
+  "heute": "Die Hauptnachrichten des ZDF am Abend.",
+  "heute journal": "Das Nachrichtenmagazin des ZDF am späten Abend.",
+  "Markus Lanz": "Gesprächssendung mit Gästen aus Politik, Wissenschaft und Gesellschaft.",
+  "Leute heute": "Promi- und Boulevardmagazin.",
+  "Der Bergdoktor": "Ein Arzt kehrt in sein Heimatdorf in Tirol zurück.",
+  "Die Rosenheim-Cops": "Krimiserie aus dem oberbayerischen Rosenheim – mit Humor und Lokalkolorit.",
+  "SOKO Leipzig": "Eine Sonderkommission ermittelt in Leipzig.",
+  "Der Alte": "Klassische Münchner Krimireihe um einen erfahrenen Kommissar.",
+  "Wilsberg": "Ein Antiquar und Privatdetektiv ermittelt in Münster.",
+  "Die Bergretter": "Eine Bergwacht im Einsatz in den Alpen.",
+  "Notruf Hafenkante": "Polizei und Notaufnahme im Hamburger Hafen.",
+  "Bares für Rares": "Verkäufer lassen Raritäten schätzen und verhandeln mit Händlern.",
+  "Terra X": "Dokumentationen über Geschichte, Natur und Wissenschaft.",
+  "Der Quiz-Champion": "Kandidaten treten gegen Prominente in Wissensgebieten an.",
+  "Der Kommissar und das Meer": "Ein deutscher Kommissar ermittelt auf der schwedischen Insel Gotland.",
+  "Ein starkes Team": "Ein Berliner Ermittlerduo löst Mordfälle.",
+  "Der Tatortreiniger": "Ein Tatortreiniger begegnet an Tatorten skurrilen Menschen.",
+  "Inspector Barnaby": "Ein Chief Inspector ermittelt in der Grafschaft Midsomer.",
+  "Rentnercops": "Zwei pensionierte Polizisten werden reaktiviert.",
+  "Landesschau": "Regionalmagazin mit Geschichten aus dem Land.",
+  "Visite": "Gesundheitsmagazin mit Tipps vom Arzt.",
+  "Nachrichten aus der Region": "Regionale Nachrichten der Dritten Programme.",
+  "RTL Aktuell": "Die Hauptnachrichten von RTL.",
+  "Punkt 12": "Mittagsmagazin mit Nachrichten und Service.",
+  "Explosiv": "Boulevard- und Reportagemagazin.",
+  "Wer wird Millionär?": "Die Quizshow, in der 15 richtige Antworten zur Million führen.",
+  "Let's Dance": "Prominente tanzen mit Profis um den Titel.",
+  "Das Supertalent": "Talentshow mit Darbietungen aller Art.",
+  "Gute Zeiten, schlechte Zeiten": "Daily Soap um Liebe, Freundschaft und Intrigen in Berlin.",
+  "Alarm für Cobra 11": "Action-Krimiserie um die Autobahnpolizei.",
+  "Unter uns": "Daily Soap aus der Kölner Schillerallee.",
+  "Alles was zählt": "Daily Soap um Eiskunstläufer und Sportler in Essen.",
+  "Der Lehrer": "Ein unkonventioneller Lehrer an einer Gesamtschule.",
+  "Barbara Salesch – Das Strafgericht": "Gerichtsshow mit nachgestellten Fällen.",
+  "Sat.1-Frühstücksfernsehen": "Morgenmagazin mit Nachrichten, Service und Unterhaltung.",
+  "The Voice of Germany": "Gesangswettbewerb mit Blind Auditions.",
+  "Die Ruhrpottwache": "Doku-Soap über eine Polizeiwache im Ruhrgebiet.",
+  "Auf Streife": "Doku-Soap über Polizeieinsätze.",
+  "Die Höhle der Löwen": "Gründer präsentieren Investoren ihre Geschäftsideen.",
+  "Das perfekte Dinner": "Hobbyköche laden sich gegenseitig zum Essen ein und bewerten sich.",
+  "Goodbye Deutschland": "Auswanderer starten ein neues Leben im Ausland.",
+  "Club der roten Bänder": "Jugendliche Patienten gründen im Krankenhaus eine Clique.",
+  "Germany's Next Topmodel": "Castingshow für Nachwuchsmodels.",
+  "Joko & Klaas gegen ProSieben": "Zwei Moderatoren treten gegen ihren eigenen Sender an – der Preis: Sendezeit.",
+  "Galileo": "Wissensmagazin mit Reportagen und Experimenten.",
+  "taff": "Boulevardmagazin am Nachmittag.",
+  "Stromberg": "Mockumentary über einen selbstverliebten Büroleiter einer Versicherung.",
+  "Mein Lokal, Dein Lokal": "Wirte testen sich gegenseitig ihre Restaurants.",
+  "Achtung Kontrolle!": "Doku-Soap über Kontrolleure und Behörden.",
+  "Abenteuer Leben": "Reportagemagazin über Alltag und Kuriositäten.",
+  "Berlin – Tag & Nacht": "Scripted-Reality-Soap um eine Berliner WG.",
+  "Die Geissens": "Doku-Soap über eine Millionärsfamilie.",
+  "Frauentausch": "Zwei Mütter tauschen für zehn Tage die Familien.",
+  "RTLZWEI News": "Kurznachrichten für ein junges Publikum.",
+  "ARTE Journal": "Europäische Nachrichten.",
+  "ARTE-Themenabend": "Ein Abend mit Filmen und Dokumentationen zu einem Thema.",
+  "Opernabend live": "Opernübertragung aus einem großen Haus.",
+  "Xenius": "Wissensmagazin.",
+  "Navy CIS": "Spezialermittler der US-Marine lösen Verbrechen mit Navy-Bezug.",
+  "Criminal Minds": "FBI-Profiler jagen Serienverbrecher.",
+  "CSI: Miami": "Forensiker in Miami lösen Fälle mit Spurensicherung.",
+  "Bones – Die Knochenjägerin": "Eine forensische Anthropologin hilft dem FBI.",
+  "Castle": "Ein Krimiautor begleitet eine New Yorker Polizistin bei Ermittlungen.",
+  "The Mentalist": "Ein ehemaliger TV-Hellseher berät die kalifornische Polizei.",
+  "Monk": "Ein Detektiv mit Zwangsstörungen löst Mordfälle in San Francisco.",
+  "Blue Bloods": "Eine Polizistenfamilie in New York.",
+  "Hawaii Five-0": "Eine Spezialeinheit kämpft auf Hawaii gegen Verbrechen.",
+  "Law & Order: Special Victims Unit": "Eine Sondereinheit ermittelt bei Sexualverbrechen in New York.",
+  "Grey's Anatomy": "Assistenzärzte an einer Klinik in Seattle.",
+  "Dr. House": "Ein genialer, zynischer Arzt löst medizinische Rätsel.",
+  "9-1-1 Notruf L.A.": "Feuerwehr, Polizei und Notrufzentrale in Los Angeles.",
+  "Chicago Fire": "Feuerwehrleute und Rettungssanitäter in Chicago.",
+  "Suits": "Ein Studienabbrecher ohne Abschluss arbeitet in einer Top-Kanzlei.",
+  "Lucifer": "Der Teufel macht Urlaub in Los Angeles und hilft der Polizei.",
+  "Desperate Housewives": "Vier Hausfrauen in einer Vorstadtstraße und ihre Geheimnisse.",
+  "Lost": "Überlebende eines Flugzeugabsturzes auf einer mysteriösen Insel.",
+  "Akte X": "Zwei FBI-Agenten untersuchen übernatürliche Fälle.",
+  "Star Trek: Das nächste Jahrhundert": "Captain Picard und die Crew der Enterprise erforschen das All.",
+  "Magnum P.I.": "Ein Privatdetektiv auf Hawaii.",
+  "Knight Rider": "Michael Knight und sein sprechendes Auto K.I.T.T.",
+  "The Big Bang Theory": "Vier nerdige Wissenschaftler und ihre Nachbarin Penny.",
+  "Two and a Half Men": "Ein Junggeselle teilt sein Strandhaus mit Bruder und Neffe.",
+  "Friends": "Sechs Freunde in New York.",
+  "How I Met Your Mother": "Ted erzählt seinen Kindern, wie er ihre Mutter kennenlernte.",
+  "Die Simpsons": "Die gelbe Familie aus Springfield.",
+  "Young Sheldon": "Die Kindheit des Physikgenies Sheldon Cooper in Texas.",
+  "King of Queens": "Ein Paketzusteller, seine Frau und ihr Vater in Queens.",
+  "Modern Family": "Drei Familien eines Clans in Los Angeles.",
+  "Malcolm mittendrin": "Ein hochbegabter Junge in einer chaotischen Familie.",
+  "Doctor's Diary": "Eine junge Ärztin trifft ihre Jugendliebe wieder.",
+  "Danni Lowinski": "Eine Friseurin wird Anwältin und berät im Einkaufszentrum.",
+  "Hinter Gittern": "Der Alltag in einem Frauengefängnis.",
+  "Der Bulle von Tölz": "Ein Kommissar ermittelt in Bad Tölz.",
+  "The Walking Dead": "Überlebende kämpfen in einer Welt voller Zombies.",
+  "Game of Thrones": "Adelshäuser kämpfen um den Eisernen Thron – Fantasy-Epos.",
+  "Breaking Bad": "Ein krebskranker Chemielehrer wird zum Drogenproduzenten.",
+  "Better Call Saul": "Die Vorgeschichte des windigen Anwalts Saul Goodman.",
+  "Die Sopranos": "Ein Mafiaboss in New Jersey geht zur Psychotherapie.",
+  "The Crown": "Die Regentschaft von Königin Elizabeth II.",
+  "Downton Abbey": "Eine Adelsfamilie und ihre Bediensteten im England des frühen 20. Jahrhunderts.",
+  "Mad Men": "Werber in einer New Yorker Agentur der 1960er-Jahre.",
+  "Sherlock": "Sherlock Holmes und Dr. Watson im modernen London.",
+  "Doctor Who": "Ein außerirdischer Zeitreisender und seine Begleiter.",
+  "Stranger Things": "Kinder in einer Kleinstadt der 1980er stoßen auf übernatürliche Mächte.",
+  "The Last of Us": "Ein Schmuggler begleitet ein Mädchen durch ein von Pilz-Infizierten verwüstetes Amerika.",
+  "Dark": "Das Verschwinden von Kindern enthüllt in einer Kleinstadt Zeitreisen über Generationen.",
+  "4 Blocks": "Ein Clanchef in Berlin-Neukölln will aussteigen.",
+  "Deutschland 83": "Ein junger NVA-Soldat wird als Spion in die Bundeswehr eingeschleust.",
+  "Charité": "Medizingeschichte an der Berliner Charité.",
+  "Der Pass": "Ein deutsch-österreichisches Ermittlerduo jagt einen Serienmörder an der Grenze.",
+  "Weissensee": "Familiendrama in der DDR zwischen Stasi und Dissidenten.",
+  "Unsere Mütter, unsere Väter": "Fünf Freunde im Zweiten Weltkrieg.",
+  "Das Boot (Serie)": "Fortsetzung des Klassikers: U-Boot-Besatzung und Résistance in La Rochelle.",
+  "Pastewka": "Comedian Bastian Pastewka spielt sich selbst.",
+  "jerks.": "Christian Ulmen und Fahri Yardım in peinlichen Alltagssituationen.",
+  "Merz gegen Merz": "Ein Ehepaar in der Trennung muss sich weiter um Familie und Firma kümmern.",
+  "Türkisch für Anfänger": "Eine deutsch-türkische Patchworkfamilie in Berlin.",
+  "Berlin, Berlin": "Eine junge Zeichnerin zieht nach Berlin.",
+  "Hubert und Staller": "Zwei Streifenpolizisten in Wolfratshausen.",
+  "Die Kanzlei": "Anwälte in einer Hamburger Kanzlei.",
+  "Um Himmels Willen": "Nonnen gegen einen schlitzohrigen Bürgermeister.",
+  "Der Landarzt": "Ein Arzt in einem Dorf an der Schlei.",
+  "Die Schwarzwaldklinik": "Klinikserie-Klassiker aus dem Glottertal.",
+  "Das Traumschiff": "Kreuzfahrt mit prominenten Gästen und Geschichten an Bord.",
+  "Derrick": "Oberinspektor Derrick ermittelt in München.",
+  "Ein Fall für zwei": "Ein Anwalt und ein Privatdetektiv in Frankfurt.",
+  "Columbo": "Ein unscheinbarer Inspektor überführt Mörder, deren Tat der Zuschauer schon kennt.",
+  "Mord ist ihr Hobby": "Eine Krimiautorin löst Mordfälle in Cabot Cove.",
+  "Agatha Christie's Poirot": "Der belgische Detektiv Hercule Poirot.",
+  "Miss Marple": "Die scharfsinnige alte Dame löst Mordfälle.",
+  "Death in Paradise": "Ein britischer Inspector ermittelt in der Karibik.",
+  "Midsomer Murders": "Mordfälle im idyllischen Midsomer.",
+  "Kommissar Rex": "Ein Polizeihund und sein Kommissar in Wien.",
+  "CSI: Den Tätern auf der Spur": "Forensiker in Las Vegas.",
+  "Elementary": "Sherlock Holmes und Joan Watson in New York.",
+  "Person of Interest": "Ein Überwachungsprogramm sagt Verbrechen voraus.",
+  "Prison Break": "Ein Ingenieur lässt sich einsperren, um seinen Bruder aus dem Gefängnis zu befreien.",
+  "24": "Agent Jack Bauer kämpft in Echtzeit gegen Terroristen.",
+  "Homeland": "Eine CIA-Agentin verdächtigt einen heimgekehrten Kriegsgefangenen.",
+  "Jack Ryan": "Ein CIA-Analyst wird in den Außeneinsatz geschickt.",
+  "Scrubs – Die Anfänger": "Junge Ärzte im Krankenhaus Sacred Heart.",
+  "Die Nanny": "Eine Verkäuferin aus Queens wird Kindermädchen bei einem Broadway-Produzenten.",
+  "Eine schrecklich nette Familie": "Schuhverkäufer Al Bundy und seine Familie.",
+  "Hör mal, wer da hämmert": "Ein tollpatschiger Heimwerker-Moderator und seine Familie.",
+  "Alf": "Ein Außerirdischer lebt bei einer amerikanischen Familie.",
+  "Der Prinz von Bel-Air": "Ein Teenager zieht zu seinen reichen Verwandten.",
+  "Seinfeld": "Ein Comedian und seine Freunde in New York – eine Show über nichts.",
+  "The Office": "Mockumentary über Angestellte eines Papiergroßhandels.",
+  "Brooklyn Nine-Nine": "Ein Polizeirevier in Brooklyn.",
+  "Mom": "Eine trockene Alkoholikerin und ihre Mutter.",
+  "Mike & Molly": "Ein Polizist und eine Lehrerin lernen sich bei den Anonymen Esssüchtigen kennen.",
+  "2 Broke Girls": "Zwei Kellnerinnen in Brooklyn träumen vom eigenen Cupcake-Laden.",
+  "Futurama": "Ein Pizzabote wacht im Jahr 3000 auf.",
+  "Family Guy": "Die chaotische Familie Griffin.",
+  "American Dad": "Ein CIA-Agent und seine schräge Familie.",
+  "South Park": "Vier Jungen in einer Kleinstadt in Colorado.",
+  "Emergency Room – Die Notaufnahme": "Der Alltag in der Notaufnahme eines Chicagoer Krankenhauses.",
+  "The Good Doctor": "Ein junger Chirurg mit Autismus und Inselbegabung.",
+  "Chicago Med": "Ärzte in der Notaufnahme in Chicago.",
+  "New Amsterdam": "Ein neuer Klinikdirektor krempelt ein öffentliches Krankenhaus um.",
+  "This Is Us – Das ist Leben": "Die Familie Pearson über mehrere Jahrzehnte.",
+  "Gilmore Girls": "Eine junge Mutter und ihre Tochter in Stars Hollow.",
+  "Sex and the City": "Vier Freundinnen in New York.",
+  "Big Little Lies": "Ein Mord in einer wohlhabenden Küstenstadt deckt Geheimnisse auf.",
+  "Outlander": "Eine Krankenschwester reist von 1945 ins Schottland des 18. Jahrhunderts.",
+  "Vikings": "Der Aufstieg des Wikingers Ragnar Lothbrok.",
+  "Babylon 5": "Eine Raumstation als diplomatischer Treffpunkt der Völker.",
+  "Star Trek: Raumschiff Voyager": "Ein Raumschiff strandet am anderen Ende der Galaxis.",
+  "Raumschiff Enterprise": "Captain Kirk und Mr. Spock – der Klassiker.",
+  "Stargate – Kommando SG-1": "Ein Militärteam reist durch ein Sternentor zu fremden Welten.",
+  "Battlestar Galactica": "Die letzten Menschen fliehen vor den Zylonen.",
+  "The Mandalorian": "Ein Kopfgeldjäger beschützt ein geheimnisvolles Kind.",
+  "MacGyver": "Ein Geheimagent löst Probleme mit Taschenmesser und Erfindungsgeist.",
+  "Das A-Team": "Vier Ex-Soldaten helfen als Söldner den Schwachen.",
+  "Baywatch – Die Rettungsschwimmer von Malibu": "Rettungsschwimmer am Strand von Malibu.",
+  "Miami Vice": "Zwei Drogenfahnder in Miami.",
+};
+// Erweiterung anhängen, ohne Titel doppelt aufzunehmen
+for (const [db, more] of [[FILM_DB, FILM_MORE], [SERIES_DB, SERIES_MORE]]) { const have = new Set(FILM_DB.concat(SERIES_DB).map(r => r[0])); for (const r of more) if (!have.has(r[0])) db.push(r); }
 // Füllprogramme ohne Originaltitel (z. B. für die Nacht)
 const FILLERS = {
   "Teleshopping": ["Teleshopping-Fenster", "Shopping-Nacht", "Dauerwerbesendung"], "Doku": ["Expedition Nordsee", "Geheimnisvolle Alpen", "Planet Wasser", "Mythos Rhein"],
@@ -662,7 +1192,7 @@ const MENU = [
   { id: "streaming", name: "Streaming", subs: [["stream", "Plattform", "Abos, Churn, ARPU und Preismodell"], ["catalog", "Katalog", "Titel und Verwertungsfenster"], ["smarket", "Wettbewerb", "Streamer im Vergleich und Top 10"]] },
   { id: "sport", name: "Sport", subs: [["rights", "Rechtemarkt", "Ausschreibungen und Gebote"], ["myrights", "Meine Rechte", "Pakete und Live-Termine"]] },
   { id: "quoten", name: "Quoten", subs: [["table", "Quotentabelle", "Senderranking nach Marktanteil"], ["ratings", "Einschaltquoten", "Jede Stunde, jeder Sender"], ["rivals", "Konkurrenz", "Tagesplan der anderen Sender"], ["landscape", "Markt", "Sendergruppen und Streamer"]] },
-  { id: "sender", name: "Sender", subs: [["board", "Senderleitung", "Erwartungen, Vertrauen, Kredit"], ["finance", "Finanzen", "Erlöse, Kosten, EBITDA"], ["contracts", "Werbeverträge", "Laufende Werbeverträge"], ["agency", "Werbeagentur", "Neue Werbekunden gewinnen"], ["jury", "Goldene Antenne", "Rennen um den Qualitätspreis"]] },
+  { id: "sender", name: "Sender", subs: [["board", "Senderleitung", "Erwartungen, Vertrauen, Kredit"], ["finance", "Finanzen", "Erlöse, Kosten, EBITDA"], ["contracts", "Werbeverträge", "Laufende Werbeverträge"], ["agency", "Werbeagentur", "Neue Werbekunden gewinnen"], ["jury", "Fernsehpreise", "Grimme, Fernsehpreis, Bambi, Henne"]] },
 ];
 let openMenu = null;
 const PAGE_SECTION = Object.fromEntries(MENU.flatMap(m => m.subs.map(([k]) => [k, m.id])));
@@ -727,9 +1257,9 @@ function crest(i, size = 34) {
 function sbadge(id, size = 18) {
   const s = STREAMERS.find(x => x.id === id);
   if (LOGOS[id]) return `<img src="${LOGOS[id]}" alt="" class="logo" style="height:${size}px;max-width:${size * 4}px">`;
-  return `<span class="sbadge" style="--c:${s.color}">${esc(s.name.split(" ")[0])}</span>`;
+  return `<span class="sbadge" data-streamer="${s.id}" style="--c:${s.color}">${esc(s.name.split(" ")[0])}</span>`;
 }
-const sname = i => `<span class="sn">${crest(i, 16)}${esc(STATIONS[i].name)}</span>`;
+const sname = i => `<span class="sn" data-station="${STATIONS[i].id}">${crest(i, 16)}${esc(STATIONS[i].name)}</span>`;
 const holderName = id => !id ? "frei" : STATIONS[SIDX[id]].name;
 
 // =====================================================================
@@ -817,9 +1347,9 @@ function newGame(stationId) {
   const pool = shuffle(SERIES_DB.filter(r => !r[4]));
   for (const st of G.stations) {
     SERIES_DB.filter(r => r[4] === st.id).forEach(r => st.progs.push(fromDB(r)));
-    const nf = isMe(st) ? 5 : 3;
+    const nf = isMe(st) ? 14 : 8;
     for (let k = 0; k < nf && films.length; k++) st.progs.push(realFilm(films.pop()));
-    if ((st.type === "privat" || isMe(st)) && pool.length) st.progs.push(fromDB(pool.pop()));
+    for (let k = 0; k < (isMe(st) ? 4 : st.type === "privat" ? 2 : 1) && pool.length; k++) st.progs.push(fromDB(pool.pop()));
     if (st.type === "privat" && st.base < 6 && pool.length) st.progs.push(fromDB(pool.pop()));
     if (!st.progs.some(p => p.genre === "Nachrichten")) st.progs.push(makeFiller("Nachrichten", st));
     if (st.type === "privat") st.progs.push(makeFiller("Teleshopping", st));
@@ -933,8 +1463,8 @@ function planCheck(P) {
     sc.forEach((c, i) => {
       if (live.has(i) || c.live) { prevOk = true; return; }
       const p = c.p && progOf(P, c.p);
-      let ok = !!p;
-      if (p && c.cont) ok = prevOk;
+      let ok = !!p && !(p.until && d > p.until); // Lizenz endet vor diesem Tag
+      if (p && c.cont) ok = ok && prevOk;
       else if (p) {
         if (!left.has(p.id)) left.set(p.id, budgetOf(p));
         const r = left.get(p.id);
@@ -969,7 +1499,7 @@ function fillHorizon(P) {
     for (let d = G.day; d < G.day + HORIZON; d++) {
       const sc = calDay(P, d);
       sc.forEach(c => { if (c.p && !progOf(P, c.p)) { c.p = null; c.cont = false; c.ad = null; } }); // abgelaufene Lizenzen
-      if (sc.some(c => !c.p)) planDayFor(P, weekday(d), sc, { rem, keep: true });
+      if (sc.some(c => !c.p)) planDayFor(P, weekday(d), sc, { rem, keep: true, day: d });
     }
     buildToday(P);
   }
@@ -1022,7 +1552,7 @@ function planDayFor(st, wd, sc = st.week[wd], opts = {}) {
     if (sc[i].p) continue;
     let best = null, bestS = 0;
     for (const p of st.progs) {
-      if (canPlace(st, sc, p, i) || !youthOk(p, i) || (rem && rem.get(p) <= 0)) continue;
+      if (canPlace(st, sc, p, i) || !youthOk(p, i) || (rem && rem.get(p) <= 0) || (opts.day && p.until && opts.day > p.until)) continue;
       let blocked = false; for (let k = 1; k < p.len; k++) if (sc[i + k].p) blocked = true;
       if (blocked) continue;
       let s = p.q * fit(p.genre, i) * (0.35 + 0.65 * p.topic);
@@ -1120,8 +1650,10 @@ function airHour(i) {
       else if (r.p.kind === "film") { r.p.runs++; r.p.topic = Math.max(0.1, r.p.topic * 0.6); }
       if ((r.p.genre === "Kultur" || r.p.genre === "Doku") && i >= 20) st.favor = Math.min(100, st.favor + 0.3 + r.p.q / 100);
     }
+    if (r.p) { r.p.bestMA = Math.max(r.p.bestMA || 0, r.v / BASE[i] * 100); if (!r.c.cont) r.p.lastAired = G.day; }
     if (!isMe(st)) continue;
     if (r.p) r.p.maxMA = Math.max(r.p.maxMA || 0, r.v / BASE[i] * 100);
+    if (r.p && !r.c.cont && r.p.epCost) book(st, "Eigenproduktion", -r.p.epCost);
     if (r.p && !r.c.cont) { r.p.lastAired = G.day; if (r.p.live) livePanne(r.p, i); }
     if (G.blackout === i) { G.blackout = null; logMsg("Sendetechnik", "Warnung", `${hh(i)} – Bildausfall im Studio! Minutenlang schwarzer Bildschirm, die Zuschauer schalten weg.`, true); }
     if (r.p && r.p.kind === "sport" && !r.c.cont) { liveStream(r.v, r.p.title); if (G.mods.split) book(st, "TV-Werbung", r1000(r.v * 20000)); }
@@ -1578,6 +2110,7 @@ function initPeople() {
   const rivals = ["rtl", "pro7", "sat1", "ard", "zdf"].filter(id => id !== me().id);
   for (const p of shuffle(top).slice(0, 90)) { p.holder = pick(rivals); p.until = ri(30, 420); }
   G.prods = []; G.newsroom = { line: 2, style: 1, budget: 1, anchor: null };
+  giveEnsemble(me());
 }
 // Vier Status-Typen: Frei, Exklusiv bei der Konkurrenz, Im Dreh, Gesperrt
 function pState(p) {
@@ -1659,6 +2192,7 @@ function prodDay() {
     const prog = { id: uid(), title: pr.title, genre: pr.genre, q: Math.min(99, pr.R + (pr.kind === "live" ? 5 : 0)), len: { film: 2, bio: 2, live: 3 }[pr.kind] || 1, topic: 1, fsk: pr.genre === "Action" || pr.genre === "Krimi" ? 12 : 0, real: false, own: true, aired: 0, price: 0,
       kind: kindMap[pr.kind] || "show", eps: pr.kind === "serie" ? 10 : 0, ep: 0, runs: 0, maxRuns: pr.kind === "live" ? 1 : 99,
       wear: bp ? bp.wear : undefined, streamF: bp ? bp.stream : pr.kind === "serie" ? 1.2 : pr.kind === "live" ? 0.6 : 1, live: bp ? bp.live : pr.kind === "live" ? 0.35 : 0, host: hosted ? pr.cast[0] : null, prod: pr.id };
+    prog.epCost = prog.kind === "film" ? 0 : r1000(pr.cost * (prog.kind === "serie" ? 0.04 : 0.05)); // laufende Kosten je Folge
     P.progs.push(prog);
     pr.prog = prog.id;
     payBonuses(pr);
@@ -2006,6 +2540,7 @@ function dirAction(p, st) {
     if (st.k === "rival") return `<div class="act2"><button class="btn red" disabled>Nicht frei</button><button class="btn small" data-act="nego" data-k="${p.id}" data-v="anchor" ${P.money < abloese(p) ? "disabled" : ""}>Abwerben</button></div>`;
     return '<button class="btn red" disabled>Gesperrt</button>';
   }
+  if (dirCtx.slot === "swap") return pAvail(p) ? `<button class="btn hot" data-act="swapPick" data-k="${p.id}">Einsetzen${p.holder === P.id ? "" : ` · ${meur(r1000(p.gage * 0.5))}`}</button>` : `<button class="btn red" disabled>${st.k === "rival" ? "Nicht frei" : st.k === "busy" ? "Im Dreh" : "Gesperrt"}</button>`;
   if (draft && draft.cast.includes(p.id)) return '<span class="chip good">Besetzt</span>';
   if (pAvail(p) && (st.k === "mine" || (draft && draft.deals && draft.deals[p.id]))) return `<button class="btn hot" data-act="dirPick" data-k="${p.id}">Besetzen</button>`;
   if (pAvail(p)) return `<button class="btn hot" data-act="nego" data-k="${p.id}" data-v="${dirCtx.slot}" ${planLocked() ? "disabled" : ""}>Verhandeln</button>`;
@@ -2035,7 +2570,7 @@ function casting(P) {
   const states = [["alle", "Alle"], ["free", "Frei"], ["rival", "Exklusiv Konkurrenz"], ["busy", "Im Dreh"], ["mine", "Bei Ihnen"]];
   const count = k => G.people.filter(p => k === "free" ? pAvail(p) : pState(p).k === k).length;
   setTimeout(renderCastList, 0);
-  return title("Casting-Kartei", `<span class="muted">${G.people.length.toLocaleString("de-DE")} Personen · ${count("mine")} bei Ihnen ${info("Exklusivverträge laufen 4–12 Wochen gegen Wochengage, dafür entfällt die Projektgage. Jede Verpflichtung wird verhandelt: Sonderklauseln, Angebot – und die Geduld der Agentur ist begrenzt. Stars der Konkurrenz kosten erst Ablöse, dann folgt der Gagen-Poker. Alle Personen sind frei erfunden.")}</span>`) +
+  return ensemblePanel(P) + title("Casting-Kartei", `<span class="muted">${G.people.length.toLocaleString("de-DE")} Personen · ${count("mine")} bei Ihnen ${info("Exklusivverträge laufen 4–12 Wochen gegen Wochengage, dafür entfällt die Projektgage. Jede Verpflichtung wird verhandelt: Sonderklauseln, Angebot – und die Geduld der Agentur ist begrenzt. Stars der Konkurrenz kosten erst Ablöse, dann folgt der Gagen-Poker. Alle Personen sind frei erfunden.")}</span>`) +
     `<div class="tiles mb">${states.slice(1).map(([k, n]) => `<button class="tile tile-btn ${castStatus === k ? "on" : ""}" data-act="castStatus" data-k="${k}"><small>${n}</small><b>${count(k)}</b></button>`).join("")}</div>
     <div class="toolbar mb"><input type="search" id="castSearch" class="search" placeholder="Name suchen" value="${esc(castQuery)}" aria-label="Name suchen">
       <div class="pills">${roles.map(([k, n]) => `<button data-act="castFilter" data-k="${k}" class="${castFilter === k ? "on" : ""}">${n}</button>`).join("")}</div>
@@ -2329,7 +2864,7 @@ function nextDay() {
   G.day++;
   for (const st of G.stations) st.fin = {};
   projectDay();
-  prodDay(); peopleDay(); newsroomDay(); trendDay();
+  prodDay(); peopleDay(); newsroomDay(); trendDay(); awardsDay();
   if (G.mods.coverup && G.day >= G.mods.coverup.day) {
     const c = G.mods.coverup; G.mods.coverup = null;
     if (Math.random() < 0.6) { const P = me(); P.conf = clamp(P.conf - 8, 0, 100); P.brand = Math.max(0.5, P.brand - 0.4); logMsg("Medien-Insider", "Skandal", `Vertuschung aufgeflogen: Die Boulevardpresse enthüllt den Vorfall bei „${c.title}“ – und dass der Sender Schweigegeld gezahlt hat.`, true); }
@@ -2407,7 +2942,11 @@ document.addEventListener("click", e => {
   const p = e.target.closest("[data-page]");
   if (p && G) { go(p.dataset.page); return; }
   const b = e.target.closest("[data-act]");
-  if (b && !b.disabled) act(b);
+  if (b && !b.disabled) { act(b); return; }
+  const stn = e.target.closest("[data-station]");
+  if (stn && G) { openStation(stn.dataset.station); return; }
+  const smr = e.target.closest("[data-streamer]");
+  if (smr && G) openStreamer(smr.dataset.streamer);
 });
 document.addEventListener("input", e => {
   if (e.target.id === "dirSearch") { dirQuery = e.target.value; dirLimit = 40; renderDirectory(); return; }
@@ -2622,7 +3161,7 @@ function umfang(p) {
 function progTable(list, extra, head = "") {
   if (!list.length) return `<div class="pad"><p class="lead">Keine Programme vorhanden.</p></div>`;
   return `<div class="tbl"><table><thead><tr><th>Titel</th><th>Genre</th><th class="num">Qual.</th><th>Aktualität</th><th>Umfang</th><th>Beste Zeit</th><th class="num">${head}</th></tr></thead><tbody>
-    ${list.map(p => `<tr><td class="title">${esc(p.title)} ${p.fsk >= 16 ? `<span class="chip fsk">FSK ${p.fsk}</span>` : p.fsk ? `<span class="chip">FSK ${p.fsk}</span>` : ""}${p.own ? ' <span class="chip good">Eigenproduktion</span>' : p.home ? ' <span class="chip real">Eigenformat</span>' : p.kind === "serie" ? ' <span class="chip real">Serienlizenz</span>' : ""}${G.stream && G.stream.catalog.some(c => c.id === p.id) ? ' <span class="chip good">im Stream</span>' : ""}</td><td>${esc(p.genre)}</td><td class="num">${attr(p.q)}</td>
+    ${list.map(p => `<tr><td class="title">${esc(p.title)} ${p.fsk >= 16 ? `<span class="chip fsk">FSK ${p.fsk}</span>` : p.fsk ? `<span class="chip">FSK ${p.fsk}</span>` : ""}${p.own ? ' <span class="chip good">Eigenproduktion</span>' : p.home ? ' <span class="chip real">Eigenformat</span>' : p.kind === "serie" ? ' <span class="chip real">Serienlizenz</span>' : ""}${G.stream && G.stream.catalog.some(c => c.id === p.id) ? ' <span class="chip good">im Stream</span>' : ""}${DESC[p.title] ? `<div class="muted desc">${esc(DESC[p.title])}</div>` : ""}</td><td>${esc(p.genre)}</td><td class="num">${attr(p.q)}</td>
       <td><span class="mbar"><i style="width:${Math.round(p.topic * 100)}%"></i></span> <span class="muted">${Math.round(p.topic * 100)} %</span></td>
       <td class="muted">${umfang(p)}</td><td class="muted">${GENRES[p.genre].length > 6 ? "live" : GENRES[p.genre].map(h => h).join("/") + " Uhr"}</td><td class="num">${extra(p)}</td></tr>`).join("")}
   </tbody></table></div>`;
@@ -2686,8 +3225,8 @@ function planPage(P) {
   return h + `</tbody></table></div></section>` + promoPanel(P);
 }
 function archiv(P) {
-  return title("Archiv", `<span class="muted">${P.progs.length} Programme</span>`) + `<p class="lead mb">Filme und Serienlizenzen lassen sich für 40 % des Einkaufspreises weiterverkaufen – nicht, solange sie im Wochenplan stehen. Filmlizenzen erlauben 3 Ausstrahlungen, Serienlizenzen 2 je Folge.</p>
-    <section class="panel">${progTable(P.progs, p => { const inPlan = allPlans(P).some(d => d.some(c => c.p === p.id)); const can = p.price > 0 && !p.home && !inPlan; return p.price ? `<span class="muted">${eur(p.price * 0.4)}</span> <button class="btn" data-act="sell" data-id="${p.id}" ${!can || planLocked() ? "disabled" : ""}>${inPlan ? "Im Plan" : "Verkaufen"}</button>` : '<span class="muted">Eigenformat</span>'; }, "Verkauf")}</section>`;
+  return title("Archiv", `<span class="muted">${P.progs.length} Programme</span>`) + `<p class="lead mb">Lizenzen lassen sich für 40 % des Einkaufspreises weiterverkaufen – nicht, solange sie im Kalender stehen. Eigene Shows und Serien kosten pro Folge: Budget kürzen spart Geld und kostet Qualität, eine neue Besetzung ändert Qualität und Kosten, Absetzen räumt die Sendeplätze.</p>
+    <section class="panel">${progTable(P.progs, p => { const inPlan = allPlans(P).some(d => d.some(c => c.p === p.id)); const can = p.price > 0 && !p.home && !inPlan; return p.own ? progManage(P, p) : p.price ? `<span class="muted">${eur(p.price * 0.4)}</span> <button class="btn" data-act="sell" data-id="${p.id}" ${!can || planLocked() ? "disabled" : ""}>${inPlan ? "Im Plan" : "Verkaufen"}</button>` : '<span class="muted">Eigenformat</span>'; }, "Verkauf")}</section>`;
 }
 function market(P) {
   return title("Programmhandel", `<span class="muted">${G.market.length} Angebote · Konto ${meur(P.money)}</span>`) + lockNote() + `<p class="lead mb">Sie haben jeden Morgen den ersten Zugriff, zum Sendestart greift die Konkurrenz zu. Lizenzen laufen 1 Jahr (Filme 3, Serien 2 Durchläufe) oder 2 Jahre (5 bzw. 3 Durchläufe, 1,65-facher Preis). Abgelaufene Titel kommen später wieder auf den Markt.</p>
@@ -2853,7 +3392,7 @@ function board(P) {
         <div class="slist"><div class="srow"><b>Vertrauen</b><em>${P.conf}</em><span>bei 0 droht die Entlassung</span></div><div class="srow"><b>Saisonziel</b><em>${pct(P.target)}</em><span>Ø Marktanteil nach ${SEASON} Tagen · aktuell ${P.maDays ? pct(avg) : "–"}</span></div></div></section>
       <section class="panel"><div class="ph"><h2>Kredit</h2><span class="aside">0,15 % Zinsen pro Tag</span></div><div class="slist"><div class="srow"><b>Aufgenommen</b><em>${meur(P.credit)}</em><span>höchstens 15 Mio. €</span></div><div class="srow"><b>Kontostand</b><em>${meur(P.money)}</em><span>Grenze −10 Mio. €</span></div></div>
         <div class="pad actions" style="padding-top:12px"><button class="btn hot" data-act="credit" ${P.credit >= 15e6 ? "disabled" : ""}>2,5 Mio. € leihen</button><button class="btn" data-act="repay" ${P.credit <= 0 || P.money < 2.5e6 ? "disabled" : ""}>2,5 Mio. € tilgen</button></div></section>
-    </div>`;
+    </div>` + jobPanel(P);
 }
 function finance(P) {
   const hist = P.hist.slice(-14);
@@ -2868,12 +3407,6 @@ function finance(P) {
     <section class="panel"><div class="ph"><h2>Kosten nach Segment</h2></div><div class="slist">${cost.map(k => `<div class="srow"><b>${k}</b><em class="down">${meur(sum[k])}</em><span>${pct(sum[k] / tot(cost) * 100)} der Kosten</span></div>`).join("") || '<div class="pad"><p class="lead">Noch keine Daten.</p></div>'}</div></section></div>
     <section class="panel" style="margin-top:14px"><div class="ph"><h2>Tagesabschlüsse</h2></div>${hist.length ? `<div class="tbl"><table><thead><tr><th>Tag</th><th class="num">Marktanteil</th><th class="num">Erlöse</th><th class="num">Kosten</th><th class="num">EBITDA</th><th class="num">Kontostand</th><th class="num">Vertrauen</th></tr></thead><tbody>
       ${hist.slice().reverse().map(d => { const r = Object.values(d.fin).filter(v => v > 0).reduce((a, b) => a + b, 0), c = Object.values(d.fin).filter(v => v < 0).reduce((a, b) => a + b, 0); return `<tr><td>${dateShort(d.day)}</td><td class="num ${d.d >= 0 ? "up" : "down"}">${pct(d.ma)}</td><td class="num">${meur(r)}</td><td class="num muted">${meur(c)}</td><td class="num ${d.ebitda < 0 ? "down" : "up"}">${meur(d.ebitda)}</td><td class="num">${meur(d.money)}</td><td class="num">${d.conf}</td></tr>`; }).join("")}</tbody></table></div>` : '<div class="pad"><p class="lead">Noch kein Tag abgeschlossen.</p></div>'}</section>`;
-}
-function jury() {
-  const rows = [...G.stations].sort((a, b) => b.favor - a.favor);
-  return title("Goldene Antenne", `<span class="muted">Fiktiver Qualitätspreis · Vergabe zum Saisonende</span>`) +
-    `<p class="lead mb">Die Jury bewertet anspruchsvolle Dokumentationen und Kultur ab 20 Uhr. Je höher die Qualität, desto mehr Ansehen.</p>
-    <section class="panel"><div class="ph"><h2>Rennen um die Antenne</h2></div>${rows.map(s => `<div class="goal"><div class="row"><span>${sname(s.i)}</span><b>${s.favor.toFixed(1).replace(".", ",")}</b></div><div class="track"><i style="width:${Math.min(100, s.favor / Math.max(1, rows[0].favor) * 100)}%;background:${s.color}"></i></div></div>`).join("")}</section>`;
 }
 function rivals() {
   const others = G.stations.filter(s => !isMe(s));
@@ -2955,11 +3488,11 @@ function openPicker(kind, i, wd, live) {
       (cur ? `<button class="pick" data-act="moveStart" data-i="${i}" data-k="${wd}" data-v="one"><b>„${esc(cur.title)}“ verschieben</b><span class="meta">Nur an diesem Tag – danach Ziel-Sendeplatz antippen, auch an einem anderen Tag</span></button>
         <button class="pick" data-act="moveStart" data-i="${i}" data-k="${wd}" data-v="all"><b>Sendeplatz von „${esc(cur.title)}“ dauerhaft verlegen</b><span class="meta">An allen Tagen im Planungszeitraum auf eine neue Uhrzeit</span></button>` : "") +
       sorted.map(p => {
-        const why = canPlace(P, sc, p, i) || (live && p.len > 1 ? "Nur einstündige Programme" : "");
+        const why = canPlace(P, sc, p, i) || (live && p.len > 1 ? "Nur einstündige Programme" : "") || (!live && p.until && wd > p.until ? `Lizenz endet am ${dateShort(p.until)}` : "");
         const used = sc.filter(c => c.p === p.id && !c.cont).length;
         const youth = !youthOk(p, i);
         return `<button class="pick" data-act="${live ? "swapTo" : "setProg"}" data-i="${i}" data-k="${wd}" data-id="${p.id}" ${why ? "disabled" : ""}><b>${esc(p.title)}</b>
-          <span class="meta">${attr(p.q)}<span class="chip">${esc(p.genre)}</span>${p.home ? '<span class="chip real">Eigenformat</span>' : ""}${p.fsk >= 16 ? `<span class="chip fsk">FSK ${p.fsk}</span>` : ""}<span class="stars">${stars(fit(p.genre, i))}</span><span>Akt. ${Math.round(p.topic * 100)} %</span><span>${umfang(p)}</span>${used ? `<span class="chip warn">${used}× an diesem Tag</span>` : ""}${youth ? '<span class="chip fsk">Jugendschutz: Bußgeld droht</span>' : ""}${why ? `<span>${why}</span>` : ""}</span></button>`;
+          ${DESC[p.title] ? `<span class="meta desc">${esc(DESC[p.title])}</span>` : ""}<span class="meta">${attr(p.q)}<span class="chip">${esc(p.genre)}</span>${p.home ? '<span class="chip real">Eigenformat</span>' : ""}${p.fsk >= 16 ? `<span class="chip fsk">FSK ${p.fsk}</span>` : ""}<span class="stars">${stars(fit(p.genre, i))}</span><span>Akt. ${Math.round(p.topic * 100)} %</span><span>${umfang(p)}</span>${used ? `<span class="chip warn">${used}× an diesem Tag</span>` : ""}${youth ? '<span class="chip fsk">Jugendschutz: Bußgeld droht</span>' : ""}${why ? `<span>${why}</span>` : ""}</span></button>`;
       }).join("");
   } else {
     const exp = expected(P, i);
@@ -3054,6 +3587,12 @@ function act(b) {
   const wd = b.dataset.k !== undefined ? +b.dataset.k : null;
   switch (k) {
     case "close": closeModal(); return;
+    case "planWith": if (!planLocked()) planWith(b.dataset.k); return;
+    case "progCut": case "progBoost": { const p = P.progs.find(x => x.id === id); if (p && p.epCost && !planLocked()) progCost(P, p, k === "progCut" ? 0.7 : 1.3, k === "progCut" ? -6 : 4); break; }
+    case "progSwap": { if (planLocked()) return; openDirectory(b.dataset.k, "swap"); dirCtx.pid = id; return; }
+    case "swapPick": { const p = P.progs.find(x => x.id === dirCtx.pid); if (p) swapCast(P, p, b.dataset.k); closeModal(); break; }
+    case "progCancel": { const p = P.progs.find(x => x.id === id); if (p && !planLocked()) progCancel(P, p); break; }
+    case "switchSt": if (!planLocked()) { switchStation(b.dataset.k); return; } break;
     case "spyH": spyH = +b.dataset.k; break;
     case "filter": msgFilter = b.dataset.k; break;
     case "forceStart": closeModal(); startBroadcast(); return;
@@ -3062,7 +3601,7 @@ function act(b) {
     case "finish": finishEvening(); return;
     case "next": closeModal(); if (G.over) showEnd(); else { planDay = null; nextDay(); } return;
     case "planDay": planDay = wd; break;
-    case "autoDay": if (!(wd === G.day && planLocked())) { planDayFor(P, weekday(wd), calDay(P, wd), { rem: remMap(P, wd) }); if (wd === G.day) buildToday(P); toast(`Der Assistent hat ${dateShort(wd)} geplant.`); } break;
+    case "autoDay": if (!(wd === G.day && planLocked())) { planDayFor(P, weekday(wd), calDay(P, wd), { rem: remMap(P, wd), day: wd }); if (wd === G.day) buildToday(P); toast(`Der Assistent hat ${dateShort(wd)} geplant.`); } break;
     case "copyDay": {
       const src = calDay(P, wd);
       for (let d = G.day; d < G.day + HORIZON; d++) if (d !== wd && weekday(d) === weekday(wd) && !(d === G.day && planLocked())) P.cal[d] = src.map(c => ({ ...c, live: false }));
@@ -3158,6 +3697,246 @@ function act(b) {
   render();
 }
 
+// =====================================================================
+// Senderprofile: Klick auf einen Sender oder Streamer
+// =====================================================================
+const stationNews = name => G.log.filter(l => l.msg.includes(name)).slice(0, 8);
+function newsList(items) {
+  return items.length ? `<div class="msgs">${items.map(l => `<div class="msg"><span class="from">${esc(l.from)}</span><span class="chip tag">${esc(l.tag)}</span><span class="txt">${esc(l.msg)}</span><time>${dateShort(l.day)}</time></div>`).join("")}</div>` : '<p class="fine pad">Keine aktuellen Meldungen.</p>';
+}
+// Was plant die Konkurrenz? Abgeleitet aus Verträgen, Ausschreibungen und Programm
+function stationPlans(st) {
+  const out = [];
+  for (const r of G.rights) {
+    const d = RDEF(r.id);
+    if (r.owner === st.id && r.days <= 120) out.push(`Verhandelt über die Verlängerung von „${d.name}“ (Vertrag bis ${dateShort(G.day + r.days)}).`);
+    if (r.next && r.next.owner === st.id) out.push(`Übernimmt ab ${dateShort(G.day + r.days)} „${d.name}“.`);
+    if (r.tender && STATIONS[st.i].profile.includes("Show") && d.tags === (st.type === "oer" ? "event" : "privat") && out.length < 6) out.push(`Gilt als Interessent bei der Ausschreibung „${d.name}“ (Frist ${dateShort(r.tender.close)}).`);
+  }
+  const exp = st.progs.filter(p => p.until && p.until - G.day < 60).slice(0, 3);
+  for (const p of exp) out.push(`Lizenz für „${p.title}“ läuft am ${dateShort(p.until)} aus – Ersatz wird gesucht.`);
+  const pre = st.progs.filter(p => !p.aired && !p.filler && !p.home && p.kind !== "sport" && !["Nachrichten", "Magazin"].includes(p.genre)).slice(0, 3);
+  for (const p of pre) out.push(`Neu im Programmstock: „${p.title}“ (${p.genre}) – noch nicht ausgestrahlt.`);
+  return out;
+}
+function openStation(id) {
+  const st = G.stations[SIDX[id]], d = STATIONS[st.i], mine = isMe(st);
+  const stars = G.people.filter(p => p.holder === st.id).sort((a, b) => b.gage - a.gage);
+  const top = st.progs.filter(p => !p.filler && p.kind !== "sport").sort((a, b) => b.q - a.q).slice(0, 10);
+  const avg = st.maDays ? st.maSum / st.maDays : st.base;
+  const prime = WEEK.map(wd => { const sc = isMe(st) ? schedFor(st, G.day + ((wd - weekday(G.day) + 7) % 7)) : st.week[wd]; const ps = [20, 21].map(h => sc[h] && sc[h].p && !sc[h].cont && progOf(st, sc[h].p)).filter(Boolean); return `<tr><td>${WDL[wd]}</td><td class="title">${ps.length ? ps.map(p => `${esc(p.title)} <span class="muted">${esc(p.genre)}</span>`).join("<br>") : "–"}</td><td class="num">${ps.length ? attr(Math.max(...ps.map(p => p.q))) : ""}</td></tr>`; }).join("");
+  const rights = G.rights.filter(r => r.owner === st.id || (r.next && r.next.owner === st.id));
+  const sm = G.streamers.find(s => s.id === d.streamer), smDef = STREAMERS.find(s => s.id === d.streamer);
+  openModal(`<header>${crest(st.i, 34)}<h2>${esc(st.name)}${mine ? " · Ihr Sender" : ""}</h2><button class="btn" data-act="close">Schließen</button></header><div class="dbody">
+    <div class="tiles">
+      <div class="tile"><small>Marktanteil gestern</small><b>${st.maDays ? pct(st.dayMA) : "–"}</b><span>Ø Saison ${pct(avg)}</span></div>
+      <div class="tile"><small>Typ</small><b>${st.type === "oer" ? "ÖRR" : "Privat"}</b><span>${esc(d.profile.join(", "))}</span></div>
+      <div class="tile"><small>Programmstock</small><b>${st.progs.length}</b><span>Titel im Archiv</span></div>
+      <div class="tile"><small>Stars unter Vertrag</small><b>${stars.length}</b><span>exklusiv gebunden</span></div>
+      ${smDef ? `<div class="tile"><small>Streaming</small><b>${esc(smDef.name.split(" ")[0])}</b><span>${sm && sm.subs ? `${mio(sm.subs)} Mio. Abos` : esc(smDef.model)}</span></div>` : ""}
+    </div>
+    <div class="grid two">
+      <section class="panel"><div class="ph"><h2>Primetime diese Woche</h2><span class="aside">20–22 Uhr</span></div><div class="tbl"><table><tbody>${prime}</tbody></table></div></section>
+      <section class="panel"><div class="ph"><h2>Pläne & Gerüchte</h2></div>${stationPlans(st).length ? `<ul class="plans">${stationPlans(st).map(x => `<li>${esc(x)}</li>`).join("")}</ul>` : '<p class="fine pad">Nichts Neues aus der Gerüchteküche.</p>'}</section>
+    </div>
+    <section class="panel"><div class="ph"><h2>Stars</h2><span class="aside">${stars.length} Personen</span></div>${stars.length ? `<div class="plist">${stars.slice(0, 12).map(p => personRow(p, (q, s) => mine ? `<span class="chip good">bis ${dateShort(q.until)}</span>` : `<button class="btn small" data-act="nego" data-k="${q.id}" data-v="cast" ${planLocked() ? "disabled" : ""}>Abwerben · ${meur(abloese(q))}</button>`)).join("")}</div>` : '<p class="fine pad">Keine exklusiven Stars.</p>'}</section>
+    <div class="grid two">
+      <section class="panel"><div class="ph"><h2>Programm-Highlights</h2></div><div class="tbl"><table><tbody>${top.map(p => `<tr><td class="title"><b>${esc(p.title)}</b>${DESC[p.title] ? `<div class="muted desc">${esc(DESC[p.title])}</div>` : ""}</td><td class="muted">${esc(p.genre)}</td><td class="num">${attr(p.q)}</td></tr>`).join("")}</tbody></table></div></section>
+      <section class="panel"><div class="ph"><h2>Sportrechte</h2></div>${rights.length ? `<div class="tbl"><table><tbody>${rights.map(r => `<tr><td class="title">${esc(RDEF(r.id).name)}</td><td class="num muted">${r.owner === st.id ? `bis ${dateShort(G.day + r.days)}` : `ab ${dateShort(G.day + r.days)}`}</td></tr>`).join("")}</tbody></table></div>` : '<p class="fine pad">Keine Sportrechte.</p>'}</section>
+    </div>
+    <section class="panel"><div class="ph"><h2>Aktuelle Meldungen</h2></div>${newsList(stationNews(st.name))}</section>
+  </div>`);
+}
+function openStreamer(id) {
+  const s = STREAMERS.find(x => x.id === id), m = G.streamers.find(x => x.id === id);
+  if (!s) return;
+  const rights = G.rights.filter(r => r.pay && r.pay.startsWith(s.name.split(" ")[0]) || (r.alp && String(r.alp).includes(s.name.split(" ")[0])));
+  const owners = STATIONS.filter(x => x.streamer === id).map(x => x.name);
+  openModal(`<header>${sbadge(id, 22)}<h2>${esc(s.name)}</h2><button class="btn" data-act="close">Schließen</button></header><div class="dbody">
+    <div class="tiles">
+      <div class="tile"><small>Abonnenten DACH</small><b>${m && m.subs ? `${mio(m.subs)} Mio.` : "–"}</b><span>${m && m.trend ? `${m.trend > 0 ? "▲" : "▼"} ${(Math.abs(m.trend) * 3000).toFixed(1).replace(".", ",")} % pro Monat` : "stabil"}</span></div>
+      <div class="tile"><small>Modell</small><b style="font-size:18px">${esc(s.model)}</b><span>${s.price ? `${eur(s.price).replace(" €", "")} € / Monat` : "kostenlos"}</span></div>
+      <div class="tile"><small>Gehört zu</small><b style="font-size:18px">${owners.length ? esc(owners.join(", ")) : "eigenständig"}</b><span>${owners.length ? "Senderfamilie" : "internationaler Anbieter"}</span></div>
+    </div>
+    <section class="panel"><div class="ph"><h2>Aushängeschilder</h2></div><div class="tbl"><table><tbody>${s.hits.map(h => `<tr><td class="title"><b>${esc(h)}</b>${DESC[h] ? `<div class="muted desc">${esc(DESC[h])}</div>` : ""}</td></tr>`).join("")}</tbody></table></div></section>
+    ${rights.length ? `<section class="panel"><div class="ph"><h2>Sportrechte</h2></div><div class="tbl"><table><tbody>${rights.map(r => `<tr><td class="title">${esc(RDEF(r.id).name)}</td><td class="muted">${r.pay ? "Gesamtpaket (Pay-TV)" : "Österreich & Schweiz"}</td><td class="num muted">bis ${dateShort(G.day + r.days)}</td></tr>`).join("")}</tbody></table></div></section>` : ""}
+    <section class="panel"><div class="ph"><h2>Aktuelle Meldungen</h2></div>${newsList(stationNews(s.name.split(" ")[0]))}</section>
+  </div>`);
+}
+
+// =====================================================================
+// Ensemble: Stars, die beim eigenen Sender unter Vertrag stehen
+// =====================================================================
+const ENSEMBLE = [["Moderation", 2], ["Schauspiel", 3], ["Reality", 1], ["Nachrichten", 1], ["Journalismus", 1]];
+function giveEnsemble(P) {
+  for (const [role, n] of ENSEMBLE) {
+    const pool = shuffle(G.people.filter(p => p.role === role && !p.holder && p.gage >= 60000 && p.gage <= 900000));
+    for (const p of pool.slice(0, n)) {
+      p.holder = P.id; p.until = G.day + ri(84, 252);
+      p.ct = { wk: r1000(p.gage * 0.35), clauses: pClause(p) ? [pClause(p)] : [] };
+    }
+  }
+  const anchor = G.people.find(p => p.holder === P.id && p.role === "Nachrichten");
+  if (anchor) G.newsroom.anchor = anchor.id;
+}
+const ROLE_KIND = { Schauspiel: "film", Moderation: "show", Reality: "reality", Journalismus: "doku" };
+function planWith(id) {
+  const p = person(id); if (!p) return;
+  if (p.role === "Nachrichten") { G.newsroom.anchor = p.id; go("newsroom"); toast(`${p.name} präsentiert jetzt Ihre Nachrichten.`); return; }
+  const kind = ROLE_KIND[p.role], F = FORMATS[kind];
+  draft = { kind, opt: F.opts[0], cls: "B", writers: "profi", cast: F.roles.map(() => null), title: "", deals: {} };
+  const k = F.roles.findIndex(([r]) => r.replace("?", "") === p.role);
+  if (k >= 0 && pAvail(p)) draft.cast[k] = p.id;
+  go("newprod");
+}
+function ensemblePanel(P) {
+  const list = G.people.filter(p => p.holder === P.id).sort((a, b) => b.gage - a.gage);
+  return `<section class="panel mb"><div class="ph"><h2>Ihr Ensemble</h2><span class="aside">${list.length} Stars unter Vertrag · ${eur(list.reduce((a, p) => a + (p.ct ? p.ct.wk : p.gage * 0.35), 0))} pro Woche</span></div>
+    ${list.length ? `<div class="ens">${list.map(p => { const st = pState(p); return `<div class="ens-card">${avatar(p, 48)}<div class="grow"><b>${esc(p.name)}</b><span class="muted">${SPEC_NAME[p.role]} · ${esc(p.trait)}</span>
+      <span class="muted">Talent ${p.talent} · Charisma ${p.buzz} · bis ${dateShort(p.until)}</span>${p.ct && p.ct.clauses.length ? `<span class="chip real" style="justify-self:start">${p.ct.clauses.map(k => CLAUSES[k].name).join(" · ")}</span>` : ""}</div>
+      <div class="act2"><button class="btn hot small" data-act="planWith" data-k="${p.id}" ${planLocked() || st.k === "busy" ? "disabled" : ""}>${p.role === "Nachrichten" ? "Als Anchor" : st.k === "busy" ? "Im Dreh" : "Projekt planen"}</button><button class="btn small" data-act="nego" data-k="${p.id}" data-v="cast" ${planLocked() ? "disabled" : ""}>Verlängern</button></div></div>`; }).join("")}</div>`
+      : '<p class="fine pad">Noch keine eigenen Stars. Verpflichten Sie Personen über die Casting-Kartei.</p>'}</section>`;
+}
+
+// =====================================================================
+// Fernsehpreise: ausgezeichnet werden Programme aller Sender
+// =====================================================================
+const isFiction = p => p.kind === "serie" || ["Serie", "Krimi", "Soap", "Sitcom", "Komödie", "Drama"].includes(p.genre);
+const AWARDS = [
+  { id: "grimme", name: "Grimme-Preis", m: 3, d: 10, how: "Jury, Qualität vor Quote", cats: [
+    ["Fiktion", p => isFiction(p) && p.kind !== "film", p => p.q * 1.2 + (p.own ? 6 : 0)],
+    ["Unterhaltung", p => ["Show", "Talk"].includes(p.genre), p => p.q * 1.2],
+    ["Information & Kultur", p => ["Doku", "Kultur", "Nachrichten", "Magazin"].includes(p.genre), p => p.q * 1.2 + (p.genre === "Kultur" ? 5 : 0)]] },
+  { id: "dfp", name: "Deutscher Fernsehpreis", m: 8, d: 25, how: "Jury aus Qualität und Erfolg", cats: [
+    ["Beste Drama-Serie", p => p.kind === "serie" && ["Serie", "Krimi", "Drama"].includes(p.genre), p => p.q + (p.bestMA || 0) * 1.5],
+    ["Beste Unterhaltung Show", p => ["Show", "Reality"].includes(p.genre), p => p.q + (p.bestMA || 0) * 1.5],
+    ["Beste Information", p => ["Nachrichten", "Doku", "Magazin"].includes(p.genre), p => p.q + (p.bestMA || 0)],
+    ["Bester Fernsehfilm", p => p.kind === "film" && (p.own || !p.real), p => p.q + (p.bestMA || 0) * 1.5]] },
+  { id: "bambi", name: "Bambi", m: 10, d: 20, how: "Publikumserfolg des Jahres", cats: [
+    ["TV-Ereignis des Jahres", p => p.kind !== "film" && !["Nachrichten", "Magazin"].includes(p.genre), p => (p.bestMA || 0) * 3 + p.q * 0.3],
+    ["Publikumsliebling Serie", p => p.kind === "serie" || ["Soap", "Sitcom"].includes(p.genre), p => (p.bestMA || 0) * 3 + p.q * 0.3]] },
+  { id: "henne", name: "Goldene Henne", m: 11, d: 4, how: "Publikumspreis", cats: [
+    ["Publikumspreis Unterhaltung", p => ["Show", "Reality", "Talk"].includes(p.genre), p => (p.bestMA || 0) * 2.5 + p.q * 0.5],
+    ["Publikumspreis Serie & Soap", p => ["Soap", "Serie", "Sitcom", "Krimi"].includes(p.genre), p => (p.bestMA || 0) * 2.5 + p.q * 0.5]] },
+];
+function awardDay(a, fromDay) {
+  for (let d = fromDay; d < fromDay + 370; d++) { const dt = dateOf(d); if (dt.getMonth() === a.m && dt.getDate() === a.d) return d; }
+  return null;
+}
+function awardRace(cat) {
+  const seen = new Set(), out = [];
+  for (const st of G.stations) for (const p of st.progs) {
+    if (p.filler || p.kind === "sport" || seen.has(p.title) || !(p.lastAired >= G.day - 365) || !cat[1](p)) continue;
+    seen.add(p.title); out.push({ p, st, s: cat[2](p) });
+  }
+  return out.sort((a, b) => b.s - a.s);
+}
+function awardsDay() {
+  for (const a of AWARDS) {
+    const day = awardDay(a, G.day);
+    if (day === G.day + 10) {
+      const noms = a.cats.map(c => [c[0], awardRace(c).slice(0, 4)]);
+      const mine = noms.flatMap(([c, l]) => l.filter(x => isMe(x.st)).map(x => `„${x.p.title}“ (${c})`));
+      logMsg("Medien-Insider", "Preise", `${a.name}: Die Nominierungen stehen fest – Verleihung am ${dateShort(day)}.${mine.length ? ` Ihr Sender ist nominiert mit ${mine.join(", ")}.` : ""}`, mine.length > 0);
+    }
+    if (day !== G.day) continue;
+    const res = [];
+    for (const c of a.cats) {
+      const noms = awardRace(c).slice(0, 4);
+      if (!noms.length) continue;
+      const win = noms.map(x => ({ ...x, r: x.s * rnd(0.9, 1.1) })).sort((x, y) => y.r - x.r)[0];
+      win.p.q = Math.min(99, win.p.q + 3); win.p.topic = Math.min(1, (win.p.topic || 1) + 0.15);
+      win.st.brand += 0.15; win.st.favor += 5;
+      if (isMe(win.st)) win.st.conf = clamp(win.st.conf + 4, 0, 100);
+      for (const n of noms) if (n !== win && isMe(n.st)) n.st.brand += 0.03;
+      res.push({ cat: c[0], title: win.p.title, st: win.st.id, noms: noms.map(n => [n.p.title, n.st.id]) });
+    }
+    if (!res.length) continue;
+    (G.awards = G.awards || []).push({ id: a.id, name: a.name, day: G.day, res });
+    const myWins = res.filter(r => r.st === me().id);
+    logMsg("Medien-Insider", "Preise", `${a.name} verliehen: ${res.map(r => `${r.cat} – „${r.title}“ (${holderName(r.st)})`).join(" · ")}`, true);
+    if (myWins.length) logMsg("Senderleitung", "Preise", `Glückwunsch! ${myWins.length} ${a.name}${myWins.length > 1 ? "e" : ""} für ${me().name}: ${myWins.map(r => `„${r.title}“`).join(", ")}. Image und Vertrauen steigen.`);
+  }
+}
+function jury() {
+  const next = AWARDS.map(a => ({ a, d: awardDay(a, G.day) })).sort((x, y) => x.d - y.d);
+  const hist = (G.awards || []).slice().reverse();
+  const rows = [...G.stations].sort((a, b) => b.favor - a.favor);
+  return title("Fernsehpreise", `<span class="muted">Ausgezeichnet werden Programme aller Sender</span>`) +
+    `<p class="lead mb">Grimme-Preis und Deutscher Fernsehpreis werten vor allem Qualität, Bambi und Goldene Henne den Publikumserfolg. Nominiert ist, was in den letzten zwölf Monaten gelaufen ist. Ein Preis hebt die Qualität des Programms, das Image des Senders und das Vertrauen der Senderleitung.</p>
+    ${next.map(({ a, d }) => `<section class="panel mb"><div class="ph"><h2>${a.name}</h2><span class="aside">${dateLabel(d)} · in ${d - G.day} Tagen · ${a.how}</span></div>
+      <div class="tbl"><table><thead><tr><th>Kategorie</th><th>Favoriten derzeit</th></tr></thead><tbody>${a.cats.map(c => { const r = awardRace(c).slice(0, 3); return `<tr><td>${esc(c[0])}</td><td class="title">${r.length ? r.map((x, k) => `${k + 1}. „${esc(x.p.title)}“ <span class="muted">${esc(x.st.name)}</span>${isMe(x.st) ? ' <span class="chip good">Sie</span>' : ""}`).join("<br>") : '<span class="muted">noch keine Kandidaten</span>'}</td></tr>`; }).join("")}</tbody></table></div></section>`).join("")}
+    ${hist.length ? `<section class="panel mb"><div class="ph"><h2>Bisherige Preisträger</h2></div><div class="tbl"><table><tbody>${hist.flatMap(h => h.res.map(r => `<tr class="${r.st === me().id ? "mine" : ""}"><td>${dateShort(h.day)}</td><td>${esc(h.name)}</td><td>${esc(r.cat)}</td><td class="title">„${esc(r.title)}“</td><td>${sname(SIDX[r.st])}</td></tr>`)).join("")}</tbody></table></div></section>` : ""}
+    <section class="panel"><div class="ph"><h2>Ansehen bei Kritik & Jurys</h2></div>${rows.map(s => `<div class="goal"><div class="row"><span>${sname(s.i)}</span><b>${s.favor.toFixed(1).replace(".", ",")}</b></div><div class="track"><i style="width:${Math.min(100, s.favor)}%;background:${s.color}"></i></div></div>`).join("")}</section>`;
+}
+
+// =====================================================================
+// Programme verwalten: Budget, Besetzung, Absetzen
+// =====================================================================
+const prodOf = p => p.prod && G.prods.find(x => x.id === p.prod);
+function progManage(P, p) {
+  if (!p.own) return "";
+  const pr = prodOf(p), role = pr && FORMATS[pr.kind] ? FORMATS[pr.kind].roles[0][0].replace("?", "") : null;
+  return `<div class="pm">${p.epCost ? `<span class="muted">${eur(p.epCost)} / Folge</span>
+    <button class="btn small" data-act="progCut" data-id="${p.id}" ${(p.cut || 0) >= 2 || planLocked() ? "disabled" : ""} title="Folgenkosten −30 %, Qualität −6">Budget −30 %</button>
+    <button class="btn small" data-act="progBoost" data-id="${p.id}" ${(p.cut || 0) <= -2 || planLocked() ? "disabled" : ""} title="Folgenkosten +30 %, Qualität +4">Budget +30 %</button>` : ""}
+    ${role ? `<button class="btn small" data-act="progSwap" data-id="${p.id}" data-k="${role}" ${planLocked() ? "disabled" : ""}>${role === "Moderation" ? "Moderation" : "Hauptrolle"} tauschen</button>` : ""}
+    <button class="btn small red" data-act="progCancel" data-id="${p.id}" ${planLocked() ? "disabled" : ""}>Absetzen</button></div>`;
+}
+function progCost(P, p, f, dq) {
+  p.epCost = r1000(p.epCost * f); p.q = clamp(p.q + dq, 5, 99); p.cut = (p.cut || 0) + (f < 1 ? 1 : -1);
+  toast(`„${p.title}“: ${eur(p.epCost)} pro Folge, Qualität ${p.q}.`);
+}
+function progCancel(P, p) {
+  allPlans(P).forEach(d => d.forEach(c => { if (c.p === p.id) { c.p = null; c.cont = false; c.ad = null; } }));
+  P.progs = P.progs.filter(x => x !== p);
+  if (G.stream) G.stream.catalog = G.stream.catalog.filter(c => c.id !== p.id);
+  buildToday(P);
+  logMsg("Programmplanung", "Programm", `„${p.title}“ wird abgesetzt. Die Sendeplätze sind frei – bitte neu belegen.`, true);
+}
+function swapCast(P, p, nid) {
+  const pr = prodOf(p), np = person(nid);
+  if (!pr || !np || !pAvail(np)) return;
+  const old = person(pr.cast[0]);
+  const score = q => q ? q.talent * 0.6 + q.buzz * 0.4 : 50;
+  const fee = np.holder === P.id ? 0 : r1000(np.gage * 0.5);
+  if (P.money < fee) { toast("Dafür reicht Ihr Kontostand nicht."); return; }
+  if (fee) book(P, "Redaktion & Gagen", -fee);
+  const dq = Math.round((score(np) - score(old)) * 0.3);
+  p.q = clamp(p.q + dq, 5, 99);
+  if (p.epCost) p.epCost = Math.max(10000, r1000(p.epCost + ((np.gage - (old ? old.gage : 0)) / 40)));
+  pr.cast[0] = np.id; if (p.host) p.host = np.id;
+  logMsg("Produktion", "Produktion", `Umbesetzung bei „${p.title}“: ${np.name} übernimmt${old ? ` von ${old.name}` : ""}. Qualität ${dq >= 0 ? "+" : ""}${dq}${fee ? `, Einstiegsgage ${eur(fee)}` : ""}.`, true);
+}
+
+// =====================================================================
+// Senderwechsel: Jobangebote nach Leistung
+// =====================================================================
+function jobOffers(P) {
+  const avg = P.maDays ? P.maSum / P.maDays : 0, perf = P.maDays >= 7 ? avg / P.target : 0.9;
+  const rep = clamp(perf * 60 + P.conf * 0.3 + (G.awards || []).flatMap(a => a.res).filter(r => r.st === P.id).length * 8, 0, 120);
+  return G.stations.filter(s => !isMe(s)).map(s => ({ s, need: 30 + s.base * 3.5 })).map(x => ({ ...x, ok: rep >= x.need, rep })).sort((a, b) => b.s.base - a.s.base);
+}
+function jobPanel(P) {
+  const list = jobOffers(P), rep = list.length ? Math.round(list[0].rep) : 0;
+  return `<section class="panel"><div class="ph"><h2>Jobangebote</h2><span class="aside">Ihr Ruf in der Branche: ${rep}</span></div>
+    <p class="fine pad" style="margin-top:0">Wer das Saisonziel übertrifft, Preise gewinnt und das Vertrauen der Senderleitung hat, wird abgeworben. Beim Wechsel bleiben Streamer, laufende Produktionen und Ensemble beim alten Sender.</p>
+    <div class="tbl"><table><tbody>${list.map(x => `<tr><td>${sname(x.s.i)}</td><td class="muted">${x.s.type === "oer" ? "ÖRR" : "privat"} · ${pct(x.s.base)} Marktanteil</td><td class="num">${x.ok ? `<button class="btn hot small" data-act="switchSt" data-k="${x.s.id}" ${planLocked() ? "disabled" : ""}>Angebot annehmen</button>` : `<span class="muted">Ruf ${Math.round(x.need)} nötig</span>`}</td></tr>`).join("")}</tbody></table></div></section>`;
+}
+function switchStation(id) {
+  const old = me(), st = G.stations[SIDX[id]];
+  if (!st || isMe(st)) return;
+  G.me = st.i;
+  const P = me();
+  P.conf = 60; P.maSum = 0; P.maDays = 0; P.target = Math.round(P.base * 84 / 73.2 * 1.04 * 10) / 10;
+  G.seasonEnd = G.day + SEASON; G.stream = null; G.project = null; G.prods = []; draft = null; moveSrc = null; nego = null; planDay = null;
+  G.newsroom = { line: 2, style: 1, budget: 1, anchor: null };
+  const anchor = G.people.find(p => p.holder === P.id && p.role === "Nachrichten"); if (anchor) G.newsroom.anchor = anchor.id;
+  buildToday(P);
+  logMsg("Senderleitung", "Vertrag", `Neuer Job: Sie wechseln von ${old.name} zu ${P.name}. Saisonziel ${pct(P.target)} bis ${dateShort(G.seasonEnd)}. Planen Sie zuerst die nächsten sechs Wochen.`, true);
+  logMsg("Branchendienst", "Konkurrenz", `Personalien: Die Programmdirektion von ${old.name} wechselt zu ${P.name}.`);
+  go("overview");
+}
 // =====================================================================
 // Editor & Datenimport (Hauptmenü): eigene Darsteller-Tabellen und TMDb-Titellisten
 // Alles bleibt lokal im Browser. Abgleich per Upsert über „eindeutige_id“ – keine Duplikate.
