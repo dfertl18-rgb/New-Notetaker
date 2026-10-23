@@ -514,7 +514,9 @@ const HOURS = Array.from({ length: 24 }, (_, h) => h);
 const BASE = [3.5, 2, 1.2, 0.8, 0.7, 1, 2, 3, 3.5, 4, 4.5, 5, 6, 6, 6, 7, 8, 10, 13, 17, 28, 29, 21, 12];
 const LIVE_FROM = 18; // ab hier läuft der Abend in der Live-Regie
 const START_DATE = new Date(2026, 9, 22);
-const SEASON = 84; // Tage bis zur Bilanz der Senderleitung
+const SEASON = 84; // Tage bis zur Bilanz der Senderleitung; danach beginnt eine neue Saison
+const seasonEnd = () => G.seasonEnd || SEASON;
+const seasonDay = () => G.day - (seasonEnd() - SEASON);
 const MAX_ADS = 10;
 
 // Senderlandschaft. Startmarktanteile grob an reale Größenordnungen angelehnt; alle Quoten im Spiel sind simuliert.
@@ -740,6 +742,14 @@ const me = () => G.stations[G.me];
 const isMe = st => st.i === G.me;
 
 function uid() { return ++G.idc; }
+// Lizenz: 1 Jahr (Filme 3, Serien 2 Durchläufe) oder 2 Jahre (5 bzw. 3 Durchläufe) zum 1,65-fachen Preis
+const licPrice = (p, yrs) => r1000(p.price * (yrs === 2 ? 1.65 : 1));
+function applyLicense(p, yrs, from = G.day) {
+  p.until = from + yrs * 365 - 1;
+  if (p.kind === "film") p.maxRuns = yrs === 2 ? 5 : 3;
+  if (p.kind === "serie") p.maxEp = p.eps * (yrs === 2 ? 3 : 2);
+  p.lic = yrs;
+}
 function realFilm(row) {
   const [title, genre, q, len, fsk] = row;
   return { id: uid(), title, genre, kind: "film", q, len, topic: 1, fsk, real: true, runs: 0, maxRuns: 3, aired: 0,
@@ -770,7 +780,29 @@ function makeNews() {
   return { id: uid(), title: pick(fresh), q, price: r1000(8000 + q * q * 15) };
 }
 const emptyDay = () => HOURS.map(() => ({ p: null, ad: null, cont: false, live: false }));
-const rightPrice = r => r1000(r.q * r.q * 420 * rnd(0.9, 1.15));
+// Mindestgebot pro Jahr (Gesamt-DACH); bezahlt wird anteilig pro Tag
+const rightPrice = r => r1000(r.q * r.q * 420 * 13 * rnd(0.9, 1.15));
+// Vertragslaufzeit je Rechtepaket in Jahren
+const RIGHT_YEARS = { bl: 2, bl2: 2, pokal: 2, uel: 1, f1: 1, nfl: 1, hbl: 2, hwm: 2, winter: 2, eis: 1, elf: 1, dtm: 1, darts: 1 };
+const rightYears = r => RIGHT_YEARS[r.id] || 1;
+const rActive = r => !!(r.owner || r.pay || r.alp);
+// Wer hält das Recht an einem bestimmten Tag? (laufender Vertrag oder bereits vergebener Nachfolger)
+function ownerOn(r, day) {
+  const k = day - G.day;
+  if (rActive(r) && k < r.days) return r;
+  if (r.next && k >= (rActive(r) ? r.days : 0) && k < (rActive(r) ? r.days : 0) + r.next.days) return r.next;
+  return null;
+}
+// Ausschreibung öffnen: freie Rechte sofort, laufende 90 Tage vor Vertragsende
+function openTender(r) {
+  if (r.tender || r.next) return;
+  const act = rActive(r);
+  if (act && r.days > 90) return;
+  const d = RDEF(r.id);
+  r.price = rightPrice(d); r.bid = 0; r.pkg = null;
+  r.tender = { close: G.day + (act ? 21 : 14) };
+  logMsg("Rechteagentur", "Sport", `Ausschreibung: „${d.name}“ für ${rightYears(r)} ${rightYears(r) > 1 ? "Jahre" : "Jahr"}${act ? ` ab ${dateShort(G.day + r.days)}` : " ab sofort"} – Gebote bis ${dateShort(r.tender.close)}, Mindestgebot ${meur(r.price)} pro Jahr (Gesamt-DACH).`);
+}
 const otherShare = () => Math.min(0.34, 0.16 + 0.0015 * (G.day - 1) + (G.stream ? G.stream.subs * 0.002 : 0)); // sonstige Sender + Streaming
 
 function newGame(stationId) {
@@ -794,12 +826,14 @@ function newGame(stationId) {
     else st.progs.push(makeFiller("Doku", st));
     while (st.progs.length < 22) st.progs.push(makeFiller(pick(STATIONS[st.i].profile.concat(["Magazin", "Reality", "Doku"])), st));
   }
+  // Startbestand: eingekaufte Lizenzen laufen unterschiedlich lange
+  for (const st of G.stations) for (const p of st.progs) if (p.real && !p.home && (p.kind === "film" || p.kind === "serie")) { applyLicense(p, 2); p.until = G.day + ri(90, 700); }
   const P = me();
   // Ziel: Startmarktanteil auf alle TV-Nutzer umgerechnet plus Ehrgeiz der Senderleitung
   P.conf = 60; P.target = Math.round(P.base * 84 / 73.2 * 1.04 * 10) / 10;
   for (let k = 0; k < 3; k++) P.contracts.push(makeAd(expectedPrime(P) * 0.5));
-  G.rights = RIGHTS.map(r => ({ id: r.id, owner: r.holder || null, days: r.holder ? ri(6, 34) : 0, price: 0, bid: 0 }));
-  G.rights.forEach(r => { if (!r.owner) r.price = rightPrice(RDEF(r.id)); });
+  G.rights = RIGHTS.map(r => ({ id: r.id, owner: r.holder || null, days: r.holder ? ri(60, 700) : 0, price: 0, bid: 0, fee: r.holder ? r1000(rightPrice(r) * rnd(0.9, 1.1)) : 0, alpFee: 0, next: null, tender: null }));
+  G.rights.forEach(openTender);
   G.project = null; G.mods = {}; G.event = null; G.eventLog = [];
   initPeople();
   applyEditorPeople();
@@ -854,7 +888,7 @@ function canPlace(st, sc, p, i) {
   if (p.exclusive) return "Exklusiv im Stream";
   if (i + p.len > 24) return "Passt nicht mehr in den Tag";
   for (let k = 1; k < p.len; k++) if (sc[i + k].live) return "Kollidiert mit Live-Event";
-  if (p.kind === "serie" && !p.own && p.ep >= p.eps * 2) return "Lizenz ausgeschöpft";
+  if (p.kind === "serie" && !p.own && p.ep >= (p.maxEp || p.eps * 2)) return "Lizenz ausgeschöpft";
   if (p.kind === "film" && p.runs >= p.maxRuns) return "Lizenz ausgeschöpft";
   return "";
 }
@@ -882,10 +916,10 @@ const schedFor = (P, d) => d === G.day ? P.sched : calDay(P, d);
 const allPlans = P => P.week.concat(Object.values(P.cal || {}));
 function calPrune(P) { for (const k of Object.keys(P.cal || {})) if (+k < G.day) delete P.cal[k]; }
 // Verbleibende Ausstrahlungen einer Lizenz (Eigenproduktionen und Dauerformate: unbegrenzt)
-const budgetOf = p => p.kind === "film" ? p.maxRuns - (p.runs || 0) : p.kind === "serie" && !p.own ? p.eps * 2 - p.ep : Infinity;
+const budgetOf = p => p.kind === "film" ? p.maxRuns - (p.runs || 0) : p.kind === "serie" && !p.own ? (p.maxEp || p.eps * 2) - p.ep : Infinity;
 function liveHours(P, d) {
   const out = new Set();
-  for (const { r, d: def } of eventsOn(d)) if (r.owner === P.id) for (let k = 0; k < def.len; k++) out.add(def.h + k);
+  for (const { o, d: def } of eventsOn(d)) if (o.owner === P.id) for (let k = 0; k < def.len; k++) out.add(def.h + k);
   return out;
 }
 // Prüft den Planungszeitraum der Reihe nach: leere Stunden, fehlende Programme, erschöpfte Lizenzen
@@ -934,6 +968,7 @@ function fillHorizon(P) {
     const rem = remMap(P, null);
     for (let d = G.day; d < G.day + HORIZON; d++) {
       const sc = calDay(P, d);
+      sc.forEach(c => { if (c.p && !progOf(P, c.p)) { c.p = null; c.cont = false; c.ad = null; } }); // abgelaufene Lizenzen
       if (sc.some(c => !c.p)) planDayFor(P, weekday(d), sc, { rem, keep: true });
     }
     buildToday(P);
@@ -1000,7 +1035,8 @@ function planDayFor(st, wd, sc = st.week[wd], opts = {}) {
   if (!isMe(st)) return;
   const exp = HOURS.map(i => expected(st, i) * 0.9);
   for (const i of HOURS.slice().sort((a, b) => BASE[b] - BASE[a])) {
-    if (!sc[i].p || sc[i].ad || !adAllowed(st, i, wd) || progOf(st, sc[i].p).genre === "Teleshopping") continue;
+    const pp = sc[i].p && progOf(st, sc[i].p);
+    if (!pp || sc[i].ad || !adAllowed(st, i, wd) || pp.genre === "Teleshopping") continue;
     let best = null;
     for (const c of st.contracts) {
       const n = sc.filter(x => x.ad === c.id).length;
@@ -1015,10 +1051,11 @@ function eventsOn(day) {
   const out = [];
   for (const r of G.rights) {
     const d = RDEF(r.id);
-    if (!r.owner || day < d.from || weekday(day) !== d.wd) continue;
+    if (day < d.from || weekday(day) !== d.wd) continue;
     if (Math.floor((day - 1) / 7) % d.every !== 0) continue;
-    if (r.days < day - G.day + 1) continue;
-    out.push({ r, d });
+    const o = ownerOn(r, day);
+    if (!o || !o.owner) continue;
+    out.push({ r, d, o });
   }
   return out;
 }
@@ -1391,7 +1428,7 @@ const EVENTS = [
   { id: "earlyrights", type: "Markt", when: () => G.rights.some(r => r.owner && r.owner !== me().id && r.days > 5),
     make: () => { const r = pick(G.rights.filter(x => x.owner && x.owner !== me().id && x.days > 5)); return { data: r.id, title: `Exklusiv: „${RDEF(r.id).name}“ wird vorzeitig neu vergeben`, text: `Der Rechteinhaber ${holderName(r.owner)} steckt in Finanznöten. Die Rechteagentur fragt diskret nach Interesse.`,
       opts: [["Interesse anmelden", "Das Paket kommt sofort in die Ausschreibung."], ["Kein Interesse", "Alles bleibt, wie es ist."]] }; },
-    fn: (k, rid) => { if (k === 0) { const r = G.rights.find(x => x.id === rid); r.owner = null; r.days = 0; r.price = rightPrice(RDEF(rid)); r.bid = 0; go("rights"); } } },
+    fn: (k, rid) => { if (k === 0) { const r = G.rights.find(x => x.id === rid); Object.assign(r, { owner: null, pay: null, alp: null, terr: null, fee: 0, alpFee: 0, days: 0, next: null, tender: null }); openTender(r); go("rights"); } } },
   { id: "setfight", type: "Skandal", when: () => !!myProg(p => p.kind === "serie" || (p.kind === "show" && p.genre !== "Nachrichten")),
     make: () => { const p = myProg(p => p.kind === "serie" || (p.kind === "show" && p.genre !== "Nachrichten")); return { data: p.id, title: `Eklat am Set von „${p.title}“`, text: "Nach einem Streit über das Drehbuch geraten Hauptdarsteller und Regie handgreiflich aneinander. Die Boulevardpresse hat Wind davon bekommen.",
       opts: [["Fristlos trennen", "Prestige steigt, die Produktion verliert 15 Qualitätspunkte."], ["Mit PR-Geld beruhigen", "−100.000 €, die Quote bleibt stabil – aber es könnte später auffliegen."], ["Krisen-Spezial senden", "Neue Reality-Sendung mit großem Quotenpotenzial. Kostet Prestige."]] }; },
@@ -2126,9 +2163,9 @@ function startDay() {
 function aiTurn(st) {
   if (st.type === "privat" && Math.random() < 0.3) {
     const cands = G.market.filter(p => STATIONS[st.i].profile.includes(p.genre)).sort((a, b) => b.q - a.q);
-    if (cands[0]) { G.market = G.market.filter(x => x !== cands[0]); st.progs.push(cands[0]); logMsg("Branchendienst", "Konkurrenz", `${st.name} sichert sich ${cands[0].kind === "film" ? "den Film" : "die Lizenz für"} „${cands[0].title}“.`); }
+    if (cands[0]) { G.market = G.market.filter(x => x !== cands[0]); applyLicense(cands[0], pick([1, 2])); st.progs.push(cands[0]); logMsg("Branchendienst", "Konkurrenz", `${st.name} sichert sich ${cands[0].kind === "film" ? "den Film" : "die Lizenz für"} „${cands[0].title}“.`); }
   }
-  st.progs = st.progs.filter(p => !(p.kind === "film" && p.runs >= p.maxRuns) && !(p.kind === "serie" && !p.own && p.ep >= p.eps * 2));
+  st.progs = st.progs.filter(p => !(p.kind === "film" && p.runs >= p.maxRuns) && !(p.kind === "serie" && !p.own && p.ep >= (p.maxEp || p.eps * 2)) && !(p.until && p.until < G.day));
   if (st.progs.length < 20) st.progs.push(makeFiller(pick(STATIONS[st.i].profile), st));
   st.news = Math.random() < 0.6 ? [{ q: ri(30, 80) }, { q: ri(30, 80) }] : [];
   const wd = weekday(G.day);
@@ -2204,9 +2241,14 @@ function endDay() {
         logMsg("Werbezeitenvermarktung", "Werbung", `Frist abgelaufen: Vertragsstrafe „${c.brand}“ über ${eur(c.penalty)}.`);
       }
     }
+    // Sportrechte werden anteilig pro Tag abgerechnet
+    for (const r of G.rights) if (rActive(r)) {
+      if (r.owner === st.id && r.fee) book(st, "Sportrechte", -r1000(r.fee / 365));
+      if (isMe(st) && r.alp === st.id && r.alpFee) book(st, "Sportrechte", -r1000(r.alpFee / 365));
+    }
     // ausgelaufene Lizenzen
-    const gone = st.progs.filter(p => (p.kind === "film" && p.runs >= p.maxRuns) || (p.kind === "serie" && !p.own && p.ep >= p.eps * 2));
-    for (const p of gone) logMsg("Lizenzabteilung", "Programm", `Lizenz für „${p.title}“ ausgeschöpft – der Titel fällt aus dem Archiv.`);
+    const gone = st.progs.filter(p => (p.kind === "film" && p.runs >= p.maxRuns) || (p.kind === "serie" && !p.own && p.ep >= (p.maxEp || p.eps * 2)) || (p.until && p.until <= G.day));
+    if (isMe(st)) for (const p of gone) logMsg("Lizenzabteilung", "Programm", p.until && p.until <= G.day ? `Lizenz für „${p.title}“ abgelaufen – der Titel fällt aus dem Archiv.` : `Lizenz für „${p.title}“ ausgeschöpft – der Titel fällt aus dem Archiv.`);
     st.progs = st.progs.filter(p => !gone.includes(p));
     if (G.stream) G.stream.catalog = G.stream.catalog.filter(c => st.progs.some(p => p.id === c.id));
     const d = st.dayMA - st.target;
@@ -2215,18 +2257,30 @@ function endDay() {
     st.conf = clamp(st.conf + dc + (st.money < 0 ? -2 : 0) + (ebitda < -1e6 ? -1 : 0), 0, 100);
     st.hist.push({ day: G.day, ma: st.dayMA, d, money: st.money, fin: { ...st.fin }, ebitda, views, conf: st.conf, stream: srec });
   }
-  for (const r of G.rights) if (r.owner || r.pay || r.alp) { r.days--; if (r.days <= 0) { const d = RDEF(r.id); logMsg("Rechteagentur", "Sport", `Die Rechte an „${d.name}“ (bisher ${rHolder(r)}) werden neu ausgeschrieben.`); r.owner = null; r.pay = null; r.alp = null; r.terr = null; r.price = rightPrice(d); r.bid = 0; } }
+  for (const r of G.rights) {
+    if (rActive(r)) {
+      if (--r.days <= 0) {
+        const d = RDEF(r.id), old = rHolder(r);
+        if (r.next) { Object.assign(r, r.next); r.next = null; logMsg("Rechteagentur", "Sport", `Rechtewechsel: „${d.name}“ liegt ab morgen bei ${rHolder(r)} (bisher ${old}).`); }
+        else { logMsg("Rechteagentur", "Sport", `Die Rechte an „${d.name}“ (bisher ${old}) sind ausgelaufen.`); Object.assign(r, { owner: null, pay: null, alp: null, terr: null, fee: 0, alpFee: 0, days: 0 }); }
+      }
+    }
+    openTender(r);
+  }
   G.yesterday = { day: G.day, res: G.today };
   const P = me();
   const avg = P.maSum / P.maDays;
   let over = null;
   if (P.conf <= 0) over = { win: false, why: `Die Senderleitung hat das Vertrauen verloren. Ihr Marktanteil lag zuletzt bei ${pct(P.dayMA)} – Ziel war ${pct(P.target)}.` };
   else if (P.money < -10e6) over = { win: false, why: "Die Schulden sind zu hoch. Die Senderleitung zieht die Notbremse." };
-  else if (G.day >= SEASON) {
+  else if (G.day >= seasonEnd()) {
     const rank = standings().findIndex(x => x.s === P) + 1;
-    over = avg >= P.target
-      ? { win: true, why: `Saisonziel erreicht: ${pct(avg)} Marktanteil im Schnitt (Ziel ${pct(P.target)}), Platz ${rank} der Quotentabelle. Ihr Vertrag wird verlängert.` }
-      : { win: false, why: `Saisonziel verfehlt: ${pct(avg)} im Schnitt statt ${pct(P.target)}. Die Senderleitung verlängert Ihren Vertrag nicht.` };
+    if (avg >= P.target) {
+      G.season = (G.season || 1) + 1; G.seasonEnd = seasonEnd() + SEASON;
+      const old = P.target;
+      P.target = Math.round(P.target * 1.02 * 10) / 10; P.maSum = 0; P.maDays = 0; P.conf = clamp(P.conf + 10, 0, 100);
+      logMsg("Senderleitung", "Vertrag", `Saisonziel erreicht: ${pct(avg)} im Schnitt (Ziel ${pct(old)}), Platz ${rank}. Ihr Vertrag wird verlängert – Saison ${G.season} läuft bis ${dateShort(G.seasonEnd)}, neues Ziel ${pct(P.target)}.`, true);
+    } else over = { win: false, why: `Saisonziel verfehlt: ${pct(avg)} im Schnitt statt ${pct(P.target)}. Die Senderleitung verlängert Ihren Vertrag nicht.` };
   }
   G.over = over;
   render(); renderTop();
@@ -2238,33 +2292,35 @@ const terrTxt = r => r.owner ? (r.terr || REG_KEYS).map(k => REG[k].code).join("
 function resolveAuctions() {
   const P = me();
   for (const r of G.rights) {
-    if (r.owner || r.pay || r.alp) continue;
+    if (!r.tender || r.tender.close > G.day) continue;
+    r.tender = null;
     const d = RDEF(r.id), bids = dachBids(r, d);
     for (const st of G.stations) {
       if (isMe(st)) continue;
       const interest = d.tags === "event" ? (st.type === "oer" ? 1.25 : 0.8) : d.tags === "oer" ? (st.type === "oer" ? 1.05 : 0.7) : (st.type === "oer" ? 0.7 : 1.05);
       if (Math.random() > 0.45) continue;
       const bid = r1000(pkgMin(r, "de") * interest * rnd(0.75, 1.3));
-      if (bid > st.base * 9e5 + 1e6) continue;
+      if (bid / 12 > st.base * 9e5 + 1e6) continue;
       bids.de.push({ name: st.name, bid, st });
     }
     const pk = r.pkg || "dach";
     if (r.bid) bids[pk].push({ name: P.name + " (Sie)", bid: r.bid, st: P, me: true });
-    const best = k => bids[k].filter(b => b.bid >= pkgMin(r, k) && (!b.me || P.money >= b.bid)).sort((a, b) => b.bid - a.bid)[0] || null;
+    const best = k => bids[k].filter(b => b.bid >= pkgMin(r, k) && (!b.me || P.money + 15e6 - P.credit >= b.bid / 12)).sort((a, b) => b.bid - a.bid)[0] || null;
     const bD = best("dach"), bDE = best("de"), bA = best("alp");
     if (r.bid) logMsg("Rechteagentur", "Sport", `Umschläge geöffnet – „${d.name}“: ${["dach", "de", "alp"].map(k => `${PKGS[k].short} (ab ${meur(pkgMin(r, k))}): ${bids[k].length ? bids[k].sort((a, b) => b.bid - a.bid).map(b => `${b.name} ${meur(b.bid)}`).join(", ") : "kein Gebot"}`).join(" · ")}`);
     const dachWins = bD && bD.bid >= (bDE ? bDE.bid : 0) + (bA ? bA.bid : 0);
     const winDE = dachWins ? bD : bDE, winA = dachWins ? bD : bA;
     if (!winDE && !winA) { if (r.bid) logMsg("Rechteagentur", "Sport", `Ihr Gebot für „${d.name}“ lag unter dem Mindestgebot oder Ihr Konto war nicht gedeckt.`); r.bid = 0; r.pkg = null; continue; }
-    r.days = 28; r.terr = null;
-    if (winDE) { if (winDE.st) { r.owner = winDE.st.id; r.terr = dachWins ? REG_KEYS.slice() : ["de"]; } else r.pay = winDE.name; }
-    if (winA) r.alp = winA.st ? winA.st.id : winA.name;
-    for (const w of new Set([winDE, winA])) if (w && w.me) book(P, "Sportrechte", -w.bid);
+    const act = rActive(r), slot = { owner: null, terr: null, alp: null, pay: null, fee: 0, alpFee: 0, days: rightYears(r) * 365 };
+    if (winDE) { if (winDE.st) { slot.owner = winDE.st.id; slot.terr = dachWins ? REG_KEYS.slice() : ["de"]; slot.fee = winDE.bid; } else slot.pay = winDE.name; }
+    if (winA) { slot.alp = winA.st ? winA.st.id : winA.name; if (!dachWins && winA.me) slot.alpFee = winA.bid; }
+    if (act) r.next = slot; else Object.assign(r, slot);
+    const start = act ? `ab ${dateShort(G.day + r.days)}` : "ab sofort";
     const mine = [winDE, winA].some(w => w && w.me);
-    if (mine) logMsg("Rechteagentur", "Sport", `Zuschlag! ${P.name} erhält „${d.name}“ – ${PKGS[pk].name} für ${meur(r.bid)} (28 Tage).${pk === "de" ? " Achtung: Am Spieltag gilt Geo-Blocking in Österreich und der Schweiz." : pk === "alp" ? " Nur Streaming-Lizenz für Österreich und die Schweiz." : ""}`, true);
+    if (mine) logMsg("Rechteagentur", "Sport", `Zuschlag! ${P.name} erhält „${d.name}“ – ${PKGS[pk].name} für ${meur(r.bid)} pro Jahr, ${rightYears(r)} ${rightYears(r) > 1 ? "Jahre" : "Jahr"} ${start}. Abgerechnet wird anteilig pro Tag.${pk === "de" ? " Achtung: Am Spieltag gilt Geo-Blocking in Österreich und der Schweiz." : pk === "alp" ? " Nur Streaming-Lizenz für Österreich und die Schweiz." : ""}`, true);
     else {
       const who = dachWins ? `${bD.name} sichert sich das Gesamt-DACH-Paket für ${meur(bD.bid)}` : [bDE && `${bDE.name} erhält Deutschland für ${meur(bDE.bid)}`, bA && `${bA.name} die Alpenregion für ${meur(bA.bid)}`].filter(Boolean).join(", ");
-      logMsg("Rechteagentur", "Sport", `${r.bid ? "Überboten" : "Vergeben"}: „${d.name}“ – ${who}.${r.pay ? " Das Recht wandert ins Pay-TV." : ""}${r.bid ? ` Ihr Gebot: ${meur(r.bid)} (${PKGS[pk].short}).` : ""}`, !!r.bid);
+      logMsg("Rechteagentur", "Sport", `${r.bid ? "Überboten" : "Vergeben"} (${start}): „${d.name}“ – ${who}.${slot.pay ? " Das Recht wandert ins Pay-TV." : ""}${r.bid ? ` Ihr Gebot: ${meur(r.bid)} (${PKGS[pk].short}).` : ""}`, !!r.bid);
     }
     r.bid = 0; r.pkg = null;
   }
@@ -2326,7 +2382,7 @@ $("cont").addEventListener("click", () => {
 function renderTop() {
   if (!G) return;
   $("dateTxt").textContent = dateLabel(G.day);
-  $("dateSub").textContent = G.phase === "plan" ? `Planung · Tag ${G.day}/${SEASON}` : G.phase === "live" ? "Sendeabend läuft" : "Sendeschluss";
+  $("dateSub").textContent = G.phase === "plan" ? `Planung · Saison ${G.season || 1} · Tag ${seasonDay()}/${SEASON}` : G.phase === "live" ? "Sendeabend läuft" : "Sendeschluss";
   $("clock").textContent = G.phase === "plan" ? "08:00" : hhmm(G.min);
   $("contTxt").textContent = G.phase === "plan" ? "Weiter" : G.phase === "live" ? (liveRun ? "Pause" : "Fortsetzen") : "Tagesbericht";
   $("cont").classList.toggle("busy", G.phase === "live" && liveRun);
@@ -2487,12 +2543,7 @@ function statsList(P) {
 function nextEvents(P, n) {
   const out = [];
   for (let d = G.day; d < G.day + 14 && out.length < n; d++) {
-    for (const r of G.rights) {
-      if (r.owner !== P.id) continue;
-      const def = RDEF(r.id);
-      if (d < def.from || weekday(d) !== def.wd || Math.floor((d - 1) / 7) % def.every !== 0 || r.days < d - G.day + 1) continue;
-      out.push({ d, def });
-    }
+    for (const { o, d: def } of eventsOn(d)) if (o.owner === P.id) out.push({ d, def });
   }
   return out.slice(0, n);
 }
@@ -2536,7 +2587,7 @@ function overview(P) {
     <div class="col"><section class="panel"><div class="st-wrap"><h2 class="st">Quotentabelle</h2></div>${quotaTable(true)}
       <div class="st-wrap"><h2 class="st">Statistiken</h2></div>${statsList(P)}</section>${streamTrendPanel(S)}</div>
     <div class="col">
-      <section class="panel"><div class="ph"><h2>Senderleitung</h2><span class="aside">Tag ${G.day} / ${SEASON}</span></div>
+      <section class="panel"><div class="ph"><h2>Senderleitung</h2><span class="aside">Saison ${G.season || 1} · Tag ${seasonDay()} / ${SEASON}</span></div>
         <div class="goal"><div class="row"><b>Vertrauen</b><span class="${P.conf < 30 ? "down" : "muted"}">${P.conf} / 100</span></div><div class="track"><i style="width:${P.conf}%;background:${P.conf < 30 ? "#ef4444" : P.conf < 55 ? "#eab308" : "#22c55e"}"></i></div></div>
         <div class="goal"><div class="row"><b>Saisonziel Marktanteil</b><span class="muted">${P.maDays ? pct(avg) : "–"} / ${pct(P.target)}</span></div><div class="track"><i style="width:${Math.min(100, avg / P.target * 75)}%;background:#e3a019"></i><b style="left:75%"></b></div></div></section>
       ${G.event ? `<section class="panel event-card"><div class="ph"><h2>Entscheidung nötig</h2><span class="chip ${G.event.type === "Skandal" ? "fsk" : "real"}">${G.event.type}</span></div><div class="pad"><p style="margin:0 0 10px">${esc(G.event.title)}</p><button class="btn hot" data-act="showEvent">Jetzt entscheiden</button></div></section>` : ""}
@@ -2562,8 +2613,9 @@ function inbox() { return title("Posteingang", `<span class="muted">${G.log.leng
 // =====================================================================
 function umfang(p) {
   if (p.own) return p.kind === "serie" ? `Eigenproduktion · Folge ${(p.ep % p.eps) + 1}/${p.eps}` : p.kind === "film" ? `Eigenproduktion · ${p.len} Std.` : "Eigenproduktion";
-  if (p.kind === "serie") return `${Math.min(p.ep, p.eps * 2)}/${p.eps * 2} Ausstr.`;
-  if (p.kind === "film") return `${p.len} Std. · ${p.runs || 0}/${p.maxRuns} Ausstr.`;
+  const bis = p.until ? ` · bis ${dateShort(p.until)}` : "";
+  if (p.kind === "serie") return `${Math.min(p.ep, p.maxEp || p.eps * 2)}/${p.maxEp || p.eps * 2} Ausstr.${bis}`;
+  if (p.kind === "film") return `${p.len} Std. · ${p.runs || 0}/${p.maxRuns} Ausstr.${bis}`;
   if (p.kind === "sport") return "live";
   return "Dauerformat";
 }
@@ -2638,8 +2690,8 @@ function archiv(P) {
     <section class="panel">${progTable(P.progs, p => { const inPlan = allPlans(P).some(d => d.some(c => c.p === p.id)); const can = p.price > 0 && !p.home && !inPlan; return p.price ? `<span class="muted">${eur(p.price * 0.4)}</span> <button class="btn" data-act="sell" data-id="${p.id}" ${!can || planLocked() ? "disabled" : ""}>${inPlan ? "Im Plan" : "Verkaufen"}</button>` : '<span class="muted">Eigenformat</span>'; }, "Verkauf")}</section>`;
 }
 function market(P) {
-  return title("Programmhandel", `<span class="muted">${G.market.length} Angebote · Konto ${meur(P.money)}</span>`) + lockNote() + `<p class="lead mb">Sie haben jeden Morgen den ersten Zugriff, zum Sendestart greift die Konkurrenz zu. Täglich kommt neue Ware.</p>
-    <section class="panel">${progTable(G.market, p => `<span class="muted">${meur(p.price)}</span> <button class="btn hot" data-act="buy" data-id="${p.id}" ${p.price > P.money || planLocked() ? "disabled" : ""}>Kaufen</button>`, "Preis")}</section>`;
+  return title("Programmhandel", `<span class="muted">${G.market.length} Angebote · Konto ${meur(P.money)}</span>`) + lockNote() + `<p class="lead mb">Sie haben jeden Morgen den ersten Zugriff, zum Sendestart greift die Konkurrenz zu. Lizenzen laufen 1 Jahr (Filme 3, Serien 2 Durchläufe) oder 2 Jahre (5 bzw. 3 Durchläufe, 1,65-facher Preis). Abgelaufene Titel kommen später wieder auf den Markt.</p>
+    <section class="panel">${progTable(G.market, p => [1, 2].map(y => `<button class="btn ${y === 1 ? "hot" : ""}" data-act="buy" data-id="${p.id}" data-k="${y}" ${licPrice(p, y) > P.money || planLocked() ? "disabled" : ""}>${y} J. · ${meur(licPrice(p, y))}</button>`).join(" "), "Lizenz 1 oder 2 Jahre")}</section>`;
 }
 
 // =====================================================================
@@ -2730,16 +2782,16 @@ function smarket(P) {
 // Seiten: Sport, Werbung, Nachrichten
 // =====================================================================
 function rightsPage(P) {
-  const avail = G.rights.filter(r => !r.owner && !r.pay && !r.alp), held = G.rights.filter(r => r.owner || r.pay || r.alp);
-  return title("Rechtemarkt", `<span class="muted">Auktionen werden über Nacht entschieden</span>`) +
+  const avail = G.rights.filter(r => r.tender), held = G.rights.filter(rActive);
+  return title("Rechtemarkt", `<span class="muted">Mehrjährige Verträge · verdeckte Gebote bis Fristende</span>`) +
     `<p class="lead mb">Wählen Sie je Ausschreibung ein Paket – Gesamt-DACH, nur Deutschland oder nur Österreich & Schweiz – und bieten Sie mindestens das Mindestgebot. DAZN und Sky/WOW greifen das Gesamtpaket an, lokale Anbieter wie Canal+ (AT) nur die Alpenregion. Wer nur Deutschland hält, muss am Spieltag den Stream in AT und CH sperren (Geo-Blocking, mehr Kündigungen). Öffentlich-Rechtliche halten bei Großereignissen mit, Private bei Liga- und US-Sport. Ein teures Recht muss sich über Quote und Werbung refinanzieren.</p>
-    <section class="panel mb"><div class="ph"><h2>In der Ausschreibung</h2><span class="aside">Laufzeit nach Zuschlag: 28 Tage</span></div>${avail.length ? `<div class="tbl"><table><thead><tr><th>Paket</th><th>Termin</th><th class="num">Zugkraft</th><th>Territorium</th><th>Ihr Gebot</th></tr></thead><tbody>
-      ${avail.map(r => { const d = RDEF(r.id); return `<tr><td class="title"><b>${esc(d.name)}</b><div class="muted">${esc(d.sport)}${d.from > G.day ? ` · Saisonstart ${dateShort(d.from)}` : ""}</div></td><td>${WDL[d.wd]} ${hh(d.h)}${d.every > 1 ? ` · alle ${d.every} Wo.` : ""}</td><td class="num">${attr(d.q)}</td>
+    <section class="panel mb"><div class="ph"><h2>In der Ausschreibung</h2><span class="aside">Gebote pro Jahr · Abrechnung anteilig pro Tag</span></div>${avail.length ? `<div class="tbl"><table><thead><tr><th>Paket</th><th>Termin</th><th class="num">Zugkraft</th><th>Territorium</th><th>Ihr Gebot</th></tr></thead><tbody>
+      ${avail.map(r => { const d = RDEF(r.id); return `<tr><td class="title"><b>${esc(d.name)}</b><div class="muted">${esc(d.sport)}${d.from > G.day ? ` · Saisonstart ${dateShort(d.from)}` : ""}</div><div class="muted">${rightYears(r)} ${rightYears(r) > 1 ? "Jahre" : "Jahr"} ${rActive(r) ? `ab ${dateShort(G.day + r.days)}` : "ab sofort"} · Gebote bis ${dateShort(r.tender.close)}</div></td><td>${WDL[d.wd]} ${hh(d.h)}${d.every > 1 ? ` · alle ${d.every} Wo.` : ""}</td><td class="num">${attr(d.q)}</td>
         <td><div class="pkgs">${Object.entries(PKGS).map(([k, pk]) => `<button class="pkg ${(r.pkgSel || r.pkg || "dach") === k ? "on" : ""}" data-act="pkg" data-k="${r.id}" data-v="${k}" title="${esc(pk.desc)}" ${planLocked() ? "disabled" : ""}><b>${pk.short}</b><span>ab ${meur(pkgMin(r, k))}</span></button>`).join("")}</div></td>
-        <td><div class="actions"><input type="number" id="bid-${r.id}" min="${pkgMin(r, r.pkgSel || r.pkg || "dach")}" step="100000" value="${r.bid && (r.pkgSel || r.pkg) === r.pkg ? r.bid : pkgMin(r, r.pkgSel || r.pkg || "dach")}" ${planLocked() ? "disabled" : ""}><button class="btn hot" data-act="bid" data-k="${r.id}" ${planLocked() ? "disabled" : ""}>${r.bid ? "Ändern" : "Bieten"}</button>${r.bid ? `<span class="chip good">${PKGS[r.pkg].short} · ${meur(r.bid)}</span>` : ""}</div></td></tr>`; }).join("")}
+        <td><div class="actions"><input type="number" id="bid-${r.id}" min="${pkgMin(r, r.pkgSel || r.pkg || "dach")}" step="500000" value="${r.bid && (r.pkgSel || r.pkg) === r.pkg ? r.bid : pkgMin(r, r.pkgSel || r.pkg || "dach")}" ${planLocked() ? "disabled" : ""}><button class="btn hot" data-act="bid" data-k="${r.id}" ${planLocked() ? "disabled" : ""}>${r.bid ? "Ändern" : "Bieten"}</button>${r.bid ? `<span class="chip good">${PKGS[r.pkg].short} · ${meur(r.bid)}</span>` : ""}</div></td></tr>`; }).join("")}
     </tbody></table></div>` : '<div class="pad"><p class="lead">Derzeit läuft keine Ausschreibung.</p></div>'}</section>
-    <section class="panel mb"><div class="ph"><h2>Vergebene Rechte</h2></div><div class="tbl"><table><thead><tr><th>Paket</th><th>Free-TV / DE</th><th>AT & CH</th><th>Termin</th><th class="num">Zugkraft</th><th class="num">Restlaufzeit</th></tr></thead><tbody>
-      ${held.map(r => { const d = RDEF(r.id); return `<tr class="${r.owner === P.id || r.alp === P.id ? "mine" : ""}"><td class="title">${esc(d.name)}</td><td>${r.owner ? sname(SIDX[r.owner]) : r.pay ? `<span class="muted">${esc(r.pay)} · Pay-TV</span>` : '<span class="muted">–</span>'}</td><td class="muted">${r.alp ? esc(r.alp === P.id ? P.name : SIDX[r.alp] !== undefined ? holderName(r.alp) : r.alp) : r.owner && r.terr && r.terr.length < 3 ? '<span class="chip fsk">Geo-Block</span>' : r.owner && r.terr ? "im DACH-Paket" : "–"}</td><td>${WDL[d.wd]} ${hh(d.h)}</td><td class="num">${attr(d.q)}</td><td class="num">${r.days} T.</td></tr>`; }).join("")}
+    <section class="panel mb"><div class="ph"><h2>Vergebene Rechte</h2></div><div class="tbl"><table><thead><tr><th>Paket</th><th>Free-TV / DE</th><th>AT & CH</th><th>Termin</th><th class="num">Zugkraft</th><th class="num">Vertrag bis</th></tr></thead><tbody>
+      ${held.map(r => { const d = RDEF(r.id); return `<tr class="${r.owner === P.id || r.alp === P.id ? "mine" : ""}"><td class="title">${esc(d.name)}</td><td>${r.owner ? sname(SIDX[r.owner]) : r.pay ? `<span class="muted">${esc(r.pay)} · Pay-TV</span>` : '<span class="muted">–</span>'}</td><td class="muted">${r.alp ? esc(r.alp === P.id ? P.name : SIDX[r.alp] !== undefined ? holderName(r.alp) : r.alp) : r.owner && r.terr && r.terr.length < 3 ? '<span class="chip fsk">Geo-Block</span>' : r.owner && r.terr ? "im DACH-Paket" : "–"}</td><td>${WDL[d.wd]} ${hh(d.h)}</td><td class="num">${attr(d.q)}</td><td class="num">${dateShort(G.day + r.days)}${r.next ? `<div class="muted">danach ${esc(r.next.owner ? holderName(r.next.owner) : r.next.pay || (r.next.alp === P.id ? P.name : r.next.alp) || "–")}</div>` : r.tender ? '<div class="muted">in Ausschreibung</div>' : ""}</td></tr>`; }).join("")}
     </tbody></table></div></section>
     <section class="panel"><div class="ph"><h2>Exklusiv bei Pay-TV & Streaming</h2><span class="aside">für Free-TV-Sender nicht erwerbbar</span></div><div class="tbl"><table><thead><tr><th>Sportart</th><th>Wettbewerb</th><th>Anbieter</th></tr></thead><tbody>
       ${EXCLUSIVE.map(([s, c, a]) => `<tr><td>${esc(s)}</td><td class="title">${esc(c)}</td><td class="muted">${esc(a)}</td></tr>`).join("")}</tbody></table></div></section>`;
@@ -2748,7 +2800,7 @@ function myrights(P) {
   const own = G.rights.filter(r => r.owner === P.id || r.alp === P.id);
   const ev = nextEvents(P, 10);
   return title("Meine Rechte") + `<div class="grid two">
-    <section class="panel"><div class="ph"><h2>Rechtepakete</h2></div>${own.length ? `<div class="tbl"><table><thead><tr><th>Paket</th><th>Territorium</th><th>Termin</th><th class="num">Restlaufzeit</th></tr></thead><tbody>${own.map(r => { const d = RDEF(r.id); return `<tr><td class="title">${esc(d.name)}</td><td>${r.owner === P.id ? terrTxt(r) : "AT · CH (nur Streaming)"}${r.owner === P.id && r.terr && r.terr.length < 3 ? ' <span class="chip fsk">Geo-Block AT/CH</span>' : ""}</td><td>${WDL[d.wd]} ${hh(d.h)}</td><td class="num">${r.days} T.</td></tr>`; }).join("")}</tbody></table></div>` : '<div class="pad"><p class="lead">Sie besitzen keine Sportrechte.</p></div>'}</section>
+    <section class="panel"><div class="ph"><h2>Rechtepakete</h2></div>${own.length ? `<div class="tbl"><table><thead><tr><th>Paket</th><th>Territorium</th><th>Termin</th><th class="num">Vertrag bis</th></tr></thead><tbody>${own.map(r => { const d = RDEF(r.id); return `<tr><td class="title">${esc(d.name)}</td><td>${r.owner === P.id ? terrTxt(r) : "AT · CH (nur Streaming)"}${r.owner === P.id && r.terr && r.terr.length < 3 ? ' <span class="chip fsk">Geo-Block AT/CH</span>' : ""}</td><td>${WDL[d.wd]} ${hh(d.h)}</td><td class="num">${dateShort(G.day + r.days)}<div class="muted">${meur(r.owner === P.id ? r.fee : r.alpFee)} / Jahr</div></td></tr>`; }).join("")}</tbody></table></div>` : '<div class="pad"><p class="lead">Sie besitzen keine Sportrechte.</p></div>'}</section>
     <section class="panel"><div class="ph"><h2>Live-Termine</h2><span class="aside">nächste 14 Tage</span></div>${ev.length ? `<div class="tbl"><table><tbody>${ev.map(e => `<tr><td>${dateShort(e.d)}</td><td>${hh(e.def.h)}</td><td class="title">${esc(e.def.name)}</td></tr>`).join("")}</tbody></table></div>` : '<div class="pad"><p class="lead">Keine Termine.</p></div>'}</section></div>`;
 }
 function adTable(list, extra) {
@@ -2928,7 +2980,7 @@ function showStart() {
       <ul class="rules">
         <li><b>Morgens planen</b>Wochenplan 0–24 Uhr, Programmhandel, Rechte-Auktionen, Werbung, Streaming-Katalog. Die Zeit steht still.</li>
         <li><b>Weiter</b>Der Tag bis 18 Uhr wird ausgewertet, der Abend läuft live in der Regie – mit Werbeblöcken und Notfall-Wiederholungen.</li>
-        <li><b>Senderleitung</b>Erreichen Sie Ihr Marktanteil-Ziel nach ${SEASON} Tagen. Sinkt das Vertrauen auf 0, sind Sie raus.</li>
+        <li><b>Senderleitung</b>Erreichen Sie Ihr Marktanteil-Ziel nach jeweils ${SEASON} Tagen – dann geht es in die nächste Saison. Sinkt das Vertrauen auf 0, sind Sie raus.</li>
         <li><b>Regeln</b>ÖRR: Beitrag statt Werbung nach 20 Uhr. Jugendschutz: FSK 16 ab 22, FSK 18 ab 23 Uhr.</li>
       </ul>
       <div class="actions">${has ? '<button class="btn hot" data-act="load">Spielstand fortsetzen</button>' : ""}<button class="btn ${has ? "" : "hot"}" data-act="choose">Neues Spiel – Sender wählen</button><button class="btn" data-act="editor">Editor & Datenimport</button></div>
@@ -3016,7 +3068,7 @@ function act(b) {
       for (let d = G.day; d < G.day + HORIZON; d++) if (d !== wd && weekday(d) === weekday(wd) && !(d === G.day && planLocked())) P.cal[d] = src.map(c => ({ ...c, live: false }));
       buildToday(P); toast(`${dateShort(wd)} wurde auf alle ${WDL[weekday(wd)]}e im Planungszeitraum kopiert.`); break;
     }
-    case "buy": { const p = G.market.find(x => x.id === id); if (p && p.price <= P.money && !planLocked()) { book(P, "Programmkäufe", -p.price); P.progs.push(p); G.market = G.market.filter(x => x !== p); toast(`„${p.title}“ gekauft.`); } break; }
+    case "buy": { const p = G.market.find(x => x.id === id), yrs = b.dataset.k === "2" ? 2 : 1; if (p && licPrice(p, yrs) <= P.money && !planLocked()) { book(P, "Programmkäufe", -licPrice(p, yrs)); applyLicense(p, yrs); P.progs.push(p); G.market = G.market.filter(x => x !== p); toast(`„${p.title}“ für ${yrs === 2 ? "2 Jahre" : "1 Jahr"} lizenziert (bis ${dateShort(p.until)}).`); } break; }
     case "ad": { const a = G.adOffers.find(x => x.id === id); if (a && P.contracts.length < MAX_ADS && !planLocked()) { P.contracts.push(a); G.adOffers = G.adOffers.filter(x => x !== a); toast(`Vertrag mit ${a.brand} geschlossen.`); } break; }
     case "news": { const n = G.newsOffers.find(x => x.id === id); if (n && P.news.length < 3 && !planLocked()) { book(P, "Programmkäufe", -n.price); P.news.push(n); G.newsOffers = G.newsOffers.filter(x => x !== n); toast("Meldung gekauft."); } break; }
     case "sell": { const p = P.progs.find(x => x.id === id); if (p && !planLocked() && !p.home) { book(P, "Programmkäufe", r1000(p.price * 0.4)); P.progs = P.progs.filter(x => x !== p); if (G.stream) G.stream.catalog = G.stream.catalog.filter(c => c.id !== id); toast(`„${p.title}“ verkauft.`); } break; }
@@ -3067,10 +3119,11 @@ function act(b) {
     case "unstream": if (G.stream) { G.stream.catalog = G.stream.catalog.filter(c => c.id !== id); const p = P.progs.find(x => x.id === id); if (p) p.exclusive = false; } break;
     case "bid": {
       const r = G.rights.find(x => x.id === b.dataset.k);
+      if (!r || !r.tender) return;
       const v = Math.round(+($("bid-" + r.id).value || 0) / 1000) * 1000, pk = r.pkgSel || r.pkg || "dach";
       if (v < pkgMin(r, pk)) { toast(`Das Mindestgebot für ${PKGS[pk].name} liegt bei ${meur(pkgMin(r, pk))}.`); return; }
-      if (v > P.money + 15e6 - P.credit) { toast("So viel Geld steht Ihnen nicht zur Verfügung."); return; }
-      r.bid = v; r.pkg = pk; toast(`Gebot über ${meur(v)} für ${PKGS[pk].name} abgegeben. Entscheidung über Nacht.`); break;
+      if (v / 12 > P.money + 15e6 - P.credit) { toast("Diese Jahresgebühr können Sie nicht finanzieren."); return; }
+      r.bid = v; r.pkg = pk; toast(`Gebot über ${meur(v)} pro Jahr für ${PKGS[pk].name} abgegeben. Entscheidung am ${dateShort(r.tender.close)}.`); break;
     }
     case "pkg": { const r = G.rights.find(x => x.id === b.dataset.k); if (r) r.pkgSel = b.dataset.v; break;
     }
