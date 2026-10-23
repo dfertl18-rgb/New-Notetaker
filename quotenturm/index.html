@@ -401,6 +401,8 @@ img.avatar.photo { border-radius: 50%; object-fit: cover; flex: 0 0 auto; }
 .arow b { font-family: var(--font-head); font-size: 17px; min-width: 28px; text-align: right; }
 .irow { display: grid; gap: 1px; padding: 5px 0; border-bottom: 1px solid var(--line); } .irow small { color: var(--muted); font-size: 12px; } .irow b { font-weight: 600; font-size: 14px; }
 @media (max-width: 900px) { .pp-head { grid-template-columns: auto minmax(0, 1fr); } .acols { grid-template-columns: minmax(0, 1fr); } .ttl-head { flex-direction: column; } }
+.chip.imdb { background: #f5c518; border-color: #f5c518; color: #111; font-weight: 700; }
+.imdb-tile b { color: #f5c518; } .imdb-tile b span { font-size: 14px; color: var(--muted); }
 .pkgs { display: flex; gap: 4px; }
 .pkg { background: var(--panel-2); border: 1px solid var(--line); border-radius: 4px; padding: 4px 8px; display: grid; text-align: left; min-width: 74px; }
 .pkg b { font-family: var(--font-head); font-size: 15px; } .pkg span { font-size: 11px; color: var(--muted); }
@@ -3373,7 +3375,7 @@ function umfang(p) {
 function progTable(list, extra, head = "") {
   if (!list.length) return `<div class="pad"><p class="lead">Keine Programme vorhanden.</p></div>`;
   return `<div class="tbl"><table><thead><tr><th>Titel</th><th>Genre</th><th class="num">Qual.</th><th>Aktualität</th><th>Umfang</th><th>Beste Zeit</th><th class="num">${head}</th></tr></thead><tbody>
-    ${list.map(p => `<tr><td class="title">${titleLink(G.market.includes(p) ? `m|${p.id}` : `${me().id}|${p.id}`, p.title)} ${p.fsk >= 16 ? `<span class="chip fsk">FSK ${p.fsk}</span>` : p.fsk ? `<span class="chip">FSK ${p.fsk}</span>` : ""}${p.own ? ' <span class="chip good">Eigenproduktion</span>' : p.home ? ' <span class="chip real">Eigenformat</span>' : p.kind === "serie" ? ' <span class="chip real">Serienlizenz</span>' : ""}${G.stream && G.stream.catalog.some(c => c.id === p.id) ? ' <span class="chip good">im Stream</span>' : ""}${DESC[p.title] ? `<div class="muted desc">${esc(DESC[p.title])}</div>` : ""}</td><td>${esc(p.genre)}</td><td class="num">${attr(p.q)}</td>
+    ${list.map(p => `<tr><td class="title">${titleLink(G.market.includes(p) ? `m|${p.id}` : `${me().id}|${p.id}`, p.title)}${imdbChip(p.title)} ${p.fsk >= 16 ? `<span class="chip fsk">FSK ${p.fsk}</span>` : p.fsk ? `<span class="chip">FSK ${p.fsk}</span>` : ""}${p.own ? ' <span class="chip good">Eigenproduktion</span>' : p.home ? ' <span class="chip real">Eigenformat</span>' : p.kind === "serie" ? ' <span class="chip real">Serienlizenz</span>' : ""}${G.stream && G.stream.catalog.some(c => c.id === p.id) ? ' <span class="chip good">im Stream</span>' : ""}${DESC[p.title] ? `<div class="muted desc">${esc(DESC[p.title])}</div>` : ""}</td><td>${esc(p.genre)}</td><td class="num">${attr(p.q)}</td>
       <td><span class="mbar"><i style="width:${Math.round(p.topic * 100)}%"></i></span> <span class="muted">${Math.round(p.topic * 100)} %</span></td>
       <td class="muted">${umfang(p)}</td><td class="muted">${GENRES[p.genre].length > 6 ? "live" : GENRES[p.genre].map(h => h).join("/") + " Uhr"}</td><td class="num">${extra(p)}</td></tr>`).join("")}
   </tbody></table></div>`;
@@ -3704,7 +3706,7 @@ function openPicker(kind, i, wd, live) {
         const used = sc.filter(c => c.p === p.id && !c.cont).length;
         const youth = !youthOk(p, i);
         return `<button class="pick" data-act="${live ? "swapTo" : "setProg"}" data-i="${i}" data-k="${wd}" data-id="${p.id}" ${why ? "disabled" : ""}><b>${esc(p.title)}</b>
-          ${DESC[p.title] ? `<span class="meta desc">${esc(DESC[p.title])}</span>` : ""}<span class="meta">${attr(p.q)}<span class="chip">${esc(p.genre)}</span>${p.home ? '<span class="chip real">Eigenformat</span>' : ""}${p.fsk >= 16 ? `<span class="chip fsk">FSK ${p.fsk}</span>` : ""}<span class="stars">${stars(fit(p.genre, i))}</span><span>Akt. ${Math.round(p.topic * 100)} %</span><span>${umfang(p)}</span>${used ? `<span class="chip warn">${used}× an diesem Tag</span>` : ""}${youth ? '<span class="chip fsk">Jugendschutz: Bußgeld droht</span>' : ""}${why ? `<span>${why}</span>` : ""}</span></button>`;
+          ${DESC[p.title] ? `<span class="meta desc">${esc(DESC[p.title])}</span>` : ""}<span class="meta">${attr(p.q)}${imdbChip(p.title)}<span class="chip">${esc(p.genre)}</span>${p.home ? '<span class="chip real">Eigenformat</span>' : ""}${p.fsk >= 16 ? `<span class="chip fsk">FSK ${p.fsk}</span>` : ""}<span class="stars">${stars(fit(p.genre, i))}</span><span>Akt. ${Math.round(p.topic * 100)} %</span><span>${umfang(p)}</span>${used ? `<span class="chip warn">${used}× an diesem Tag</span>` : ""}${youth ? '<span class="chip fsk">Jugendschutz: Bußgeld droht</span>' : ""}${why ? `<span>${why}</span>` : ""}</span></button>`;
       }).join("");
   } else {
     const exp = expected(P, i);
@@ -3958,7 +3960,7 @@ function openStation(id) {
     </div>
     <section class="panel"><div class="ph"><h2>Stars</h2><span class="aside">${stars.length} Personen</span></div>${stars.length ? `<div class="plist">${stars.slice(0, 12).map(p => personRow(p, (q, s) => mine ? `<span class="chip good">bis ${dateShort(q.until)}</span>` : `<button class="btn small" data-act="nego" data-k="${q.id}" data-v="cast" ${planLocked() ? "disabled" : ""}>Abwerben · ${meur(abloese(q))}</button>`)).join("")}</div>` : '<p class="fine pad">Keine exklusiven Stars.</p>'}</section>
     <div class="grid two">
-      <section class="panel"><div class="ph"><h2>Programm-Highlights</h2></div><div class="tbl"><table><tbody>${top.map(p => `<tr><td class="title"><b>${titleLink(`${st.id}|${p.id}`, p.title)}</b>${DESC[p.title] ? `<div class="muted desc">${esc(DESC[p.title])}</div>` : ""}</td><td class="muted">${esc(p.genre)}</td><td class="num">${attr(p.q)}</td></tr>`).join("")}</tbody></table></div></section>
+      <section class="panel"><div class="ph"><h2>Programm-Highlights</h2></div><div class="tbl"><table><tbody>${top.map(p => `<tr><td class="title"><b>${titleLink(`${st.id}|${p.id}`, p.title)}</b>${imdbChip(p.title)}${DESC[p.title] ? `<div class="muted desc">${esc(DESC[p.title])}</div>` : ""}</td><td class="muted">${esc(p.genre)}</td><td class="num">${attr(p.q)}</td></tr>`).join("")}</tbody></table></div></section>
       <section class="panel"><div class="ph"><h2>Sportrechte</h2></div>${rights.length ? `<div class="tbl"><table><tbody>${rights.map(r => `<tr><td class="title">${esc(RDEF(r.id).name)}</td><td class="num muted">${r.owner === st.id ? `bis ${dateShort(G.day + r.days)}` : `ab ${dateShort(G.day + r.days)}`}</td></tr>`).join("")}</tbody></table></div>` : '<p class="fine pad">Keine Sportrechte.</p>'}</section>
     </div>
     <section class="panel"><div class="ph"><h2>Aktuelle Meldungen</h2></div>${newsList(stationNews(st.name))}</section>
@@ -3975,7 +3977,7 @@ function openStreamer(id) {
       <div class="tile"><small>Modell</small><b style="font-size:18px">${esc(s.model)}</b><span>${s.price ? `${eur(s.price).replace(" €", "")} € / Monat` : "kostenlos"}</span></div>
       <div class="tile"><small>Gehört zu</small><b style="font-size:18px">${owners.length ? esc(owners.join(", ")) : "eigenständig"}</b><span>${owners.length ? "Senderfamilie" : "internationaler Anbieter"}</span></div>
     </div>
-    <section class="panel"><div class="ph"><h2>Aushängeschilder</h2></div><div class="tbl"><table><tbody>${s.hits.map((h, k) => `<tr><td class="title"><b>${titleLink(`@${s.id}|${k}`, h)}</b>${DESC[h] ? `<div class="muted desc">${esc(DESC[h])}</div>` : ""}</td></tr>`).join("")}</tbody></table></div></section>
+    <section class="panel"><div class="ph"><h2>Aushängeschilder</h2></div><div class="tbl"><table><tbody>${s.hits.map((h, k) => `<tr><td class="title"><b>${titleLink(`@${s.id}|${k}`, h)}</b>${imdbChip(h)}${DESC[h] ? `<div class="muted desc">${esc(DESC[h])}</div>` : ""}</td></tr>`).join("")}</tbody></table></div></section>
     ${rights.length ? `<section class="panel"><div class="ph"><h2>Sportrechte</h2></div><div class="tbl"><table><tbody>${rights.map(r => `<tr><td class="title">${esc(RDEF(r.id).name)}</td><td class="muted">${r.pay ? "Gesamtpaket (Pay-TV)" : "Österreich & Schweiz"}</td><td class="num muted">bis ${dateShort(G.day + r.days)}</td></tr>`).join("")}</tbody></table></div></section>` : ""}
     <section class="panel"><div class="ph"><h2>Aktuelle Meldungen</h2></div>${newsList(stationNews(s.name.split(" ")[0]))}</section>
   </div>`);
@@ -4277,7 +4279,7 @@ async function readUpload(input, kind) {
   if (kind === "photos") { const r = await bulkPhotos(files); edMsg = [`${r.ok} Fotos zugeordnet${r.miss.length ? `, ${r.miss.length} ohne passenden Code (z. B. ${r.miss.slice(0, 3).join(", ")})` : ""}.`, r.ok ? "good" : "bad"]; renderEditor(); if (G) render(); return; }
   if (kind === "imdb") {
     edMsg = ["IMDb-Import läuft … das kann bei den großen Dateien einige Minuten dauern.", "warn"]; renderEditor();
-    try { const r = await importIMDb(files, TITLE_MAX, m => { edMsg = [`IMDb-Import läuft … ${m}`, "warn"]; renderEditor(); }); edMsg = [`IMDb-Import fertig: ${r.add} neue, ${r.upd} aktualisierte Titel. Im Speicher: ${r.total.toLocaleString("de-DE")} Titel. Sie erscheinen in neuen Spielen bei der Konkurrenz und im Programmhandel.`, "good"]; }
+    try { const r = await importIMDb(files, TITLE_MAX, m => { edMsg = [`IMDb-Import läuft … ${m}`, "warn"]; renderEditor(); }); edMsg = [`IMDb-Import fertig: ${r.add} neue, ${r.upd} aktualisierte Titel. Im Speicher: ${r.total.toLocaleString("de-DE")} Titel, IMDb-Wertungen für ${r.scores.toLocaleString("de-DE")} Titel. Sie erscheinen in neuen Spielen bei der Konkurrenz und im Programmhandel.`, "good"]; }
     catch (e) { edMsg = [`IMDb-Import fehlgeschlagen: ${e.message}`, "bad"]; }
     renderEditor(); return;
   }
@@ -4440,6 +4442,7 @@ function openTitle(key) {
     <div class="ttl-head"><div class="grow"><span class="chip real">${kindName}</span>${p ? ` <span class="chip">${esc(p.genre)}</span>` : ""}${p && p.own ? ' <span class="chip good">Eigenproduktion</span>' : p && p.home ? ' <span class="chip real">Eigenformat</span>' : ""}
       <p class="lead" style="margin-top:8px">${esc(DESC[t.title] || (p && p.own ? "Eigenproduktion des Senders." : "Keine Beschreibung vorhanden."))}</p></div>
       <div class="ttl-side"><small>Läuft bei</small><b>${t.owner && SIDX[t.owner] !== undefined ? sname(SIDX[t.owner]) : t.streamer ? sbadge(t.owner, 18) : esc(t.ownerName)}</b></div></div>
+    ${imdbOf(t.title) ? `<div class="tiles"><div class="tile imdb-tile"><small>IMDb-Wertung</small><b>${imdbOf(t.title)[0].toLocaleString("de-DE", { minimumFractionDigits: 1 })}<span> / 10</span></b><span>${fmtVotes(imdbOf(t.title)[1])} Stimmen</span></div></div>` : ""}
     ${p ? `<div class="tiles">
       <div class="tile"><small>Qualität</small><b>${p.q}</b><span>${stars5(p.q)}</span></div>
       <div class="tile"><small>Bester Marktanteil</small><b>${p.bestMA ? pct(p.bestMA) : "–"}</b><span>${p.aired ? `${p.aired}× gesendet` : "noch nicht gesendet"}</span></div>
@@ -4503,6 +4506,11 @@ function openPerson(id) {
 // =====================================================================
 const IDB = { db: null };
 const PHOTO = new Map(); // Personen-Code → Bild-URL
+// IMDb-Wertungen aus dem lokalen IMDb-Import: normalisierter Titel → [Wertung, Stimmen]
+let IMDB_SCORES = new Map();
+const imdbOf = title => IMDB_SCORES.get(normT(title)) || null;
+const fmtVotes = v => v >= 1e6 ? `${(v / 1e6).toLocaleString("de-DE", { maximumFractionDigits: 1 })} Mio.` : v >= 1e3 ? `${Math.round(v / 1e3).toLocaleString("de-DE")} Tsd.` : String(v);
+const imdbChip = title => { const s = imdbOf(title); return s ? ` <span class="chip imdb" title="IMDb-Wertung · ${fmtVotes(s[1])} Stimmen">IMDb ${s[0].toLocaleString("de-DE", { minimumFractionDigits: 1 })}</span>` : ""; };
 function idbOpen() {
   return new Promise(res => {
     try {
@@ -4532,6 +4540,7 @@ async function initStorage() {
     if (!TITLES) { loadTitles(); if (TITLES.length) await idbSet(TITLE_KEY, TITLES); }
     const keys = await idbReq("photos", "readonly", s => s.getAllKeys()), blobs = await idbReq("photos", "readonly", s => s.getAll());
     keys.forEach((k, i) => PHOTO.set(String(k), URL.createObjectURL(blobs[i])));
+    const sc = await idbGet("quotenturm-imdb-scores"); if (sc) IMDB_SCORES = new Map(sc);
   } catch (e) { /* ohne IndexedDB weiter mit localStorage */ }
 }
 async function savePhoto(code, file) {
@@ -4663,13 +4672,19 @@ async function importIMDb(files, max, progress) {
     if (++n % 300000 === 0) progress(`Titel: ${n.toLocaleString("de-DE")} Zeilen`);
     const c = l.split("\t"); const r = rat.get(c[0]);
     if (!r || !["movie", "tvSeries", "tvMiniSeries", "tvMovie"].includes(c[1]) || c[4] === "1" || +c[5] < 1950) continue;
-    keep.push({ id: c[0], type: c[1], title: c[2], year: +c[5], mins: +c[7] || 100, genres: c[8], avg: r[0], votes: r[1] });
+    keep.push({ id: c[0], type: c[1], title: c[2], orig: c[3], year: +c[5], mins: +c[7] || 100, genres: c[8], avg: r[0], votes: r[1] });
   }
-  keep.sort((a, b) => b.votes - a.votes); keep.length = Math.min(keep.length, max);
+  keep.sort((a, b) => b.votes - a.votes);
+  // Wertungen für alle bewerteten Titel merken (auch über die Titelauswahl hinaus), deutsche Titel inklusive
   if (fa) {
     const want = new Map(keep.map(k => [k.id, k])); n = 0;
     for await (const l of tsvLines(fa)) { if (++n % 500000 === 0) progress(`Deutsche Titel: ${n.toLocaleString("de-DE")} Zeilen`); const c = l.split("\t"); if (c[3] === "DE" && want.has(c[0]) && c[2]) want.get(c[0]).de = c[2]; }
   }
+  const scores = new Map();
+  for (const k of keep) for (const t of [k.de, k.title, k.orig]) { const key = t && normT(t); if (key && (!scores.has(key) || scores.get(key)[1] < k.votes)) scores.set(key, [k.avg, k.votes]); }
+  IMDB_SCORES = scores;
+  if (IDB.db) await idbSet("quotenturm-imdb-scores", [...scores]).catch(() => {});
+  keep.length = Math.min(keep.length, max);
   const T = loadTitles(), rows = keep.map(k => {
     const g = k.genres.split(",").map(x => IMDB_GENRE[x.toLowerCase()]).find(Boolean) || "Drama", tv = k.type !== "movie" && k.type !== "tvMovie";
     return { eindeutige_id: "imdb_" + k.id, title: (k.de || k.title).slice(0, 80), genre: g, q: clamp(Math.round(20 + k.avg * 7.5), 20, 94), tv, eps: tv ? 13 : 0, len: k.mins > 140 ? 3 : 2, year: k.year, fsk: /horror/i.test(k.genres) ? 16 : ["Krimi", "Action"].includes(g) ? 12 : 0, pop: k.votes };
@@ -4677,7 +4692,7 @@ async function importIMDb(files, max, progress) {
   const r = upsert(T, rows, "eindeutige_id");
   T.sort((a, b) => b.pop - a.pop); if (T.length > TITLE_MAX) T.length = TITLE_MAX;
   await storeTitlesAsync();
-  return { add: r.add, upd: r.upd, total: T.length };
+  return { add: r.add, upd: r.upd, total: T.length, scores: scores.size };
 }
 async function storeDBAsync() { if (IDB.db) { try { await idbSet(DB_KEY, EDB); return true; } catch (e) { /* weiter */ } } return storeDB(); }
 async function storeTitlesAsync() { if (IDB.db) { try { await idbSet(TITLE_KEY, TITLES); return true; } catch (e) { /* weiter */ } } return storeTitles(); }
