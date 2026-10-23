@@ -404,6 +404,8 @@ img.avatar.photo { border-radius: 50%; object-fit: cover; flex: 0 0 auto; }
 .chip.imdb { background: #f5c518; border-color: #f5c518; color: #111; font-weight: 700; }
 .imdb-tile b { color: #f5c518; } .imdb-tile b span { font-size: 14px; color: var(--muted); }
 .bio p { margin: 0 0 8px; max-width: 80ch; } .bio a { color: var(--hot); }
+.fm-titles { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; } .fm-t { background: var(--panel-2); border: 1px solid var(--line); border-radius: 4px; padding: 4px 8px; font-size: 13px; }
+.fm-opts { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; } .fm-card { margin-bottom: 12px; }
 .pkgs { display: flex; gap: 4px; }
 .pkg { background: var(--panel-2); border: 1px solid var(--line); border-radius: 4px; padding: 4px 8px; display: grid; text-align: left; min-width: 74px; }
 .pkg b { font-family: var(--font-head); font-size: 15px; } .pkg span { font-size: 11px; color: var(--muted); }
@@ -1209,7 +1211,7 @@ const HEADLINES = [
 // Menüführung: Hauptpunkt → Aufklappmenü mit allen Unterseiten [Seite, Name, Erklärung]
 const MENU = [
   { id: "portal", name: "Portal", subs: [["overview", "Übersicht", "Dashboard mit Nachrichten, Tabelle und Kennzahlen"], ["inbox", "Posteingang", "Alle Meldungen aus dem Haus"]] },
-  { id: "programm", name: "Programm", subs: [["plan", "Sendekalender", "Programm 0–24 Uhr, 6 Wochen im Voraus"], ["archiv", "Archiv", "Eigene Filme, Serien und Formate"], ["market", "Programmhandel", "Filme und Serienlizenzen kaufen"], ["ticker", "Nachrichten", "Meldungen von Ticker24 einkaufen"]] },
+  { id: "programm", name: "Programm", subs: [["plan", "Sendekalender", "Programm 0–24 Uhr, 6 Wochen im Voraus"], ["archiv", "Archiv", "Eigene Filme, Serien und Formate"], ["filmmarket", "Filmrechte", "Pakete, Studios, Filmmärkte"], ["market", "Programmhandel", "Filme und Serienlizenzen kaufen"], ["ticker", "Nachrichten", "Meldungen von Ticker24 einkaufen"]] },
   { id: "produktion", name: "Produktion", subs: [["studio", "Studio", "Eigene Filme, Serien, Shows und Dokus"], ["casting", "Casting", "Stars, Moderation, Nachrichtengesichter"], ["newsroom", "Nachrichtenredaktion", "Blattlinie, Stil, Etat und Sprecher*in"], ["export", "Rechtemarkt international", "Formate und Produktionen ins Ausland verkaufen"]] },
   { id: "streaming", name: "Streaming", subs: [["stream", "Plattform", "Abos, Churn, ARPU und Preismodell"], ["catalog", "Katalog", "Titel und Verwertungsfenster"], ["smarket", "Wettbewerb", "Streamer im Vergleich und Top 10"]] },
   { id: "sport", name: "Sport", subs: [["rights", "Rechtemarkt", "Ausschreibungen und Gebote"], ["myrights", "Meine Rechte", "Pakete und Live-Termine"]] },
@@ -1302,12 +1304,25 @@ function applyLicense(p, yrs, from = G.day) {
   if (p.kind === "serie") p.maxEp = p.eps * (yrs === 2 ? 3 : 2);
   p.lic = yrs;
 }
-function realFilm(row) {
+// IMDb-Wertung wirkt aufs Spiel: Qualität (65 % Score, 35 % Grundwert), Zugkraft aus der Stimmenzahl → Quote, Streaming-Abrufe, Lizenzpreis
+function applyImdb(p) {
+  if (!p || p.own || p.imdbApplied || typeof IMDB_SCORES === "undefined") return p;
+  const s = IMDB_SCORES.get(normT(p.title)); if (!s) return p;
+  p.imdbApplied = true; p.imdb = s;
+  p.q = clamp(Math.round(p.q * 0.35 + clamp(20 + s[0] * 7.5, 20, 96) * 0.65), 5, 97);
+  p.pull = Math.round(clamp((Math.log10(s[1]) - 3) / 3.3, 0, 1) * 100) / 100; // 1.000 Stimmen → 0, ~2 Mio. → 1
+  if (p.price) p.price = r1000(p.price * (1 + p.pull * 0.6));
+  return p;
+}
+const isHot = p => (p.pull || 0) >= 0.6 || p.q >= 85; // begehrte Ware: Konkurrenz greift schnell zu
+function realFilm(row) { return applyImdb(realFilm0(row)); }
+function realFilm0(row) {
   const [title, genre, q, len, fsk] = row;
   return { id: uid(), title, genre, kind: "film", q, len, topic: 1, fsk, real: true, runs: 0, maxRuns: 3, aired: 0,
     price: r1000((q * q * 110 + 40000) * (len >= 2 ? 1.25 : 1) * rnd(0.9, 1.15)) };
 }
-function fromDB(row) {
+function fromDB(row) { return applyImdb(fromDB0(row)); }
+function fromDB0(row) {
   const [title, genre, q, eps, home] = row;
   const series = eps > 0;
   return { id: uid(), title, genre, kind: series ? "serie" : "show", q, len: 1, eps, ep: 0, topic: 1, fsk: 0, real: true, home, aired: 0,
@@ -1391,6 +1406,8 @@ function newGame(stationId) {
   applyEditorPeople();
   linkImported();
   assignCasts();
+  G.tenders = []; G.deals = []; G.payHeld = []; G.presales = [];
+  marketDay();
   const nImp = seedImportedTitles();
   if (nImp) logMsg("Branchendienst", "Konkurrenz", `Importierte Titeldatenbank: ${nImp} Filme und Serien laufen ab sofort bei der Konkurrenz – Krimi und Anspruch bei den Öffentlich-Rechtlichen, Unterhaltung bei den Privaten.`);
   for (const st of G.stations) { for (const wd of WEEK) planDayFor(st, wd); }
@@ -1406,8 +1423,8 @@ function newGame(stationId) {
 }
 const RDEF = id => RIGHTS.find(r => r.id === id);
 function refreshOffers(first) {
-  if (!first) { shuffle(G.market); G.market.splice(0, Math.min(6, G.market.length)); }
-  const owned = new Set(G.stations.flatMap(s => s.progs.map(p => p.title)).concat(G.market.map(p => p.title)));
+  if (!first) { shuffle(G.market); G.market.splice(0, Math.min(6, G.market.length)); G.market.forEach(p => { p.mdays = (p.mdays || 0) + 1; }); }
+  const owned = new Set(G.stations.flatMap(s => s.progs.map(p => p.title)).concat(G.market.map(p => p.title), (G.payHeld || []).filter(x => x.until >= G.day).map(x => x.title), (G.tenders || []).flatMap(t => t.titles || [])));
   const spool = shuffle(SERIES_DB.concat(shuffle(importedSeries()).slice(0, 30)).filter(r => !r[4] && !owned.has(r[0])));
   const fpool = shuffle(FILM_DB.concat(shuffle(importedFilms()).slice(0, 60)).filter(r => !owned.has(r[0])));
   while (G.market.filter(p => p.kind === "serie").length < 6 && spool.length) G.market.push(fromDB(spool.pop()));
@@ -1653,6 +1670,7 @@ function attractiveness(st, i) {
     if (p.streamFirst && !p.aired) topic *= 0.8; // Fans kennen es schon vom Streamer
     A = st.brand * Math.pow(p.q / 60, 1.5) * fit(p.genre, i) * topic * newsMult * rnd(0.9, 1.1);
     if (c.cont && p.kind !== "sport") A *= 0.96;
+    if (p.pull) A *= 1 + p.pull * 0.12; // bekannte Titel ziehen mehr Publikum
   }
   if (isMe(st) && G.adBreak[i]) A *= 0.85;
   if (isMe(st) && p && p.hypeTv && (p.aired === 0 || (c.cont && p.aired === 1 && p.lastAired === G.day))) A *= 1 + p.hypeTv / 100;
@@ -1883,7 +1901,7 @@ function streamDay() {
   const items = streamItems();
   const scored = items.map(({ c, p }) => {
     const age = G.day - c.added;
-    return { c, p, s: p.q * Math.max(0.25, 1 - age * 0.02) * WINDOW_F[c.window] * (p.kind === "serie" ? 1.2 : 1) * (p.streamF || 1) * (age < 7 && p.hypeStream ? 1 + p.hypeStream / 100 : 1) };
+    return { c, p, s: p.q * Math.max(0.25, 1 - age * 0.02) * WINDOW_F[c.window] * (p.kind === "serie" ? 1.2 : 1) * (p.streamF || 1) * (age < 7 && p.hypeStream ? 1 + p.hypeStream / 100 : 1) * (1 + (p.pull || 0) * 0.45) };
   }).sort((a, b) => b.s - a.s);
   const top = scored.slice(0, 25);
   const cat = top.reduce((a, x) => a + x.s, 0) / Math.max(10, top.length);
@@ -2925,7 +2943,15 @@ function startDay() {
   save();
 }
 function aiTurn(st) {
-  if (st.type === "privat" && Math.random() < 0.3) {
+  // Bietergefecht um begehrte Titel: reiche Sender schnappen Topware schnell weg
+  let bought = false;
+  const hot = G.market.filter(p => isHot(p) && (p.mdays || 0) >= 1).sort((a, b) => (b.pull || 0) + b.q / 100 - (a.pull || 0) - a.q / 100)[0];
+  if (hot && st.money > hot.price * 1.5 && Math.random() < 0.18 * (st.base / 8 + 0.5)) {
+    G.market = G.market.filter(x => x !== hot); applyLicense(hot, pick([1, 2])); st.progs.push(hot);
+    logMsg("Branchendienst", "Konkurrenz", `Bietergefecht entschieden: ${st.name} sichert sich ${hot.kind === "film" ? "den begehrten Film" : "die begehrte Serie"} „${hot.title}“${hot.imdb ? ` (IMDb ${hot.imdb[0].toLocaleString("de-DE")})` : ""}.`);
+    bought = true;
+  }
+  if (!bought && st.type === "privat" && Math.random() < 0.3) {
     const cands = G.market.filter(p => STATIONS[st.i].profile.includes(p.genre)).sort((a, b) => b.q - a.q);
     if (cands[0]) { G.market = G.market.filter(x => x !== cands[0]); applyLicense(cands[0], pick([1, 2])); st.progs.push(cands[0]); logMsg("Branchendienst", "Konkurrenz", `${st.name} sichert sich ${cands[0].kind === "film" ? "den Film" : "die Lizenz für"} „${cands[0].title}“.`); }
   }
@@ -3093,7 +3119,7 @@ function nextDay() {
   G.day++;
   for (const st of G.stations) st.fin = {};
   projectDay();
-  prodDay(); peopleDay(); newsroomDay(); trendDay(); awardsDay();
+  prodDay(); peopleDay(); newsroomDay(); trendDay(); awardsDay(); marketDay(); presaleDay();
   if (G.mods.coverup && G.day >= G.mods.coverup.day) {
     const c = G.mods.coverup; G.mods.coverup = null;
     if (Math.random() < 0.6) { const P = me(); P.conf = clamp(P.conf - 8, 0, 100); P.brand = Math.max(0.5, P.brand - 0.4); logMsg("Medien-Insider", "Skandal", `Vertuschung aufgeflogen: Die Boulevardpresse enthüllt den Vorfall bei „${c.title}“ – und dass der Sender Schweigegeld gezahlt hat.`, true); }
@@ -3223,7 +3249,7 @@ function applyClubColors() {
 function render(top) {
   if (!G) return;
   renderNav(); renderTop();
-  const pages = { overview, inbox, plan: planPage, archiv, market, stream: streamPage, catalog, smarket, rights: rightsPage, myrights, contracts, agency, ticker, table: tablePage, ratings, landscape, board, finance, jury, rivals, live: livePage, studio, newprod: newProdPage, casting, newsroom, export: exportPage };
+  const pages = { overview, inbox, plan: planPage, archiv, market, filmmarket: filmMarketPage, stream: streamPage, catalog, smarket, rights: rightsPage, myrights, contracts, agency, ticker, table: tablePage, ratings, landscape, board, finance, jury, rivals, live: livePage, studio, newprod: newProdPage, casting, newsroom, export: exportPage };
   const sc = $("content").scrollTop;
   $("content").innerHTML = (pages[page] || overview)(me());
   if (!top) $("content").scrollTop = sc;
@@ -3390,7 +3416,7 @@ function umfang(p) {
 function progTable(list, extra, head = "") {
   if (!list.length) return `<div class="pad"><p class="lead">Keine Programme vorhanden.</p></div>`;
   return `<div class="tbl"><table><thead><tr><th>Titel</th><th>Genre</th><th class="num">Qual.</th><th>Aktualität</th><th>Umfang</th><th>Beste Zeit</th><th class="num">${head}</th></tr></thead><tbody>
-    ${list.map(p => `<tr><td class="title">${titleLink(G.market.includes(p) ? `m|${p.id}` : `${me().id}|${p.id}`, p.title)}${imdbChip(p.title)} ${p.fsk >= 16 ? `<span class="chip fsk">FSK ${p.fsk}</span>` : p.fsk ? `<span class="chip">FSK ${p.fsk}</span>` : ""}${p.own ? ' <span class="chip good">Eigenproduktion</span>' : p.home ? ' <span class="chip real">Eigenformat</span>' : p.kind === "serie" ? ' <span class="chip real">Serienlizenz</span>' : ""}${G.stream && G.stream.catalog.some(c => c.id === p.id) ? ' <span class="chip good">im Stream</span>' : ""}${DESC[p.title] ? `<div class="muted desc">${esc(DESC[p.title])}</div>` : ""}</td><td>${esc(p.genre)}</td><td class="num">${attr(p.q)}</td>
+    ${list.map(p => `<tr><td class="title">${titleLink(G.market.includes(p) ? `m|${p.id}` : `${me().id}|${p.id}`, p.title)}${imdbChip(p.title)}${G.market.includes(p) && isHot(p) ? ' <span class="chip fsk" title="Begehrter Titel – die Konkurrenz greift schnell zu">umkämpft</span>' : ""} ${p.fsk >= 16 ? `<span class="chip fsk">FSK ${p.fsk}</span>` : p.fsk ? `<span class="chip">FSK ${p.fsk}</span>` : ""}${p.own ? ' <span class="chip good">Eigenproduktion</span>' : p.home ? ' <span class="chip real">Eigenformat</span>' : p.kind === "serie" ? ' <span class="chip real">Serienlizenz</span>' : ""}${G.stream && G.stream.catalog.some(c => c.id === p.id) ? ' <span class="chip good">im Stream</span>' : ""}${DESC[p.title] ? `<div class="muted desc">${esc(DESC[p.title])}</div>` : ""}</td><td>${esc(p.genre)}</td><td class="num">${attr(p.q)}</td>
       <td><span class="mbar"><i style="width:${Math.round(p.topic * 100)}%"></i></span> <span class="muted">${Math.round(p.topic * 100)} %</span></td>
       <td class="muted">${umfang(p)}</td><td class="muted">${GENRES[p.genre].length > 6 ? "live" : GENRES[p.genre].map(h => h).join("/") + " Uhr"}</td><td class="num">${extra(p)}</td></tr>`).join("")}
   </tbody></table></div>`;
@@ -3817,6 +3843,14 @@ function act(b) {
   const wd = b.dataset.k !== undefined ? +b.dataset.k : null;
   switch (k) {
     case "close": profStack = []; closeModal(); return;
+    case "fmOpt": { const t = (G.tenders || []).find(x => String(x.id) === b.dataset.k); if (t && !planLocked()) { const [k2, v] = b.dataset.v.split(":"); t.opt[k2] = k2 === "excl" ? v === "1" : v; } break; }
+    case "fmBid": {
+      const t = (G.tenders || []).find(x => String(x.id) === b.dataset.k); if (!t || planLocked()) return;
+      const v = r1000(+($("fm-" + t.id).value || 0)), min = r1000(t.min * optFactor(t.opt));
+      if (v < min) { toast(`Mindestgebot: ${meur(min)}.`); return; }
+      if ((t.type === "output" ? v / t.years : v) > P.money + 15e6 - P.credit) { toast("Das können Sie nicht finanzieren."); return; }
+      t.bid = v; toast(`Gebot über ${meur(v)} abgegeben – Entscheidung am ${dateShort(t.close)}.`); break;
+    }
     case "profBack": profStack.pop(); profTab = "overview"; renderProfile(); return;
     case "profTab": profTab = b.dataset.k; renderProfile(); return;
     case "stProg": openProfile("sched", b.dataset.k); return;
@@ -4170,6 +4204,180 @@ function switchStation(id) {
   logMsg("Senderleitung", "Vertrag", `Neuer Job: Sie wechseln von ${old.name} zu ${P.name}. Saisonziel ${pct(P.target)} bis ${dateShort(G.seasonEnd)}. Planen Sie zuerst die nächsten sechs Wochen.`, true);
   logMsg("Branchendienst", "Konkurrenz", `Personalien: Die Programmdirektion von ${old.name} wechselt zu ${P.name}.`);
   go("overview");
+}
+// =====================================================================
+// Filmrechte-Markt (Content-Akquisition): Studios, Verwertungsfenster, Pakete, Filmmärkte, Bieterverfahren
+// =====================================================================
+// Studios: Majors mit eigenem Streamer behalten die Erstverwertung und verkaufen nur Katalog (Free-TV);
+// Sony verkauft als „Königsmacher“ alles an den Meistbietenden; Independents verkaufen länderweise und kleinteilig.
+const STUDIOS = [
+  { id: "disney", name: "Walt Disney Studios", type: "own", streamer: "disney", note: "inkl. 20th Century, Pixar, Marvel, Lucasfilm" },
+  { id: "warner", name: "Warner Bros.", type: "own", streamer: "wow", note: "inkl. New Line; HBO-Inhalte laufen bei WOW" },
+  { id: "universal", name: "Universal Pictures", type: "own", streamer: "wow", note: "inkl. DreamWorks Animation" },
+  { id: "paramount", name: "Paramount Pictures", type: "own", streamer: "paramount", note: "eigene Plattform Paramount+" },
+  { id: "sony", name: "Sony Pictures", type: "indep", streamer: null, note: "kein eigener Streamer – verkauft an den Meistbietenden" },
+  { id: "lionsgate", name: "Lionsgate", type: "indie", streamer: null, note: "Independent-Major" },
+  { id: "studiocanal", name: "StudioCanal", type: "indie", streamer: null, note: "europäischer Weltvertrieb" },
+  { id: "constantin", name: "Constantin Film", type: "indie", streamer: null, note: "größter deutscher Independent" },
+  { id: "a24", name: "A24", type: "indie", streamer: null, note: "Arthouse-Studio" },
+  { id: "world", name: "Weltvertriebe (diverse)", type: "indie", streamer: null, note: "Katalogware verschiedener Rechteinhaber" },
+];
+const STUDIO_OF = {
+  disney: ["Der König der Löwen", "Findet Nemo", "Toy Story", "Die Monster AG", "Oben", "Die Unglaublichen – The Incredibles", "Ratatouille", "Die Eiskönigin – Völlig unverfroren", "Coco – Lebendiger als das Leben!", "Alles steht Kopf", "Zoomania",
+    "Fluch der Karibik", "Fluch der Karibik 2", "Avengers: Endgame", "Iron Man", "Black Panther", "Guardians of the Galaxy", "Krieg der Sterne", "Das Imperium schlägt zurück", "Die Rückkehr der Jedi-Ritter", "Star Wars: Das Erwachen der Macht",
+    "Titanic", "Kevin – Allein zu Haus", "Kevin – Allein in New York", "Stirb langsam", "Die Hard 2", "Avatar – Aufbruch nach Pandora", "Independence Day", "Mrs. Doubtfire – Das stachelige Kindermädchen", "Ice Age", "Der Marsianer – Rettet Mark Watney",
+    "Life of Pi – Schiffbruch mit Tiger", "Hidden Figures – Unerkannte Heldinnen", "Bohemian Rhapsody", "Sister Act – Eine himmlische Karriere", "Armageddon – Das jüngste Gericht", "Con Air", "The Rock – Fels der Entscheidung", "Pretty Woman", "Der Club der toten Dichter", "Der Staatsfeind Nr. 1", "Speed"],
+  warner: ["Harry Potter und der Stein der Weisen", "Harry Potter und die Kammer des Schreckens", "Harry Potter und der Gefangene von Askaban", "Harry Potter und der Feuerkelch", "Harry Potter und die Heiligtümer des Todes – Teil 2",
+    "Der Herr der Ringe: Die Gefährten", "Der Herr der Ringe: Die zwei Türme", "Der Herr der Ringe: Die Rückkehr des Königs", "Der Hobbit – Eine unerwartete Reise", "Matrix", "The Dark Knight", "Batman Begins", "Inception", "Departed – Unter Feinden",
+    "Gravity", "Mad Max: Fury Road", "Sieben", "Joker", "Casablanca", "Ocean's Eleven", "Gran Torino", "Million Dollar Baby", "Vom Winde verweht", "Die Brücken am Fluss", "Bodyguard", "Lethal Weapon – Zwei stahlharte Profis", "Hangover", "Keinohrhasen", "Kokowääh"],
+  universal: ["Jurassic Park", "Zurück in die Zukunft", "E.T. – Der Außerirdische", "Schindlers Liste", "Fast & Furious – Neues Modell. Originalteile.", "Die Bourne Identität", "Notting Hill", "Mamma Mia!", "Gladiator", "Ich – Einfach unverbesserlich",
+    "Madagascar", "Shrek – Der tollkühne Held", "Oppenheimer", "Psycho", "Die Vögel", "Das Fenster zum Hof", "Der Clou", "Meine Braut, ihr Vater und ich", "Liar Liar – Der Dummschwätzer", "Green Book – Eine besondere Freundschaft", "Tatsächlich… Liebe", "A Beautiful Mind – Genie und Wahnsinn"],
+  paramount: ["Der Pate", "Der Pate – Teil II", "Forrest Gump", "Top Gun", "Top Gun: Maverick", "Mission: Impossible", "Mission: Impossible – Fallout", "Frühstück bei Tiffany", "Ein Herz und eine Krone", "Die zehn Gebote", "Beverly Hills Cop",
+    "Ghost – Nachricht von Sam", "Die Truman Show", "Jäger des verlorenen Schatzes", "Indiana Jones und der letzte Kreuzzug", "Indiana Jones und der Tempel des Todes"],
+  sony: ["Spider-Man", "Ghostbusters – Die Geisterjäger", "Men in Black", "Bad Boys – Harte Jungs", "James Bond 007 – Casino Royale", "James Bond 007 – Skyfall", "Philadelphia", "Taxi Driver", "Lawrence von Arabien", "Täglich grüßt das Murmeltier"],
+  lionsgate: ["John Wick", "Saw", "La La Land", "Knives Out – Mord ist Familiensache", "Dirty Dancing"],
+  studiocanal: ["Paddington", "Terminator 2 – Tag der Abrechnung", "Rambo"],
+  constantin: ["Fack ju Göhte", "Fack ju Göhte 2", "Der Schuh des Manitu", "(T)Raumschiff Surprise – Periode 1", "Das Parfum – Die Geschichte eines Mörders", "Der Untergang", "Der Baader Meinhof Komplex", "Die Welle", "Nirgendwo in Afrika", "Der Name der Rose", "Wickie und die starken Männer"],
+};
+const studioOf = title => { for (const [id, list] of Object.entries(STUDIO_OF)) if (list.includes(title)) return id; return "world"; };
+const STUDIO = id => STUDIOS.find(s => s.id === id);
+// Filmmärkte im Jahreslauf (Monat 0-basiert)
+const FILM_MARKETS = [["EFM – European Film Market (Berlinale)", 1, 13], ["MIPTV Cannes", 3, 14], ["LA Screenings", 4, 20], ["MIPCOM Cannes", 9, 19], ["AFM – American Film Market", 10, 4]];
+const DEAL = {
+  volume: { name: "Volume Deal", desc: "Katalogpaket: feste Zahl an Bibliothekstiteln, solides Futter für die Sendeplätze." },
+  output: { name: "Output Deal", desc: "Rahmenvertrag: alle Neuheiten des Studios für die Laufzeit – blind gekauft, Blockbuster und Flops." },
+  block: { name: "Block-Booking", desc: "„Friss oder stirb“: ein Blockbuster nur zusammen mit schwächeren Titeln." },
+  presale: { name: "Pre-Sale", desc: "Vorab-Kauf eines Films, der erst gedreht wird – Qualität ungewiss, dafür exklusiv und günstig." },
+};
+const WINDOWS = { pay: "Pay-/Streaming-Erstverwertung", free: "Free-TV-Fenster" };
+// Wert eines Titels für die Kalkulation (Qualität, Zugkraft, Länge)
+const titleValue = r => { const p = applyImdb(realFilm0(r)); return p.price; };
+const filmRowsAvailable = () => {
+  const held = new Set(G.stations.flatMap(s => s.progs.map(p => p.title)).concat(G.market.map(p => p.title), (G.payHeld || []).filter(x => x.until >= G.day).map(x => x.title), (G.tenders || []).flatMap(t => t.titles || [])));
+  return FILM_DB.concat(importedFilms()).filter(r => !held.has(r[0]));
+};
+const PRESALE_TITLES = ["Schatten über Hamburg", "Der letzte Sommer am See", "Kaltes Herz", "Grenzgänger", "Die Erbin", "Nachtzug nach Triest", "Blinder Fleck", "Das Vermächtnis", "Sturmflut", "Ewig dein", "Der Fälscher", "Glück auf!", "Mission Alpenglühen", "Unter Verdacht", "Die zweite Chance", "Funkstille"];
+function makeTender(studioId, type, window) {
+  const pool = shuffle(filmRowsAvailable());
+  // Pakete enthalten nur Titel des anbietenden Studios; reicht dessen Katalog nicht, bietet ein Weltvertrieb an
+  let mine = pool.filter(r => studioOf(r[0]) === studioId);
+  if (type !== "presale" && mine.length < (type === "block" ? 1 : 3)) { studioId = "world"; mine = pool.filter(r => studioOf(r[0]) === "world"); }
+  const any = mine;
+  let titles = [], note = "";
+  if (type === "volume") titles = any.slice(0, ri(6, 12));
+  if (type === "block") { const top = any.slice().sort((a, b) => titleValue(b) - titleValue(a))[0]; const weak = pool.filter(r => r[2] < 70 && r !== top && (studioOf(r[0]) === studioId || studioId === "world" || studioOf(r[0]) === "world")).slice(0, ri(4, 7)); titles = top ? [top, ...weak] : weak; note = top ? `Zugpferd: „${top[0]}“` : ""; }
+  if (type === "output") titles = any.sort((a, b) => titleValue(b) - titleValue(a)).slice(0, 3);
+  if (!titles.length && type !== "presale") return null;
+  const years = type === "output" ? 3 : type === "presale" ? 2 : pick([1, 2, 3]);
+  const sum = titles.reduce((a, r) => a + titleValue(r), 0);
+  const base = type === "presale" ? r1000(rnd(0.8, 2.2) * 1e6) : type === "output" ? r1000(sum * 1.4) : r1000(sum * (type === "block" ? 0.8 : 0.72));
+  const t = { id: uid(), studio: studioId, type, window, titles: titles.map(r => r[0]), years, min: r1000(base * (window === "pay" ? 1.6 : 1) * (years === 1 ? 0.6 : years === 2 ? 1 : 1.3)), close: G.day + 14, bid: 0, opt: { terr: "dach", excl: true }, note };
+  if (type === "presale") { const ppl = shuffle(G.people.filter(p => p.role === "Schauspiel" && !p.custom && p.fame > 55)).slice(0, 2); t.pre = { title: pick(PRESALE_TITLES), genre: pick(["Krimi", "Drama", "Komödie", "Action", "Liebesfilm"]), stars: ppl.map(p => p.id), delivery: ri(60, 140), lo: ri(35, 55), hi: ri(70, 92) }; t.titles = [t.pre.title]; }
+  return t;
+}
+// Optionen verändern den Preis: Territorium, Exklusivität
+const optFactor = o => (o.terr === "dach" ? 1 : 0.78) * (o.excl ? 1 : 0.6);
+function marketDay() {
+  G.tenders = G.tenders || []; G.payHeld = G.payHeld || []; G.deals = G.deals || [];
+  const dt = dateOf(G.day), fair = FILM_MARKETS.find(([, m, d]) => dt.getMonth() === m && dt.getDate() === d);
+  const add = (studio, type, window) => { const t = makeTender(studio, type, window); if (t) { t.fair = fair ? fair[0] : null; G.tenders.push(t); } return t; };
+  if (fair || G.tenders.length === 0) {
+    const made = [add(pick(["disney", "warner", "universal", "paramount"]), "volume", "free"), add("sony", pick(["output", "block"]), pick(["pay", "free"])), add(pick(["lionsgate", "studiocanal", "constantin", "world"]), pick(["volume", "block"]), "free"), add(pick(["constantin", "a24", "studiocanal"]), "presale", "free")].filter(Boolean);
+    logMsg("Rechteagentur", "Programm", `${fair ? `${fair[0]}: ` : ""}${made.length} neue Filmpakete im Angebot – ${made.map(t => `${STUDIO(t.studio).name} (${DEAL[t.type].name})`).join(", ")}. Gebote bis ${dateShort(G.day + 14)}.`, !!fair);
+  } else if (G.day % 9 === 0 && G.tenders.length < 6) {
+    const t = add(pick(["world", "lionsgate", "studiocanal", "constantin"]), pick(["volume", "block"]), "free");
+    if (t) logMsg("Rechteagentur", "Programm", `Neues Filmpaket: ${STUDIO(t.studio).name} bietet einen ${DEAL[t.type].name} mit ${t.titles.length} Titeln an (Gebote bis ${dateShort(t.close)}).`);
+  }
+  // Ausschreibungen entscheiden
+  for (const t of G.tenders.filter(x => x.close <= G.day)) resolveTender(t);
+  G.tenders = G.tenders.filter(x => x.close > G.day);
+  // Output Deals liefern alle 30 Tage Neuheiten – auch Flops
+  for (const d of G.deals.filter(x => x.until >= G.day && G.day >= x.next)) {
+    d.next = G.day + 30;
+    const pool = filmRowsAvailable(), mine = pool.filter(r => studioOf(r[0]) === d.studio);
+    const picks = shuffle(mine.length ? mine : pool).slice(0, ri(1, 2));
+    if (Math.random() < 0.35) { const flop = pool.find(r => r[2] < 62); if (flop) picks.push(flop); }
+    deliver(d.owner, picks, d.window, d.years, d);
+  }
+  G.deals = G.deals.filter(x => x.until >= G.day);
+}
+// Wer bekommt die Titel? Sender ins Archiv (Free-TV), Streamer/Spieler-Stream in den Katalog (Pay-Fenster)
+function deliver(owner, rows, window, years, deal) {
+  const P = me(), names = rows.map(r => r[0]);
+  if (owner === P.id) {
+    for (const r of rows) {
+      const p = realFilm(r); applyLicense(p, years);
+      if (window === "pay" && G.stream && G.stream.stage >= 2) { p.payWindow = G.day + 365; P.progs.push(p); addToStream(p.id, "excl"); }
+      else P.progs.push(p);
+    }
+    logMsg("Lizenzabteilung", "Programm", `${deal ? `Output Deal ${STUDIO(deal.studio).name}: ` : ""}Neu im Archiv: ${names.map(t => `„${t}“`).join(", ")}${window === "pay" && G.stream ? " – exklusiv im Stream (Pay-Fenster)" : ""}.`, true);
+    return;
+  }
+  const st = G.stations[SIDX[owner]];
+  if (st) { for (const r of rows) { const p = realFilm(r); applyLicense(p, years); st.progs.push(p); } return; }
+  for (const t of names) G.payHeld.push({ title: t, owner, until: G.day + years * 365 }); // Streamer halten das Pay-Fenster
+}
+function resolveTender(t) {
+  const P = me(), S = STUDIO(t.studio), bids = [];
+  const value = t.min / optFactor({ terr: "dach", excl: true });
+  // Sender bieten auf Free-TV, Streamer auf Pay-Fenster; Majors verkaufen nicht an konkurrierende Streamer
+  const bidders = t.window === "pay"
+    ? STREAMERS.filter(s => ["netflix", "prime", "disney", "wow", "rtlplus", "joyn", "paramount"].includes(s.id) && !(S.type === "own" && S.streamer !== s.id)).map(s => ({ id: s.id, name: s.name, w: s.subs / 8 + 0.6 }))
+    : G.stations.filter(s => !isMe(s) && s.base >= 2.5).map(s => ({ id: s.id, name: s.name, w: s.base / 8 + 0.5 }));
+  for (const b of bidders) {
+    if (Math.random() > 0.55) continue;
+    let v = value * rnd(0.85, 1.35) * Math.min(1.4, b.w);
+    if (t.bid && typeof rivalHate === "function") v *= 1 + rivalHate(b.id) * 0.25; // Erzfeinde bieten gegen Sie
+    bids.push({ ...b, bid: r1000(v) });
+  }
+  if (t.bid) bids.push({ id: P.id, name: P.name + " (Sie)", bid: t.bid / optFactor(t.opt), real: t.bid, me: true });
+  bids.sort((a, b) => b.bid - a.bid);
+  const win = bids[0] && bids[0].bid >= value * 0.95 ? bids[0] : null;
+  const rows = t.titles.map(n => FILM_DB.concat(importedFilms()).find(r => r[0] === n)).filter(Boolean);
+  if (t.bid) logMsg("Rechteagentur", "Programm", `Umschläge geöffnet – ${S.name}, ${DEAL[t.type].name}: ${bids.length ? bids.map(b => `${b.name} ${meur(b.real || b.bid)}`).join(" · ") : "keine Gebote"}.`);
+  if (!win) { if (t.bid) logMsg("Rechteagentur", "Programm", `Kein Zuschlag für das Paket von ${S.name} – alle Gebote unter der Erwartung des Studios.`); return; }
+  if (win.me) {
+    book(P, "Programmkäufe", -(t.type === "output" ? r1000(t.bid / t.years) : t.bid));
+    if (typeof rivalEvent === "function") for (const b of bids.filter(x => !x.me)) rivalEvent(b.id, -12, `Filmpaket ${S.name}`);
+    if (t.type === "presale") { (G.presales = G.presales || []).push({ ...t.pre, due: G.day + t.pre.delivery, years: t.years, studio: t.studio }); logMsg("Rechteagentur", "Programm", `Zuschlag! Pre-Sale „${t.pre.title}“ (${S.name}) gesichert – Lieferung in ${t.pre.delivery} Tagen.`, true); return; }
+    if (t.type === "output") { G.deals.push({ studio: t.studio, owner: P.id, window: t.window, years: 1, until: G.day + t.years * 365, next: G.day + 30, fee: t.bid }); logMsg("Rechteagentur", "Programm", `Zuschlag! Output Deal mit ${S.name} für ${t.years} Jahre (${meur(t.bid / t.years)} pro Jahr). Neuheiten kommen alle 30 Tage.`, true); }
+    else logMsg("Rechteagentur", "Programm", `Zuschlag! ${DEAL[t.type].name} von ${S.name} für ${meur(t.bid)} – ${rows.length} Titel, ${t.years} ${t.years > 1 ? "Jahre" : "Jahr"} ${t.opt.excl ? "exklusiv" : "nicht exklusiv"}, ${t.opt.terr === "dach" ? "DACH" : "nur Deutschland"}.`, true);
+    deliver(P.id, rows, t.window, t.years);
+    return;
+  }
+  if (t.type === "output") G.deals.push({ studio: t.studio, owner: win.id, window: t.window, years: 1, until: G.day + t.years * 365, next: G.day + 30, fee: win.bid });
+  deliver(win.id, t.type === "presale" ? [] : rows, t.window, t.years);
+  logMsg("Branchendienst", "Konkurrenz", `${win.name} sichert sich ${DEAL[t.type].name === "Output Deal" ? `den Output Deal mit ${S.name}` : `das Filmpaket von ${S.name}`}${t.note ? ` (${t.note})` : ""} für ${meur(win.bid)}.${t.bid ? ` Ihr Gebot: ${meur(t.bid)}.` : ""}`, !!t.bid);
+}
+// Pre-Sales: fertiger Film kommt mit ungewisser Qualität
+function presaleDay() {
+  for (const ps of (G.presales || []).filter(x => x.due <= G.day)) {
+    const q = ri(ps.lo, ps.hi), p = { id: uid(), title: ps.title, genre: ps.genre, kind: "film", q, len: 2, topic: 1, fsk: ps.genre === "Action" || ps.genre === "Krimi" ? 12 : 0, real: false, runs: 0, maxRuns: 3, aired: 0, price: r1000(q * q * 90), presale: true };
+    applyLicense(p, ps.years); me().progs.push(p);
+    logMsg("Lizenzabteilung", "Programm", `Pre-Sale geliefert: „${ps.title}“ (${STUDIO(ps.studio).name}) ist fertig – Qualität ${q}${q >= 75 ? ", ein Volltreffer!" : q < 50 ? ", leider ein Flop." : "."} Exklusive Premiere bei Ihnen.`, true);
+  }
+  G.presales = (G.presales || []).filter(x => x.due > G.day);
+}
+function filmMarketPage(P) {
+  G.tenders = G.tenders || []; G.deals = G.deals || [];
+  const next = FILM_MARKETS.map(([n, m, d]) => { for (let k = G.day; k < G.day + 370; k++) { const dt = dateOf(k); if (dt.getMonth() === m && dt.getDate() === d) return [n, k]; } return [n, 0]; }).sort((a, b) => a[1] - b[1]);
+  const rowsOf = t => t.titles.map(n => FILM_DB.concat(importedFilms()).find(r => r[0] === n)).filter(Boolean);
+  const card = t => { const S = STUDIO(t.studio), min = r1000(t.min * optFactor(t.opt)), rows = rowsOf(t);
+    return `<section class="panel fm-card"><div class="ph"><h2>${esc(S.name)} · ${DEAL[t.type].name}</h2><span class="aside">${t.fair ? esc(t.fair) + " · " : ""}Gebote bis ${dateShort(t.close)}</span></div>
+      <div class="pad"><p class="fine" style="margin:0 0 8px">${esc(DEAL[t.type].desc)} <span class="chip ${t.window === "pay" ? "real" : ""}">${WINDOWS[t.window]}</span> <span class="chip">${t.years} ${t.years > 1 ? "Jahre" : "Jahr"}${t.type === "output" ? " Laufzeit" : ""}</span>${t.note ? ` <span class="chip warn">${esc(t.note)}</span>` : ""}</p>
+      ${t.type === "presale" ? `<p style="margin:0 0 8px"><b>„${esc(t.pre.title)}“</b> (${esc(t.pre.genre)}) – Drehbuch und zwei Stars auf dem Papier: ${t.pre.stars.map(id => personLink(person(id))).join(" & ")}. Lieferung in ca. ${t.pre.delivery} Tagen, Qualität ${t.pre.lo}–${t.pre.hi} erwartet.</p>`
+        : `<div class="fm-titles">${rows.map(r => `<span class="fm-t">${esc(r[0])}${imdbChip(r[0])} <span class="muted">${esc(r[1])}</span></span>`).join("")}${t.type === "output" ? '<span class="fm-t muted">… und alle weiteren Neuheiten der Laufzeit</span>' : ""}</div>`}
+      <div class="fm-opts">
+        <div class="pkgs"><button class="pkg ${t.opt.terr === "dach" ? "on" : ""}" data-act="fmOpt" data-k="${t.id}" data-v="terr:dach"><b>DACH</b><span>voller Preis</span></button><button class="pkg ${t.opt.terr === "de" ? "on" : ""}" data-act="fmOpt" data-k="${t.id}" data-v="terr:de"><b>nur DE</b><span>−22 %</span></button></div>
+        <div class="pkgs"><button class="pkg ${t.opt.excl ? "on" : ""}" data-act="fmOpt" data-k="${t.id}" data-v="excl:1"><b>Exklusiv</b><span>blockiert Konkurrenz</span></button><button class="pkg ${!t.opt.excl ? "on" : ""}" data-act="fmOpt" data-k="${t.id}" data-v="excl:0"><b>Nicht exkl.</b><span>−40 %</span></button></div>
+        <div class="actions"><input type="number" id="fm-${t.id}" min="${min}" step="250000" value="${t.bid || min}" ${planLocked() ? "disabled" : ""}><button class="btn hot" data-act="fmBid" data-k="${t.id}" ${planLocked() || (t.window === "pay" && !(G.stream && G.stream.stage >= 2)) ? "disabled" : ""}>${t.bid ? "Gebot ändern" : "Bieten"}</button>${t.bid ? `<span class="chip good">${meur(t.bid)}</span>` : ""}</div>
+      </div><p class="fine" style="margin:6px 0 0">Mindestgebot ${meur(min)}${t.type === "output" ? ` (gesamt, ${meur(min / t.years)} pro Jahr)` : ""}.${t.window === "pay" && !(G.stream && G.stream.stage >= 2) ? " Pay-Fenster nur mit eigenem Abo-Streamer." : ""}</p></div></section>`; };
+  return title("Filmrechte", `<span class="muted">Content-Akquisition · Pakete von Studios und Weltvertrieben</span>`) + lockNote() +
+    `<p class="lead mb">Filme werden in Fenstern verwertet: Kino → Pay-/Streaming-Erstverwertung → zweites Pay-Fenster → Free-TV. Majors mit eigenem Streamer (Disney, Warner, Universal, Paramount) behalten die Erstverwertung und verkaufen nur Katalog; Sony verkauft alles an den Meistbietenden; Independents wie Constantin oder StudioCanal verkaufen länderweise. Auf den Filmmärkten kommen die meisten Pakete auf den Tisch. Geboten wird verdeckt – Territorium und Exklusivität verändern den Preis.</p>
+    <div class="grid two mb"><section class="panel"><div class="ph"><h2>Nächste Filmmärkte</h2></div><div class="tbl"><table><tbody>${next.map(([n, d]) => `<tr><td>${esc(n)}</td><td class="num">${dateShort(d)} <span class="muted">in ${d - G.day} T.</span></td></tr>`).join("")}</tbody></table></div></section>
+    <section class="panel"><div class="ph"><h2>Studios</h2></div><div class="tbl"><table><tbody>${STUDIOS.map(s => { const d = (G.deals || []).find(x => x.studio === s.id); return `<tr><td class="title"><b>${esc(s.name)}</b><div class="muted">${esc(s.note)}</div></td><td>${s.type === "own" ? `<span class="chip real">eigener Streamer</span>` : s.type === "indep" ? '<span class="chip warn">verkauft an alle</span>' : '<span class="chip">Independent</span>'}</td><td class="muted">${d ? `Output Deal: ${esc(d.owner === P.id ? "Sie" : holderName(d.owner))} bis ${dateShort(d.until)}` : ""}</td></tr>`; }).join("")}</tbody></table></div></section></div>
+    ${G.tenders.length ? G.tenders.map(card).join("") : '<section class="panel mb"><div class="pad"><p class="lead">Derzeit keine offenen Pakete – der nächste Filmmarkt kommt bestimmt.</p></div></section>'}
+    ${(G.presales || []).length ? `<section class="panel"><div class="ph"><h2>Ihre Pre-Sales</h2></div><div class="tbl"><table><tbody>${G.presales.map(ps => `<tr><td class="title">„${esc(ps.title)}“ <span class="muted">${esc(ps.genre)}</span></td><td class="num">Lieferung ${dateShort(ps.due)}</td></tr>`).join("")}</tbody></table></div></section>` : ""}`;
 }
 // =====================================================================
 // Editor & Datenimport (Hauptmenü): eigene Darsteller-Tabellen und TMDb-Titellisten
@@ -4785,6 +4993,7 @@ async function load() {
     G.mods = G.mods || {}; G.eventLog = G.eventLog || [];
     if (!G.people) initPeople();
     G.people.forEach(p => ensurePerson(p));
+    for (const st of G.stations) st.progs.forEach(applyImdb); G.market.forEach(applyImdb);
     applyEditorPeople(); linkImported();
     if (!G.stations.some(st => st.progs.some(x => x.cast))) assignCasts();
     return true;
