@@ -413,6 +413,7 @@ td.cw { position: relative; } .cell-i { position: absolute; right: 8px; top: 8px
 .season { display: grid; grid-template-columns: repeat(12, 1fr); gap: 4px; height: 110px; align-items: end; } .season div { display: grid; grid-template-rows: 1fr auto; height: 100%; justify-items: center; gap: 3px; } .season i { width: 70%; align-self: end; background: var(--line); border-radius: 3px 3px 0 0; display: block; } .season .on i { background: var(--hot); } .season span { font-size: 11px; color: var(--muted); }
 .tsel { position: absolute; right: 34px; top: 8px; z-index: 1; background: var(--panel); color: var(--muted); border: 1px solid var(--line); border-radius: 4px; font-size: 12px; padding: 1px 2px; max-width: 74px; } .cell .tt { color: var(--text); font-variant-numeric: tabular-nums; }
 .xlist { display: grid; gap: 3px; padding: 0 10px 8px; } .xrow { display: flex; gap: 8px; align-items: center; font-size: 13px; border-left: 2px solid var(--line); padding-left: 8px; } .xrow .grow { flex: 1; min-width: 0; } .xlist > .btn { justify-self: start; }
+.warnline { color: var(--mid) !important; white-space: normal; }
 .ptabs button.on { color: var(--hot); } .ptabs button.on::after { content: ""; position: absolute; left: 10px; right: 10px; bottom: -1px; height: 2px; background: var(--hot); }
 .acols { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 .acol h3 { margin: 0 0 6px; font-family: var(--font-head); font-size: 16px; color: var(--muted); border-bottom: 1px solid var(--line); padding-bottom: 4px; }
@@ -1197,10 +1198,12 @@ const HB = ["THW Kiel", "SG Flensburg-Handewitt", "Füchse Berlin", "SC Magdebur
 const NATIONS = ["Kanada", "Schweden", "Finnland", "Schweiz", "Tschechien", "Dänemark", "Frankreich", "Norwegen"];
 const vs = (list, list2 = list) => { const a = pick(list); let b = pick(list2); while (b === a) b = pick(list2); return `${a} – ${b}`; };
 const RIGHTS = [
-  { id: "bl", name: "Bundesliga – Free-TV-Spiele", sport: "Fußball", holder: "sat1", q: 96, wd: 5, h: 20, len: 2, every: 2, from: 1, fix: () => vs(CLUBS), tags: "privat" },
-  { id: "bl2", name: "2. Bundesliga – ausgewählte Spiele", sport: "Fußball", holder: "rtl", q: 70, wd: 6, h: 20, len: 2, every: 1, from: 1, fix: () => vs(CLUBS2), tags: "privat" },
-  { id: "pokal", name: "DFB-Pokal – Topspiele", sport: "Fußball", holder: "ard", q: 92, wd: 3, h: 20, len: 2, every: 3, from: 6, fix: () => vs(CLUBS.concat(CLUBS2)), tags: "event" },
-  { id: "uel", name: "UEFA Europa & Conference League", sport: "Fußball", holder: "rtl", q: 80, wd: 4, h: 21, len: 2, every: 1, from: 1, fix: () => `${pick(["Eintracht Frankfurt", "VfB Stuttgart", "SC Freiburg", "TSG Hoffenheim", "1. FSV Mainz 05"])} – ${pick(["AS Rom", "Ajax Amsterdam", "Olympique Lyon", "FC Porto", "Real Betis", "Celtic Glasgow"])}`, tags: "privat" },
+  { id: "bl", name: "Bundesliga – Free-TV-Freitagsspiele (1., 17., 33. Spieltag)", sport: "Fußball", holder: "sat1", q: 96, wd: 5, h: 20, len: 3, every: 1, from: 1, cal: "bl", fix: () => vs(CLUBS), tags: "privat" },
+  { id: "bl2", name: "2. Bundesliga – Samstagabendspiel 20:30", sport: "Fußball", holder: "rtl", q: 70, wd: 6, h: 20, len: 3, every: 1, from: 1, cal: "bl2", fix: () => vs(CLUBS2), tags: "privat" },
+  { id: "pokal", name: "DFB-Pokal – Topspiele", sport: "Fußball", holder: "ard", q: 92, wd: 3, h: 20, len: 3, every: 1, from: 1, cal: "pokal", fix: () => vs(CLUBS.concat(CLUBS2)), tags: "event" },
+  { id: "uel", name: "UEFA Europa League – Donnerstagsspiel", sport: "Fußball", holder: "rtl", q: 80, wd: 4, h: 20, len: 3, every: 1, from: 1, cal: "uel", fix: () => `${pick(["Eintracht Frankfurt", "VfB Stuttgart", "SC Freiburg", "TSG Hoffenheim", "1. FSV Mainz 05"])} – ${pick(["AS Rom", "Ajax Amsterdam", "Olympique Lyon", "FC Porto", "Real Betis", "Celtic Glasgow"])}`, tags: "privat" },
+  { id: "dfb", name: "DFB-Länderspiele & Nations League", sport: "Fußball", holder: "ard", q: 95, wd: 5, h: 20, len: 3, every: 1, from: 1, cal: "dfb", fix: () => "Deutschland", tags: "event" },
+  { id: "clhl", name: "Champions League – Highlights (Mittwoch)", sport: "Fußball", holder: "zdf", q: 64, wd: 3, h: 22, len: 1, every: 1, from: 1, cal: "clhl", fix: () => "Highlights", tags: "oer" },
   { id: "f1", name: "Formel 1 – Free-TV-Rennen", sport: "Motorsport", holder: "rtl", q: 84, wd: 0, h: 15, len: 2, every: 2, from: 1, fix: () => pick(GP), tags: "privat" },
   { id: "nfl", name: "NFL – Sonntagsspiele", sport: "American Football", holder: "rtl", q: 70, wd: 0, h: 19, len: 3, every: 1, from: 1, fix: () => vs(NFL), tags: "privat" },
   { id: "hbl", name: "Handball-Bundesliga – Einzelspiele", sport: "Handball", holder: "zdf", q: 56, wd: 6, h: 16, len: 2, every: 2, from: 1, fix: () => vs(HB), tags: "oer" },
@@ -1236,7 +1239,7 @@ const MENU = [
   { id: "programm", name: "Programm", subs: [["plan", "Sendekalender", "Programm 0–24 Uhr, 6 Wochen im Voraus"], ["archiv", "Archiv", "Eigene Filme, Serien und Formate"], ["filmmarket", "Filmrechte", "Pakete, Studios, Filmmärkte"], ["market", "Programmhandel", "Filme und Serienlizenzen kaufen"], ["ticker", "Nachrichten", "Meldungen von Ticker24 einkaufen"]] },
   { id: "produktion", name: "Produktion", subs: [["studio", "Studio", "Eigene Filme, Serien, Shows und Dokus"], ["casting", "Casting", "Stars, Moderation, Nachrichtengesichter"], ["newsroom", "Nachrichtenredaktion", "Blattlinie, Stil, Etat und Sprecher*in"], ["export", "Rechtemarkt international", "Formate und Produktionen ins Ausland verkaufen"]] },
   { id: "streaming", name: "Streaming", subs: [["stream", "Plattform", "Abos, Churn, ARPU und Preismodell"], ["catalog", "Katalog", "Titel und Verwertungsfenster"], ["smarket", "Wettbewerb", "Streamer im Vergleich und Top 10"]] },
-  { id: "sport", name: "Sport", subs: [["rights", "Rechtemarkt", "Ausschreibungen und Gebote"], ["myrights", "Meine Rechte", "Pakete und Live-Termine"]] },
+  { id: "sport", name: "Sport", subs: [["rights", "Rechtemarkt", "Ausschreibungen und Gebote"], ["myrights", "Meine Rechte", "Pakete und Live-Termine"], ["spielplan", "Spielplan", "Rahmenterminkalender Fußball"]] },
   { id: "quoten", name: "Quoten", subs: [["table", "Quotentabelle", "Senderranking nach Marktanteil"], ["ratings", "Einschaltquoten", "Jede Stunde, jeder Sender"], ["rivals", "Konkurrenz", "Tagesplan der anderen Sender"], ["landscape", "Markt", "Sendergruppen und Streamer"]] },
   { id: "sender", name: "Sender", subs: [["chiefs", "Rivalen", "Beziehungen zu den Senderchefs"], ["board", "Senderleitung", "Erwartungen, Vertrauen, Kredit"], ["finance", "Finanzen", "Erlöse, Kosten, EBITDA"], ["contracts", "Werbeverträge", "Laufende Werbeverträge"], ["adsales", "Vermarktung", "Erlöse, TKP, Kunden, Preisliste"], ["agency", "Werbeagentur", "Neue Werbekunden gewinnen"], ["jury", "Fernsehpreise", "Grimme, Fernsehpreis, Bambi, Henne"]] },
 ];
@@ -1349,7 +1352,7 @@ function fromDB(row) { return applyImdb(fromDB0(row)); }
 function fromDB0(row) {
   const [title, genre, q, eps, home] = row;
   const series = eps > 0;
-  return { id: uid(), title, genre, kind: series ? "serie" : "show", q, len: 1, eps, ep: 0, topic: 1, fsk: 0, real: true, home, aired: 0,
+  return { id: uid(), title, genre, kind: series ? "serie" : "show", q, len: LEN_OVR[title] || 1, eps, ep: 0, topic: 1, fsk: 0, real: true, home, aired: 0,
     price: r1000((q * q * 45 + 15000) * Math.max(1, eps / 10) * rnd(0.9, 1.15)) };
 }
 function makeFiller(genre, st) {
@@ -1508,7 +1511,7 @@ const HORIZON = 42;
 // Kalendertag des eigenen Senders; neue Tage starten als Kopie der Wochenvorlage des Vorgängers
 function calDay(P, d) {
   P.cal = P.cal || {};
-  if (!P.cal[d]) P.cal[d] = P.week[weekday(d)].map(c => ({ p: c.p, ad: c.ad, cont: c.cont, live: false }));
+  if (!P.cal[d]) P.cal[d] = P.week[weekday(d)].map(c => ({ p: c.p, ad: c.ad, cont: c.cont, live: false, ...(c.t != null ? { t: c.t } : {}), ...(c.extra ? { extra: c.extra.slice(), ...(c.xt ? { xt: c.xt.slice() } : {}) } : {}) }));
   return P.cal[d];
 }
 const schedFor = (P, d) => d === G.day ? P.sched : calDay(P, d);
@@ -1615,15 +1618,15 @@ function calendarGrid(P, sel, chk) {
 // Planungsassistent für einen Tag (Wochenvorlage der KI oder Kalendertag des Spielers)
 function planDayFor(st, wd, sc = st.week[wd], opts = {}) {
   const rem = opts.rem;
-  if (!opts.keep) sc.forEach(c => { c.p = null; c.cont = false; c.ad = null; c.live = false; delete c.extra; });
-  if (!isMe(st)) applySchema(st, wd, sc);
+  if (!opts.keep) sc.forEach(c => { c.p = null; c.cont = false; c.ad = null; c.live = false; delete c.extra; delete c.t; delete c.xt; });
+  applySchema(st, wd, sc, opts.day ?? G.day);
   const used = {};
   const order = HOURS.slice().sort((a, b) => BASE[b] - BASE[a]);
   for (const i of order) {
     if (sc[i].p) continue;
     let best = null, bestS = 0;
     for (const p of st.progs) {
-      if (canPlace(st, sc, p, i) || !youthOk(p, i) || (rem && rem.get(p) <= 0) || (opts.day && p.until && opts.day > p.until)) continue;
+      if (canPlace(st, sc, p, i) || !youthOk(p, i) || (rem && rem.get(p) <= 0) || (opts.day && p.until && opts.day > p.until) || offSeason(p, opts.day ?? G.day)) continue;
       let blocked = false; for (let k = 1; k < p.len; k++) if (sc[i + k].p) blocked = true;
       if (blocked) continue;
       let s = p.q * fit(p.genre, i) * (0.35 + 0.65 * p.topic);
@@ -1654,7 +1657,14 @@ function eventsOn(day) {
   const out = [];
   for (const r of G.rights) {
     const d = RDEF(r.id);
-    if (day < d.from || weekday(day) !== d.wd) continue;
+    if (day < d.from) continue;
+    if (d.cal) {
+      const ms = CAL[d.cal](day); if (!ms.length) continue;
+      const o = ownerOn(r, day); if (!o || !o.owner) continue;
+      for (const m of ms) out.push({ r, o, m, d: { ...d, h: Math.floor(m.t / 60), len: Math.ceil((m.t % 60 + m.dur) / 60) } });
+      continue;
+    }
+    if (weekday(day) !== d.wd) continue;
     if (Math.floor((day - 1) / 7) % d.every !== 0) continue;
     const o = ownerOn(r, day);
     if (!o || !o.owner) continue;
@@ -1667,18 +1677,19 @@ function buildToday(st) {
   fillGaps(st, isMe(st) ? calDay(st, G.day) : st.week[wd], wd);
   st.sched = (isMe(st) ? calDay(st, G.day) : st.week[wd]).map(c => ({ ...c, live: false }));
   for (const ev of st.live) {
-    for (let k = 0; k < ev.len; k++) { const i = ev.h + k; clearAt(st, st.sched, i); st.sched[i] = { p: ev.id, ad: st.sched[i].ad, cont: k > 0, live: true }; }
+    for (let k = 0; k < ev.len; k++) { const i = ev.h + k; clearAt(st, st.sched, i); st.sched[i] = { p: ev.id, ad: st.sched[i].ad, cont: k > 0, live: true, ...(k === 0 && ev.t != null ? { t: ev.t } : {}) }; }
   }
   st.sched.forEach((c, i) => { if (c.p && !progOf(st, c.p)) { c.p = null; c.cont = false; } if (c.ad && !adOf(st, c.ad)) c.ad = null; });
+  if (st.sched.some(c => !c.p)) planDayFor(st, wd, st.sched, { keep: true, day: G.day }); // verdrängte Sendungen ersetzen
   fillGaps(st, st.sched, wd); // Live-Events können neue Lücken reißen
 }
 function placeEvents() {
   for (const st of G.stations) st.live = [];
-  for (const { r, d } of eventsOn(G.day)) {
-    const st = G.stations[SIDX[r.owner]];
-    const ev = { id: uid(), title: `${d.sport}: ${d.fix()}`, comp: d.name, genre: "Sport", kind: "sport", q: d.q, len: d.len, h: d.h, topic: 1, fsk: 0, real: true };
+  for (const { r, d, m, o } of eventsOn(G.day)) {
+    const st = G.stations[SIDX[o.owner || r.owner]]; if (!st) continue;
+    const ev = { id: uid(), title: `${d.sport}: ${m ? m.fix : d.fix()}`, comp: d.name, genre: "Sport", kind: "sport", q: m ? Math.round(m.q) : d.q, len: d.len, h: d.h, t: m ? m.t : d.h * 60, dur: m ? m.dur : d.len * 60, topic: 1, fsk: 0, real: true };
     st.live.push(ev);
-    if (isMe(st)) logMsg("Sportredaktion", "Sport", `Heute live um ${hh(d.h)}: ${ev.title} (${d.name}).`);
+    if (isMe(st)) logMsg("Sportredaktion", "Sport", `Heute live um ${hhmm(ev.t)}: ${ev.title} (${d.name}).`);
   }
 }
 // Bearbeiten im Kalender: Änderungen am heutigen Tag gelten sofort
@@ -1694,7 +1705,15 @@ function editPlan(d, fn) {
 function attractiveness(st, i) {
   const c = st.sched[i], p = c.p ? progOf(st, c.p) : null, segs = hourSegs(st, i);
   if (!segs.length) return attrCell(st, i, c);
-  const parts = segs.map(sg => ({ sg, a: sg.gap ? st.brand * (sg.end - sg.start <= 10 ? 0.25 : 0.4) : attrCell(st, i, { p: sg.p.id, cont: !sg.startsHere, ad: c.ad, live: sg.c.live }).A }));
+  let prev = st.flow && st.flow.day === G.day && st.flow.h === i - 1 ? st.flow : null;
+  const parts = segs.map(sg => {
+    let a = sg.gap ? st.brand * (sg.end - sg.start <= 10 ? 0.25 : 0.4) : attrCell(st, i, { p: sg.p.id, cont: !sg.startsHere, ad: c.ad, live: sg.c.live }).A;
+    const pp = prev && prev.id && progOf(st, prev.id);
+    if (!sg.gap && sg.startsHere && pp && pp.id !== sg.p.id) a += 0.25 * zOverlap(st, pp, sg.p) * prev.a; // Audience Flow
+    prev = { id: sg.gap ? null : sg.p.id, a, day: G.day, h: i };
+    return { sg, a };
+  });
+  st.flow = prev;
   let A = parts.reduce((a, x) => a + x.a * x.sg.min / 60, 0);
   const am = adMinH(st, i); if (am > 6) A *= 1 - (am - 6) * 0.01; // hohe Werbelast vertreibt Zuschauer
   return { p, c, A, parts };
@@ -1709,6 +1728,8 @@ function attrCell(st, i, c) {
     A = st.brand * Math.pow(p.q / 60, 1.5) * fit(p.genre, i) * topic * newsMult * rnd(0.9, 1.1);
     if (c.cont && p.kind !== "sport") A *= 0.96;
     if (p.pull) A *= 1 + p.pull * 0.12; // bekannte Titel ziehen mehr Publikum
+    A *= demoFactor(st, p); // passt die Sendung zum Publikum des Senders?
+    if (blMagazine(p) && !matchday(G.day)) A *= 0.35; // ohne Spieltag keine Bilder
     if (p.boost && (!p.boost.day || p.boost.day === G.day)) A *= 1 + p.boost.v; // Gaststar, Event-Ausgabe, Relaunch
     if (p.young) A *= 1 + p.young / 1000 * Math.min(1.5, ST_YOUNG[st.id] || 1);
   }
@@ -1728,7 +1749,7 @@ function airHour(i) {
       if (st0[k] <= first - 5) { r.A *= 1.05; r.early = first - st0[k]; } else if (st0[k] >= first + 10) r.A *= 0.96; });
   }
   const sum = res.reduce((a, r) => a + r.A, 0);
-  const tv = BASE[i] * (1 - otherShare());
+  const tv = BASE[i] * (1 - otherShare() - payDrain(G.day, i));
   for (const r of res) {
     const st = r.st;
     r.v = tv * r.A / sum;
@@ -2341,14 +2362,6 @@ const SCHEMA = {
   arte: { wk: { 19: "ARTE Journal", 20: "ARTE-Themenabend" }, we: { 20: "Opernabend live" } },
   dritte: { wk: { 19: "Nachrichten aus der Region", 18: "Landesschau", 21: "Visite" }, we: { 19: "Nachrichten aus der Region" } },
 };
-function applySchema(st, wd, sc) {
-  const sch = SCHEMA[st.id]; if (!sch) return;
-  const slots = (wd === 0 || wd === 6) ? sch.we : sch.wk;
-  for (const [h, title] of Object.entries(slots)) {
-    const p = st.progs.find(x => x.title === title), i = +h;
-    if (p && !sc[i].p && !canPlace(st, sc, p, i) && youthOk(p, i)) placeAt(st, sc, i, p);
-  }
-}
 // Passt die Senderangabe einer importierten Person zum Sender des Formats?
 const ST_ALIAS = { ard: ["ard", "das erste"], zdf: ["zdf"], dritte: ["wdr", "ndr", "br", "swr", "mdr", "hr", "rbb", "sr ", "dritte"], rtl: ["rtl"], sat1: ["sat.1", "sat1", "sat 1"], vox: ["vox"], pro7: ["prosieben", "pro7", "pro 7"],
   kabel1: ["kabel eins", "kabel1"], zdfneo: ["zdfneo", "zdf neo"], rtl2: ["rtlzwei", "rtl zwei", "rtl2", "rtl ii"], nitro: ["nitro"], arte: ["arte"] };
@@ -3172,7 +3185,7 @@ function nextDay() {
   G.day++;
   for (const st of G.stations) st.fin = {};
   projectDay();
-  prodDay(); peopleDay(); newsroomDay(); trendDay(); awardsDay(); marketDay(); presaleDay(); rivalsDay(); formatDay(); postQuotenReport(); frameDay();
+  prodDay(); peopleDay(); newsroomDay(); trendDay(); awardsDay(); marketDay(); presaleDay(); rivalsDay(); formatDay(); postQuotenReport(); frameDay(); conflictCheck();
   if (dateOf(G.day).getDate() === 1 && !G.event) setInterview(); // Interview zum Monatsbeginn
   if (G.mods.coverup && G.day >= G.mods.coverup.day) {
     const c = G.mods.coverup; G.mods.coverup = null;
@@ -3306,7 +3319,7 @@ function applyClubColors() {
 function render(top) {
   if (!G) return;
   renderNav(); renderTop();
-  const pages = { overview, inbox, plan: planPage, archiv, market, filmmarket: filmMarketPage, chiefs: rivalsPage, adsales: adsalesPage, stream: streamPage, catalog, smarket, rights: rightsPage, myrights, contracts, agency, ticker, table: tablePage, ratings, landscape, board, finance, jury, rivals, live: livePage, studio, newprod: newProdPage, casting, newsroom, export: exportPage };
+  const pages = { overview, inbox, plan: planPage, archiv, market, filmmarket: filmMarketPage, chiefs: rivalsPage, adsales: adsalesPage, spielplan: spielplanPage, stream: streamPage, catalog, smarket, rights: rightsPage, myrights, contracts, agency, ticker, table: tablePage, ratings, landscape, board, finance, jury, rivals, live: livePage, studio, newprod: newProdPage, casting, newsroom, export: exportPage };
   const sc = $("content").scrollTop;
   $("content").innerHTML = (pages[page] || overview)(me());
   if (!top) $("content").scrollTop = sc;
@@ -3534,7 +3547,7 @@ function planPage(P) {
     const youth = p && !c.cont && !youthOk(p, i);
     h += `<tr class="${i === 20 || i === 21 ? "prime" : ""}"><td class="hr">${hh(i)}</td>
       <td class="cw">${p && !c.cont && p.kind !== "sport" ? `<span class="cell-i" data-title="${P.id}|${p.id}" title="Formatprofil">i</span>` : ""}${p && !c.cont && !c.live && !lock ? `<select class="tsel" data-tsel="${d}|${i}" title="Startzeit">${tOpts(i, c.t)}</select>` : ""}<button class="cell ${c.cont ? "cont" : ""} ${!p || youth || badSet.has(i) ? "bad" : ""}" data-act="pickProg" data-i="${i}" data-k="${d}" ${lock || c.live ? "disabled" : ""}><span class="t">${c.live && !c.cont ? "● LIVE · " : ""}${p ? (c.cont ? "↳ " : "") + esc(p.title) : "Testbild – nichts geplant"}</span>
-        ${p && !c.cont ? (() => { const it = rd.find(x => x.i === i); return it ? `<span class="s"><b class="tt">${tRange(it)}</b> · ${it.end - it.start} Min.${it.late > 0 ? ` · <span class="down">+${it.late} Min. verspätet</span>` : ""}${it.cut ? ` · <span class="muted">${it.cut} Werbemin. gekürzt</span>` : ""}${it.end - it.start < netDur(p) ? ' · <span class="down">vorzeitig beendet (Live-Sport)</span>' : ""}${adMinH(P, i, wd) && grossDur(P, p, i, wd) > netDur(p) ? ` · netto ${netDur(p)}` : ""}</span>` : ""; })() : ""}
+        ${p && !c.cont ? (() => { const it = rd.find(x => x.i === i); const w = it ? slotWarnings(P, d, rd, it) : []; return it ? `${w.map(x => `<span class="s warnline">⚠ ${esc(x)}</span>`).join("")}<span class="s"><b class="tt">${tRange(it)}</b> · ${it.end - it.start} Min.${it.late > 0 ? ` · <span class="down">+${it.late} Min. verspätet</span>` : ""}${it.cut ? ` · <span class="muted">${it.cut} Werbemin. gekürzt</span>` : ""}${it.end - it.start < netDur(p) ? ' · <span class="down">vorzeitig beendet (Live-Sport)</span>' : ""}${adMinH(P, i, wd) && grossDur(P, p, i, wd) > netDur(p) ? ` · netto ${netDur(p)}` : ""}</span><span class="s muted">${zLine(P, p)}</span>` : ""; })() : ""}
         <span class="s">${p && badSet.has(i) && !c.cont ? "Lizenz bis dahin ausgeschöpft – bitte ersetzen" : youth ? `Jugendschutz: FSK ${p.fsk} zu früh!` : p ? (p.kind === "sport" ? esc(p.comp) : esc(p.genre) + ` · <span class="stars">${stars(fit(p.genre, i))}</span> · Q ${p.q} · Akt. ${Math.round(p.topic * 100)} %`) : "Kaum Zuschauer"}</span></button>
         ${p && !c.cont ? `<div class="xlist">${rd.filter(x => x.i === i && x.extra).map((x, k) => `<div class="xrow"><span class="tt">${hhmm(x.start)}</span><span class="grow">${esc(x.p.title)} <span class="muted">${x.end - x.start} Min.${x.p.house ? " · Kurzformat" : ""}</span></span>${lock ? "" : `<button class="btn small" data-act="rmExtra" data-k="${d}|${i}|${k}" aria-label="Entfernen">×</button>`}</div>`).join("")}${lock || c.live ? "" : `<button class="btn small" data-act="addExtra" data-k="${d}|${i}">+ Anschlusssendung</button>`}</div>` : ""}</td>
       <td><button class="cell ${ad && adNeed(ad) > exp ? "bad" : ""}" data-act="pickAd" data-i="${i}" data-k="${d}" ${lock || !p || !allowed || (p && p.genre === "Teleshopping") ? "disabled" : ""}><span class="t">${!allowed ? '<span class="muted">Werbeverbot</span>' : p && p.genre === "Teleshopping" ? '<span class="muted">Dauerwerbung</span>' : ad ? esc(ad.brand) : '<span class="muted">Keine Werbung</span>'}</span><span class="s">${!allowed ? "ÖRR" : ad ? "mind. " + mio(ad.min) + " Mio. · " + eur(ad.pay) : ""}</span></button></td>
@@ -4703,7 +4716,7 @@ function rundown(st, sc, wd = weekday(G.day)) {
     const p = progOf(st, c.p); if (!p) continue;
     const fixed = c.t != null || anchored(p) || c.live || i === 20;
     items.push({ i, p, c, fixed, base: c.t != null ? c.t : i === 20 && !anchored(p) && !c.live ? 20 * 60 + 15 : i * 60 });
-    for (const id of c.extra || []) { const q = progOf(st, id); if (q) items.push({ i, p: q, c, fixed: false, extra: true, base: -1 }); }
+    (c.extra || []).forEach((id, k) => { const q = progOf(st, id), xt = c.xt && c.xt[k]; if (q) items.push({ i, p: q, c, fixed: xt != null, extra: true, base: xt != null ? xt : -1 }); });
   }
   const out = []; let prevEnd = 0;
   items.forEach((it, k) => {
@@ -4714,10 +4727,10 @@ function rundown(st, sc, wd = weekday(G.day)) {
     let j = k + 1, follow = 0;
     while (items[j] && items[j].extra) { follow += grossDur(st, items[j].p, items[j].i, wd); j++; }
     const next = items[j], net = it.c.live ? netDur(it.p) : ceil5(netDur(it.p)), gross = it.c.live ? net : grossDur(st, it.p, it.i, wd);
-    const window = it.extra ? gross : (next ? next.base - start : 1440 - start) - follow;
+    const window = it.extra && it.base < 0 ? gross : (next ? next.base - start : 1440 - start) - follow;
     // vor Live-Sport wird notfalls abgekürzt – der Anpfiff wartet nicht
     const dur = gross <= window ? gross : next && (next.c.live || next.p.kind === "sport") ? Math.max(5, window) : Math.max(net, window);
-    out.push({ i: it.i, p: it.p, c: it.c, extra: !!it.extra, start, end: start + dur, planned: it.extra ? start : it.base, late: it.extra ? 0 : start - it.base, cut: gross - dur > 0 && dur >= net ? gross - dur : 0 });
+    out.push({ i: it.i, p: it.p, c: it.c, extra: !!it.extra, start, end: start + dur, planned: it.base < 0 ? start : it.base, late: it.base < 0 ? 0 : start - it.base, cut: gross - dur > 0 && dur >= net ? gross - dur : 0 });
     prevEnd = start + dur;
   });
   if (prevEnd < 1440) out.push({ gap: true, start: prevEnd, end: 1440 });
@@ -4769,7 +4782,7 @@ const isHouse = p => p && p.house;
 function gapPick(st, len, h, wd, used, prevId) {
   let best = null, bs = 0;
   if (len >= 15) for (const p of st.progs) {
-    if (p.house || p.kind === "sport" || p.exclusive || (p.genre === "Teleshopping" && h >= 6) || used.has(p.id)) continue;
+    if (p.house || p.kind === "sport" || p.exclusive || (p.genre === "Teleshopping" && h >= 6) || used.has(p.id) || offSeason(p, G.day)) continue;
     if (p.kind === "film" && p.runs >= p.maxRuns) continue;
     if (p.kind === "serie" && !p.own && p.ep >= (p.maxEp || p.eps * 2)) continue;
     if (!youthOk(p, h)) continue;
@@ -4814,19 +4827,277 @@ function fillGaps(st, sc, wd = weekday(G.day)) {
   return n;
 }
 // =====================================================================
+// Rahmenterminkalender Fußball: Spieltage, Anstoßzeiten, Länderspielpausen, Europapokal, Pokal
+// Termine folgen dem typischen Muster einer Saison; Paarungen und Ergebnisse sind Spielwerte.
+// =====================================================================
+const BL18 = ["FC Bayern München", "Borussia Dortmund", "Bayer 04 Leverkusen", "RB Leipzig", "VfB Stuttgart", "Eintracht Frankfurt", "SC Freiburg", "VfL Wolfsburg", "Borussia Mönchengladbach",
+  "1. FC Union Berlin", "Werder Bremen", "TSG Hoffenheim", "1. FSV Mainz 05", "FC Augsburg", "1. FC Heidenheim", "FC St. Pauli", "Hamburger SV", "1. FC Köln"];
+const BL2_18 = ["FC Schalke 04", "Hertha BSC", "Fortuna Düsseldorf", "1. FC Kaiserslautern", "Hannover 96", "Karlsruher SC", "1. FC Nürnberg", "SC Paderborn", "VfL Bochum", "Holstein Kiel",
+  "SV Darmstadt 98", "SV Elversberg", "1. FC Magdeburg", "Eintracht Braunschweig", "SpVgg Greuther Fürth", "Preußen Münster", "Arminia Bielefeld", "Dynamo Dresden"];
+const CLUB_POP = { "FC Bayern München": 100, "Borussia Dortmund": 90, "Bayer 04 Leverkusen": 78, "RB Leipzig": 72, "VfB Stuttgart": 72, "Eintracht Frankfurt": 72, "Hamburger SV": 74, "1. FC Köln": 70,
+  "FC Schalke 04": 74, "Hertha BSC": 62, "Borussia Mönchengladbach": 68, "Werder Bremen": 66, "1. FC Kaiserslautern": 60, "FC St. Pauli": 62, "Fortuna Düsseldorf": 56, "Hannover 96": 56, "1. FC Nürnberg": 56 };
+const pop = c => CLUB_POP[c] || 45;
+const CL_DE = ["FC Bayern München", "Borussia Dortmund", "Bayer 04 Leverkusen", "RB Leipzig"], EL_DE = ["Eintracht Frankfurt", "VfB Stuttgart", "SC Freiburg"], ECL_DE = ["1. FSV Mainz 05"];
+const EURO_OPP = ["Real Madrid", "FC Barcelona", "Manchester City", "FC Liverpool", "Paris Saint-Germain", "Inter Mailand", "Juventus Turin", "Atlético Madrid", "FC Arsenal", "SSC Neapel", "Ajax Amsterdam", "FC Porto", "Benfica Lissabon", "AS Rom", "Olympique Lyon", "Celtic Glasgow", "Tottenham Hotspur", "Real Betis"];
+const NT_OPP = ["Frankreich", "Spanien", "Italien", "Niederlande", "England", "Portugal", "Belgien", "Kroatien", "Österreich", "Schweiz", "Dänemark", "Ungarn"];
+const nthWd = (y, m, wd, n) => { const d = new Date(y, m, 1); return new Date(y, m, 1 + ((wd - d.getDay() + 7) % 7) + (n - 1) * 7); };
+const dayOf = dt => Math.round((Date.UTC(dt.getFullYear(), dt.getMonth(), dt.getDate()) - Date.UTC(START_DATE.getFullYear(), START_DATE.getMonth(), START_DATE.getDate())) / 864e5) + 1;
+const seasonOf = day => { const d = dateOf(day); return d.getMonth() >= 6 ? d.getFullYear() : d.getFullYear() - 1; };
+const SEASONS = {};
+function season(sy) {
+  if (SEASONS[sy]) return SEASONS[sy];
+  const S = { sy, start: dayOf(nthWd(sy, 7, 5, 3)), end: dayOf(nthWd(sy + 1, 4, 6, 3)), winter: [dayOf(new Date(sy, 11, 21)), dayOf(new Date(sy + 1, 0, 8))] };
+  // Länderspielfenster: Donnerstag bis Dienstag, Spiele Freitag und Montag um 20:45
+  S.windows = [nthWd(sy, 8, 4, 1), nthWd(sy, 9, 4, 2), nthWd(sy, 10, 4, 2), nthWd(sy + 1, 2, 4, 4)].map(dayOf);
+  const tue = (o, m, n) => dayOf(nthWd(sy + o, m, 2, n));
+  S.euro = [[0, 8, 3], [0, 9, 1], [0, 9, 3], [0, 10, 1], [0, 10, 4], [0, 11, 2], [1, 0, 3], [1, 0, 4], [1, 1, 3], [1, 1, 4], [1, 2, 2], [1, 2, 3], [1, 3, 1], [1, 3, 2], [1, 3, 4], [1, 4, 1]].map(x => tue(...x));
+  S.pokal = [[0, 9, 4], [1, 1, 1], [1, 2, 1], [1, 3, 3]].map(x => tue(...x));
+  S.pokalFinal = dayOf(nthWd(sy + 1, 4, 6, 4));
+  S.inWindow = d => S.windows.some(w => d >= w && d <= w + 5);
+  // Spieltage: jedes Wochenende der Saison außer Winterpause und Länderspielfenster
+  S.md = {}; let n = 0;
+  for (let sat = S.start + 1; sat <= S.end; sat += 7) { if ((sat >= S.winter[0] && sat <= S.winter[1]) || S.inWindow(sat)) continue; S.md[sat] = ++n; }
+  return (SEASONS[sy] = S);
+}
+// Spieltag des Wochenendes, zu dem ein Tag gehört (Fr/Sa/So), sonst 0
+function matchday(day) {
+  const wd = weekday(day); if (![5, 6, 0].includes(wd)) return 0;
+  const sat = day + (wd === 5 ? 1 : wd === 0 ? -1 : 0), S = season(seasonOf(sat));
+  return S.md[sat] || 0;
+}
+const euroWeek = day => { const S = season(seasonOf(day)); return S.euro.find(t => day >= t && day <= t + 2) || null; };
+// Paarungen eines Spieltags mit Anstoßzeiten; 2-Tage-Regel: wer donnerstags international spielt, spielt sonntags
+function mdFixtures(day, liga) {
+  const md = matchday(day); if (!md) return [];
+  const sat = day + ({ 5: 1, 6: 0, 0: -1 })[weekday(day)], sy = seasonOf(sat), rnd0 = seeded(sy * 1000 + md * 7 + (liga === 2 ? 3 : 0));
+  const clubs = (liga === 2 ? BL2_18 : BL18).slice(); for (let k = clubs.length - 1; k > 0; k--) { const j = Math.floor(rnd0() * (k + 1)); [clubs[k], clubs[j]] = [clubs[j], clubs[k]]; }
+  const pairs = []; for (let k = 0; k < 18; k += 2) pairs.push({ home: clubs[k], away: clubs[k + 1], att: pop(clubs[k]) + pop(clubs[k + 1]) });
+  const thu = euroWeek(sat - 3) ? sat - 2 : null, euroClubs = thu ? EL_DE.concat(ECL_DE) : [];
+  const forced = pairs.filter(p => euroClubs.includes(p.home) || euroClubs.includes(p.away)), rest = pairs.filter(p => !forced.includes(p)).sort((a, b) => b.att - a.att);
+  const out = [];
+  if (liga === 2) {
+    const slots = [[5, 1110], [5, 1110], [6, 1230], [6, 780], [6, 780], [6, 780], [0, 810], [0, 810], [0, 810]];
+    const order = [rest[0], ...rest.slice(1)];
+    [[6, 1230], [5, 1110], [5, 1110], [6, 780], [6, 780], [6, 780], [0, 810], [0, 810], [0, 810]].forEach(([dw, t], k) => order[k] && out.push({ ...order[k], dw, t, comp: "2. Bundesliga" }));
+  } else {
+    const sun = forced.slice(0, 3); const pool = rest.concat(forced.slice(3));
+    const top = pool.shift(), fri = pool.pop(); // Topspiel Samstag 18:30, Freitagsspiel eher klein
+    out.push({ ...top, dw: 6, t: 1110, comp: "Bundesliga" }); if (fri) out.push({ ...fri, dw: 5, t: 1230, comp: "Bundesliga" });
+    while (sun.length < 3 && pool.length) sun.push(pool.pop());
+    sun.forEach((p, k) => out.push({ ...p, dw: 0, t: [930, 1050, 1170][k], comp: "Bundesliga" }));
+    pool.forEach(p => out.push({ ...p, dw: 6, t: 930, comp: "Bundesliga" }));
+  }
+  return out.filter(f => f.dw === weekday(day));
+}
+// Alle Spiele eines Tages mit Sender/Plattform (real übliche Verteilung) und Zugkraft
+function fixturesOn(day) {
+  const out = [], wd = weekday(day), S = season(seasonOf(day)), r = seeded(day * 13 + 5);
+  for (const f of mdFixtures(day, 1)) out.push({ ...f, title: `${f.home} – ${f.away}`, tv: wd === 6 ? "Sky" : "DAZN", q: 60 + f.att / 5 });
+  for (const f of mdFixtures(day, 2)) out.push({ ...f, title: `${f.home} – ${f.away}`, tv: "Sky", q: 40 + f.att / 6 });
+  const ew = S.euro.find(t => day >= t && day <= t + 2);
+  if (ew != null) {
+    const k = day - ew, opp = () => EURO_OPP[Math.floor(r() * EURO_OPP.length)];
+    if (k === 0 || k === 1) { const clubs = CL_DE.filter((_, n) => n % 2 === k); clubs.forEach((c, n) => out.push({ comp: "Champions League", t: n === 0 && k === 0 ? 1260 : n ? 1125 : 1260, title: `${c} – ${opp()}`, tv: k === 0 && n === 0 ? "Amazon Prime Video" : "DAZN", q: 70 + pop(c) / 4, pay: true })); }
+    if (k === 2) { EL_DE.forEach((c, n) => out.push({ comp: "Europa League", t: n ? 1125 : 1260, title: `${c} – ${opp()}`, tv: n ? "RTL+" : "RTL", q: 62 + pop(c) / 5 })); ECL_DE.forEach(c => out.push({ comp: "Conference League", t: 1125, title: `${c} – ${opp()}`, tv: "RTL+", q: 50 })); }
+  }
+  const pk = S.pokal.find(t => day >= t && day <= t + 1);
+  if (pk != null) { const a = BL18[Math.floor(r() * 18)], b = BL2_18.concat(BL18)[Math.floor(r() * 36)]; out.push({ comp: "DFB-Pokal", t: 1245, title: `${a} – ${b === a ? "Hamburger SV" : b}`, tv: "ARD/ZDF", q: 80 + pop(a) / 10 }); }
+  if (day === S.pokalFinal) out.push({ comp: "DFB-Pokal Finale", t: 1200, title: `${BL18[Math.floor(r() * 4)]} – ${BL18[4 + Math.floor(r() * 10)]}`, tv: "ARD", q: 96 });
+  for (const w of S.windows) if (day === w + 1 || day === w + 4) out.push({ comp: day === w + 1 ? "Länderspiel" : "Nations League", t: 1245, title: `Deutschland – ${NT_OPP[(w + day) % NT_OPP.length]}`, tv: day === w + 1 ? "RTL" : "ZDF", q: 95, nt: true });
+  return out.sort((a, b) => a.t - b.t);
+}
+// Free-TV-Rechte im Spiel greifen auf den Kalender zu: [{t (Minute), dur, fix, q}]
+const CAL = {
+  bl: day => { const md = matchday(day); return weekday(day) === 5 && [1, 17, 33].includes(md) ? mdFixtures(day, 1).map(f => ({ t: 1230, dur: 150, fix: `${f.home} – ${f.away}`, q: 88 + f.att / 20 })) : []; },
+  bl2: day => mdFixtures(day, 2).filter(f => f.t === 1230).map(f => ({ t: 1230, dur: 135, fix: `${f.home} – ${f.away}`, q: 58 + f.att / 10 })),
+  pokal: day => fixturesOn(day).filter(f => f.comp.startsWith("DFB-Pokal")).map(f => ({ t: f.t - 30, dur: 165, fix: f.title, q: f.q })),
+  uel: day => fixturesOn(day).filter(f => f.comp === "Europa League" && f.tv === "RTL").map(f => ({ t: 1215, dur: 165, fix: f.title, q: f.q })),
+  dfb: day => fixturesOn(day).filter(f => f.nt).map(f => ({ t: 1215, dur: 165, fix: f.title, q: 95 })),
+  clhl: day => { const S = season(seasonOf(day)), ew = S.euro.find(t => day === t + 1); return ew != null ? [{ t: 1365, dur: 45, fix: "Champions League – die Highlights", q: 64 }] : []; },
+};
+// Pay-TV und Streaming ziehen bei großen Spielen Zuschauer aus dem Free-TV ab
+function payDrain(day, i) {
+  let d = 0;
+  for (const f of fixturesOn(day)) {
+    if (["Sky", "DAZN", "Amazon Prime Video", "RTL+"].includes(f.tv) && i * 60 + 60 > f.t && i * 60 < f.t + 110) d += f.tv === "Amazon Prime Video" ? 0.035 : f.comp === "Champions League" ? 0.02 : f.comp === "Bundesliga" ? 0.012 : 0.006;
+  }
+  return Math.min(0.08, d);
+}
+// Magazine, die von der Bundesliga leben
+const blMagazine = p => p && ["Sportschau", "das aktuelle sportstudio"].includes(p.title);
+
+// =====================================================================
+// Demografie: vier Zielgruppen, Sender-Barriere, Audience Flow
+// Profile sind Spielwerte (Anteile 0–1), keine Messdaten.
+// =====================================================================
+const ZN = ["Z1 · 14–29", "Z2 · 30–49", "Z3 · 50–64", "Z4 · 65+"];
+const ZPOP = [0.14, 0.26, 0.27, 0.33]; // Anteil am linearen TV-Publikum
+const ZBAR = { ard: [0.55, 0.8, 1.15, 1.4], zdf: [0.5, 0.75, 1.15, 1.45], dritte: [0.35, 0.6, 1.1, 1.45], rtl: [1.05, 1.15, 1, 0.42], sat1: [0.95, 1.1, 1, 0.5], vox: [1.1, 1.15, 0.9, 0.4],
+  pro7: [1.55, 1.2, 0.55, 0.2], kabel1: [0.9, 1.1, 1, 0.55], zdfneo: [0.8, 1, 1, 0.8], rtl2: [1.35, 1.1, 0.65, 0.3], nitro: [0.9, 1.1, 1, 0.55], arte: [0.55, 0.9, 1.1, 1] };
+const ZGEN = { Nachrichten: [0.25, 0.5, 0.8, 0.95], Magazin: [0.3, 0.5, 0.7, 0.8], Krimi: [0.25, 0.55, 0.85, 0.9], Serie: [0.45, 0.65, 0.65, 0.55], Soap: [0.6, 0.55, 0.45, 0.4], Sitcom: [0.85, 0.6, 0.3, 0.15],
+  Show: [0.55, 0.65, 0.6, 0.6], Reality: [0.85, 0.6, 0.35, 0.2], Talk: [0.2, 0.45, 0.7, 0.8], Doku: [0.3, 0.5, 0.7, 0.75], Kultur: [0.15, 0.3, 0.55, 0.65], Liebesfilm: [0.35, 0.5, 0.6, 0.7],
+  Drama: [0.35, 0.55, 0.65, 0.6], Komödie: [0.6, 0.6, 0.55, 0.5], Action: [0.8, 0.75, 0.45, 0.25], "Science-Fiction": [0.85, 0.7, 0.35, 0.15], Monumental: [0.4, 0.6, 0.6, 0.5], Teleshopping: [0.05, 0.15, 0.3, 0.45], Sport: [0.6, 0.75, 0.85, 0.8] };
+const ZFMT = { "Das Traumschiff": [0.05, 0.1, 0.35, 0.9], "Immer wieder sonntags": [0.03, 0.1, 0.45, 0.95], "Tatort": [0.35, 0.65, 0.9, 0.9], "Wer wird Millionär?": [0.35, 0.6, 0.8, 0.85], "Let's Dance": [0.55, 0.7, 0.65, 0.6],
+  "Ich bin ein Star – Holt mich hier raus!": [0.85, 0.8, 0.5, 0.3], "The Masked Singer": [0.75, 0.75, 0.45, 0.3], "Joko & Klaas gegen ProSieben": [0.95, 0.6, 0.2, 0.05], "Germany's Next Topmodel": [0.95, 0.5, 0.2, 0.08],
+  "Bares für Rares": [0.15, 0.35, 0.8, 0.95], "Der Bergdoktor": [0.15, 0.4, 0.8, 0.95], "Die Rosenheim-Cops": [0.1, 0.35, 0.8, 0.95], "Sportschau": [0.5, 0.7, 0.85, 0.8], "Galileo": [0.8, 0.6, 0.35, 0.2],
+  "Gute Zeiten, schlechte Zeiten": [0.8, 0.55, 0.35, 0.2], "Tagesschau": [0.3, 0.55, 0.85, 0.95], "Die Giovanni Zarrella Show": [0.1, 0.3, 0.7, 0.9], "The Voice of Germany": [0.7, 0.7, 0.5, 0.35] };
+const zProf = p => !p ? [0.5, 0.5, 0.5, 0.5] : ZFMT[p.title] || p.zp || ZGEN[p.kind === "sport" ? "Sport" : p.genre] || [0.5, 0.5, 0.5, 0.5];
+const zBar = (st, p) => p && p.kind === "sport" ? [1, 1, 1, 1] : ZBAR[st.id] || [1, 1, 1, 1]; // Fußball kennt keine Sender-Barriere
+const zRaw = (st, p) => { const a = zProf(p), b = zBar(st, p); return ZPOP.map((w, k) => w * a[k] * b[k]); };
+function zMix(st, p) { const v = zRaw(st, p), s = v.reduce((x, y) => x + y, 0) || 1; return v.map(x => x / s); }
+const zRef = {};
+function stationRef(st) { // typisches Programm des Senders als Maßstab
+  if (zRef[st.id]) return zRef[st.id];
+  const gs = STATIONS[st.i].profile.concat(["Nachrichten"]);
+  return (zRef[st.id] = gs.reduce((a, g) => a + zRaw(st, { genre: g }).reduce((x, y) => x + y, 0), 0) / gs.length);
+}
+function demoFactor(st, p) {
+  if (!p || p.house) return 1;
+  let f = Math.pow(zRaw(st, p).reduce((x, y) => x + y, 0) / stationRef(st), 1.5);
+  if (p.kind === "sport") f = Math.min(1.15, Math.max(1, f));
+  if (p.movedAt && G.day - p.movedAt < 365) f *= 0.8; // Stammpublikum fremdelt im ersten Jahr nach einem Senderwechsel
+  return clamp(f, 0.3, 1.5);
+}
+// Anteil des Publikums von a, den b anspricht (Audience Flow)
+function zOverlap(st, a, b) {
+  const pa = zProf(a), pb = zProf(b), bar = zBar(st, b);
+  const num = ZPOP.reduce((s, w, k) => s + w * Math.min(pa[k], pb[k]) * bar[k], 0), den = ZPOP.reduce((s, w, k) => s + w * pa[k] * bar[k], 0) || 1;
+  return clamp(num / den, 0, 1);
+}
+// =====================================================================
+// Feste Format-Zuordnung zum Spielstart: echte Sendeplätze je Wochentag (Startzeit in Minuten)
+// Einträge: [Stunde, Titel, Start, Bedingung?, Anschluss?]; Bedingung: { m: [Monate 0–11], hol: true, odd: true, even: true }
+// =====================================================================
+const MF = [1, 2, 3, 4, 5];
+const SCHED = {
+  ard: [[MF, 6, "Morgenmagazin", 330], [MF, 14, "Rote Rosen", 850], [MF, 15, "Sturm der Liebe", 910], [MF, 17, "Brisant", 1035], [MF, 18, "Wer weiß denn sowas?", 1080], [MF, 20, "Tagesschau", 1200], [MF, 22, "Tagesthemen", 1335],
+    [[2], 21, "In aller Freundschaft", 1260], [[2, 3], 23, "maischberger", 1370],
+    [[6], 18, "Sportschau", 1110], [[6], 20, "Tagesschau", 1200], [[6], 22, "Tagesthemen", 1320],
+    [[0], 10, "Immer wieder sonntags", 600, { m: [5, 6, 7, 8] }], [[0], 18, "Weltspiegel", 1110], [[0], 20, "Tagesschau", 1200], [[0], 21, "Tatort", 1215, { even: true }], [[0], 21, "Polizeiruf 110", 1215, { odd: true }], [[0], 23, "Tagesthemen", 1305]],
+  zdf: [[MF, 15, "Bares für Rares", 905], [MF, 17, "Leute heute", 1065], [MF, 18, "SOKO Leipzig", 1085], [MF, 19, "heute", 1140], [MF, 22, "heute journal", 1305], [[2, 3, 4], 23, "Markus Lanz", 1395],
+    [[1], 19, "heute", 1140, null, [["wiso", 1165]]], [[2], 20, "Die Rosenheim-Cops", 1215], [[4], 20, "Der Bergdoktor", 1215, { m: [0, 1, 2, 3] }], [[5], 20, "Der Alte", 1215],
+    [[6], 19, "heute", 1140], [[6], 20, "Die Giovanni Zarrella Show", 1215, { odd: true }], [[6], 23, "das aktuelle sportstudio", 1380],
+    [[0], 19, "heute", 1140, null, [["Terra X", 1170]]], [[0], 20, "Das Traumschiff", 1215, { hol: true }], [[0], 22, "heute journal", 1305],
+    [[0, 1, 2, 3, 4, 5, 6], 20, "Das Traumschiff", 1215, { hol: true }]],
+  rtl: [[MF, 12, "Punkt 12", 720], [MF, 17, "Unter uns", 1050, null, [["Explosiv", 1080]]], [MF, 18, "RTL Aktuell", 1125], [MF, 19, "Alles was zählt", 1145, null, [["Gute Zeiten, schlechte Zeiten", 1180]]],
+    [[1], 20, "Wer wird Millionär?", 1215], [[5], 20, "Let's Dance", 1215, { m: [1, 2, 3, 4] }], [[3], 22, "stern TV", 1355], [MF.concat([6, 0]), 22, "Ich bin ein Star – Holt mich hier raus!", 1335, { m: [0] }],
+    [[6, 0], 18, "RTL Aktuell", 1125]],
+  pro7: [[MF, 17, "taff", 1020], [MF, 18, "ProSieben Newstime", 1080], [MF, 19, "Galileo", 1145], [[2], 20, "Joko & Klaas gegen ProSieben", 1215], [[6], 20, "The Masked Singer", 1215, { m: [8, 9, 10, 1, 2, 3] }],
+    [[6, 0], 18, "ProSieben Newstime", 1080], [[6, 0], 19, "Galileo", 1145]],
+  sat1: [[MF, 5, "Sat.1-Frühstücksfernsehen", 330], [MF, 16, "Auf Streife", 960], [MF, 17, "Die Ruhrpottwache", 1020], [[6], 20, "The Voice of Germany", 1215, { m: [8, 9, 10, 11] }],
+    [[0, 1, 2, 3, 4, 5, 6], 20, "Promi Big Brother", 1215, { m: [7] }]],
+  vox: [[MF, 19, "Das perfekte Dinner", 1140], [[1], 20, "Die Höhle der Löwen", 1215, { m: [8, 9, 10, 3, 4] }], [[6], 18, "Goodbye Deutschland", 1080]],
+  rtl2: [[MF, 19, "Berlin – Tag & Nacht", 1140], [MF, 20, "RTLZWEI News", 1200], [[6, 0], 20, "Die Geissens", 1215]],
+  kabel1: [[MF, 18, "Achtung Kontrolle!", 1080], [MF, 19, "Mein Lokal, Dein Lokal", 1140], [[6, 0], 19, "Abenteuer Leben", 1140]],
+  arte: [[MF, 19, "ARTE Journal", 1140], [MF, 20, "ARTE-Themenabend", 1215], [[6, 0], 20, "Opernabend live", 1215]],
+  dritte: [[[0, 1, 2, 3, 4, 5, 6], 19, "Nachrichten aus der Region", 1170], [MF, 18, "Landesschau", 1080], [[2], 21, "Visite", 1260]],
+};
+// Saisonformate laufen nur in ihren Monaten (z. B. Dschungelcamp im Januar)
+const SEASONAL = (() => { const m = {}; for (const list of Object.values(SCHED)) for (const [, , title, , cond] of list) if (cond && cond.m) m[title] = (m[title] || []).concat(cond.m); return m; })();
+const offSeason = (p, day) => !!(p && SEASONAL[p.title] && !SEASONAL[p.title].includes(dateOf(day).getMonth()));
+const isHoliday = day => { const d = dateOf(day), k = d.getMonth() * 100 + d.getDate(); return [1125, 1126, 1].includes(k); };
+function schedOk(cond, day) {
+  if (!cond) return true;
+  const wk = Math.floor((day - 1) / 7);
+  if (cond.m && !cond.m.includes(dateOf(day).getMonth())) return false;
+  if (cond.hol && !isHoliday(day)) return false;
+  if (cond.odd && wk % 2 !== 1) return false;
+  if (cond.even && wk % 2 !== 0) return false;
+  return true;
+}
+function applySchema(st, wd, sc, day = G.day) {
+  const list = (SCHED[st.id] || []).filter(([wds, , , , cond]) => wds.includes(wd) && schedOk(cond, day));
+  // Feiertagsformate verdrängen das reguläre Programm
+  const hol = list.filter(e => e[4] && e[4].hol).map(e => e[1]);
+  for (const [, i, title, t, cond, extras] of list) {
+    if (hol.includes(i) && !(cond && cond.hol)) continue;
+    const p = st.progs.find(x => x.title === title);
+    if (!p || sc[i].p || canPlace(st, sc, p, i) || !youthOk(p, i)) continue;
+    if (sc.some(c => c.p === p.id)) continue;
+    placeAt(st, sc, i, p); sc[i].t = t;
+    if (extras) { const ok = extras.map(([tt, xt]) => [st.progs.find(x => x.title === tt), xt]).filter(x => x[0]); if (ok.length) { sc[i].extra = ok.map(x => x[0].id); sc[i].xt = ok.map(x => x[1]); } }
+  }
+}
+// Neue Formate für die Startaufstellung
+const NEW_FORMATS = [["Weltspiegel", "Magazin", 66, 0, "ard"], ["Immer wieder sonntags", "Show", 64, 0, "ard"], ["wiso", "Magazin", 60, 0, "zdf"], ["das aktuelle sportstudio", "Magazin", 72, 0, "zdf"],
+  ["Das Traumschiff", "Liebesfilm", 78, 0, "zdf"], ["Die Giovanni Zarrella Show", "Show", 68, 0, "zdf"], ["stern TV", "Magazin", 62, 0, "rtl"], ["Ich bin ein Star – Holt mich hier raus!", "Reality", 86, 0, "rtl"],
+  ["ProSieben Newstime", "Nachrichten", 48, 0, "pro7"], ["The Masked Singer", "Show", 78, 0, "pro7"], ["Promi Big Brother", "Reality", 64, 0, "sat1"]];
+{ const have = new Set(SERIES_DB.map(r => r[0])); for (const r of NEW_FORMATS) if (!have.has(r[0])) SERIES_DB.push(r); }
+const LEN_OVR = { "Tatort": 2, "Polizeiruf 110": 2, "Das Traumschiff": 2, "Immer wieder sonntags": 2, "Wer wird Millionär?": 2, "Let's Dance": 3, "The Masked Singer": 3, "Die Giovanni Zarrella Show": 3,
+  "Joko & Klaas gegen ProSieben": 3, "The Voice of Germany": 2, "Promi Big Brother": 2, "Sportschau": 2, "das aktuelle sportstudio": 2, "stern TV": 2, "Ich bin ein Star – Holt mich hier raus!": 2,
+  "Sat.1-Frühstücksfernsehen": 5, "Morgenmagazin": 4, "Punkt 12": 2, "Markus Lanz": 2, "maischberger": 2, "Die Höhle der Löwen": 2 };
+Object.assign(NET_DUR, { "Weltspiegel": 30, "Immer wieder sonntags": 110, "wiso": 45, "das aktuelle sportstudio": 80, "Das Traumschiff": 90, "Die Giovanni Zarrella Show": 165, "stern TV": 85,
+  "Ich bin ein Star – Holt mich hier raus!": 95, "ProSieben Newstime": 10, "The Masked Singer": 150, "Promi Big Brother": 90, "Sat.1-Frühstücksfernsehen": 270, "Morgenmagazin": 210, "Punkt 12": 120,
+  "Joko & Klaas gegen ProSieben": 150, "The Voice of Germany": 100, "Let's Dance": 150, "Wer wird Millionär?": 95, "Sportschau": 90, "In aller Freundschaft": 45, "Polizeiruf 110": 90, "Der Alte": 60, "Explosiv": 25, "Galileo": 55, "taff": 55 });
+
+// =====================================================================
+// Warnungen im Sendeplan und Spielplan-Konflikte
+// =====================================================================
+const SPORT_P = { kind: "sport", genre: "Sport" };
+function liveOn(day) { // Live-Sport aller Sender an einem Tag: [{owner, start, end, title, q}]
+  return eventsOn(day).map(({ o, d, m }) => ({ owner: o.owner, start: m ? m.t : d.h * 60, end: m ? m.t + m.dur : (d.h + d.len) * 60, title: m ? m.fix : d.name, comp: d.name, q: m ? m.q : d.q }));
+}
+function slotWarnings(st, day, rd, it) {
+  const out = [], k = rd.indexOf(it), prev = rd.slice(0, k).reverse().find(x => !x.gap);
+  if (prev && it.start >= 17 * 60 && (prev.p.genre === "Nachrichten" || prev.p.q >= 70) && it.p.kind !== "sport") {
+    const o = zOverlap(st, prev.p, it.p);
+    if (o < 0.6) out.push(`Kaum Audience Flow: Nur ${Math.round(o * 100)} % des Publikums von „${prev.p.title}“ passen zu dieser Sendung.`);
+  }
+  for (const e of liveOn(day)) {
+    if (e.owner === st.id || e.q < 75 || e.end <= it.start || e.start >= it.end || it.p.kind === "sport") continue;
+    const drop = Math.round(50 * zOverlap(st, it.p, SPORT_P) * e.q / 100);
+    out.push(`Parallel bei ${holderName(e.owner)}: ${e.title} (${hhmm(e.start)}) – erwarteter Einbruch ca. ${drop} %.`);
+  }
+  if (it.start >= 6 * 60 && it.p.genre !== "Teleshopping" && !it.p.house && demoFactor(st, it.p) < 0.7) out.push(`Passt schlecht zum Publikum des Senders (Profil-Fit ${Math.round(demoFactor(st, it.p) * 100)} %).`);
+  return out;
+}
+const zLine = (st, p) => zMix(st, p).map((v, k) => `Z${k + 1} ${Math.round(v * 100)} %`).join(" · ");
+function queueEvent(ev) { if (G.event) (G.evQ = G.evQ || []).push(ev); else G.event = ev; }
+// Drei Tage vorher: Sport-Großereignis der Konkurrenz gegen die eigene Primetime
+function conflictCheck() {
+  const P = me(), d = G.day + 3, sc = calDay(P, d), rd = rundown(P, sc, weekday(d));
+  G.conflicts = (G.conflicts || []).filter(x => x[0] >= G.day);
+  for (const it of rd.filter(x => !x.gap && !x.extra && x.start >= 1185 && x.start <= 1290 && x.p.kind !== "sport")) {
+    const e = liveOn(d).find(e => e.owner !== P.id && e.q >= 85 && e.start < it.end && e.end > it.start);
+    if (!e || G.conflicts.some(x => x[0] === d && x[1] === it.i)) continue;
+    if (!(it.p.aired === 0 || it.p.q >= 72)) continue;
+    G.conflicts.push([d, it.i]);
+    const drop = Math.round(50 * zOverlap(P, it.p, SPORT_P) * e.q / 100);
+    queueEvent({ id: "clash", type: "Konkurrenz", title: `Spielplan-Konflikt am ${dateShort(d)}`, text: `${holderName(e.owner)} überträgt ${hhmm(e.start)} live: ${e.title}. Ihr ${it.p.aired === 0 ? "Premiere" : "Zugpferd"} „${it.p.title}“ (${hhmm(it.start)}) läuft parallel – die Programmforschung erwartet einen Einbruch von ca. ${drop} %.`,
+      opts: [["Premiere schützen", "Eine Wiederholung einsetzen, das Zugpferd später senden."], ["Gegenprogramm", "Ein Programm für Zuschauer, die mit Fußball wenig anfangen können."], ["Durchziehen", "Am Plan festhalten."]], data: { d, i: it.i, pid: it.p.id } });
+  }
+}
+EVENTS.push({ id: "clash", type: "Konkurrenz", when: () => false, make: () => ({}), fn: (k, data) => {
+  const P = me(), cur = P.progs.find(p => p.id === data.pid); if (!cur || k === 2) return;
+  const sc = calDay(P, data.d), ok = p => p.id !== cur.id && p.kind !== "sport" && !p.house && (p.len || 1) === (cur.len || 1) && !canPlace(P, sc, p, data.i) && youthOk(p, data.i) && !sc.some(c => c.p === p.id);
+  const pool = P.progs.filter(ok);
+  const alt = k === 0 ? pool.filter(p => p.aired > 0).sort((a, b) => b.q - a.q)[0] : pool.map(p => [p, p.q * (1.3 - zOverlap(P, p, SPORT_P))]).sort((a, b) => b[1] - a[1]).map(x => x[0])[0];
+  if (!alt) { logMsg("Programmplanung", "Programm", "Kein passendes Ersatzprogramm im Archiv – das Programm bleibt."); return; }
+  editPlan(data.d, s => { const t = s[data.i].t; placeAt(P, s, data.i, alt); if (t != null) s[data.i].t = t; });
+  logMsg("Programmplanung", "Programm", `${dateShort(data.d)}: „${alt.title}“ ersetzt „${cur.title}“ – ${k === 0 ? "die Premiere wird geschont" : "Gegenprogramm zum Fußball"}.`, true);
+} });
+// Spielplan-Seite: Rahmenterminkalender der nächsten drei Wochen
+function spielplanPage(P) {
+  let h = title("Spielplan", `<span class="muted">Rahmenterminkalender Fußball · Saison ${seasonOf(G.day)}/${String(seasonOf(G.day) + 1).slice(2)}</span>`);
+  h += `<p class="lead mb">Bundesliga freitags 20:30, samstags 15:30 und 18:30 (Topspiel), sonntags 15:30, 17:30 und 19:30; 2. Bundesliga freitags 18:30, samstags 13:00 und 20:30, sonntags 13:30. Champions League dienstags und mittwochs 18:45 und 21:00, Europa League donnerstags. Wer donnerstags international spielt, tritt in der Liga erst am Sonntag an. In Länderspielpausen und in der Winterpause ruht die Liga – dann fehlen Sportschau und sportstudio die Bilder.</p>`;
+  for (let d = G.day; d < G.day + 21; d++) {
+    const fx = fixturesOn(d), S = season(seasonOf(d)), md = matchday(d), note = S.inWindow(d) ? "Länderspielpause" : d >= S.winter[0] && d <= S.winter[1] ? "Winterpause" : "";
+    if (!fx.length && !note) continue;
+    const rd = rundown(P, calDay(P, d), weekday(d)), mine = t => rd.find(x => !x.gap && x.start <= t && x.end > t);
+    h += `<section class="panel mb"><div class="ph"><h2>${WDL[weekday(d)]}, ${dateShort(d)}</h2><span class="aside">${md ? `${md}. Spieltag` : ""}${note ? ` <span class="chip warn">${note}</span>` : ""}</span></div>
+      ${fx.length ? `<div class="tbl"><table><tbody>${fx.map(f => { const m = mine(f.t), free = !["Sky", "DAZN", "Amazon Prime Video", "RTL+"].includes(f.tv); return `<tr><td class="num">${hhmm(f.t)}</td><td>${esc(f.comp)}</td><td class="title">${esc(f.title)}</td><td><span class="chip ${free ? "good" : ""}">${esc(f.tv)}</span></td><td class="muted">${m ? `bei Ihnen: ${esc(m.p.title)}` : ""}</td></tr>`; }).join("")}</tbody></table></div>` : '<p class="fine pad">Keine Spiele.</p>'}</section>`;
+  }
+  return h;
+}
+// =====================================================================
 // Formatprofil: Quotenverlauf, Publikum, Analyse und Maßnahmen je Sendung
 // =====================================================================
 // Affinität zur Zielgruppe 14–49 (Spielwerte): Sender-Image × Genre
 const ST_YOUNG = { zdf: 0.45, ard: 0.5, dritte: 0.35, rtl: 1.25, sat1: 1.0, vox: 1.35, pro7: 2.0, kabel1: 1.15, zdfneo: 0.8, rtl2: 1.6, nitro: 1.0, arte: 0.5 };
 const G_YOUNG = { Reality: 1.35, Sitcom: 1.4, Soap: 1.25, "Science-Fiction": 1.3, Action: 1.2, Show: 1.05, Komödie: 1.1, Talk: 0.8, Nachrichten: 0.75, Magazin: 0.8, Krimi: 0.85, Doku: 0.85, Kultur: 0.7, Liebesfilm: 0.95, Drama: 0.9, Serie: 1.0, Monumental: 0.9, Teleshopping: 0.5 };
-const youthIdx = (st, p) => (G_YOUNG[p.genre] || 1) * (ST_YOUNG[st.id] || 1) * (1 + (p.young || 0) / 100);
-const AGE_GROUPS = [["3–13", 6, 1.0], ["14–29", 14, 1.6], ["30–49", 22, 0.8], ["50–64", 24, -0.3], ["65+", 34, -1.0]];
-function ageMix(st, p) {
-  const y = youthIdx(st, p), kids = p.fsk === 0 && ["Komödie", "Show", "Science-Fiction"].includes(p.genre) ? 2.2 : p.fsk >= 12 ? 0.4 : 1;
-  const w = AGE_GROUPS.map(([, b, e], k) => b * Math.pow(y, e) * (k === 0 ? kids : 1));
-  const s = w.reduce((a, x) => a + x, 0);
-  return w.map(x => x / s * 100);
-}
+const youthIdx = (st, p) => { const z = zMix(st, p); return clamp((z[0] + z[1]) / 0.4, 0.2, 2.5) * (1 + ((p && p.young) || 0) / 100); };
+const AGE_GROUPS = ZN.map(n => [n]);
+function ageMix(st, p) { return zMix(st, p).map(x => x * 100); }
 // Eintrag je Ausstrahlung: [Tag, Stunde, Mio., MA %, MA 14–49 %, Platz, Stunden, (eigener Sender:) Gegner-Sender, Gegner-Titel, Folge]
 // Eine Ausstrahlung zählen: Folgen, Läufe, Abnutzung
 function airedOnce(st, p, i) {
