@@ -5637,7 +5637,7 @@ function rumorDay() {
     postArticle(src, "Gerücht", `Casting: {s:${st.id}} will {p:${q.id}} für ein neues Format`, [`{p:${q.id}} ist derzeit ohne festen Vertrag – und offenbar heiß begehrt. {s:${st.id}} soll ein Angebot für eine neue Primetime-Show vorbereiten.`, `Wer schneller ist, sichert sich das Gesicht.`]);
     G.log[0].rumor = "open"; r.aid = G.log[0].aid;
   } else if (k === "gage") {
-    const mine = G.people.filter(q => q.holder === P.id && q.ct); if (!mine.length) return;
+    const mine = G.people.filter(q => q.holder === P.id && q.ct && !isReal(q)); if (!mine.length) return; // echte Personen: kein Gehaltspoker
     const q = pick(mine);
     const r = { id: uid(), kind: k, cat: "Personal", truth: Math.random() < 0.55, due: G.day + ri(4, 9), status: "open", pid: q.id };
     G.rumors.push(r);
@@ -5862,15 +5862,21 @@ function politicsDay() {
 // Gäste für die nächste Ausgabe einer eigenen Talkshow
 function talkCalc(p, ids) {
   const gs = ids.map(polById).filter(Boolean), S = ensurePol();
-  if (!gs.length) return { gs, boost: 0, esc: 0, cost: 0, fit: 0, parties: 0, camps: 0 };
+  if (!gs.length) return { gs, boost: 0, esc: 0, cost: 0, fit: 0, parties: 0, camps: 0, konf: 0, cross: null };
   const parties = new Set(gs.map(g => g.partei)).size, camps = new Set(gs.map(g => g.lager)).size;
   const fit = gs.filter(g => g.res && g.res === S.topic.res).length;
   const prom = gs.reduce((a, g) => a + polProm(g), 0) / 100;
   const host = hostOf(p), str = host ? staffAttrs(host).str : 10;
-  const esc = clamp(0.04 + 0.05 * (parties - 1) + (camps > 1 ? 0.06 : 0) + (10 - str) / 100 + 0.08 * crisis(), 0.02, 0.45);
-  const boost = 0.03 * prom + 0.04 * fit + (camps > 1 ? 0.04 : 0) + 0.1 * crisis();
+  // Konfliktwert nur aus der Struktur der Runde: Lager, Ressort-Kreuzfeuer, Zahl der Parteien, Lage – dazu am Sendetag Zufall 1–30
+  const reg = gs.filter(g => g.lager === "Regierung"), opp = gs.filter(g => g.lager === "Opposition");
+  const fach = g => g.res && !/^(partei|keines)/i.test(g.res);
+  const cross = reg.find(a => fach(a) && opp.some(b => b.res === a.res));
+  const base = (reg.length && opp.length ? 20 : 0) + (cross ? 15 : 0) + 5 * (parties - 1) + Math.round(10 * crisis());
+  const konf = base + 15.5; // Erwartungswert
+  const esc = clamp(((20 - str) + konf / 10) / 100, 0.01, 0.45); // Stressfeste Moderation dämpft das Sende-Risiko
+  const boost = 0.03 * prom + 0.04 * fit + konf * 0.003;
   const cost = gs.reduce((a, g) => a + 4000 + polProm(g) * 60, 0);
-  return { gs, boost, esc, cost, fit, parties, camps };
+  return { gs, boost, esc, cost, fit, parties, camps, konf, base, str, cross: cross ? cross.res : null };
 }
 function bookTalk(pid, ids) {
   const P = me(), p = P.progs.find(x => x.id === pid), S = ensurePol();
@@ -5880,7 +5886,8 @@ function bookTalk(pid, ids) {
   if (P.money < c.cost) return "Budget reicht nicht.";
   book(P, "Redaktion", -c.cost);
   for (const id of ids) S.booked[id] = P.id;
-  p.guests = { ids, topic: S.topic.t, day: G.day, esc: Math.random() < c.esc, boost: c.boost };
+  const konf = c.base + ri(1, 30), risk = clamp(((20 - c.str) + konf / 10) / 100, 0.01, 0.45);
+  p.guests = { ids, topic: S.topic.t, day: G.day, konf, cross: c.cross, str: c.str, esc: Math.random() < risk, boost: 0.03 * c.gs.reduce((a, g) => a + polProm(g), 0) / 100 + 0.04 * c.fit + konf * 0.003 };
   return null;
 }
 // Wirkung in der Quote (aus attrCell)
@@ -5900,6 +5907,7 @@ function talkResolve() {
     const g = p.guests, names = g.ids.map(polById).filter(Boolean).map(x => `${x.name} (${x.partei})`);
     g.done = true;
     if (g.esc) { S.ax.stim = clamp(S.ax.stim + 2, 10, 95); P.favor = Math.max(0, P.favor - 0.2); postArticle("Medien-Insider", "Politik", `Hitzige Debatte bei {t:${P.id}|${p.id}}`, [`Beim Thema „${g.topic}“ ging es in der Runde mit ${names.join(", ")} hoch her – die Moderation hatte Mühe, die Diskussion zu ordnen.`, `Die Sendung ist heute Gesprächsthema in den sozialen Netzwerken. Kritiker bemängeln die Gesprächsführung, die Quote profitiert.`], true); }
+    else if (g.cross || g.konf >= 40) { const h = (p.hist || []).filter(x => x[0] === p.lastAired).pop(); postArticle("Polit-Magazin", "Politik", g.cross ? `Hitzige Debatte zum Fachthema bei {t:${P.id}|${p.id}}` : `Lebhafte Runde bei {t:${P.id}|${p.id}}`, [`Die Debatte zwischen Regierung und Opposition${g.cross ? ` zum Ressort ${g.cross}` : ` zu „${g.topic}“`} verlief erwartungsgemäß hitzig. Zu Gast: ${names.join(", ")}.`, `${(g.str || 10) >= 14 ? "Dank der hohen Stressfestigkeit der Moderation blieb die Sendung stabil." : "Die Moderation hatte zeitweise Mühe, die Runde zu ordnen."}${h ? ` ${esc(P.name)} erreichte ${mio(h[2])} Mio. Zuschauer (MA ${pct(h[3])}).` : ""}`], true); }
     else postArticle("Medien-Insider", "Politik", `{t:${P.id}|${p.id}}: sachliche Runde zu „${g.topic}“`, [`Zu Gast waren ${names.join(", ")}. Die Diskussion blieb sachlich, die Positionen wurden klar herausgearbeitet.`]);
   }
   if (G.newsroom && G.newsroom.style === 0 && (!S.scoop || S.scoop < G.day - 10) && Math.random() < 0.02 + 0.04 * crisis()) {
@@ -5920,8 +5928,9 @@ function politicsPage(P) {
     if (p.guests && !p.guests.done) h += `<p class="chip good">Gebucht für die nächste Ausgabe: ${p.guests.ids.map(polById).filter(Boolean).map(g => esc(g.name)).join(", ")}</p>`;
     h += `<div class="tbl"><table><thead><tr><th></th><th>Gast</th><th>Partei</th><th>Lager</th><th>Amt</th><th>Ressort</th><th>Status</th></tr></thead><tbody>${list.map(g => { const by = S.booked[g.id], on = sel.ids.includes(g.id), busy = by && by !== P.id;
       return `<tr class="${on ? "sel" : ""}"><td><button class="btn small ${on ? "hot" : ""}" data-act="talkGuest" data-k="${g.id}" ${busy || (!on && sel.ids.length >= 4) ? "disabled" : ""}>${on ? "✓" : "+"}</button></td><td class="title">${esc(g.name)}</td><td>${esc(g.partei)}</td><td class="muted">${esc(g.lager)}</td><td class="muted">${esc(g.amt || "")}</td><td>${g.res && g.res === S.topic.res ? `<b>${esc(g.res)}</b>` : esc(g.res || "")}</td><td class="muted">${busy ? "bei " + esc(holderName(by)) : by === P.id ? "bei Ihnen" : "frei"}</td></tr>`; }).join("")}</tbody></table></div>
-      <div class="kv"><span>Runde</span><b>${c.gs.length} Gäste · ${c.parties} Parteien · ${c.camps > 1 ? "beide Lager" : "ein Lager"}${c.fit ? ` · ${c.fit}× Fachressort` : ""}</b></div>
-      <div class="kv"><span>Quoten-Effekt</span><b class="up">+${Math.round(c.boost * 100)} %</b></div><div class="kv"><span>Risiko hitzige Debatte</span><b class="${c.esc > 0.2 ? "down" : ""}">${Math.round(c.esc * 100)} %</b></div><div class="kv"><span>Kosten</span><b>${eur(c.cost)}</b></div>
+      <div class="kv"><span>Runde</span><b>${c.gs.length} Gäste · ${c.parties} Parteien · ${c.camps > 1 ? "beide Lager" : "ein Lager"}${c.fit ? ` · ${c.fit}× Themenressort` : ""}${c.cross ? ` · Kreuzfeuer ${esc(c.cross)}` : ""}</b></div>
+      <div class="kv"><span>Konfliktintensität</span><b>${c.base + 1}–${c.base + 30} (Lager ${c.camps > 1 && c.gs.some(g => g.lager === "Regierung") && c.gs.some(g => g.lager === "Opposition") ? "+20" : "0"}${c.cross ? ", Ressort +15" : ""}, Zufall 1–30)</b></div>
+      <div class="kv"><span>Quoten-Effekt</span><b class="up">+${Math.round(c.boost * 100)} %</b></div><div class="kv"><span>Sende-Risiko (entgleist)</span><b class="${c.esc > 0.2 ? "down" : ""}">${Math.round(c.esc * 100)} %</b></div><div class="kv"><span>Kosten</span><b>${eur(c.cost)}</b></div>
       <button class="btn hot" data-act="talkBook" ${!c.gs.length || planLocked() || (p.guests && !p.guests.done) ? "disabled" : ""}>Gäste einladen</button></div>`;
   }
   h += `</section><section class="panel"><div class="ph"><h2>Gästeliste bearbeiten</h2><span class="aside">${window.MM_PRIVATE && window.MM_PRIVATE.politicians ? "aus der privaten Datei" : "Platzhalter"} · nur lokal gespeichert</span></div><div class="pad">
