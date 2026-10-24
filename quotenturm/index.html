@@ -414,6 +414,14 @@ td.cw { position: relative; } .cell-i { position: absolute; right: 8px; top: 8px
 @media (max-width: 700px) { .home-row { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .season { display: grid; grid-template-columns: repeat(12, 1fr); gap: 4px; height: 110px; align-items: end; } .season div { display: grid; grid-template-rows: 1fr auto; height: 100%; justify-items: center; gap: 3px; } .season i { width: 70%; align-self: end; background: var(--line); border-radius: 3px 3px 0 0; display: block; } .season .on i { background: var(--hot); } .season span { font-size: 11px; color: var(--muted); }
 .tsel { position: absolute; right: 34px; top: 8px; z-index: 1; background: var(--panel); color: var(--muted); border: 1px solid var(--line); border-radius: 4px; font-size: 12px; padding: 1px 2px; max-width: 74px; } .cell .tt { color: var(--text); font-variant-numeric: tabular-nums; }
+.seq { display: grid; gap: 0; padding: 6px 12px 12px; } .sq-part { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); padding: 12px 0 4px; }
+.sq { display: grid; grid-template-columns: 64px 1fr auto; gap: 12px; align-items: start; border: 1px solid var(--line); border-left: 4px solid var(--hot); border-radius: 8px; padding: 8px 10px; background: var(--panel); margin: 2px 0; }
+.sq.gap { border-style: dashed; border-left: 4px dashed #ef4444; background: transparent; } .sq.live { border-left-color: #ef4444; } .sq.bad { border-color: #ef4444; } .sq.over { outline: 2px dashed var(--hot); }
+.sq[draggable="true"] { cursor: grab; } .sq-time { font-weight: 700; font-variant-numeric: tabular-nums; display: grid; } .sq-time small { font-weight: 400; color: var(--muted); }
+.sq-main { display: grid; gap: 3px; min-width: 0; } .sq-meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 13px; color: var(--muted); } .sq-ads { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 2px; }
+.sq-act { display: flex; flex-wrap: wrap; gap: 4px; justify-content: flex-end; max-width: 200px; } .sq-ins { justify-self: start; margin: 0 0 0 76px; border: 0; background: none; color: var(--muted); font-size: 12px; cursor: pointer; padding: 1px 6px; opacity: .55; } .sq-ins:hover { opacity: 1; color: var(--hot); }
+.sq .tl { cursor: pointer; } .sq .tl:hover { color: var(--hot); text-decoration: underline; }
+@media (max-width: 640px) { .sq { grid-template-columns: 52px 1fr; } .sq-act { grid-column: 1 / -1; justify-content: flex-start; max-width: none; } .sq-ins { margin-left: 0; } }
 .xlist { display: grid; gap: 3px; padding: 0 10px 8px; } .xrow { display: flex; gap: 8px; align-items: center; font-size: 13px; border-left: 2px solid var(--line); padding-left: 8px; } .xrow .grow { flex: 1; min-width: 0; } .xlist > .btn { justify-self: start; }
 .warnline { color: var(--mid) !important; white-space: normal; }
 .wp { display: grid; grid-template-columns: 230px minmax(0, 1fr) 280px; gap: 12px; align-items: start; }
@@ -1408,12 +1416,38 @@ function applyLicense(p, yrs, from = G.day) {
 // IMDb-Wertung wirkt aufs Spiel: Qualität (65 % Score, 35 % Grundwert), Zugkraft aus der Stimmenzahl → Quote, Streaming-Abrufe, Lizenzpreis
 function applyImdb(p) {
   if (!p || p.own || p.imdbApplied || typeof IMDB_SCORES === "undefined") return p;
-  const s = IMDB_SCORES.get(normT(p.title)); if (!s) return p;
+  const s = IMDB_SCORES.get(normT(p.title)) || (() => { const t = typeof dbFind === "function" && G && dbFind(p.title); return t && t.r ? [t.r, t.v] : null; })(); if (!s) return realize(p);
   p.imdbApplied = true; p.imdb = s;
   p.q = clamp(Math.round(p.q * 0.35 + clamp(20 + s[0] * 7.5, 20, 96) * 0.65), 5, 97);
   p.pull = Math.round(clamp((Math.log10(s[1]) - 3) / 3.3, 0, 1) * 100) / 100; // 1.000 Stimmen → 0, ~2 Mio. → 1
   if (p.price) p.price = r1000(p.price * (1 + p.pull * 0.6));
+  return realize(p);
+}
+// Echte Eckdaten aus der Titeldatenbank: Folgenzahl, Staffeln, Erscheinungsjahr – Preis und Aktualität hängen davon ab
+function dbFind(title) {
+  const db = typeof titleDB === "function" && titleDB(); if (!db) return null;
+  if (!db.byName) { db.byName = new Map(); const put = (k, t) => { if (!k) return; const o = db.byName.get(k); if (!o || (t.v || 0) > (o.v || 0)) db.byName.set(k, t); };
+    for (const t of db.all) for (const n of [t.n].concat(t.alt || [])) { put(normT(n), t); put("~" + normT(String(n).split(/ [–-] /)[0]), t); } }
+  const k = normT(title), pre = "~" + normT(String(title).split(/ [–-] /)[0]);
+  return db.byName.get(k) || db.byName.get("~" + k) || db.byName.get(pre) || null;
+}
+function realize(p) {
+  if (!p || p.own || p.realized || !G) return p;
+  p.realized = true;
+  let t = dbFind(p.title);
+  if (t && ((p.kind === "film") !== (t.k === "film" || t.k === "tvfilm") || (p.kind === "film" && (t.v || 0) < 5000))) t = null; // nur eindeutige Treffer übernehmen
+  if (t) {
+    if (t.y) p.year = t.y;
+    if (p.kind === "serie" && t.e && t.e > (p.eps || 0)) { const old = p.eps || 10; p.eps = Math.min(t.e, 400); p.seasons = t.s || null; if (p.price) p.price = r1000(p.price * Math.pow(p.eps / old, 0.75)); }
+  }
+  if (p.year && p.price) { const age = dateOf(G.day).getFullYear() - p.year; p.price = r1000(p.price * clamp(1.25 - age * 0.03, 0.35, 1.25)); } // ältere Titel sind günstiger
+  freshTopic(p);
   return p;
+}
+// Lief der Titel kürzlich irgendwo, ist das Publikum gesättigt – erholt sich über Monate
+function freshTopic(p) {
+  const last = G.airLog && G.airLog[normT(p.title)]; if (last == null) return;
+  const days = G.day - last; p.topic = Math.min(p.topic ?? 1, 0.5 + 0.5 * Math.min(1, days / 365));
 }
 const isHot = p => (p.pull || 0) >= 0.6 || p.q >= 85; // begehrte Ware: Konkurrenz greift schnell zu
 function realFilm(row) { return applyImdb(realFilm0(row)); }
@@ -3219,7 +3253,7 @@ function endDay() {
     st.dayMA = views / totalBase * 100;
     st.maSum += st.dayMA; st.maDays++;
     st.brand = clamp(st.brand + (st.dayMA / (1 - otherShare()) * 0.84 - st.brand) * 0.08, 0.5, 30);
-    st.progs.forEach(p => { p.topic = Math.min(1, p.topic + (p.kind === "show" ? 0.1 : 0.05)); });
+    st.progs.forEach(p => { p.topic = Math.min(1, p.topic + (p.kind === "show" ? 0.1 : p.kind === "film" ? 0.006 : 0.02)); }); // Filme brauchen Monate, bis eine Wiederholung wieder zieht
     if (!isMe(st)) continue;
     book(st, "Personal & Verwaltung", -r1000(120000 + st.base * 22000));
     staffCosts(st);
@@ -3630,7 +3664,7 @@ function umfang(p) {
   if (p.sz) return szLabel(p);
   if (p.own) return p.kind === "serie" ? `Eigenproduktion · Folge ${(p.ep % p.eps) + 1}/${p.eps}` : p.kind === "film" ? `Eigenproduktion · ${p.len} Std.` : "Eigenproduktion";
   const bis = p.until ? ` · bis ${dateShort(p.until)}` : "";
-  if (p.kind === "serie") return `${Math.min(p.ep, p.maxEp || p.eps * 2)}/${p.maxEp || p.eps * 2} Ausstr.${bis}`;
+  if (p.kind === "serie") return `${p.seasons ? p.seasons + " Staffeln · " : ""}${p.eps} Folgen · ${Math.min(p.ep, p.maxEp || p.eps * 2)}/${p.maxEp || p.eps * 2} Ausstr.${bis}`;
   if (p.kind === "film") return `${p.len} Std. · ${p.runs || 0}/${p.maxRuns} Ausstr.${bis}`;
   if (p.kind === "sport") return "live";
   return "Dauerformat";
@@ -3638,7 +3672,7 @@ function umfang(p) {
 function progTable(list, extra, head = "") {
   if (!list.length) return `<div class="pad"><p class="lead">Keine Programme vorhanden.</p></div>`;
   return `<div class="tbl"><table><thead><tr><th>Titel</th><th>Genre</th><th class="num">Qual.</th><th>Aktualität</th><th>Umfang</th><th>Beste Zeit</th><th class="num">${head}</th></tr></thead><tbody>
-    ${list.map(p => `<tr><td class="title">${titleLink(G.market.includes(p) ? `m|${p.id}` : `${me().id}|${p.id}`, p.title)}${imdbChip(p.title)}${G.market.includes(p) && isHot(p) ? ' <span class="chip fsk" title="Begehrter Titel – die Konkurrenz greift schnell zu">umkämpft</span>' : ""} ${p.fsk >= 16 ? `<span class="chip fsk">FSK ${p.fsk}</span>` : p.fsk ? `<span class="chip">FSK ${p.fsk}</span>` : ""}${p.own ? ' <span class="chip good">Eigenproduktion</span>' : p.home ? ' <span class="chip real">Eigenformat</span>' : p.kind === "serie" ? ' <span class="chip real">Serienlizenz</span>' : ""}${G.stream && G.stream.catalog.some(c => c.id === p.id) ? ' <span class="chip good">im Stream</span>' : ""}${DESC[p.title] ? `<div class="muted desc">${esc(DESC[p.title])}</div>` : ""}</td><td>${esc(p.genre)}</td><td class="num">${attr(p.q)}</td>
+    ${list.map(p => `<tr><td class="title">${titleLink(G.market.includes(p) ? `m|${p.id}` : `${me().id}|${p.id}`, p.title)}${p.year ? ` <span class="muted">(${p.year})</span>` : ""}${imdbChip(p.title)}${G.airLog && G.airLog[normT(p.title)] && G.day - G.airLog[normT(p.title)] < 180 && !(p.aired) ? ` <span class="chip" title="Lief vor ${G.day - G.airLog[normT(p.title)]} Tagen – das Publikum ist noch gesättigt">kürzlich gesendet</span>` : ""}${G.market.includes(p) && isHot(p) ? ' <span class="chip fsk" title="Begehrter Titel – die Konkurrenz greift schnell zu">umkämpft</span>' : ""} ${p.fsk >= 16 ? `<span class="chip fsk">FSK ${p.fsk}</span>` : p.fsk ? `<span class="chip">FSK ${p.fsk}</span>` : ""}${p.own ? ' <span class="chip good">Eigenproduktion</span>' : p.home ? ' <span class="chip real">Eigenformat</span>' : p.kind === "serie" ? ' <span class="chip real">Serienlizenz</span>' : ""}${G.stream && G.stream.catalog.some(c => c.id === p.id) ? ' <span class="chip good">im Stream</span>' : ""}${DESC[p.title] ? `<div class="muted desc">${esc(DESC[p.title])}</div>` : ""}</td><td>${esc(p.genre)}</td><td class="num">${attr(p.q)}</td>
       <td><span class="mbar"><i style="width:${Math.round(p.topic * 100)}%"></i></span> <span class="muted">${Math.round(p.topic * 100)} %</span></td>
       <td class="muted">${umfang(p)}</td><td class="muted">${GENRES[p.genre].length > 6 ? "live" : GENRES[p.genre].map(h => h).join("/") + " Uhr"}</td><td class="num">${extra(p)}</td></tr>`).join("")}
   </tbody></table></div>`;
@@ -3684,27 +3718,10 @@ function planPage(P) {
   if (isToday && P.live.length) notes.push("Live-Events sind heute fest eingeplant");
   h += eveningTimeline(P, wd, sc, isToday, lock, d);
   h += `<p class="lead mb">${notes.join(" · ")}. ${isToday ? "Ergebnisse von heute erscheinen nach der Ausstrahlung." : `Planung für ${WDL[wd]}, ${dateShort(d)}.`}</p>`;
-  h += `<section class="panel"><div class="tbl"><table class="plan"><thead><tr><th>Zeit</th><th>Programm</th><th>Werbung</th><th class="num">Erwartet</th><th class="num">${isToday ? "Ergebnis" : "Zuletzt"}</th></tr></thead><tbody>`;
-  let lastPart = "";
   const rd = rundown(P, sc, wd);
   const gaps = rd.filter(x => x.gap && x.end - x.start >= 10 && x.start >= 6 * 60);
-  if (gaps.length) h += `<tr class="dp"><td colspan="5" style="white-space:normal"><span class="muted">Lücken: ${gaps.map(x => `${hhmm(x.start)}–${hhmm(x.end % 1440)} ${gapName(x.end - x.start)}`).join(" · ")} </span> ${lock ? "" : `<button class="btn small hot" data-act="fillDay" data-k="${d}">Lücken füllen</button>`} <span class="muted">Vor der Ausstrahlung füllt der Sender Lücken automatisch.</span></td></tr>`;
-  sc.forEach((c, i) => {
-    const part = daypart(i);
-    if (part !== lastPart) { h += `<tr class="dp"><td colspan="5">${part}</td></tr>`; lastPart = part; }
-    const p = c.p && progOf(P, c.p), ad = c.ad && adOf(P, c.ad);
-    const exp = expected(P, i), r = isToday ? G.today[i] : null;
-    const allowed = adAllowed(P, i, wd);
-    const youth = p && !c.cont && !youthOk(p, i);
-    h += `<tr class="${i === 20 || i === 21 ? "prime" : ""}"><td class="hr">${hh(i)}</td>
-      <td class="cw">${p && !c.cont && p.kind !== "sport" ? `<span class="cell-i" data-title="${P.id}|${p.id}" title="Formatprofil">i</span>` : ""}${p && !c.cont && !c.live && !lock ? `<select class="tsel" data-tsel="${d}|${i}" title="Startzeit">${tOpts(i, c.t)}</select>` : ""}<button class="cell ${c.cont ? "cont" : ""} ${!p || youth || badSet.has(i) ? "bad" : ""}" data-act="pickProg" data-i="${i}" data-k="${d}" ${lock || c.live ? "disabled" : ""}><span class="t">${c.live && !c.cont ? "● LIVE · " : ""}${p ? (c.cont ? "↳ " : "") + esc(p.title) : "Testbild – nichts geplant"}</span>
-        ${p && !c.cont ? (() => { const it = rd.find(x => x.i === i); const w = it ? slotWarnings(P, d, rd, it) : []; return it ? `${w.map(x => `<span class="s warnline">⚠ ${esc(x)}</span>`).join("")}<span class="s"><b class="tt">${tRange(it)}</b> · ${it.end - it.start} Min.${it.late > 0 ? ` · <span class="down">+${it.late} Min. verspätet</span>` : ""}${it.cut ? ` · <span class="muted">${it.cut} Werbemin. gekürzt</span>` : ""}${it.end - it.start < netDur(p) ? ' · <span class="down">vorzeitig beendet (Live-Sport)</span>' : ""}${adMinH(P, i, wd) && grossDur(P, p, i, wd) > netDur(p) ? ` · netto ${netDur(p)}` : ""}</span><span class="s muted">${zLine(P, p)}</span>` : ""; })() : ""}
-        <span class="s">${p && badSet.has(i) && !c.cont ? "Lizenz bis dahin ausgeschöpft – bitte ersetzen" : youth ? `Jugendschutz: FSK ${p.fsk} zu früh!` : p ? (p.kind === "sport" ? esc(p.comp) : esc(p.genre) + ` · <span class="stars">${stars(fit(p.genre, i))}</span> · Q ${p.q} · Akt. ${Math.round(p.topic * 100)} %`) : "Kaum Zuschauer"}</span></button>
-        ${p && !c.cont ? `<div class="xlist">${rd.filter(x => x.i === i && x.extra).map((x, k) => `<div class="xrow"><span class="tt">${hhmm(x.start)}</span><span class="grow">${esc(x.p.title)} <span class="muted">${x.end - x.start} Min.${x.p.house ? " · Kurzformat" : ""}</span></span>${lock ? "" : `<button class="btn small" data-act="rmExtra" data-k="${d}|${i}|${k}" aria-label="Entfernen">×</button>`}</div>`).join("")}${lock || c.live ? "" : `<button class="btn small" data-act="addExtra" data-k="${d}|${i}">+ Anschlusssendung</button>`}</div>` : ""}</td>
-      <td><button class="cell ${ad && adNeed(ad) > exp ? "bad" : ""}" data-act="pickAd" data-i="${i}" data-k="${d}" ${lock || !p || !allowed || (p && p.genre === "Teleshopping") ? "disabled" : ""}><span class="t">${!allowed ? '<span class="muted">Werbeverbot</span>' : p && p.genre === "Teleshopping" ? '<span class="muted">Dauerwerbung</span>' : ad ? esc(ad.brand) : '<span class="muted">Keine Werbung</span>'}</span><span class="s">${!allowed ? "ÖRR" : ad ? "mind. " + mio(ad.min) + " Mio. · " + eur(ad.pay) : ""}</span></button></td>
-      <td class="r muted">${mio(exp)}</td><td class="r">${r ? resDot(r) : P.last[i] && !isToday ? `<span class="muted">${mio(P.last[i])}</span>` : '<span class="muted">–</span>'}</td></tr>`;
-  });
-  return h + `</tbody></table></div></section>` + promoPanel(P);
+  if (gaps.length) h += `<p class="lead mb"><span class="muted">Lücken: ${gaps.map(x => `${hhmm(x.start)}–${hhmm(x.end % 1440)} (${x.end - x.start} Min.)`).join(" · ")}</span> ${lock ? "" : `<button class="btn small hot" data-act="fillDay" data-k="${d}">Lücken füllen</button>`}</p>`;
+  return h + seqTimeline(P, d, lock) + promoPanel(P);
 }
 function archiv(P) {
   return title("Archiv", `<span class="muted">${P.progs.length} Programme</span>`) + `<p class="lead mb">Lizenzen lassen sich für 40 % des Einkaufspreises weiterverkaufen – nicht, solange sie im Kalender stehen. Eigene Shows und Serien kosten pro Folge: Budget kürzen spart Geld und kostet Qualität, eine neue Besetzung ändert Qualität und Kosten, Absetzen räumt die Sendeplätze.</p>
@@ -4118,6 +4135,7 @@ function act(b) {
     case "next": closeModal(); if (G.over) showEnd(); else { planDay = null; nextDay(); } return;
     case "planDay": planDay = wd; break;
     case "fillDay": { const dd = +b.dataset.k; if (!(dd === G.day && planLocked())) { const n = fillGaps(P, calDay(P, dd), weekday(dd)); if (dd === G.day) buildToday(P); toast(n ? `${n} Sendungen in Lücken eingesetzt.` : "Keine Lücken."); } break; }
+    case "sqIns": case "sqRep": case "sqPick": case "sqDel": case "sqMove": sqAction(P, k, b, id); return;
     case "addExtra": { const [dd, ii] = b.dataset.k.split("|").map(Number); if (dd === G.day && planLocked()) return; openExtraPicker(P, dd, ii); return; }
     case "pickExtra": { const [dd, ii] = b.dataset.k.split("|").map(Number); editPlan(dd, sc => { sc[ii].extra = (sc[ii].extra || []).concat(id); }); closeModal(); break; }
     case "rmExtra": { const [dd, ii, kk] = b.dataset.k.split("|").map(Number); if (dd === G.day && planLocked()) return; editPlan(dd, sc => { sc[ii].extra = (sc[ii].extra || []).filter((_, n) => n !== kk); }); break; }
@@ -4127,7 +4145,7 @@ function act(b) {
       for (let d = G.day; d < G.day + HORIZON; d++) if (d !== wd && weekday(d) === weekday(wd) && !(d === G.day && planLocked())) P.cal[d] = src.map(c => ({ ...c, live: false }));
       buildToday(P); toast(`${dateShort(wd)} wurde auf alle ${WDL[weekday(wd)]}e im Planungszeitraum kopiert.`); break;
     }
-    case "buy": { const p = G.market.find(x => x.id === id), yrs = b.dataset.k === "2" ? 2 : 1; if (p && licPrice(p, yrs) <= P.money && !planLocked()) { book(P, "Programmkäufe", -licPrice(p, yrs)); applyLicense(p, yrs); P.progs.push(p); G.market = G.market.filter(x => x !== p); toast(`„${p.title}“ für ${yrs === 2 ? "2 Jahre" : "1 Jahr"} lizenziert (bis ${dateShort(p.until)}).`); } break; }
+    case "buy": { const p = G.market.find(x => x.id === id), yrs = b.dataset.k === "2" ? 2 : 1; if (p && licPrice(p, yrs) <= P.money && !planLocked()) { book(P, "Programmkäufe", -licPrice(p, yrs)); applyLicense(p, yrs); freshTopic(p); P.progs.push(p); G.market = G.market.filter(x => x !== p); toast(`„${p.title}“ für ${yrs === 2 ? "2 Jahre" : "1 Jahr"} lizenziert (bis ${dateShort(p.until)}).`); } break; }
     case "ad": { const a = G.adOffers.find(x => x.id === id); if (a && P.contracts.length < MAX_ADS && !planLocked()) { P.contracts.push(a); G.adOffers = G.adOffers.filter(x => x !== a); const nb = G.adAuto !== false ? adAutoBook(P) : 0; toast(`Vertrag mit ${a.brand} geschlossen.${nb ? ` ${nb} Spots eingebucht.` : ""}`); } break; }
     case "news": { const n = G.newsOffers.find(x => x.id === id); if (n && P.news.length < 3 && !planLocked()) { book(P, "Programmkäufe", -n.price); P.news.push(n); G.newsOffers = G.newsOffers.filter(x => x !== n); toast("Meldung gekauft."); } break; }
     case "sell": { const p = P.progs.find(x => x.id === id); if (p && !planLocked() && !p.home) { book(P, "Programmkäufe", r1000(p.price * 0.4)); P.progs = P.progs.filter(x => x !== p); if (G.stream) G.stream.catalog = G.stream.catalog.filter(c => c.id !== id); toast(`„${p.title}“ verkauft.`); } break; }
@@ -7682,9 +7700,9 @@ function titleDB() {
     const i = w.imdb && im.get(w.imdb); if (i) used.add(i.i);
     const g = i ? gde(i.g) : [], k = i ? i.k : kindWd(w.ty);
     all.push({ key: w.q, orig0: 1, n: (i && i.de) || w.n || (i && i.n), k: k === "doku" ? "show" : k, doku: k === "doku" || g.includes("Doku") || /dokument|reportage/i.test((w.ty || []).concat(w.g || []).join(" ")),
-      y: w.y0 || (i && i.y), y1: w.y1 || (i && i.y1), s: w.s || (i && i.se), e: w.e || (i && i.ep), r: i && i.r, v: i ? i.v : 0, rt: i && i.rt, g: g.length ? g : (w.g || []).slice(0, 2), net: w.net || [], imdb: w.imdb, orig: w.o || [], de: true });
+      y: w.y0 || (i && i.y), y1: w.y1 || (i && i.y1), s: w.s || (i && i.se), e: w.e || (i && i.ep), r: i && i.r, v: i ? i.v : 0, rt: i && i.rt, g: g.length ? g : (w.g || []).slice(0, 2), net: w.net || [], imdb: w.imdb, orig: w.o || [], de: true, alt: [w.n, i && i.n, i && i.de].filter(Boolean) });
   }
-  for (const i of M.imdb || []) if (!used.has(i.i)) { const g = gde(i.g); all.push({ key: i.i, n: i.de || i.n, k: i.k, doku: g.includes("Doku"), y: i.y, y1: i.y1, s: i.se, e: i.ep, r: i.r, v: i.v, rt: i.rt, g, net: [], imdb: i.i, de: !!i.de }); }
+  for (const i of M.imdb || []) if (!used.has(i.i)) { const g = gde(i.g); all.push({ key: i.i, n: i.de || i.n, k: i.k, doku: g.includes("Doku"), y: i.y, y1: i.y1, s: i.se, e: i.ep, r: i.r, v: i.v, rt: i.rt, g, net: [], imdb: i.i, de: !!i.de, alt: [i.n, i.de].filter(Boolean) }); }
   const byKey = new Map(all.map(t => [t.key, t])), byNet = new Map();
   const DACH = /deutschland|österreich|schweiz|germany|austria|switzerland|bundesrepublik/i;
   for (const t of all) { const dach = (t.orig || []).length ? t.orig.some(o => DACH.test(o)) : true;
@@ -8202,6 +8220,145 @@ EVENTS.push({ id: "fmtCancel", type: "Markt", when: () => false, make: () => ({}
 } });
 
 // =====================================================================
+// Sendeablauf: der Tag als lückenlose Folge von Sendungen mit echter Länge.
+// Jede Sendung beginnt, wenn die vorige endet – verschieben heißt umsortieren.
+// Gespeichert wird weiter im Stundenraster (Startzeit t, Folgesendungen extra/xt).
+// =====================================================================
+const seqOf = (P, d) => rundown(P, schedFor(P, d), weekday(d)).filter(x => !x.gap && !x.c.live);
+// Live-Blöcke des Tages in Minuten [von, bis)
+function liveBlocks(P, d) {
+  const out = [];
+  for (const h of [...liveHours(P, d)].sort((a, b) => a - b)) { const l = out[out.length - 1]; if (l && l[1] === h * 60) l[1] += 60; else out.push([h * 60, h * 60 + 60]); }
+  return out;
+}
+// Folge von Programmen in den Kalendertag schreiben; liefert die Titel, die nicht mehr in den Tag passen
+function writeSeq(P, d, list, start = 0) {
+  const wd = weekday(d), sc = calDay(P, d), blocks = liveBlocks(P, d), dropped = [];
+  sc.forEach(c => { c.p = null; c.cont = false; delete c.t; delete c.extra; delete c.xt; });
+  let t = start, host = -1;
+  const spans = [];
+  for (const p of list) {
+    // Länge wie im Ablauf: Werbelast der Stunde, in der die Sendung (bzw. ihr Sendeplatz) liegt
+    const hourAt = m => { const h = Math.floor(m / 60); return h < 24 && !sc[h].p ? h : host < 0 ? h % 24 : host; };
+    let dur = grossDur(P, p, hourAt(t), wd);
+    for (const [a, b] of blocks) if (t < b && t + dur > a) { t = b; dur = grossDur(P, p, hourAt(t), wd); }
+    if (t >= 1440) { dropped.push(p); continue; }
+    const h = Math.floor(t / 60);
+    if (!sc[h].p) { sc[h].p = p.id; sc[h].t = t; host = h; }
+    else { const c = sc[host]; c.extra = (c.extra || []).concat(p.id); c.xt = (c.xt || []).concat(t); }
+    for (let k = h + 1; k < 24 && (k + 1) * 60 <= t + dur; k++) { sc[k].p = p.id; sc[k].cont = true; }
+    spans.push([t, t + dur, p.id]);
+    t += dur;
+  }
+  // angebrochene Stunden ohne eigenen Sendebeginn (vor Live-Blöcken) gehören zur laufenden Sendung
+  for (let k = 0; k < 24; k++) if (!sc[k].p) { const s = spans.find(([a, b]) => a < k * 60 && b > k * 60); if (s) { sc[k].p = s[2]; sc[k].cont = true; } }
+  return dropped;
+}
+function seqEdit(P, d, fn) {
+  if (d === G.day && planLocked()) { toast("Heute läuft bereits die Sendung – der Tag ist gesperrt."); return; }
+  const cur = seqOf(P, d), list = cur.map(x => x.p), start = cur.length ? Math.min(cur[0].start, cur[0].planned ?? cur[0].start) : 0;
+  if (fn(list) === false) return;
+  let dropped;
+  editPlan(d, () => {
+    // passt der Tag nicht mehr, fallen zuerst Kurzformate heraus, dann erst echte Sendungen
+    for (let g = 0; g < 30; g++) {
+      dropped = writeSeq(P, d, list, start);
+      if (!dropped.some(p => !p.house)) break;
+      const k = list.map(p => p.house).lastIndexOf(true); if (k < 0) break;
+      list.splice(k, 1);
+    }
+  });
+  if (dropped.length) toast(`Passt nicht mehr in den Tag und fällt heraus: ${dropped.map(p => "„" + p.title + "“").join(", ")}.`);
+  render();
+}
+// Status einer Ausstrahlung: Premiere, neue Folge oder Wiederholung
+// earlier: Startzeit einer früheren Ausstrahlung desselben Titels am selben Tag
+function airChip(p, earlier) {
+  if (p.house || p.kind === "sport") return "";
+  if (earlier != null) return `<span class="chip warn">Wiederholung von ${hhmm(earlier)}</span>`;
+  if (p.kind === "serie") return (p.ep || 0) < (p.eps || 0) ? `<span class="chip good">Neue Folge ${(p.ep || 0) + 1}/${p.eps}</span>` : `<span class="chip">Wiederholung</span>`;
+  if (p.kind === "film") return (p.runs || 0) === 0 ? '<span class="chip good">Free-TV-Premiere</span>' : `<span class="chip">Wiederholung · ${p.runs + 1}. Lauf</span>`;
+  return !p.aired ? '<span class="chip good">Erstausstrahlung</span>' : '<span class="chip good">Neue Ausgabe</span>';
+}
+function seqTimeline(P, d, lock) {
+  const wd = weekday(d), sc = schedFor(P, d), isToday = d === G.day;
+  const rd0 = rundown(P, sc, wd);
+  let rd = rd0;
+  if (!isToday) { // Live-Events künftiger Tage stehen fest im Ablauf
+    const lives = eventsOn(d).filter(e => e.o.owner === P.id).map(({ d: def, m }) => ({ live: true, start: m ? m.t : def.h * 60, end: m ? m.t + m.dur : (def.h + def.len) * 60, title: `${def.sport}: ${m ? m.fix : def.name}` }));
+    if (lives.length) {
+      const out = [];
+      for (const x of rd) {
+        if (!x.gap) { out.push(x); continue; }
+        let a = x.start;
+        for (const l of lives.filter(l => l.end > x.start && l.start < x.end).sort((p, q) => p.start - q.start)) { if (l.start > a) out.push({ gap: true, start: a, end: l.start }); a = Math.max(a, l.end); }
+        if (a < x.end) out.push({ gap: true, start: a, end: x.end });
+      }
+      rd = out.concat(lives).sort((p, q) => p.start - q.start);
+    }
+  }
+  let pos = 0, lastPart = "", h = "";
+  const ins = k => lock ? "" : `<button class="sq-ins" data-act="sqIns" data-k="${d}|${k}">+ hier einfügen</button>`;
+  rd.forEach((x, n) => {
+    const part = daypart(Math.floor(x.start / 60) % 24);
+    if (part !== lastPart) { h += `<div class="sq-part">${part}</div>`; lastPart = part; }
+    const len = Math.min(x.end, 1440) - x.start, ht = Math.max(54, Math.round(len * 1.4));
+    if (x.gap) {
+      if (len < 5) return;
+      h += `<div class="sq gap" style="min-height:${Math.max(40, Math.round(len * 0.6))}px"><div class="sq-time">${hhmm(x.start)}<small>${hhmm(x.end % 1440)}</small></div><div class="sq-main"><b>Lücke · ${len} Min.</b><span class="muted">${x.end >= 1440 ? "Sendeschluss – hier fehlt noch Programm" : gapName(len)}</span></div><div class="sq-act">${ins(pos)}</div></div>`;
+      return;
+    }
+    if (x.live || x.c.live) {
+      h += `<div class="sq live" style="min-height:${ht}px"><div class="sq-time">${hhmm(x.start)}<small>${hhmm(x.end % 1440)}</small></div><div class="sq-main"><b>● LIVE · ${esc(x.title || x.p.title)}</b><span class="muted">${len} Min. · fest eingeplant</span></div></div>`;
+      return;
+    }
+    const p = x.p, k = pos++, prior = rd0.find(y => !y.gap && y.p.id === p.id && y.start < x.start && !p.house), youth = !youthOk(p, Math.floor(x.start / 60) % 24), w = slotWarnings(P, d, rd0, x).filter(s => !/verspätet|überzieht|Anschluss/i.test(s));
+    const hours = x.extra ? [] : sc.map((c, i) => i).filter(i => sc[i].p === p.id && (i === x.i || (sc[i].cont && i * 60 < x.end && i * 60 >= x.start)));
+    const ads = hours.filter(i => adAllowed(P, i, wd) && p.genre !== "Teleshopping").map(i => { const ad = sc[i].ad && adOf(P, sc[i].ad); return `<button class="btn small ${ad && adNeed(ad) > expected(P, i) ? "red" : ""}" data-act="pickAd" data-i="${i}" data-k="${d}" ${lock ? "disabled" : ""}>Werbung ${hh(i)}: ${ad ? esc(ad.brand) : "–"}</button>`; }).join("");
+    const r = isToday && !x.extra ? G.today[x.i] : null;
+    h += ins(k) + `<div class="sq ${youth ? "bad" : ""}" style="min-height:${ht}px" ${lock ? "" : `draggable="true" data-sqdrag="${d}|${k}"`} data-sqdrop="${d}|${k}">
+      <div class="sq-time">${hhmm(x.start)}<small>${hhmm(x.end % 1440)}</small></div>
+      <div class="sq-main"><b>${p.kind !== "sport" ? `<span class="tl" data-title="${P.id}|${p.id}">${esc(p.title)}</span>` : esc(p.title)}</b>
+        <span class="sq-meta"><span class="chip">${len} Min.</span>${airChip(p, prior ? prior.start : null)}${p.house ? '<span class="chip">Kurzformat</span>' : ""}<span>${p.kind === "sport" ? esc(p.comp || "") : `${esc(p.genre)} · <span class="stars">${stars(fit(p.genre, x.i))}</span> · Q ${p.q} · Akt. ${Math.round((p.topic ?? 1) * 100)} %`}</span>${p.fsk >= 12 ? `<span class="chip fsk">FSK ${p.fsk}</span>` : ""}</span>
+        ${youth ? `<span class="warnline">⚠ Jugendschutz: FSK ${p.fsk} zu früh</span>` : ""}${w.map(s => `<span class="warnline">⚠ ${esc(s)}</span>`).join("")}
+        ${!x.extra ? `<span class="muted">Erwartet ${mio(expected(P, x.i))} Mio.${r ? " · Ergebnis " + resDot(r) : ""}</span>` : ""}
+        ${ads ? `<span class="sq-ads">${ads}</span>` : ""}</div>
+      ${lock ? "" : `<div class="sq-act"><button class="btn small" data-act="sqMove" data-k="${d}|${k}|-1" title="Früher" aria-label="Früher">↑</button><button class="btn small" data-act="sqMove" data-k="${d}|${k}|1" title="Später" aria-label="Später">↓</button><button class="btn small" data-act="sqRep" data-k="${d}|${k}">Ersetzen</button><button class="btn small" data-act="sqDel" data-k="${d}|${k}" aria-label="Entfernen">×</button></div>`}</div>`;
+  });
+  return `<section class="panel"><div class="ph"><h2>Sendeablauf ${dateLabel(d)}</h2><span class="aside">Jede Sendung beginnt, wenn die vorige endet. Ziehen oder ↑ ↓ zum Umsortieren, „+ hier einfügen“ für eine neue Sendung.</span></div><div class="seq">${h}</div></section>`;
+}
+function openSeqPicker(P, d, pos, replace) {
+  const wd = weekday(d), seq = seqOf(P, d), at = seq[pos] ? seq[pos].start : seq.length ? seq[seq.length - 1].end : 0, hr = Math.floor(at / 60) % 24;
+  ensureHouse(P);
+  const list = P.progs.filter(p => p.kind !== "sport" && !p.exclusive && !(p.kind === "film" && p.runs >= p.maxRuns) && !(p.kind === "serie" && !p.own && p.ep >= (p.maxEp || p.eps * 2)) && !(p.until && d > p.until))
+    .sort((a, b) => b.q * fit(b.genre, hr) * (0.35 + 0.65 * (b.topic ?? 1)) - a.q * fit(a.genre, hr) * (0.35 + 0.65 * (a.topic ?? 1))).slice(0, 80);
+  openModal(`<header><h2>${dateShort(d)} · ${replace ? `„${esc(seq[pos].p.title)}“ ersetzen` : "Sendung einfügen"} ab ${hhmm(at)}</h2><button class="btn" data-act="close">Schließen</button></header><div class="dbody">
+    <p class="lead">Die Sendung läuft in voller Länge; alles danach rückt entsprechend nach hinten${replace ? " oder vor" : ""}.</p>
+    <div class="picklist">${list.map(p => { const g = grossDur(P, p, hr, wd); return `<button class="pick" data-act="sqPick" data-k="${d}|${pos}|${replace ? 1 : 0}" data-id="${p.id}" ${youthOk(p, hr) ? "" : "disabled"}><b>${esc(p.title)}</b><span class="meta"><span class="chip">${g} Min.</span><span>${hhmm(at)}–${hhmm((at + g) % 1440)}</span>${airChip(p)}<span>${esc(p.genre)}</span><span class="stars">${stars(fit(p.genre, hr))}</span><span>Q ${p.q}</span>${p.house ? "<span>Kurzformat</span>" : ""}${youthOk(p, hr) ? "" : `<span class="down">FSK ${p.fsk} zu früh</span>`}</span></button>`; }).join("")}</div></div>`);
+}
+function sqAction(P, k, b, id) {
+  const [d, pos, v] = b.dataset.k.split("|").map(Number);
+  switch (k) {
+    case "sqIns": if (!(d === G.day && planLocked())) openSeqPicker(P, d, pos, false); return true;
+    case "sqRep": if (!(d === G.day && planLocked())) openSeqPicker(P, d, pos, true); return true;
+    case "sqPick": { const p = progOf(P, id); closeModal(); if (p) seqEdit(P, d, l => { l.splice(pos, v ? 1 : 0, p); }); return true; }
+    case "sqDel": seqEdit(P, d, l => { l.splice(pos, 1); }); return true;
+    case "sqMove": seqEdit(P, d, l => { const to = pos + v; if (to < 0 || to >= l.length) return false; [l[pos], l[to]] = [l[to], l[pos]]; }); return true;
+  }
+  return false;
+}
+// Ziehen im Sendeablauf: auf eine andere Sendung fallen lassen = davor einsortieren
+document.addEventListener("dragstart", e => { const t = e.target.closest && e.target.closest("[data-sqdrag]"); if (t) { e.dataTransfer.setData("text/plain", "sq:" + t.dataset.sqdrag); e.dataTransfer.effectAllowed = "move"; } });
+document.addEventListener("dragover", e => { const t = e.target.closest && e.target.closest("[data-sqdrop]"); if (t) { e.preventDefault(); t.classList.add("over"); } });
+document.addEventListener("dragleave", e => { const t = e.target.closest && e.target.closest("[data-sqdrop]"); if (t) t.classList.remove("over"); });
+document.addEventListener("drop", e => {
+  const t = e.target.closest && e.target.closest("[data-sqdrop]"); if (!t || !G) return;
+  const v = e.dataTransfer.getData("text/plain"); if (!v.startsWith("sq:")) return; e.preventDefault();
+  const [d, from] = v.slice(3).split("|").map(Number), [d2, to] = t.dataset.sqdrop.split("|").map(Number);
+  if (d !== d2 || from === to) return;
+  seqEdit(me(), d, l => { const [p] = l.splice(from, 1); l.splice(to > from ? to - 1 : to, 0, p); });
+});
+// =====================================================================
 // Formatprofil: Quotenverlauf, Publikum, Analyse und Maßnahmen je Sendung
 // =====================================================================
 // Affinität zur Zielgruppe 14–49 (Spielwerte): Sender-Image × Genre
@@ -8213,6 +8370,7 @@ function ageMix(st, p) { return zMix(st, p).map(x => x * 100); }
 // Eintrag je Ausstrahlung: [Tag, Stunde, Mio., MA %, MA 14–49 %, Platz, Stunden, (eigener Sender:) Gegner-Sender, Gegner-Titel, Folge]
 // Eine Ausstrahlung zählen: Folgen, Läufe, Abnutzung
 function airedOnce(st, p, i) {
+  (G.airLog = G.airLog || {})[normT(p.title)] = G.day;
   p.aired = (p.aired || 0) + 1; szAired(st, p); if (!p.wdh) guestAired(st, p);
   if (p.kind === "serie") { p.ep++; p.topic = Math.max(0.15, p.topic - (p.ep % p.eps === 0 ? 0.4 : 0.04)); }
   else if (p.kind === "show") p.topic = Math.max(0.4, p.topic * (p.wear || (p.genre === "Nachrichten" ? 0.98 : 0.92)));
