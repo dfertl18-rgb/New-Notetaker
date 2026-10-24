@@ -2376,6 +2376,11 @@ const normName = n => String(n || "").toLowerCase().replace(/ä/g, "ae").replace
 // Sprachen aus der Herkunft – keine erfundenen Zusatzsprachen bei echten Personen
 const ORIGIN_LANG = { DE: "Deutsch", AT: "Deutsch", CH: "Deutsch", LI: "Deutsch", US: "Englisch", GB: "Englisch", CA: "Englisch", AU: "Englisch", NZ: "Englisch", IE: "Englisch", FR: "Französisch", ES: "Spanisch", MX: "Spanisch", CL: "Spanisch", AR: "Spanisch", IT: "Italienisch", TR: "Türkisch", PL: "Polnisch", NL: "Niederländisch", DK: "Dänisch", SE: "Schwedisch", NO: "Norwegisch", KR: "Koreanisch", JP: "Japanisch", BR: "Portugiesisch", PT: "Portugiesisch", RU: "Russisch" };
 const speaksGerman = p => /deutsch/i.test(p.langs || "") || ["DE", "AT", "CH", "LI"].includes(p.origin);
+// Exklusivverträge: nur Gesichter aus dem deutschsprachigen Markt; Sender binden vor allem Moderation und Nachrichten exklusiv –
+// Schauspieler haben Produktions- bzw. Serienverträge, internationale Stars werden nur projektweise gebucht.
+const exclOk = q => ["DE", "AT", "CH", "LI"].includes(q.origin) || (!q.origin && speaksGerman(q));
+const EXCL_ROLES = ["Moderation", "Nachrichten", "Kommentar", "Journalismus"];
+const aiExcl = q => EXCL_ROLES.includes(q.role) && exclOk(q);
 // =====================================================================
 // Personen-Datenbank 2.0: Code für Fotos, Bekanntheit, Beliebtheit, Herkunft, Vita
 // Alle generierten Personen sind frei erfunden. Ein Geschlecht wird bewusst nicht gespeichert.
@@ -2439,7 +2444,8 @@ function assignCasts() {
       const pool = free(role).filter(q => !q.custom).sort((a, b) => (b.fame + b.talent + fit(b)) - (a.fame + a.talent + fit(a)));
       const p = pool[Math.min(pool.length - 1, Math.floor(Math.pow(Math.random(), prog.filler ? 0.5 : 2.5) * Math.min(pool.length, 400)))];
       if (!p) continue;
-      p.holder = st.id; p.show = prog.id; p.until = G.day + ri(90, 900);
+      if (aiExcl(p) && !prog.cast.length) p.holder = st.id; else p.prodAt = st.id; // nur das Hauptgesicht exklusiv
+      p.show = prog.id; p.until = G.day + ri(90, 900);
       p.gage = Math.max(p.gage, r1000(baseGage(p.talent, p.buzz) * (prog.q / 70)));
       prog.cast.push({ id: p.id, role: label });
     }
@@ -2541,7 +2547,7 @@ function linkImported() {
     if (!p.custom || !p.known || p.holder) continue;
     const keys = knownKeys(p.known), at = String(p.knownAt || "").toLowerCase();
     const s = STREAMERS.find(x => at.includes(x.name.split(" ")[0].toLowerCase()) && x.hits.some(h => keys.has(normT(h))));
-    if (s) { p.holder = s.id; p.until = G.day + ri(180, 900); }
+    if (s) { p.prodAt = s.id; p.until = G.day + ri(180, 900); } // Streaming-Stars: Produktionsvertrag, keine Exklusivbindung
   }
   for (const p of G.people.filter(q => q.custom && q.known).sort((a, b) => b.fame - a.fame)) {
     if (p.show || (p.holder && SIDX[p.holder] === undefined)) continue;
@@ -2553,7 +2559,8 @@ function linkImported() {
       prog.cast = prog.cast || [];
       if (prog.cast.filter(c => person(c.id) && person(c.id).custom).length >= castNeed(prog).length) continue;
       if (!prog.cast.some(c => c.id === p.id)) prog.cast.unshift({ id: p.id, role: (castNeed(prog).find(([r]) => r === p.role) || [null, p.role === "Schauspiel" ? "Hauptrolle" : "Moderation"])[1] });
-      p.holder = st.id; p.show = prog.id; p.until = Math.max(p.until || 0, G.day + ri(180, 900));
+      if (aiExcl(p) && !prog.cast.some(c => c.id !== p.id && person(c.id) && person(c.id).holder === st.id)) p.holder = st.id; else p.prodAt = st.id;
+      p.show = prog.id; p.until = Math.max(p.until || 0, G.day + ri(180, 900));
       break;
     }
   }
@@ -2571,9 +2578,9 @@ function initPeople() {
   G.people = castingEngine(4000);
   G.people.forEach(ensurePerson);
   // Exklusivitäts-Logik: 30 % der Top-Stars (nach Marktwert) sind bei der Konkurrenz unter Vertrag
-  const top = G.people.filter(p => speaksGerman(p)).sort((a, b) => b.gage - a.gage).slice(0, 300); // deutsche Sender binden nur deutschsprachige Gesichter exklusiv
+  const top = G.people.filter(p => aiExcl(p) && !p.holder).sort((a, b) => b.gage - a.gage).slice(0, 120); // nur Moderation & Nachrichten aus dem DACH-Markt
   const rivals = ["rtl", "pro7", "sat1", "ard", "zdf"].filter(id => id !== me().id);
-  for (const p of shuffle(top).slice(0, 90)) { p.holder = pick(rivals); p.until = ri(30, 420); }
+  for (const p of shuffle(top).slice(0, 25)) { p.holder = pick(rivals); p.until = ri(30, 420); }
   G.prods = []; G.newsroom = { line: 2, style: 1, budget: 1, anchor: null };
   giveEnsemble(me());
 }
@@ -2583,6 +2590,7 @@ function pState(p) {
   if (p.holder && p.holder !== me().id) return { k: "rival", label: `Exklusiv bei ${holderName(p.holder)}`, color: "#ef4444" };
   if (p.busy > G.day) return { k: "busy", label: `Im Dreh bis ${dateShort(p.busy)}`, color: "#eab308" };
   if (p.holder === me().id) return { k: "mine", label: `Exklusiv bei Ihnen bis ${dateShort(p.until)}`, color: "#e3a019" };
+  if (p.prodAt && p.show) return { k: "free", label: `Produktionsvertrag bei ${holderName(p.prodAt)} · nicht exklusiv`, color: "#22c55e" };
   return { k: "free", label: "Frei", color: "#22c55e" };
 }
 const pStatus = p => pState(p).label;
@@ -2703,8 +2711,8 @@ function peopleDay() {
     else if (!p.holder && p.busy <= G.day && Math.random() < 0.01) p.busy = G.day + ri(3, 12); // freie Stars drehen für andere
   }
   // Die Konkurrenz verpflichtet täglich einige freie Top-Leute
-  const free = G.people.filter(p => !p.holder && p.gage > 300000 && speaksGerman(p));
-  for (const p of shuffle(free).slice(0, 3)) {
+  const free = G.people.filter(p => !p.holder && p.gage > 300000 && aiExcl(p));
+  for (const p of Math.random() < 0.2 ? shuffle(free).slice(0, 1) : []) { // Exklusivverträge sind selten
     p.holder = pick(G.stations.filter(s => !isMe(s))).id; p.until = G.day + ri(30, 200);
     if (p.gage > 600000) logMsg("Branchendienst", "Konkurrenz", `${holderName(p.holder)} nimmt ${p.name} (${SPEC_NAME[p.role]}) exklusiv unter Vertrag.`);
   }
@@ -2769,7 +2777,9 @@ function renderNego() {
   }
   const dem = pClause(p), wish = negoWish(n), [mood, moodC] = moodText(pPat(p));
   const unit = n.type === "excl" ? " / Woche" : "";
-  const types = n.ctx === "slot" ? [["proj", "Projektgage", "Einmalig für diese Produktion"], ["excl", "Exklusivvertrag", "Wochengage, Projekte ohne Gage"]] : [["excl", "Exklusivvertrag", "Wochengage, Projekte ohne Gage"]];
+  const types = (n.ctx === "slot" ? [["proj", "Projektgage", "Einmalig für diese Produktion"], ["excl", "Exklusivvertrag", "Wochengage, Projekte ohne Gage"]] : [["excl", "Exklusivvertrag", "Wochengage, Projekte ohne Gage"]]).filter(([v]) => v !== "excl" || exclOk(p));
+  if (n.type === "excl" && !exclOk(p)) n.type = "proj";
+  if (!types.length) { openModal(`<header><h2>Vertragsverhandlung</h2><button class="btn" data-act="negoCancel">Schließen</button></header><div class="dbody"><p class="lead">${esc(p.name)} steht nicht für einen Exklusivvertrag mit einem deutschen Sender zur Verfügung. Internationale Stars buchen Sie projektweise – im Studio bei einer Eigenproduktion.</p></div>`); return; }
   openModal(`<header><h2>Vertragsverhandlung</h2><button class="btn" data-act="negoCancel">Abbrechen</button></header><div class="dbody nego">
     <div class="nego-person">${avatar(p, 56)}<div class="grow"><b>${esc(p.name)}</b><span class="muted">${SPEC_NAME[p.role]} · ${esc(p.trait)} · Talent ${p.talent} · Charisma ${p.buzz}</span></div>
       <span class="chip ${moodC}">Agentur: ${mood}</span>${p.talk && p.talk.until >= G.day ? `<span class="chip">Vorgespräch: Interesse ${p.talk.int}</span>` : ""}${p.holder ? `<span class="chip ${wantsMove(p)[1]}">${wantsMove(p)[0]}</span>` : ""}</div>
@@ -2811,7 +2821,7 @@ function negoSubmit() {
     p.ban = G.day + BLOCK_DAYS;
     const rivals = ["rtl", "pro7"].filter(id => id !== P.id);
     let extra = "";
-    if (Math.random() < 0.6) { p.holder = pick(rivals); p.until = G.day + ri(60, 200); extra = ` Kurz darauf meldet ${holderName(p.holder)} die Verpflichtung.`; }
+    if (Math.random() < 0.6 && aiExcl(p)) { p.holder = pick(rivals); p.until = G.day + ri(60, 200); extra = ` Kurz darauf meldet ${holderName(p.holder)} die Verpflichtung.`; }
     logMsg("Branchendienst", "Konkurrenz", `Verhandlungen geplatzt: ${p.name} bricht die Gespräche mit ${P.name} ab und ist für vier Wochen nicht zu sprechen.${extra}`, true);
     n.msg = [`Die Agentur legt auf. ${p.name} ist bis ${dateShort(p.ban)} für Sie gesperrt.${extra}`, "bad"]; n.done = true;
   } else n.msg = ratio >= 0.8 ? ["„Da müssen Sie schon noch etwas drauflegen.“ – die Agentur ist verstimmt.", "warn"] : ["„Ist das ein Witz?“ – die Agentur reagiert empört.", "bad"];
@@ -5944,7 +5954,7 @@ function rumorDay() {
     postArticle(src, "Gerücht", `Neue Staffel von {t:${st.id}|${p.id}} in Planung?`, [`Laut Produktionskreisen laufen bei {s:${st.id}} die Vorbereitungen für neue Folgen von {t:${st.id}|${p.id}}.`, `Drehbuchautoren sollen bereits unter Vertrag sein, ein Drehstart wäre in wenigen Wochen möglich.`]);
     G.log[0].rumor = "open"; r.aid = G.log[0].aid;
   } else if (k === "casting") {
-    const free = G.people.filter(q => !q.holder && q.fame >= 50); if (!free.length) return;
+    const free = G.people.filter(q => !q.holder && q.fame >= 50 && aiExcl(q)); if (!free.length) return;
     const q = pick(free), st = pick(others);
     const r = { id: uid(), kind: k, cat: "Gerüchte", truth: Math.random() < 0.5, due: G.day + ri(5, 10), status: "open", pid: q.id, to: st.id };
     G.rumors.push(r);
@@ -8981,6 +8991,7 @@ function orderEps(P, p, n) {
   logMsg("Produktion", "Produktion", `„${p.title}“: ${n} neue Folgen bestellt (${meur(c)}), fertig am ${dateShort(p.order.ready)}.`, true);
 }
 function castDay(P) {
+  if (!G.exMig) { G.exMig = 1; for (const q of G.people) if (q.holder && q.holder !== P.id && !(G.sv && q.holder === G.sv.id) && !aiExcl(q)) { q.prodAt = q.holder; q.holder = null; } } // ältere Spielstände: zu viele Exklusivverträge auflösen
   for (const q of G.people) if (q.course && G.day >= q.course.until) {
     const k = q.course.k, c = COURSES[k]; q.skills = { ...(q.skills || {}), [k]: Math.min(0.95, fitFor(q, k) + c.plus) }; q.course = null; q.sat = clamp(pSat(q) + 5, 0, 100);
     if (q.holder === P.id) logMsg("Casting", "Personal", `${q.name} hat den ${c.name} abgeschlossen: Eignung jetzt ${Math.round(q.skills[k] * 100)} %.`, true);
