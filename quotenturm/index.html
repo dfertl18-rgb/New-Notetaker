@@ -416,6 +416,9 @@ td.cw { position: relative; } .cell-i { position: absolute; right: 8px; top: 8px
 .tsel { position: absolute; right: 34px; top: 8px; z-index: 1; background: var(--panel); color: var(--muted); border: 1px solid var(--line); border-radius: 4px; font-size: 12px; padding: 1px 2px; max-width: 74px; } .cell .tt { color: var(--text); font-variant-numeric: tabular-nums; }
 .moodbar { position: relative; height: 14px; border-radius: 7px; background: linear-gradient(90deg, hsl(350 70% 55%), hsl(0 0% 55%) 50%, hsl(215 70% 55%)); } .moodbar i { position: absolute; top: -4px; width: 6px; height: 22px; margin-left: -3px; border-radius: 3px; } .mood-now { border: 2px solid #fff; } .mood-you { background: var(--hot); width: 4px !important; outline: 2px dashed var(--hot); outline-offset: 2px; }
 .pick.on { border-color: var(--hot); background: color-mix(in srgb, var(--hot) 12%, var(--panel)); }
+.ctxmenu { position: fixed; z-index: 9999; min-width: 230px; max-width: 320px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 12px 32px rgba(0,0,0,.45); padding: 6px; display: grid; gap: 2px; }
+.ctxmenu button { text-align: left; background: none; border: 0; color: inherit; padding: 7px 10px; border-radius: 6px; cursor: pointer; font: inherit; display: grid; } .ctxmenu button:hover { background: color-mix(in srgb, var(--hot) 18%, transparent); } .ctxmenu small { color: var(--muted); font-size: 11px; }
+.ctx-t { font-weight: 700; padding: 6px 10px; border-bottom: 1px solid var(--line); margin-bottom: 4px; } .ctx-h { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); padding: 6px 10px 2px; }
 .dv-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--line); }
 .dv { display: grid; grid-template-columns: 240px 1fr; gap: 0; } .dv-pool { border-right: 1px solid var(--line); padding: 10px; display: grid; gap: 6px; align-content: start; max-height: 75vh; overflow: auto; } .dv-list { display: grid; gap: 4px; }
 .dv-scroll { max-height: 75vh; overflow: auto; position: relative; } .dv-col { position: relative; margin: 0 8px; user-select: none; } .dv-col:not(.lock) { cursor: copy; }
@@ -1996,7 +1999,7 @@ function streamItems() {
   const S = G.stream; if (!S) return [];
   const P = me();
   const catchup = P.progs.filter(p => p.lastAired >= G.day - 7 && !p.filler && !S.catalog.some(c => c.id === p.id)).map(p => ({ c: { id: p.id, added: p.lastAired, window: "catchup" }, p }));
-  const own = S.stage >= 2 ? S.catalog.map(c => ({ c, p: P.progs.find(p => p.id === c.id) })).filter(x => x.p) : [];
+  const own = S.stage >= 2 ? S.catalog.map(c => ({ c, p: P.progs.find(p => p.id === c.id) })).filter(x => x.p && !(x.c.window === "linear" && !x.p.aired)) : []; // Linear-First wartet auf die TV-Premiere
   return own.concat(catchup);
 }
 const WINDOW_F = { excl: 1.6, stream: 1.25, dd: 1.1, linear: 0.85, catchup: 0.7 };
@@ -2652,6 +2655,7 @@ function prodDay() {
     if (pr.hype) { prog.hypeTv = Math.min(100, pr.hype); prog.hypeStream = Math.min(100, pr.hype); } // Interview-Buzz
     { const mk = castMarket(pr.cast); prog.adF = mk.ad; if (mk.hype > 0) { prog.hypeTv = Math.min(100, Math.max(prog.hypeTv || 0, mk.hype)); prog.hypeStream = Math.min(100, Math.max(prog.hypeStream || 0, mk.hype)); } prog.binge = (pr.cast || []).some(id => (person(id) || {}).trait === "Binge-Garant"); }
     P.progs.push(prog);
+    if (G.stream && G.stream.stage >= 2 && G.stream.autoWin) addToStream(prog.id, G.stream.autoWin);
     pr.prog = prog.id;
     payBonuses(pr);
     if (prog.kind === "film") logMsg("Verleih", "Kino", `„${pr.title}“ kann vor der TV-Premiere ins Kino: Programm → Kino & Rechte → Eigene Kinofilme.`);
@@ -3695,7 +3699,7 @@ function umfang(p) {
 function progTable(list, extra, head = "") {
   if (!list.length) return `<div class="pad"><p class="lead">Keine Programme vorhanden.</p></div>`;
   return `<div class="tbl"><table><thead><tr><th>Titel</th><th>Genre</th><th class="num">Qual.</th><th>Aktualität</th><th>Umfang</th><th>Beste Zeit</th><th class="num">${head}</th></tr></thead><tbody>
-    ${list.map(p => `<tr><td class="title">${titleLink(G.market.includes(p) ? `m|${p.id}` : `${me().id}|${p.id}`, p.title)}${p.year ? ` <span class="muted">(${p.year})</span>` : ""}${imdbChip(p.title)}${G.airLog && G.airLog[normT(p.title)] && G.day - G.airLog[normT(p.title)] < 180 && !(p.aired) ? ` <span class="chip" title="Lief vor ${G.day - G.airLog[normT(p.title)]} Tagen – das Publikum ist noch gesättigt">kürzlich gesendet</span>` : ""}${G.market.includes(p) && isHot(p) ? ' <span class="chip fsk" title="Begehrter Titel – die Konkurrenz greift schnell zu">umkämpft</span>' : ""} ${p.fsk >= 16 ? `<span class="chip fsk">FSK ${p.fsk}</span>` : p.fsk ? `<span class="chip">FSK ${p.fsk}</span>` : ""}${p.own ? ' <span class="chip good">Eigenproduktion</span>' : p.home ? ' <span class="chip real">Eigenformat</span>' : p.kind === "serie" ? ' <span class="chip real">Serienlizenz</span>' : ""}${G.stream && G.stream.catalog.some(c => c.id === p.id) ? ' <span class="chip good">im Stream</span>' : ""}${DESC[p.title] ? `<div class="muted desc">${esc(DESC[p.title])}</div>` : ""}</td><td>${esc(p.genre)}</td><td class="num">${attr(p.q)}</td>
+    ${list.map(p => `<tr ${me().progs.includes(p) ? `data-ctx="p|${p.id}"` : ""}><td class="title">${titleLink(G.market.includes(p) ? `m|${p.id}` : `${me().id}|${p.id}`, p.title)}${p.year ? ` <span class="muted">(${p.year})</span>` : ""}${imdbChip(p.title)}${G.airLog && G.airLog[normT(p.title)] && G.day - G.airLog[normT(p.title)] < 180 && !(p.aired) ? ` <span class="chip" title="Lief vor ${G.day - G.airLog[normT(p.title)]} Tagen – das Publikum ist noch gesättigt">kürzlich gesendet</span>` : ""}${G.market.includes(p) && isHot(p) ? ' <span class="chip fsk" title="Begehrter Titel – die Konkurrenz greift schnell zu">umkämpft</span>' : ""} ${p.fsk >= 16 ? `<span class="chip fsk">FSK ${p.fsk}</span>` : p.fsk ? `<span class="chip">FSK ${p.fsk}</span>` : ""}${p.own ? ' <span class="chip good">Eigenproduktion</span>' : p.home ? ' <span class="chip real">Eigenformat</span>' : p.kind === "serie" ? ' <span class="chip real">Serienlizenz</span>' : ""}${G.stream && G.stream.catalog.some(c => c.id === p.id) ? ' <span class="chip good">im Stream</span>' : ""}${DESC[p.title] ? `<div class="muted desc">${esc(DESC[p.title])}</div>` : ""}</td><td>${esc(p.genre)}</td><td class="num">${attr(p.q)}</td>
       <td><span class="mbar"><i style="width:${Math.round(p.topic * 100)}%"></i></span> <span class="muted">${Math.round(p.topic * 100)} %</span></td>
       <td class="muted">${umfang(p)}</td><td class="muted">${GENRES[p.genre].length > 6 ? "live" : GENRES[p.genre].map(h => h).join("/") + " Uhr"}</td><td class="num">${extra(p)}</td></tr>`).join("")}
   </tbody></table></div>`;
@@ -3810,20 +3814,24 @@ function streamPage0(P) {
 function catalog(P) {
   const S = G.stream;
   if (!S) return streamPage(P);
-  const items = streamItems();
-  const wname = { stream: "Streaming-First", linear: "Linear-First", dd: "Day-and-Date", excl: "Exklusiv", catchup: "Mediathek (7 Tage)" };
+  const items = streamItems(), wname = WNAME;
+  const pending = S.stage >= 2 ? S.catalog.map(c => ({ c, p: P.progs.find(p => p.id === c.id) })).filter(x => x.p && x.c.window === "linear" && !x.p.aired) : [];
   let h = title("Katalog", `<span class="muted">${items.length} Titel auf ${esc(S.name)}</span>`) + (S.stage >= 2 ? homePanel(S) + placeTable(S) : "");
+  h += `<p class="fine mb">Tipp: Rechtsklick auf einen Titel öffnet das Menü – Profil, Verwertungsfenster, Einplanen, feste Termine, Besetzung.</p>`;
   h += `<section class="panel mb"><div class="ph"><h2>Online</h2><span class="aside">Abrufe gestern</span></div>${items.length ? `<div class="tbl"><table><thead><tr><th>Titel</th><th>Genre</th><th class="num">Qual.</th><th>Fenster</th><th class="num">Online seit</th><th class="num">Abrufe</th><th></th></tr></thead><tbody>
-    ${items.sort((a, b) => (S.views[b.c.id] || 0) - (S.views[a.c.id] || 0)).map(({ c, p }) => `<tr><td class="title">${esc(p.title)}</td><td>${esc(p.genre)}</td><td class="num">${attr(p.q)}</td><td><span class="chip ${c.window === "excl" || c.window === "stream" ? "good" : ""}">${wname[c.window]}</span></td><td class="num">${G.day - c.added} T.</td><td class="num">${(S.views[c.id] || 0).toLocaleString("de-DE")}</td><td class="num">${c.window === "catchup" ? "" : `<button class="btn" data-act="unstream" data-id="${p.id}">Entfernen</button>`}</td></tr>`).join("")}
+    ${items.sort((a, b) => (S.views[b.c.id] || 0) - (S.views[a.c.id] || 0)).map(({ c, p }) => `<tr data-ctx="p|${p.id}"><td class="title">${titleLink(`${P.id}|${p.id}`, p.title)}</td><td>${esc(p.genre)}</td><td class="num">${attr(p.q)}</td><td>${c.window === "catchup" || S.stage < 2 ? `<span class="chip">${wname[c.window]}</span>` : `<select data-swin="${p.id}" aria-label="Verwertungsfenster">${winOptions(P, p).concat(winOptions(P, p).includes(c.window) ? [] : [c.window]).map(w => `<option value="${w}" ${w === c.window ? "selected" : ""}>${wname[w]}</option>`).join("")}</select>`}</td><td class="num">${G.day - c.added} T.</td><td class="num">${(S.views[c.id] || 0).toLocaleString("de-DE")}</td><td class="num">${c.window === "catchup" ? "" : `<button class="btn" data-act="unstream" data-id="${p.id}">Entfernen</button>`}</td></tr>`).join("")}
   </tbody></table></div>` : '<div class="pad"><p class="lead">Noch keine Titel. In der Mediathek erscheinen gesendete Programme automatisch für 7 Tage.</p></div>'}</section>`;
   if (S.stage < 2) return h + `<p class="lead">Einen eigenen Katalog mit Exklusivtiteln und Verwertungsfenstern gibt es ab Stufe 2 (Premium-Abo).</p>`;
-  const out = P.progs.filter(p => !S.catalog.some(c => c.id === p.id) && p.kind !== "sport" && !p.filler);
-  h += `<p class="lead mb">Verwertungsfenster: <b>Streaming-First</b> für noch nie gesendete Titel (Abo-Schub, später etwas weniger TV-Quote), <b>Linear-First</b> für bereits gesendete (Nachholen), <b>Day-and-Date</b> für Titel, die heute auch im TV laufen. <b>Exklusiv</b> zieht einen Titel ganz aus dem Fernsehen ab – stärkster Abo-Treiber, aber verärgerte TV-Zuschauer und leere Sendeplätze.</p>
-    <section class="panel"><div class="ph"><h2>Aus dem Archiv hinzufügen</h2></div>${out.length ? `<div class="tbl"><table><thead><tr><th>Titel</th><th>Genre</th><th class="num">Qual.</th><th>Fenster</th><th></th></tr></thead><tbody>
-      ${out.map(p => { const w = P.sched.some(c => c.p === p.id) ? "dd" : p.aired ? "linear" : "stream"; return `<tr><td class="title">${esc(p.title)}</td><td>${esc(p.genre)}</td><td class="num">${attr(p.q)}</td><td><span class="chip">${wname[w]}</span></td><td class="num"><div class="actions" style="justify-content:flex-end"><button class="btn hot" data-act="stream" data-id="${p.id}" data-k="${w}">Hinzufügen</button>${p.home ? "" : `<button class="btn" data-act="stream" data-id="${p.id}" data-k="excl">Exklusiv</button>`}</div></td></tr>`; }).join("")}
+  if (pending.length) h += `<section class="panel mb"><div class="ph"><h2>Linear-First: wartet auf die TV-Premiere</h2><span class="aside">${pending.length} Titel</span></div><div class="tbl"><table><tbody>${pending.map(({ p }) => { const pd = premiereDay(P, p); return `<tr data-ctx="p|${p.id}"><td class="title">${titleLink(`${P.id}|${p.id}`, p.title)}</td><td>${pd != null ? `TV-Premiere ${dateShort(pd)}` : '<span class="down">noch nicht im Sendekalender</span>'}</td><td class="r"><button class="btn small" data-act="swin" data-id="${p.id}" data-k="stream">Doch Streaming-First</button> <button class="btn small" data-act="ctxPlan" data-id="${p.id}">Einplanen</button></td></tr>`; }).join("")}</tbody></table></div></section>`;
+  const out = P.progs.filter(p => !S.catalog.some(c => c.id === p.id) && p.kind !== "sport" && !p.filler && !p.house);
+  h += `<section class="panel mb"><div class="ph"><h2>Neue Eigenproduktionen und Formate</h2></div><div class="pad"><div class="pills">${[["", "nicht automatisch"], ["linear", "automatisch Linear-First"], ["stream", "automatisch Streaming-First"]].map(([k, l]) => `<button data-act="autoWin" data-k="${k}" class="${(S.autoWin || "") === k ? "on" : ""}">${l}</button>`).join("")}</div><p class="fine">Gilt für jede fertige Eigenproduktion; neue Nachrichtenformate kommen immer erst nach der Sendung in den Stream.</p></div></section>`;
+  h += `<p class="lead mb"><b>Streaming-First</b>: noch nie gesendete Titel zuerst im Stream (Abo-Schub, später etwas weniger TV-Quote). <b>Linear-First</b>: erst die TV-Premiere, danach automatisch im Stream. <b>Day-and-Date</b>: am Sendetag parallel. <b>Exklusiv</b>: nur noch im Stream – stärkster Abo-Treiber, aber verärgerte TV-Zuschauer und leere Sendeplätze.</p>
+    <section class="panel"><div class="ph"><h2>Aus dem Archiv hinzufügen</h2></div>${out.length ? `<div class="tbl"><table><thead><tr><th>Titel</th><th>Genre</th><th class="num">Qual.</th><th>Status</th><th></th></tr></thead><tbody>
+      ${out.map(p => `<tr data-ctx="p|${p.id}"><td class="title">${titleLink(`${P.id}|${p.id}`, p.title)}</td><td>${esc(p.genre)}</td><td class="num">${attr(p.q)}</td><td>${p.aired ? '<span class="chip">schon gesendet</span>' : '<span class="chip good">unveröffentlicht</span>'}</td><td class="num"><div class="actions" style="justify-content:flex-end">${winOptions(P, p).map((w, k) => `<button class="btn ${k === 0 ? "hot" : ""}" data-act="swin" data-id="${p.id}" data-k="${w}" title="${WDESC[w]}">${wname[w]}</button>`).join("")}</div></td></tr>`).join("")}
     </tbody></table></div>` : '<div class="pad"><p class="lead">Alle Titel sind bereits im Katalog.</p></div>'}</section>`;
   return h;
 }
+
 function smarket(P) {
   const S = G.stream;
   const list = G.streamers.map(s => ({ ...STREAMERS.find(x => x.id === s.id), ...s })).filter(s => s.id !== "mediathek" && !(s.player && (!S || sFree(S)))).sort((a, b) => b.subs - a.subs);
@@ -4159,6 +4167,9 @@ function act(b) {
     case "planDay": planDay = wd; break;
     case "fillDay": { const dd = +b.dataset.k; if (!(dd === G.day && planLocked())) { const n = fillGaps(P, calDay(P, dd), weekday(dd)); autoTidy(P, dd); if (dd === G.day) buildToday(P); toast(n ? `${n} Sendungen in Lücken eingesetzt.` : "Keine Lücken."); } break; }
     case "dvZoom": case "dvPick": case "dvResolve": case "dvOver": case "dvOpenK": case "dvCasc": case "dvTime": case "dvDel": case "dvSwap": case "dvIns": case "fixDlg": case "fixWd": case "fixQuick": case "fixTime": case "fixAdd": case "fixDel": dvAction(P, k, b, id); return;
+    case "swin": { const p = progOf(P, id); if (p) setWindow(P, p, b.dataset.k); break; }
+    case "ctxPlan": { const p = progOf(P, id); if (!p) return; dvPick = p.id; planDay = planDay && planDay >= G.day ? planDay : G.day + 1; go("plan"); toast(`„${p.title}“ gewählt – jetzt die Uhrzeit im Kalender antippen.`); return; }
+    case "autoWin": if (G.stream) G.stream.autoWin = b.dataset.k || null; break;
     case "nfNew": case "nfEdit": case "nfLen": case "nfMod": case "nfSave": nfAction(P, k, b, id); return;
     case "sqIns": case "sqRep": case "sqPick": case "sqDel": case "sqMove": sqAction(P, k, b, id); return;
     case "addExtra": { const [dd, ii] = b.dataset.k.split("|").map(Number); if (dd === G.day && planLocked()) return; openExtraPicker(P, dd, ii); return; }
@@ -8460,7 +8471,7 @@ function dayView(P, d, lock) {
     const warn = b.with.length ? `<span class="dv-warn" ${b.live || lock ? "" : `data-act="dvOver" data-k="${d}|${b.k}"`}>⚠ ${b.live || lock ? "" : "Lösen: "}Überschneidung mit ${b.with.map(o => `„${esc(o.p ? o.p.title : o.title)}“ (${Math.min(b.end, o.end) - Math.max(b.start, o.start)} Min.)`).join(", ")}</span>` : "";
     if (b.live) return `<div class="dv-b live ${b.with.length ? "over" : ""}" style="${pos}"><div class="dv-t"><b>${hhmm(b.start)}–${hhmm(b.end % 1440)}</b> ● LIVE · ${esc(b.title)}</div>${warn}</div>`;
     const p = b.p, youth = !youthOk(p, Math.floor(b.start / 60) % 24);
-    return `<div class="dv-b ${b.with.length ? "over" : ""} ${youth ? "bad" : ""} ${p.house ? "house" : ""} k-${p.kind}" style="${pos}" ${lock ? "" : `data-dv="${d}|${b.k}"`} title="${esc(p.title)} · ${hhmm(b.start)}–${hhmm(b.end % 1440)}">
+    return `<div class="dv-b ${b.with.length ? "over" : ""} ${youth ? "bad" : ""} ${p.house ? "house" : ""} k-${p.kind}" style="${pos}" ${lock ? "" : `data-dv="${d}|${b.k}"`} data-ctx="p|${p.id}" title="${esc(p.title)} · ${hhmm(b.start)}–${hhmm(b.end % 1440)}">
       <div class="dv-t"><b>${hhmm(b.start)}–${hhmm(b.end % 1440)}</b> ${esc(p.title)}</div>
       ${ht >= 34 ? `<div class="dv-m"><span class="chip">${b.end - b.start} Min.</span>${b.cut ? `<span class="chip warn" title="Wird automatisch aufgefangen">${b.cut > itemDur(P, b.p, b.start, wd) - netOf(b.p) ? "Werbung + Abspann" : "Werbung"} −${b.cut} Min.${cutLoss(P, b) ? ` · ≈ −${eur(cutLoss(P, b))}` : ""}</span>` : ""}${dvChip(P, d, b.x, items)}${slotsOf(p).some(s => slotFits(s, d) && Math.abs(s.t - b.start) < 5) ? '<span class="chip real">fester Termin</span>' : ""}<span>${esc(p.genre)} · Q ${p.q}</span>${youth ? `<span class="down">FSK ${p.fsk} zu früh</span>` : ""}</div>` : ""}${warn}</div>`;
   }).join("");
@@ -8815,7 +8826,7 @@ function nfAction(P, k, b, id) {
     case "nfSave": {
       const t = (document.getElementById("nfTitle") || {}).value; if (t && t.trim()) nfDraft.title = t.trim().slice(0, 60);
       const d = nfDraft; let p = d.pid && progOf(P, d.pid);
-      if (!p) { p = { id: uid(), title: d.title, genre: "Nachrichten", kind: "show", q: 50, len: 1, topic: 1, wear: 1, fsk: 0, real: false, home: P.id, aired: 0, runs: 0, price: 0 }; P.progs.push(p); }
+      if (!p) { p = { id: uid(), title: d.title, genre: "Nachrichten", kind: "show", q: 50, len: 1, topic: 1, wear: 1, fsk: 0, real: false, home: P.id, aired: 0, runs: 0, price: 0 }; P.progs.push(p); if (G.stream && G.stream.stage >= 2 && G.stream.autoWin) addToStream(p.id, "linear"); }
       p.title = d.title; p.news = { len: d.len, mods: d.mods.slice() }; newsApply(p);
       p.q = clamp(newsroomCalc().q + newsQ(p), 15, 99);
       closeModal(); toast(`„${p.title}“: ${d.len} Min. mit ${d.mods.length + 1} Bausteinen.${d.pid ? " Der Sendekalender zeigt die neue Länge – bitte auf Überschneidungen achten." : ""}`);
@@ -8979,6 +8990,44 @@ function personLeaves(st, q) {
     else logMsg("Branchendienst Medienplatz", "Konkurrenz", `${st.name} besetzt „${p.title}“ neu${sub ? `: ${sub.name} übernimmt` : ""}. Beobachter erwarten zunächst schwächere Quoten.`);
   }
 }
+// =====================================================================
+// Rechtsklick-Menü für eigene Titel (Katalog, Archiv, Sendekalender) und Verwertungsfenster
+// =====================================================================
+const WNAME = { stream: "Streaming-First", linear: "Linear-First", dd: "Day-and-Date", excl: "Exklusiv im Stream", catchup: "Mediathek (7 Tage)" };
+const WDESC = { stream: "zuerst im Stream, später im TV", linear: "erst TV-Premiere, dann im Stream", dd: "TV und Stream am selben Tag", excl: "nur noch im Stream" };
+function winOptions(P, p) { const opts = p.aired ? ["linear", "excl"] : ["stream", "linear", "excl"]; if (P.sched.some(c => c.p === p.id)) opts.splice(1, 0, "dd"); return opts.filter(w => w !== "excl" || !p.home); }
+function setWindow(P, p, w) {
+  const S = G.stream; if (!S || S.stage < 2) return;
+  const c = S.catalog.find(x => x.id === p.id);
+  if (c) { if (c.window === "excl" && w !== "excl") p.exclusive = false; if (w !== "stream") p.streamFirst = false; const added = c.added; S.catalog = S.catalog.filter(x => x !== c); addToStream(p.id, w); const n = S.catalog.find(x => x.id === p.id); if (n) n.added = added; }
+  else addToStream(p.id, w);
+  toast(`„${p.title}“: ${WNAME[w]}${w === "linear" && !p.aired ? " – erscheint im Stream nach der TV-Premiere" : ""}.`);
+}
+let ctxEl = null;
+function hideCtx() { if (ctxEl) { ctxEl.remove(); ctxEl = null; } }
+function showCtx(key, x, y) {
+  hideCtx();
+  const P = me(), id = +key.split("|")[1], p = progOf(P, id); if (!p) return;
+  const S = G.stream, c = S && S.catalog.find(z => z.id === p.id), items = [];
+  items.push(`<button data-title="${P.id}|${p.id}">Profil öffnen</button>`);
+  if (S && S.stage >= 2 && p.kind !== "sport" && !p.filler) {
+    items.push(`<div class="ctx-h">${c ? `Im Stream: ${WNAME[c.window]}` : "In den Stream"}</div>`);
+    for (const w of winOptions(P, p)) if (!c || c.window !== w) items.push(`<button data-act="swin" data-id="${p.id}" data-k="${w}">${WNAME[w]} <small>${WDESC[w]}</small></button>`);
+    if (c) items.push(`<button data-act="unstream" data-id="${p.id}">Aus dem Katalog nehmen</button>`);
+  }
+  if (!p.exclusive && p.kind !== "sport") items.push(`<div class="ctx-h">Programm</div><button data-act="ctxPlan" data-id="${p.id}">Im Sendekalender einplanen</button>`);
+  if (!["film", "sport"].includes(p.kind) && !p.house) items.push(`<button data-act="fixDlg" data-id="${p.id}">Feste Sendetermine …</button>`);
+  if (canManageCast(P, p)) items.push(`<button data-act="castMgr" data-id="${p.id}">Besetzung${p.own && p.kind === "serie" ? " & Folgen" : ""}</button>`);
+  if (p.genre === "Nachrichten" && !p.house) items.push(`<button data-act="nfEdit" data-id="${p.id}">Nachrichtenformat bearbeiten</button>`);
+  ctxEl = document.createElement("div"); ctxEl.className = "ctxmenu"; ctxEl.innerHTML = `<div class="ctx-t">${esc(p.title)}</div>` + items.join("");
+  document.body.appendChild(ctxEl);
+  const r = ctxEl.getBoundingClientRect();
+  ctxEl.style.left = Math.min(x, innerWidth - r.width - 8) + "px"; ctxEl.style.top = Math.min(y, innerHeight - r.height - 8) + "px";
+}
+document.addEventListener("contextmenu", e => { const t = e.target.closest && e.target.closest("[data-ctx]"); if (!t || !G) return; e.preventDefault(); showCtx(t.dataset.ctx, e.clientX, e.clientY); });
+document.addEventListener("click", e => { if (ctxEl) setTimeout(hideCtx, 0); }, true);
+document.addEventListener("keydown", e => { if (e.key === "Escape") hideCtx(); });
+document.addEventListener("change", e => { const id = e.target && e.target.dataset && e.target.dataset.swin; if (!id || !G) return; const P = me(), p = progOf(P, +id); if (p) { setWindow(P, p, e.target.value); render(); } });
 // =====================================================================
 // Formatprofil: Quotenverlauf, Publikum, Analyse und Maßnahmen je Sendung
 // =====================================================================
