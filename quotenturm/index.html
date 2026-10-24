@@ -2505,7 +2505,7 @@ function initPeople() {
   G.people = castingEngine(4000);
   G.people.forEach(ensurePerson);
   // Exklusivitäts-Logik: 30 % der Top-Stars (nach Marktwert) sind bei der Konkurrenz unter Vertrag
-  const top = G.people.slice().sort((a, b) => b.gage - a.gage).slice(0, 300);
+  const top = G.people.filter(p => speaksGerman(p)).sort((a, b) => b.gage - a.gage).slice(0, 300); // deutsche Sender binden nur deutschsprachige Gesichter exklusiv
   const rivals = ["rtl", "pro7", "sat1", "ard", "zdf"].filter(id => id !== me().id);
   for (const p of shuffle(top).slice(0, 90)) { p.holder = pick(rivals); p.until = ri(30, 420); }
   G.prods = []; G.newsroom = { line: 2, style: 1, budget: 1, anchor: null };
@@ -2631,7 +2631,7 @@ function peopleDay() {
     else if (!p.holder && p.busy <= G.day && Math.random() < 0.01) p.busy = G.day + ri(3, 12); // freie Stars drehen für andere
   }
   // Die Konkurrenz verpflichtet täglich einige freie Top-Leute
-  const free = G.people.filter(p => !p.holder && p.gage > 300000);
+  const free = G.people.filter(p => !p.holder && p.gage > 300000 && speaksGerman(p));
   for (const p of shuffle(free).slice(0, 3)) {
     p.holder = pick(G.stations.filter(s => !isMe(s))).id; p.until = G.day + ri(30, 200);
     if (p.gage > 600000) logMsg("Branchendienst", "Konkurrenz", `${holderName(p.holder)} nimmt ${p.name} (${SPEC_NAME[p.role]}) exklusiv unter Vertrag.`);
@@ -3517,12 +3517,12 @@ function resDot(r) {
   return `<span class="res"><i class="${rank <= 3 ? "w" : rank <= 6 ? "d" : "l"}"></i>${pct(r[G.me].ma)} · Pl. ${rank}</span>`;
 }
 function eveningTable(P) {
+  // Minutengenau aus dem Ablauf: auch kurze Formate zwischen den vollen Stunden (z. B. 19:40) erscheinen mit eigener Quote
+  const rd = rundown(P, P.sched).filter(x => !x.gap && x.end > 17 * 60);
   return `<div class="tbl"><table><thead><tr><th>Zeit</th><th>Programm</th><th class="num">Erw.</th><th>Ergebnis</th></tr></thead><tbody>
-    ${HOURS.filter(i => i >= 17).map(i => {
-      const c = P.sched[i], p = c.p && progOf(P, c.p), r = G.today[i];
-      const it = !c.cont && cellTime(P, P.sched, i);
-      return `<tr><td>${it ? hhmm(it.start) : c.cont ? "" : hh(i)}</td><td class="title">${c.live && !c.cont ? '<span class="chip live">LIVE</span> ' : ""}${p ? (c.cont ? '<span class="muted">↳ </span>' : "") + (p.kind === "sport" ? esc(p.title) : titleLink(`${P.id}|${p.id}`, p.title)) : '<span class="down">Testbild</span>'}</td><td class="num muted">${mio(expected(P, i))}</td><td>${r ? resDot(r) : '<span class="muted">–</span>'}</td></tr>`;
-    }).join("")}</tbody></table></div>`;
+    ${rd.map(x => { const h = Math.min(23, Math.floor(x.start / 60)), seg = (G.daySeg || []).find(d => d.st === P.i && d.id === x.p.id && d.start === x.start);
+      const res = seg && seg.min ? `<span class="res"><i class="${seg.vs / seg.bs * 100 >= stationAvgMA(P) ? "w" : "l"}"></i>${pct(seg.vs / seg.bs * 100)} · ${mio(seg.vs / seg.min)} Mio.</span>` : '<span class="muted">–</span>';
+      return `<tr><td>${hhmm(x.start)}<span class="muted" style="font-size:11px"> – ${hhmm(x.end)}</span></td><td class="title">${x.c.live ? '<span class="chip live">LIVE</span> ' : ""}${x.extra ? '<span class="muted">· </span>' : ""}${x.p.kind === "sport" ? esc(x.p.title) : titleLink(`${P.id}|${x.p.id}`, x.p.title)}${x.p.wdh ? ' <span class="chip">Wdh.</span>' : ""}</td><td class="num muted">${mio(expected(P, h))}</td><td>${res}</td></tr>`; }).join("")}</tbody></table></div>`;
 }
 function standings() {
   return [...G.stations].map(s => ({ s, avg: s.maDays ? s.maSum / s.maDays : s.base * (1 - otherShare()) })).sort((a, b) => b.avg - a.avg);
@@ -3788,15 +3788,15 @@ function smarket(P) {
   const S = G.stream;
   const list = G.streamers.map(s => ({ ...STREAMERS.find(x => x.id === s.id), ...s })).filter(s => s.id !== "mediathek" && !(s.player && (!S || sFree(S)))).sort((a, b) => b.subs - a.subs);
   const chart = [];
-  for (const s of list) if (!s.player) s.hits.forEach((t, k) => chart.push({ t, who: s.id, v: s.subs * 1e6 * 0.06 / (k + 1) * rnd(0.9, 1.1) }));
-  if (S) for (const { c, p } of streamItems()) chart.push({ t: p.title, who: S.id, v: (S.views[c.id] || 0) * 1.4, mine: true });
+  for (const s of list) if (!s.player) s.hits.forEach((t, k) => chart.push({ t, k, who: s.id, v: s.subs * 1e6 * 0.06 / (k + 1) * rnd(0.9, 1.1) }));
+  if (S) for (const { c, p } of streamItems()) chart.push({ t: p.title, pid: p.id, who: S.id, v: (S.views[c.id] || 0) * 1.4, mine: true });
   chart.sort((a, b) => b.v - a.v);
   return title("Streaming-Wettbewerb", `<span class="muted">Spielwerte, grob an Größenordnungen angelehnt</span>`) +
     `<div class="grid two"><section class="panel"><div class="ph"><h2>Abonnenten</h2><span class="aside">Deutschland, Mio.</span></div><div class="tbl"><table><thead><tr><th>Pos</th><th>Dienst</th><th>Modell</th><th class="num">Preis</th><th class="num">Abos</th></tr></thead><tbody>
-      ${list.map((s, k) => `<tr class="${s.player ? "mine" : ""}"><td>${k + 1}</td><td><span class="sn">${sbadge(s.id)}${esc(s.player && S ? S.name : s.name)}</span></td><td class="muted">${esc(s.player && S ? (S.tiers ? "3 Pakete" : "Mediathek") : s.model)}</td><td class="num">${(s.player && S && S.tiers ? avgPrice(S) : s.price).toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</td><td class="num"><b>${mio(s.subs)}</b></td></tr>`).join("")}
+      ${list.map((s, k) => `<tr class="${s.player ? "mine" : ""}"><td>${k + 1}</td><td><span class="sn" data-streamer="${s.id}">${sbadge(s.id)}${esc(s.player && S ? S.name : s.name)}</span></td><td class="muted">${esc(s.player && S ? (S.tiers ? "3 Pakete" : "Mediathek") : s.model)}</td><td class="num">${(s.player && S && S.tiers ? avgPrice(S) : s.price).toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</td><td class="num"><b>${mio(s.subs)}</b></td></tr>`).join("")}
     </tbody></table></div></section>
     <section class="panel"><div class="ph"><h2>Top 10 der Woche</h2><span class="aside">nach Abrufen</span></div><div class="tbl"><table><tbody>
-      ${chart.slice(0, 10).map((x, k) => `<tr class="${x.mine ? "mine" : ""}"><td>${k + 1}</td><td class="title">${esc(x.t)}</td><td><span class="sn">${sbadge(x.who)}</span></td></tr>`).join("")}
+      ${chart.slice(0, 10).map((x, k) => `<tr class="${x.mine ? "mine" : ""}"><td>${k + 1}</td><td class="title">${x.mine ? titleLink(`${P.id}|${x.pid}`, x.t) : titleLink(`@${x.who}|${x.k}`, x.t)}</td><td><span class="sn" data-streamer="${x.who}">${sbadge(x.who)}</span></td></tr>`).join("")}
     </tbody></table></div></section></div>`;
 }
 
@@ -4081,7 +4081,10 @@ function act(b) {
     case "fmBid": {
       const t = (G.tenders || []).find(x => String(x.id) === b.dataset.k); if (!t || planLocked()) return;
       const v = r1000(+($("fm-" + t.id).value || 0)), min = r1000(t.min * optFactor(t.opt));
-      if (t.out || (t.phase > 1 && !t.bid)) { toast("Sie sind in diesem Verfahren nicht mehr dabei."); return; }
+      const late = t.phase === 2 && !t.bid && !t.out, topBid = Math.max(0, ...(t.ai || []).filter(a => !a.out).map(a => a.bid || 0));
+      if (late) { if (v < r1000(topBid * 1.05)) { toast(`Nachzügler-Gebot: Ohne Angebot in Runde 1 nimmt das Studio Sie nur auf, wenn Sie das beste Gebot um 5 % übertreffen – mindestens ${meur(r1000(topBid * 1.05))}.`); return; }
+        t.short = (t.short || []).concat([me().name + " (Sie)"]); logMsg("Rechteagentur", "Programm", `Ihr Nachzügler-Gebot überzeugt: Das Studio nimmt Sie in die Verhandlungsrunde auf.`, true); }
+      else if (t.out || (t.phase > 1 && !t.bid)) { toast(t.out ? "Sie sind in einer früheren Runde ausgeschieden." : "Diese Runde ist nur für die Shortlist – Sie hatten in Runde 1 kein Angebot abgegeben."); return; }
       if (t.phase > 1 && v < t.bid) { toast(`Ab der Shortlist sind Gebote bindend – mindestens ${meur(t.bid)}.`); return; }
       if (v < min) { toast(`Mindestgebot: ${meur(min)}.`); return; }
       if ((t.type === "output" ? v / t.years : v) > P.money + 15e6 - P.credit) { toast("Das können Sie nicht finanzieren."); return; }
@@ -7329,7 +7332,7 @@ function svPickEvent() {
 }
 function svDay() { if (!isStreamJob()) return; if (weekday(G.day) === 1) svWeek(); }
 function svPage(P) {
-  if (!isStreamJob()) return title("Streaming-Zentrale", "") + `<section class="panel pad"><p>Sie leiten derzeit keinen Streamingdienst. Offene Posten bei Netflix, Prime Video, Disney+ und anderen finden Sie unter Sender → Karriere.</p></section>`;
+  if (!isStreamJob()) return `<p class="fine mb">Als Programmdirektion von ${esc(P.name)} verantworten Sie auch den Streamer der Senderfamilie${G.stream ? ` (${esc(G.stream.name)})` : ""}. Eine Karriere als Leitung DACH bei einem reinen Streamer (Netflix & Co.) finden Sie unter Sender → Karriere.</p>` + streamPage(P);
   const S = G.sv, m = svM(), last = S.hist[S.hist.length - 1] || {};
   const arpu = S.prices.reduce((a, p, k) => a + p * S.mix[k], 0) + S.mix[0] * 3;
   let h = title(`Streaming-Zentrale ${svName()} DACH`, `<span class="muted">Vertrauen der Konzernzentrale ${S.hq} %</span>`);
@@ -8831,7 +8834,8 @@ function filmMarketPage(P) {
         <div class="pkgs"><button class="pkg ${t.opt.terr === "dach" ? "on" : ""}" data-act="fmOpt" data-k="${t.id}" data-v="terr:dach"><b>DACH</b><span>voller Preis</span></button><button class="pkg ${t.opt.terr === "de" ? "on" : ""}" data-act="fmOpt" data-k="${t.id}" data-v="terr:de"><b>nur DE</b><span>−22 %</span></button></div>
         <div class="pkgs"><button class="pkg ${t.opt.excl ? "on" : ""}" data-act="fmOpt" data-k="${t.id}" data-v="excl:1"><b>Exklusiv</b><span>blockiert Konkurrenz</span></button><button class="pkg ${!t.opt.excl ? "on" : ""}" data-act="fmOpt" data-k="${t.id}" data-v="excl:0"><b>Nicht exkl.</b><span>−40 %</span></button></div>
         <div class="pkgs"><button class="pkg ${t.opt.slot ? "on" : ""}" data-act="fmOpt" data-k="${t.id}" data-v="slot:${t.opt.slot ? 0 : 1}"><b>Primetime-Garantie</b><span>+5 % Wertung</span></button><button class="pkg ${t.opt.cash ? "on" : ""}" data-act="fmOpt" data-k="${t.id}" data-v="cash:${t.opt.cash ? 0 : 1}"><b>Sofortzahlung</b><span>+3 % Wertung</span></button></div>
-        <div class="actions"><input type="number" id="fm-${t.id}" min="${min}" step="250000" value="${t.bid || min}" ${planLocked() ? "disabled" : ""}><button class="btn hot" data-act="fmBid" data-k="${t.id}" ${planLocked() || (t.window === "pay" && !(G.stream && G.stream.stage >= 2)) ? "disabled" : ""}>${t.phase > 1 ? "Gebot erhöhen" : t.bid ? "Angebot ändern" : "Indikatives Angebot"}</button>${t.bid ? `<span class="chip good">${meur(t.bid)}</span>` : ""}</div>
+        ${!t.bid && t.phase === 2 && !t.out ? `<p class="fine warnline" style="margin:0 0 6px">Sie haben in Runde 1 nicht geboten. Nachzügler-Gebot möglich ab ${meur(r1000(Math.max(0, ...(t.ai || []).filter(a => !a.out).map(a => a.bid || 0)) * 1.05))}.</p>` : !t.bid && t.phase > 2 ? '<p class="fine warnline" style="margin:0 0 6px">Dieses Verfahren läuft nur noch mit der Shortlist – Sie hatten nicht geboten.</p>' : ""}
+        <div class="actions"><input type="number" id="fm-${t.id}" min="${min}" step="250000" value="${t.bid || (t.phase === 2 && !t.out ? r1000(Math.max(min, Math.max(0, ...(t.ai || []).filter(a => !a.out).map(a => a.bid || 0)) * 1.05)) : min)}" ${planLocked() ? "disabled" : ""}><button class="btn hot" data-act="fmBid" data-k="${t.id}" ${planLocked() || (t.window === "pay" && !(G.stream && G.stream.stage >= 2)) ? "disabled" : ""}>${t.phase > 1 ? "Gebot erhöhen" : t.bid ? "Angebot ändern" : "Indikatives Angebot"}</button>${t.bid ? `<span class="chip good">${meur(t.bid)}</span>` : ""}</div>
       </div>${(t.myBids || []).length ? `<p class="fine" style="margin:6px 0 0">Ihre Gebote: ${t.myBids.map(([d, ph, v]) => `${dateShort(d)} R${ph} ${meur(v)}`).join(" → ")}</p>` : ""}<p class="fine" style="margin:6px 0 0">Mindestgebot ${meur(min)}${t.type === "output" ? ` (gesamt, ${meur(min / t.years)} pro Jahr)` : ""}.${t.window === "pay" && !(G.stream && G.stream.stage >= 2) ? " Pay-Fenster nur mit eigenem Abo-Streamer." : ""}</p></div></section>`; };
   return title("Filmrechte", `<span class="muted">Content-Akquisition · Pakete von Studios und Weltvertrieben</span>`) + lockNote() +
     `<p class="lead mb">Filme werden in Fenstern verwertet: Kino → Pay-/Streaming-Erstverwertung → zweites Pay-Fenster → Free-TV. Majors mit eigenem Streamer (Disney, Warner, Universal, Paramount) behalten die Erstverwertung und verkaufen nur Katalog; Sony verkauft alles an den Meistbietenden; Independents wie Constantin oder StudioCanal verkaufen länderweise. Auf den Filmmärkten kommen die meisten Pakete auf den Tisch. Jede Ausschreibung läuft in Runden: unverbindliches indikatives Angebot, Shortlist der besten drei, Verhandlungsrunde mit Rückmeldung des Studios, verbindliches Best and Final Offer – bei Gleichstand ein Stechen. Neben dem Preis zählen Territorium, Exklusivität, Primetime-Garantie und Zahlungsweise; ohne Sofortzahlung wird in zwei Raten gezahlt.</p>
