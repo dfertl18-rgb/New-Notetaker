@@ -1,0 +1,26 @@
+name: KI-Qualitätstest
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/ki-test.yml"
+      - ".github/ki-test/**"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Laufzeit installieren
+        working-directory: .github/ki-test
+        run: npm init -y >/dev/null && npm install node-llama-cpp@3.22.1
+      - name: Modell laden
+        run: curl -L --fail --retry 3 -o /tmp/model.gguf "https://huggingface.co/bartowski/Qwen2.5-7B-Instruct-GGUF/resolve/main/Qwen2.5-7B-Instruct-Q4_K_M.gguf" && ls -la /tmp/model.gguf && sha256sum /tmp/model.gguf
+      - name: Test
+        working-directory: .github/ki-test
+        run: node test.mjs /tmp/model.gguf
