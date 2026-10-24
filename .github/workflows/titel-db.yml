@@ -1,0 +1,41 @@
+name: Titeldatenbank (privat, verschlüsselt)
+
+# Baut die Titeldatenbank für die private Spielversion aus Wikidata (CC0) und den IMDb-Datensätzen
+# (nur private, nicht-kommerzielle Nutzung). Das Ergebnis wird mit einem öffentlichen RSA-Schlüssel verschlüsselt;
+# nur der Besitzer des privaten Schlüssels kann es lesen. Es wird kein Klartext veröffentlicht.
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/titel-db.yml"
+      - ".github/titel-db/build.py"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - name: IMDb-Datensätze laden
+        run: |
+          for f in title.ratings title.basics title.akas title.episode; do curl -L --fail --retry 3 -o $f.tsv.gz "https://datasets.imdbws.com/$f.tsv.gz"; done
+          ls -la
+      - name: Datenbank bauen
+        run: python3 .github/titel-db/build.py && ls -la titeldb.json
+      - name: Verschlüsseln
+        run: |
+          gzip -9 titeldb.json
+          openssl rand -hex 32 > key.bin
+          openssl enc -aes-256-cbc -pbkdf2 -salt -in titeldb.json.gz -out titeldb.enc -pass file:key.bin
+          openssl pkeyutl -encrypt -pubin -inkey .github/titel-db/pub.pem -in key.bin -out key.enc
+          rm -f key.bin titeldb.json.gz *.tsv.gz
+          ls -la titeldb.enc key.enc
+      - name: Als Release-Datei ablegen
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view titel-db-enc -R "${{ github.repository }}" >/dev/null 2>&1 || gh release create titel-db-enc -R "${{ github.repository }}" --target "${{ github.sha }}" --title "Titeldatenbank (verschlüsselt)" --notes "Verschlüsselt, nur für die private Spielversion lesbar."
+          gh release upload titel-db-enc titeldb.enc key.enc -R "${{ github.repository }}" --clobber
