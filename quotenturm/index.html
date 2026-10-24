@@ -414,6 +414,17 @@ td.cw { position: relative; } .cell-i { position: absolute; right: 8px; top: 8px
 @media (max-width: 700px) { .home-row { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .season { display: grid; grid-template-columns: repeat(12, 1fr); gap: 4px; height: 110px; align-items: end; } .season div { display: grid; grid-template-rows: 1fr auto; height: 100%; justify-items: center; gap: 3px; } .season i { width: 70%; align-self: end; background: var(--line); border-radius: 3px 3px 0 0; display: block; } .season .on i { background: var(--hot); } .season span { font-size: 11px; color: var(--muted); }
 .tsel { position: absolute; right: 34px; top: 8px; z-index: 1; background: var(--panel); color: var(--muted); border: 1px solid var(--line); border-radius: 4px; font-size: 12px; padding: 1px 2px; max-width: 74px; } .cell .tt { color: var(--text); font-variant-numeric: tabular-nums; }
+.dv-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--line); }
+.dv { display: grid; grid-template-columns: 240px 1fr; gap: 0; } .dv-pool { border-right: 1px solid var(--line); padding: 10px; display: grid; gap: 6px; align-content: start; max-height: 75vh; overflow: auto; } .dv-list { display: grid; gap: 4px; }
+.dv-scroll { max-height: 75vh; overflow: auto; position: relative; } .dv-col { position: relative; margin: 0 8px; user-select: none; } .dv-col:not(.lock) { cursor: copy; }
+.dv-tick { position: absolute; left: 60px; right: 0; border-top: 1px dotted color-mix(in srgb, var(--line) 60%, transparent); } .dv-tick.h { border-top: 1px solid var(--line); } .dv-tick span { position: absolute; left: -60px; top: -8px; font-size: 12px; font-weight: 700; color: var(--muted); font-variant-numeric: tabular-nums; }
+.dv-gap { position: absolute; left: 60px; right: 4px; background: repeating-linear-gradient(135deg, transparent 0 6px, color-mix(in srgb, #ef4444 12%, transparent) 6px 12px); border: 1px dashed color-mix(in srgb, #ef4444 50%, transparent); border-radius: 6px; overflow: hidden; } .dv-gap span { font-size: 11px; color: var(--muted); padding: 2px 6px; display: block; }
+.dv-b { position: absolute; box-sizing: border-box; background: color-mix(in srgb, var(--hot) 16%, var(--panel)); border: 1px solid color-mix(in srgb, var(--hot) 45%, var(--line)); border-left: 4px solid var(--hot); border-radius: 6px; padding: 2px 6px; overflow: hidden; font-size: 12px; touch-action: none; cursor: grab; z-index: 2; }
+.dv-b.k-film { border-left-color: #f59e0b; } .dv-b.k-serie { border-left-color: #38bdf8; } .dv-b.house { opacity: .8; border-left-color: var(--muted); background: var(--panel); } .dv-b.live { border-left-color: #ef4444; background: color-mix(in srgb, #ef4444 14%, var(--panel)); cursor: default; }
+.dv-b.over { outline: 2px solid #ef4444; outline-offset: -2px; } .dv-b.bad { border-color: #ef4444; } .dv-b.drag { z-index: 5; box-shadow: 0 8px 24px rgba(0,0,0,.4); cursor: grabbing; opacity: .92; } .dv-b:hover { filter: brightness(1.12); }
+.dv-t { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .dv-t b { font-variant-numeric: tabular-nums; margin-right: 4px; } .dv-m { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; margin-top: 2px; color: var(--muted); } .dv-m .chip { font-size: 11px; padding: 0 5px; }
+.dv-warn { display: block; color: #ef4444; font-weight: 600; font-size: 11px; }
+@media (max-width: 760px) { .dv { grid-template-columns: 1fr; } .dv-pool { max-height: 180px; border-right: 0; border-bottom: 1px solid var(--line); } }
 .seq { display: grid; gap: 0; padding: 6px 12px 12px; } .sq-part { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); padding: 12px 0 4px; }
 .sq { display: grid; grid-template-columns: 64px 1fr auto; gap: 12px; align-items: start; border: 1px solid var(--line); border-left: 4px solid var(--hot); border-radius: 8px; padding: 8px 10px; background: var(--panel); margin: 2px 0; }
 .sq.gap { border-style: dashed; border-left: 4px dashed #ef4444; background: transparent; } .sq.live { border-left-color: #ef4444; } .sq.bad { border-color: #ef4444; } .sq.over { outline: 2px dashed var(--hot); }
@@ -1621,7 +1632,7 @@ const HORIZON = 42;
 // Kalendertag des eigenen Senders; neue Tage starten als Kopie der Wochenvorlage des Vorgängers
 function calDay(P, d) {
   P.cal = P.cal || {};
-  if (!P.cal[d]) { P.cal[d] = P.week[weekday(d)].map(c => ({ p: c.p, ad: c.ad, cont: c.cont, live: false, ...(c.t != null ? { t: c.t } : {}), ...(c.extra ? { extra: c.extra.slice(), ...(c.xt ? { xt: c.xt.slice() } : {}) } : {}) })); if (G && G.stations && G.stations.length) fillGaps(P, P.cal[d], weekday(d)); }
+  if (!P.cal[d]) { P.cal[d] = P.week[weekday(d)].map(c => ({ p: c.p, ad: c.ad, cont: c.cont, live: false, ...(c.t != null ? { t: c.t } : {}), ...(c.extra ? { extra: c.extra.slice(), ...(c.xt ? { xt: c.xt.slice() } : {}) } : {}) })); if (G && G.stations && G.stations.length) { fillGaps(P, P.cal[d], weekday(d)); if (isMe(P) && G.phase) autoTidy(P, d); } }
   return P.cal[d];
 }
 const schedFor = (P, d) => d === G.day ? P.sched : calDay(P, d);
@@ -1681,9 +1692,10 @@ function fillHorizon(P) {
     for (let d = G.day; d < G.day + HORIZON; d++) {
       const sc = calDay(P, d);
       sc.forEach(c => { if (c.p && !progOf(P, c.p)) { c.p = null; c.cont = false; c.ad = null; } }); // abgelaufene Lizenzen
-      placeFixedDay(P, sc, d); // feste Sendeplätze eigener Formate zuerst
+      applySlotsDay(P, d, null, rem); // feste Sendetermine zuerst
       if (sc.some(c => !c.p)) planDayFor(P, weekday(d), sc, { rem, keep: true, day: d });
       fillGaps(P, sc, weekday(d));
+      autoTidy(P, d);
     }
     buildToday(P);
   }
@@ -1904,7 +1916,7 @@ function airHour(i) {
       } else logMsg("Werbezeitenvermarktung", "Werbung", `${hh(i)} – Spot „${ad.brand}“ verfehlt: ${mio(reach)} statt ${mio(ad.min)} Mio.${ad.tg && ad.tg !== "all" ? ` (Zielgruppe ${AD_TG[ad.tg][0]})` : ""}${ad.prime && (i < 20 || i > 22) ? " – Premium-Spot nur 20–23 Uhr" : ""}${ad.alc && i >= 6 && i < 20 ? " – Alkohol/Erotik erst ab 20 Uhr" : ""}`, i >= LIVE_FROM);
     }
     { const sp = spotMarket(st, i, r.v, r.exp, r.p); r.spot = sp.pay; if (sp.pay) book(st, "TV-Werbung (Spotmarkt)", sp.pay); }
-    { const blk = adBlockRevenue(st, i, r.v, r.p); if (r.p && r.p.adF) blk.pay = r1000(blk.pay * r.p.adF); r.blk = blk.pay; if (blk.pay) { book(st, "TV-Werbung", blk.pay); (G.adLog = G.adLog || []).push([G.day, i, blk.pay, Math.round(blk.k)]); if (G.adLog.length > 600) G.adLog.shift(); } }
+    { const cutM = rdToday(st).filter(x => !x.gap && Math.floor(x.start / 60) === i).reduce((s, x) => s + Math.min(x.cut || 0, Math.max(0, grossDur(st, x.p, i) - netDur(x.p))), 0), blk = adBlockRevenue(st, i, r.v, r.p, Math.max(0, adMinH(st, i) - cutM)); if (r.p && r.p.adF) blk.pay = r1000(blk.pay * r.p.adF); r.blk = blk.pay; if (blk.pay) { book(st, "TV-Werbung", blk.pay); (G.adLog = G.adLog || []).push([G.day, i, blk.pay, Math.round(blk.k)]); if (G.adLog.length > 600) G.adLog.shift(); } }
     if (G.adBreak[i]) { const add = Math.max(0, Math.min(3, 12 - adMinH(st, i))), extra = add ? adBlockRevenue(st, i, r.v, r.p, add).pay : 0; book(st, "TV-Werbung", extra); logMsg("Live-Regie", "Werbung", `${hh(i)} – Zusatz-Werbeblock: +${eur(extra)}, dafür weniger Zuschauer.`); }
     if (!r.p) logMsg("Sendetechnik", "Warnung", `${hh(i)} – Sendeloch! Testbild auf Sendung.`, i >= LIVE_FROM);
   }
@@ -3721,7 +3733,7 @@ function planPage(P) {
   const rd = rundown(P, sc, wd);
   const gaps = rd.filter(x => x.gap && x.end - x.start >= 10 && x.start >= 6 * 60);
   if (gaps.length) h += `<p class="lead mb"><span class="muted">Lücken: ${gaps.map(x => `${hhmm(x.start)}–${hhmm(x.end % 1440)} (${x.end - x.start} Min.)`).join(" · ")}</span> ${lock ? "" : `<button class="btn small hot" data-act="fillDay" data-k="${d}">Lücken füllen</button>`}</p>`;
-  return h + seqTimeline(P, d, lock) + promoPanel(P);
+  return h + dayView(P, d, lock) + promoPanel(P);
 }
 function archiv(P) {
   return title("Archiv", `<span class="muted">${P.progs.length} Programme</span>`) + `<p class="lead mb">Lizenzen lassen sich für 40 % des Einkaufspreises weiterverkaufen – nicht, solange sie im Kalender stehen. Eigene Shows und Serien kosten pro Folge: Budget kürzen spart Geld und kostet Qualität, eine neue Besetzung ändert Qualität und Kosten, Absetzen räumt die Sendeplätze.</p>
@@ -4134,12 +4146,13 @@ function act(b) {
     case "finish": finishEvening(); return;
     case "next": closeModal(); if (G.over) showEnd(); else { planDay = null; nextDay(); } return;
     case "planDay": planDay = wd; break;
-    case "fillDay": { const dd = +b.dataset.k; if (!(dd === G.day && planLocked())) { const n = fillGaps(P, calDay(P, dd), weekday(dd)); if (dd === G.day) buildToday(P); toast(n ? `${n} Sendungen in Lücken eingesetzt.` : "Keine Lücken."); } break; }
+    case "fillDay": { const dd = +b.dataset.k; if (!(dd === G.day && planLocked())) { const n = fillGaps(P, calDay(P, dd), weekday(dd)); autoTidy(P, dd); if (dd === G.day) buildToday(P); toast(n ? `${n} Sendungen in Lücken eingesetzt.` : "Keine Lücken."); } break; }
+    case "dvZoom": case "dvPick": case "dvResolve": case "dvOver": case "dvOpenK": case "dvCasc": case "dvTime": case "dvDel": case "dvSwap": case "dvIns": case "fixDlg": case "fixWd": case "fixQuick": case "fixTime": case "fixAdd": case "fixDel": dvAction(P, k, b, id); return;
     case "sqIns": case "sqRep": case "sqPick": case "sqDel": case "sqMove": sqAction(P, k, b, id); return;
     case "addExtra": { const [dd, ii] = b.dataset.k.split("|").map(Number); if (dd === G.day && planLocked()) return; openExtraPicker(P, dd, ii); return; }
     case "pickExtra": { const [dd, ii] = b.dataset.k.split("|").map(Number); editPlan(dd, sc => { sc[ii].extra = (sc[ii].extra || []).concat(id); }); closeModal(); break; }
     case "rmExtra": { const [dd, ii, kk] = b.dataset.k.split("|").map(Number); if (dd === G.day && planLocked()) return; editPlan(dd, sc => { sc[ii].extra = (sc[ii].extra || []).filter((_, n) => n !== kk); }); break; }
-    case "autoDay": if (!(wd === G.day && planLocked())) { planDayFor(P, weekday(wd), calDay(P, wd), { rem: remMap(P, wd), day: wd }); fillGaps(P, calDay(P, wd), weekday(wd)); if (wd === G.day) buildToday(P); toast(`Der Assistent hat ${dateShort(wd)} geplant.`); } break;
+    case "autoDay": if (!(wd === G.day && planLocked())) { planDayFor(P, weekday(wd), calDay(P, wd), { rem: remMap(P, wd), day: wd }); fillGaps(P, calDay(P, wd), weekday(wd)); autoTidy(P, wd); if (wd === G.day) buildToday(P); toast(`Der Assistent hat ${dateShort(wd)} geplant.`); } break;
     case "copyDay": {
       const src = calDay(P, wd);
       for (let d = G.day; d < G.day + HORIZON; d++) if (d !== wd && weekday(d) === weekday(wd) && !(d === G.day && planLocked())) P.cal[d] = src.map(c => ({ ...c, live: false }));
@@ -4980,6 +4993,7 @@ function grossDur(st, p, i, wd) {
   const a = Math.min(12, adMinH(st, i, wd));
   return ceil5(n * 60 / (60 - a));
 }
+const creditSq = p => p && (p.kind === "film" || p.kind === "serie") ? 3 : 0; // Minuten, die ein gestraffter Abspann spart
 const anchored = p => p && (p.genre === "Nachrichten" || p.kind === "sport");
 // Ablauf eines Tages: [{i, p, start, end, planned, late}] plus Lücken als {gap: true}
 function rundown(st, sc, wd = weekday(G.day)) {
@@ -5003,8 +5017,9 @@ function rundown(st, sc, wd = weekday(G.day)) {
     const next = items[j], net = it.c.live ? netDur(it.p) : ceil5(netDur(it.p)), gross = it.c.live ? net : grossDur(st, it.p, it.i, wd);
     const window = it.extra && it.base < 0 ? gross : (next ? next.base - start : 1440 - start) - follow;
     // vor Live-Sport wird notfalls abgekürzt – der Anpfiff wartet nicht
-    const dur = gross <= window ? gross : next && (next.c.live || next.p.kind === "sport") ? Math.max(5, window) : Math.max(net, window);
-    out.push({ i: it.i, p: it.p, c: it.c, extra: !!it.extra, start, end: start + dur, planned: it.base < 0 ? start : it.base, late: it.base < 0 ? 0 : start - it.base, cut: gross - dur > 0 && dur >= net ? gross - dur : 0 });
+    const minNet = it.c.live ? net : net - creditSq(it.p); // Abspann gestrafft (Split-Screen)
+    const dur = gross <= window ? gross : next && (next.c.live || next.p.kind === "sport") ? Math.max(5, window) : Math.max(minNet, window);
+    out.push({ i: it.i, p: it.p, c: it.c, extra: !!it.extra, start, end: start + dur, planned: it.base < 0 ? start : it.base, late: it.base < 0 ? 0 : start - it.base, cut: gross - dur > 0 && dur >= minNet ? gross - dur : 0 });
     prevEnd = start + dur;
   });
   if (prevEnd < 1440) out.push({ gap: true, start: prevEnd, end: 1440 });
@@ -5095,7 +5110,10 @@ function fillGaps(st, sc, wd = weekday(G.day)) {
     const used = new Set(rd.filter(x => !x.gap && !x.p.filler).map(x => x.p.id));
     const p = gapPick(st, len, Math.floor(g.start / 60) % 24, wd, used, prev.p.id);
     if (grossDur(st, p, Math.floor(g.start / 60) % 24, wd) > len) { skip.add(g.start); continue; }
-    const host = sc[prev.i]; host.extra = (host.extra || []).concat(p.id); // neues Array: Kalendertage teilen sich keine Listen
+    // direkt hinter der Vorsendung einsetzen (neue Arrays: Kalendertage teilen sich keine Listen)
+    const host = sc[prev.i], pos = rd.slice(0, k).filter(x => !x.gap && x.i === prev.i && x.extra).length;
+    const ex = (host.extra || []).slice(); ex.splice(pos, 0, p.id); host.extra = ex;
+    if (host.xt) { const xt = host.xt.slice(); while (xt.length < ex.length - 1) xt.push(null); xt.splice(pos, 0, g.start); host.xt = xt; }
     n++;
   }
   return n;
@@ -8143,8 +8161,7 @@ function fmtDevApply(P, prog, pr) {
 const fixFits = (p, d) => { const wd = weekday(d); return p.rh === "daily" ? wd >= 1 && wd <= 5 : wd === p.fixSlot.wd && (p.rh !== "monthly" || dateOf(d).getDate() <= 7); };
 function placeFixed(P, p) {
   let n = 0;
-  for (let d = G.day + 1; d < G.day + HORIZON; d++) { if (!fixFits(p, d)) continue; const sc = calDay(P, d), h = p.fixSlot.h;
-    if (sc[h].live || canPlace(P, sc, p, h)) continue; placeAt(P, sc, h, p); n++; }
+  n = placeFixedAll(P, p);
   if (n) logMsg("Programmplanung", "Programm", `„${p.title}“ ist fest eingeplant: ${p.rh === "daily" ? "werktags" : p.rh === "monthly" ? `einmal im Monat, ${WDN[p.fixSlot.wd]}` : `jeden ${WDN[p.fixSlot.wd]}`} um ${p.fixSlot.h} Uhr (${n} Termine im Planungszeitraum).`);
 }
 // Bei der Planung neuer Tage den festen Platz zuerst belegen (solange die Staffel läuft)
@@ -8173,7 +8190,7 @@ const fmtBuyer = (p, not) => G.stations.filter(s => !isMe(s) && s.id !== not && 
 function moveFormat(from, to, p) {
   from.progs = from.progs.filter(x => x !== p);
   if (isMe(from)) { allPlans(from).forEach(d => d.forEach(c => { if (c.p === p.id) { c.p = null; c.cont = false; c.ad = null; } })); if (G.stream) G.stream.catalog = G.stream.catalog.filter(c => c.id !== p.id); buildToday(from); }
-  p.own = isMe(to) ? true : false; p.home = isMe(to) ? null : to.id; p.fixSlot = null; p.movedAt = G.day; to.progs.push(p);
+  p.own = isMe(to) ? true : false; p.home = isMe(to) ? null : to.id; p.fixSlot = null; p.slots = null; p.movedAt = G.day; to.progs.push(p);
 }
 // Wöchentlich: Konkurrenz bietet für Ihre starken Formate oder bietet Ihnen eigene Formate an
 function fmtTradeWeek() {
@@ -8215,7 +8232,7 @@ EVENTS.push({ id: "fmtCancel", type: "Markt", when: () => false, make: () => ({}
   const opts = d.b ? ["sell", "pause", "kill"] : ["pause", "kill"], what = opts[k];
   cancelHit(P, p);
   if (what === "sell") { const b = G.stations[SIDX[d.b]]; book(P, "Lizenzerlöse", d.price); moveFormat(P, b, p); logMsg("Programmhandel", "Markt", `„${p.title}“ an ${b.name} verkauft (${eur(d.price)}).`, true); }
-  else if (what === "pause") { allPlans(P).forEach(dd => dd.forEach(c => { if (c.p === p.id) { c.p = null; c.cont = false; c.ad = null; } })); p.fixSlot = null; if (p.sz) { p.sz.on = false; p.sz.rerun = false; } buildToday(P); logMsg("Programmplanung", "Programm", `„${p.title}“ pausiert – im Archiv, Sendeplätze frei.`, true); }
+  else if (what === "pause") { allPlans(P).forEach(dd => dd.forEach(c => { if (c.p === p.id) { c.p = null; c.cont = false; c.ad = null; } })); p.fixSlot = null; p.slots = null; if (p.sz) { p.sz.on = false; p.sz.rerun = false; } buildToday(P); logMsg("Programmplanung", "Programm", `„${p.title}“ pausiert – im Archiv, Sendeplätze frei.`, true); }
   else progCancel0(P, p);
 } });
 
@@ -8358,6 +8375,337 @@ document.addEventListener("drop", e => {
   if (d !== d2 || from === to) return;
   seqEdit(me(), d, l => { const [p] = l.splice(from, 1); l.splice(to > from ? to - 1 : to, 0, p); });
 });
+// =====================================================================
+// Sendekalender als Tagesansicht: Sendungen als Blöcke auf der Zeitachse,
+// frei verschiebbar, Austausch per Klick, Überschneidungen sichtbar,
+// feste Sendetermine je Format werden automatisch eingeplant.
+// =====================================================================
+let dvZoom = 2, dvPick = null, dvFix = null, dvScroll = null, dvQuery = "";
+const itemDur = (P, p, t, wd) => p.kind === "sport" ? netDur(p) : grossDur(P, p, Math.floor(t / 60) % 24, wd);
+// Einträge eines Kalendertags mit geplanter Startzeit (Überschneidungen sind möglich)
+const dayItems = (P, d) => rundown(P, calDay(P, d), weekday(d)).filter(x => !x.gap && !x.c.live).map(x => ({ p: x.p, t: x.planned }));
+function dayLives(P, d) {
+  return eventsOn(d).filter(e => e.o.owner === P.id).map(({ d: def, m }) => ({ live: true, start: m ? m.t : def.h * 60, end: m ? m.t + m.dur : (def.h + def.len) * 60, title: `${def.sport}: ${m ? m.fix : def.name}` }));
+}
+// Einträge ins Stundenraster schreiben: erste Sendung einer Stunde ist der Sendeplatz, weitere folgen mit fester Startzeit
+function writeItems(P, d, items) {
+  const wd = weekday(d), sc = calDay(P, d), dropped = [], spans = [];
+  sc.forEach(c => { c.p = null; c.cont = false; delete c.t; delete c.extra; delete c.xt; });
+  items = items.filter(x => (x.t >= 0 && x.t < 1440) || (dropped.push(x.p), false)).sort((a, b) => a.t - b.t);
+  for (const x of items) {
+    const h = Math.floor(x.t / 60);
+    if (!sc[h].p) { sc[h].p = x.p.id; sc[h].t = x.t; }
+    else { const c = sc[h]; c.extra = (c.extra || []).concat(x.p.id); c.xt = (c.xt || []).concat(x.t); }
+    spans.push([x.t, x.t + itemDur(P, x.p, x.t, wd), x.p.id]);
+  }
+  for (let k = 0; k < 24; k++) if (!sc[k].p) { const s = spans.filter(([a, b]) => a < k * 60 && b > k * 60).pop(); if (s) { sc[k].p = s[2]; sc[k].cont = true; } }
+  return dropped;
+}
+const dvLocked = d => d === G.day && planLocked();
+function dvSave(P, d, items, msg) {
+  if (dvLocked(d)) { toast("Heute läuft bereits die Sendung – der Tag ist gesperrt."); return; }
+  editPlan(d, () => writeItems(P, d, items));
+  if (msg) toast(msg);
+  render();
+}
+// Spalten für überlappende Blöcke
+function dvLayout(blocks) {
+  blocks.sort((a, b) => a.start - b.start || b.end - a.end);
+  let cluster = [], clEnd = -1;
+  const flush = () => { const n = Math.max(1, ...cluster.map(b => b.col + 1)); cluster.forEach(b => (b.cols = n)); cluster = []; };
+  for (const b of blocks) {
+    if (cluster.length && b.start >= clEnd) { flush(); clEnd = -1; }
+    const used = new Set(cluster.filter(c => c.end > b.start).map(c => c.col)); let c = 0; while (used.has(c)) c++;
+    b.col = c; cluster.push(b); clEnd = Math.max(clEnd, b.end);
+  }
+  if (cluster.length) flush();
+}
+// Blöcke eines Tages: kleine Überhänge fängt gekürzte Werbung auf, echte Überschneidungen werden markiert
+const netOf = p => p.kind === "sport" ? netDur(p) : ceil5(netDur(p));
+function dayBlocks(P, d) {
+  const wd = weekday(d), items = dayItems(P, d);
+  const blocks = items.map((x, k) => ({ k, x, p: x.p, start: x.t, end: x.t + itemDur(P, x.p, x.t, wd), cut: 0 })).concat(dayLives(P, d));
+  const srt = [...blocks].sort((a, b) => a.start - b.start || a.k - b.k);
+  srt.forEach((b, n) => { if (b.live) return; const nx = srt[n + 1]; if (nx && nx.start < b.end && nx.start >= b.start + netOf(b.p) - creditSq(b.p)) { b.cut = b.end - nx.start; b.end = nx.start; } });
+  for (const b of blocks) b.with = blocks.filter(o => o !== b && o.start < b.end && o.end > b.start);
+  return { items, blocks };
+}
+function overlapMsg(P, d, k) {
+  const b = dayBlocks(P, d).blocks.find(b => b.k === k); if (!b) return "";
+  return b.with.length ? ` ⚠ Überschneidung mit „${b.with[0].p ? b.with[0].p.title : b.with[0].title}“.` : b.cut ? ` Werbung wird um ${b.cut} Min. gekürzt.` : "";
+}
+function dvChip(P, d, x, items) {
+  const prior = items.find(y => y !== x && y.p.id === x.p.id && y.t < x.t);
+  if (prior) return airChip(x.p, prior.t);
+  if (x.t < 360 && !x.p.house && d - 1 >= G.day && P.cal && P.cal[d - 1]) { const y = dayItems(P, d - 1).find(y => y.p.id === x.p.id && y.t >= 1080); if (y) return `<span class="chip warn">Wiederholung vom Vortag ${hhmm(y.t)}</span>`; }
+  return airChip(x.p);
+}
+function dayView(P, d, lock) {
+  const wd = weekday(d), PX = dvZoom, { items, blocks } = dayBlocks(P, d);
+  dvLayout(blocks);
+  const nOver = blocks.filter(b => b.with.length).length;
+  const gaps = []; let cov = 0;
+  for (const b of [...blocks].sort((a, b) => a.start - b.start)) { if (b.start > cov) gaps.push([cov, b.start]); cov = Math.max(cov, b.end); }
+  if (cov < 1440) gaps.push([cov, 1440]);
+  let ticks = "";
+  for (let m = 0; m < 1440; m += 15) ticks += `<i class="dv-tick ${m % 60 ? "" : "h"}" style="top:${m * PX}px">${m % 60 ? "" : `<span>${hhmm(m)}</span>`}</i>`;
+  const gapHtml = gaps.filter(([a, b]) => b - a >= 5).map(([a, b]) => `<div class="dv-gap" data-dvgap="${d}|${a}" style="top:${a * PX}px;height:${(b - a) * PX}px"><span>${hhmm(a)}–${hhmm(b % 1440)} · Lücke ${b - a} Min.${lock ? "" : " – antippen zum Füllen"}</span></div>`).join("");
+  const blockHtml = blocks.map(b => {
+    const ht = Math.max(12, (Math.min(b.end, 1440) - b.start) * PX - 2), pos = `top:${b.start * PX}px;height:${ht}px;left:calc(${b.col} * (100% - 60px) / ${b.cols} + 60px);width:calc((100% - 60px) / ${b.cols} - 4px)`;
+    const warn = b.with.length ? `<span class="dv-warn" ${b.live || lock ? "" : `data-act="dvOver" data-k="${d}|${b.k}"`}>⚠ ${b.live || lock ? "" : "Lösen: "}Überschneidung mit ${b.with.map(o => `„${esc(o.p ? o.p.title : o.title)}“ (${Math.min(b.end, o.end) - Math.max(b.start, o.start)} Min.)`).join(", ")}</span>` : "";
+    if (b.live) return `<div class="dv-b live ${b.with.length ? "over" : ""}" style="${pos}"><div class="dv-t"><b>${hhmm(b.start)}–${hhmm(b.end % 1440)}</b> ● LIVE · ${esc(b.title)}</div>${warn}</div>`;
+    const p = b.p, youth = !youthOk(p, Math.floor(b.start / 60) % 24);
+    return `<div class="dv-b ${b.with.length ? "over" : ""} ${youth ? "bad" : ""} ${p.house ? "house" : ""} k-${p.kind}" style="${pos}" ${lock ? "" : `data-dv="${d}|${b.k}"`} title="${esc(p.title)} · ${hhmm(b.start)}–${hhmm(b.end % 1440)}">
+      <div class="dv-t"><b>${hhmm(b.start)}–${hhmm(b.end % 1440)}</b> ${esc(p.title)}</div>
+      ${ht >= 34 ? `<div class="dv-m"><span class="chip">${b.end - b.start} Min.</span>${b.cut ? `<span class="chip warn" title="Wird automatisch aufgefangen">${b.cut > itemDur(P, b.p, b.start, wd) - netOf(b.p) ? "Werbung + Abspann" : "Werbung"} −${b.cut} Min.${cutLoss(P, b) ? ` · ≈ −${eur(cutLoss(P, b))}` : ""}</span>` : ""}${dvChip(P, d, b.x, items)}${slotsOf(p).some(s => slotFits(s, d) && Math.abs(s.t - b.start) < 5) ? '<span class="chip real">fester Termin</span>' : ""}<span>${esc(p.genre)} · Q ${p.q}</span>${youth ? `<span class="down">FSK ${p.fsk} zu früh</span>` : ""}</div>` : ""}${warn}</div>`;
+  }).join("");
+  const pool = P.progs.filter(p => p.kind !== "sport" && !p.exclusive && !(p.kind === "film" && p.runs >= p.maxRuns) && (!dvQuery || p.title.toLowerCase().includes(dvQuery.toLowerCase()))).sort((a, b) => (a.house - b.house) || b.q - a.q).slice(0, 120);
+  requestAnimationFrame(() => { const s = document.querySelector(".dv-scroll"); if (s) s.scrollTop = dvScroll ?? Math.max(0, 17 * 60 * PX - 20); });
+  return `<section class="panel"><div class="ph"><h2>Tagesansicht ${dateLabel(d)}</h2><span class="aside">Block ziehen = verschieben · antippen = austauschen, Uhrzeit, feste Termine · Lücke antippen = einfügen</span></div>
+    <div class="dv-bar"><span class="muted">Zoom</span>${[[1.2, "S"], [2, "M"], [3.2, "L"]].map(([z, l]) => `<button class="btn small ${dvZoom === z ? "hot" : ""}" data-act="dvZoom" data-k="${z}">${l}</button>`).join("")}
+      ${nOver ? `<span class="down">⚠ ${nOver} Sendungen überschneiden sich</span>${lock ? "" : `<button class="btn small hot" data-act="dvResolve" data-k="${d}">Überschneidungen auflösen (nachrücken)</button>`}` : '<span class="up">Keine Überschneidungen</span>'}
+      ${dvPick != null ? `<span class="chip warn">„${esc((progOf(P, dvPick) || {}).title || "")}“ gewählt – jetzt Uhrzeit im Kalender antippen</span><button class="btn small" data-act="dvPick" data-id="">Abbrechen</button>` : ""}</div>
+    <div class="dv">${lock ? "" : `<aside class="dv-pool"><input class="search" id="dvSearch" placeholder="Programm suchen …" value="${esc(dvQuery)}"><p class="fine">In den Kalender ziehen oder antippen und dann die Uhrzeit antippen.</p>
+      <div class="dv-list">${pool.map(p => `<div class="wp-item ${dvPick === p.id ? "on" : ""}" draggable="true" data-dvpool="${p.id}" data-act="dvPick" data-id="${p.id}"><b>${esc(p.title)}</b><span>${esc(p.genre)} · ${itemDur(P, p, 1200, wd)} Min. · Q ${p.q}${slotsOf(p).length ? " · fester Termin" : ""}</span></div>`).join("")}</div></aside>`}
+    <div class="dv-scroll"><div class="dv-col ${lock ? "lock" : ""}" data-dvcol="${d}" style="height:${1440 * PX}px">${ticks}${gapHtml}${blockHtml}</div></div></div></section>`;
+}
+// Auswahlliste für Einfügen und Austauschen
+function dvList(P, d, m, act, key) {
+  const wd = weekday(d), hr = Math.floor(m / 60) % 24;
+  ensureHouse(P);
+  const list = P.progs.filter(p => p.kind !== "sport" && !p.exclusive && !(p.kind === "film" && p.runs >= p.maxRuns) && !(p.kind === "serie" && !p.own && p.ep >= (p.maxEp || p.eps * 2)) && !(p.until && d > p.until))
+    .sort((a, b) => b.q * fit(b.genre, hr) * (0.35 + 0.65 * (b.topic ?? 1)) - a.q * fit(a.genre, hr) * (0.35 + 0.65 * (a.topic ?? 1))).slice(0, 80);
+  return `<div class="picklist">${list.map(p => { const g = itemDur(P, p, m, wd); return `<button class="pick" data-act="${act}" data-k="${key}" data-id="${p.id}" ${youthOk(p, hr) ? "" : "disabled"}><b>${esc(p.title)}</b><span class="meta"><span class="chip">${g} Min.</span><span>${hhmm(m)}–${hhmm((m + g) % 1440)}</span>${airChip(p)}<span>${esc(p.genre)}</span><span class="stars">${stars(fit(p.genre, hr))}</span><span>Q ${p.q}</span>${youthOk(p, hr) ? "" : `<span class="down">FSK ${p.fsk} zu früh</span>`}</span></button>`; }).join("")}</div>`;
+}
+function dvOpen(d, k) {
+  const P = me(), wd = weekday(d), x = dayItems(P, d)[k]; if (!x) return;
+  const end = x.t + itemDur(P, x.p, x.t, wd), h = Math.floor(x.t / 60), canFix = !["film", "sport"].includes(x.p.kind) && !x.p.house;
+  openModal(`<header><h2>${esc(x.p.title)} · ${hhmm(x.t)}–${hhmm(end % 1440)}</h2><button class="btn" data-act="close">Schließen</button></header><div class="dbody">
+    <div class="actions" style="flex-wrap:wrap;gap:8px;margin-bottom:12px"><label class="muted">Startzeit <input type="time" id="dvTime" step="300" value="${hhmm(x.t)}"></label><button class="btn small hot" data-act="dvTime" data-k="${d}|${k}">Übernehmen</button>
+      ${canFix ? `<button class="btn small" data-act="fixDlg" data-id="${x.p.id}">Feste Sendetermine …</button>` : ""}<button class="btn small" data-title="${P.id}|${x.p.id}">Formatprofil</button>
+      ${adAllowed(P, h, wd) ? `<button class="btn small" data-act="pickAd" data-i="${h}" data-k="${d}">Werbung ${hh(h)}</button>` : ""}<button class="btn small red" data-act="dvDel" data-k="${d}|${k}">Entfernen</button></div>
+    ${(() => { const bb = dayBlocks(P, d).blocks.find(y => y.k === k); return bb && bb.with.length ? `<p class="warnline">⚠ Überschneidung mit „${esc(bb.with[0].p ? bb.with[0].p.title : bb.with[0].title)}“ <button class="btn small hot" data-act="dvOver" data-k="${d}|${k}">Lösungen anzeigen</button></p>` : bb && bb.cut ? `<p class="fine">Werbung${bb.cut > 0 ? ` wird um ${bb.cut} Min. gekürzt` : ""}, damit die nächste Sendung pünktlich beginnt.</p>` : ""; })()}
+    <h3>Austauschen gegen …</h3>${dvList(P, d, x.t, "dvSwap", `${d}|${k}`)}</div>`);
+}
+function dvInsert(d, m) {
+  const P = me(); if (dvLocked(d)) return;
+  if (dvPick != null) { const p = progOf(P, dvPick); dvPick = null; if (p) dvPlace(P, d, p, m); return; }
+  openModal(`<header><h2>${dateShort(d)} · Sendung um ${hhmm(m)} einfügen</h2><button class="btn" data-act="close">Schließen</button></header><div class="dbody">
+    <p class="lead">Die Sendung beginnt genau um ${hhmm(m)}. Überschneidungen zeigt der Kalender rot an.</p>${dvList(P, d, m, "dvIns", `${d}|${m}`)}</div>`);
+}
+function dvPlace(P, d, p, m) {
+  if (!youthOk(p, Math.floor(m / 60) % 24)) { toast(`🚫 „${p.title}“ hat FSK ${p.fsk} und darf erst ab ${p.fsk >= 18 ? "23" : "22"}:00 Uhr laufen.`); return; }
+  const items = dayItems(P, d); items.push({ p, t: m });
+  dvSave(P, d, items);
+  const k = dayItems(P, d).findIndex(x => x.p.id === p.id && x.t === m);
+  toast(`„${p.title}“ um ${hhmm(m)} eingeplant.${k >= 0 ? overlapMsg(P, d, k) : ""}`);
+}
+function dvResolve(P, d) {
+  const wd = weekday(d), lives = dayLives(P, d), items = dayItems(P, d).sort((a, b) => a.t - b.t), dropped = [];
+  let prevEnd = 0, prevNet = 0, creditSqLast = 0;
+  for (const x of items) {
+    let t = x.t >= prevNet - creditSqLast && x.t < prevEnd ? x.t : Math.max(x.t, prevEnd), dur = itemDur(P, x.p, t, wd); // Überhang bis zur Nettolänge: Werbung wird gekürzt
+    for (const l of lives) if (t < l.end && t + dur > l.start) { t = l.end; dur = itemDur(P, x.p, t, wd); }
+    x.t = t; prevEnd = t + dur; prevNet = t + netOf(x.p); creditSqLast = creditSq(x.p);
+  }
+  const keep = items.filter(x => x.t < 1440 || (dropped.push(x.p), false));
+  dvSave(P, d, keep, dropped.length ? `Aufgelöst – passt nicht mehr in den Tag: ${dropped.map(p => "„" + p.title + "“").join(", ")}.` : "Überschneidungen aufgelöst: Folgesendungen rücken nach.");
+}
+// ---------------------------------------------------------------------
+// Feste Sendetermine: Wochentage + Uhrzeit je Format, mehrere Termine möglich (z. B. Wiederholung in der Nacht)
+// ---------------------------------------------------------------------
+const slotsOf = p => p.slots || (p.fixSlot ? [{ wds: p.rh === "daily" ? [1, 2, 3, 4, 5] : [p.fixSlot.wd], t: p.fixSlot.h * 60 + (p.fixSlot.h === 20 ? 15 : 0), monthly: p.rh === "monthly" }] : []);
+const slotFits = (s, d) => s.wds.includes(weekday(d)) && (!s.monthly || dateOf(d).getDate() <= 7);
+const wdsName = wds => { const s = [...wds].sort((a, b) => ((a + 6) % 7) - ((b + 6) % 7)); return s.length === 7 ? "täglich" : s.join() === "1,2,3,4,5" ? "Mo–Fr" : s.join() === "6,0" ? "Sa+So" : s.map(w => WDN[w]).join(", "); };
+function applySlotsDay(P, d, only, rem) {
+  if (dvLocked(d)) return 0;
+  const progs = (only ? [only] : P.progs).filter(p => slotsOf(p).length && !(p.sz && !p.sz.on && !p.slots)); // selbst gesetzte Termine gelten auch außerhalb der Staffel
+  if (!progs.length) return 0;
+  const wd = weekday(d), lives = dayLives(P, d);
+  let items = dayItems(P, d), n = 0;
+  const fixedHere = x => slotsOf(x.p).some(s => slotFits(s, d) && Math.abs(s.t - x.t) < 5);
+  for (const p of progs) for (const s of slotsOf(p)) {
+    if (!slotFits(s, d) || items.some(x => x.p.id === p.id && Math.abs(x.t - s.t) < 5)) continue;
+    if (rem && rem.get(p) <= 0) continue;
+    if (!youthOk(p, Math.floor(s.t / 60) % 24)) continue;
+    const end = s.t + itemDur(P, p, s.t, wd);
+    if (lives.some(l => l.start < end && l.end > s.t)) continue;
+    items = items.filter(x => fixedHere(x) || !(x.t < end && x.t + itemDur(P, x.p, x.t, wd) > s.t));
+    items.push({ p, t: s.t }); n++; if (rem) rem.take(p);
+  }
+  if (n) writeItems(P, d, items);
+  return n;
+}
+function openFixDlg(P, p) {
+  if (!dvFix || dvFix.pid !== p.id) dvFix = { pid: p.id, wds: p.kind === "serie" || p.rh === "daily" ? [1, 2, 3, 4, 5] : [weekday(G.day)], t: p.kind === "serie" ? 19 * 60 + 40 : 20 * 60 + 15 };
+  const f = dvFix, sl = slotsOf(p), left = budgetOf(p);
+  openModal(`<header><h2>Feste Sendetermine · ${esc(p.title)}</h2><button class="btn" data-act="close">Schließen</button></header><div class="dbody">
+    <p class="lead">Feste Termine werden automatisch in den Sendekalender übernommen – für den ganzen Planungszeitraum (${HORIZON / 7} Wochen) und jeden neu geplanten Tag. Was zu dieser Zeit bisher lief, wird ersetzt.${left !== Infinity ? ` Noch <b>${left}</b> Ausstrahlungen in der Lizenz.` : ""}</p>
+    <h3>Aktuelle Termine</h3>${sl.length ? `<div class="tbl"><table><tbody>${sl.map((s, k) => `<tr><td><b>${wdsName(s.wds)}${s.monthly ? " (1× im Monat)" : ""}</b></td><td>${hhmm(s.t)} Uhr</td><td class="r"><button class="btn small red" data-act="fixDel" data-k="${k}" data-id="${p.id}">Termin löschen</button></td></tr>`).join("")}</tbody></table></div>` : '<p class="fine">Noch keine festen Termine.</p>'}
+    <h3 style="margin-top:14px">Neuer Termin</h3>
+    <div class="pills" style="margin-bottom:8px">${[1, 2, 3, 4, 5, 6, 0].map(w => `<button class="${f.wds.includes(w) ? "on" : ""}" data-act="fixWd" data-k="${w}" data-id="${p.id}">${WDN[w]}</button>`).join("")}
+      <button data-act="fixQuick" data-k="1,2,3,4,5" data-id="${p.id}">Mo–Fr</button><button data-act="fixQuick" data-k="0,1,2,3,4,5,6" data-id="${p.id}">täglich</button><button data-act="fixQuick" data-k="6,0" data-id="${p.id}">Wochenende</button></div>
+    <div class="actions" style="flex-wrap:wrap;gap:6px"><label class="muted">Uhrzeit <input type="time" id="fixT" step="300" value="${hhmm(f.t)}"></label>
+      ${[["18:00", 1080], ["19:05", 1145], ["19:40", 1180], ["20:15", 1215], ["22:15", 1335], ["22:45", 1365], ["23:15", 1395], ["00:30", 30], ["01:30", 90]].map(([l, m]) => `<button class="btn small ${f.t === m ? "hot" : ""}" data-act="fixTime" data-k="${m}" data-id="${p.id}">${l}</button>`).join("")}</div>
+    <p class="fine">Tipp: Für eine Wiederholung in der Nacht einfach einen zweiten Termin anlegen, z. B. 22:45 und 01:30 – der Kalender kennzeichnet sie als Wiederholung.</p>
+    <div class="actions" style="margin-top:10px"><button class="btn hot" data-act="fixAdd" data-id="${p.id}" ${f.wds.length ? "" : "disabled"}>Fest einplanen: ${f.wds.length ? wdsName(f.wds) : "–"} um ${hhmm(f.t)}</button></div></div>`);
+}
+function placeFixedAll(P, p) {
+  const rem = remMap(P, null); let n = 0;
+  for (let d = G.day; d < G.day + HORIZON; d++) n += applySlotsDay(P, d, p, rem);
+  if (!dvLocked(G.day)) buildToday(P);
+  return n;
+}
+function dvAction(P, k, b, id) {
+  const key = b.dataset.k || "", [d, v] = key.split("|").map(Number), p = id != null ? progOf(P, id) : null;
+  const readTime = el => { const [hh_, mm_] = String((document.getElementById(el) || {}).value || "").split(":").map(Number); return isNaN(hh_) ? null : clamp(Math.round((hh_ * 60 + (mm_ || 0)) / 5) * 5, 0, 1435); };
+  switch (k) {
+    case "dvZoom": dvZoom = +key; dvScroll = null; break;
+    case "dvPick": dvPick = id == null || dvPick === id ? null : id; break;
+    case "dvResolve": closeModal(); dvResolve(P, d); return;
+    case "dvOver": dvOverDlg(d, v); return;
+    case "dvOpenK": dvOpen(d, v); return;
+    case "dvCasc": closeModal(); dvCascade(P, d, v, +key.split("|")[2]); return;
+    case "dvTime": { const m = readTime("dvTime"); if (m == null) return; const items = dayItems(P, d); if (!items[v]) return; items[v].t = m; closeModal(); dvSave(P, d, items); const k2 = dayItems(P, d).findIndex(x => x.t === m && x.p.id === items[v].p.id); toast(`„${items[v].p.title}“ beginnt jetzt um ${hhmm(m)}.${overlapMsg(P, d, k2)}`); return; }
+    case "dvDel": { const items = dayItems(P, d); const [x] = items.splice(v, 1); closeModal(); dvSave(P, d, items, x ? `„${x.p.title}“ entfernt – die Lücke bleibt frei.` : ""); return; }
+    case "dvSwap": { const items = dayItems(P, d); if (!items[v] || !p) return; const old = items[v].p; items[v].p = p; closeModal(); dvSave(P, d, items); const k2 = dayItems(P, d).findIndex(x => x.p.id === p.id && x.t === items[v].t); toast(`„${old.title}“ → „${p.title}“ um ${hhmm(items[v].t)}.${overlapMsg(P, d, k2)}`); return; }
+    case "dvIns": closeModal(); if (p) dvPlace(P, d, p, v); return;
+    case "fixDlg": if (p) openFixDlg(P, p); return;
+    case "fixWd": { const w = +key; dvFix.wds = dvFix.wds.includes(w) ? dvFix.wds.filter(x => x !== w) : dvFix.wds.concat(w); const m = readTime("fixT"); if (m != null) dvFix.t = m; openFixDlg(P, p); return; }
+    case "fixQuick": dvFix.wds = key.split(",").map(Number); { const m = readTime("fixT"); if (m != null) dvFix.t = m; } openFixDlg(P, p); return;
+    case "fixTime": dvFix.t = +key; openFixDlg(P, p); return;
+    case "fixAdd": {
+      const m = readTime("fixT"); if (m != null) dvFix.t = m;
+      if (!youthOk(p, Math.floor(dvFix.t / 60) % 24)) { toast(`🚫 FSK ${p.fsk}: erst ab ${p.fsk >= 18 ? "23" : "22"}:00 Uhr erlaubt.`); return; }
+      p.slots = slotsOf(p).concat({ wds: dvFix.wds.slice(), t: dvFix.t }); p.fixSlot = null;
+      const n = placeFixedAll(P, p);
+      logMsg("Programmplanung", "Programm", `„${p.title}“ hat einen festen Sendetermin: ${wdsName(dvFix.wds)} um ${hhmm(dvFix.t)} Uhr (${n} Termine im Planungszeitraum eingeplant).`, true);
+      openFixDlg(P, p); render(); return;
+    }
+    case "fixDel": {
+      const s = slotsOf(p)[+key]; if (!s) return; p.slots = slotsOf(p).filter((_, j) => j !== +key); p.fixSlot = null;
+      let n = 0;
+      for (let dd = G.day; dd < G.day + HORIZON; dd++) { if (dvLocked(dd) || !slotFits(s, dd)) continue; const items = dayItems(P, dd), keep = items.filter(x => !(x.p.id === p.id && Math.abs(x.t - s.t) < 5)); if (keep.length < items.length) { n++; editPlan(dd, () => writeItems(P, dd, keep)); } }
+      toast(`Termin gelöscht – ${n} Ausstrahlungen aus dem Kalender genommen. Die Lücken füllt der Assistent.`);
+      openFixDlg(P, p); render(); return;
+    }
+  }
+  render();
+}
+document.addEventListener("input", e => { if (e.target && e.target.id === "dvSearch") { dvQuery = e.target.value; const pos = e.target.selectionStart; render(); const el = document.getElementById("dvSearch"); if (el) { el.focus(); el.setSelectionRange(pos, pos); } } });
+document.addEventListener("scroll", e => { if (e.target && e.target.classList && e.target.classList.contains("dv-scroll")) dvScroll = e.target.scrollTop; }, true);
+// Ziehen mit Maus oder Finger: Block folgt dem Zeiger, eingerastet auf 5 Minuten
+let dvDrag = null;
+document.addEventListener("pointerdown", e => {
+  const b = e.target.closest && e.target.closest(".dv-b[data-dv]"); if (!b || e.button !== 0 || e.target.closest("[data-act]")) return;
+  dvDrag = { el: b, y0: e.clientY, top0: parseFloat(b.style.top), moved: false, key: b.dataset.dv, m: null };
+  try { b.setPointerCapture(e.pointerId); } catch (_) {}
+});
+document.addEventListener("pointermove", e => {
+  if (!dvDrag) return; const dy = e.clientY - dvDrag.y0;
+  if (!dvDrag.moved && Math.abs(dy) < 5) return;
+  dvDrag.moved = true;
+  const m = clamp(Math.round((dvDrag.top0 + dy) / dvZoom / 5) * 5, 0, 1435); dvDrag.m = m;
+  dvDrag.el.style.top = m * dvZoom + "px"; dvDrag.el.classList.add("drag");
+  const t = dvDrag.el.querySelector(".dv-t b"); if (t) t.textContent = hhmm(m) + " …";
+});
+document.addEventListener("pointerup", () => {
+  if (!dvDrag) return; const g = dvDrag; dvDrag = null;
+  const [d, k] = g.key.split("|").map(Number), P = me();
+  if (!g.moved) { dvOpen(d, k); return; }
+  const items = dayItems(P, d); if (!items[k]) return;
+  const p = items[k].p;
+  if (!youthOk(p, Math.floor(g.m / 60) % 24)) { toast(`🚫 „${p.title}“ hat FSK ${p.fsk} – erst ab ${p.fsk >= 18 ? "23" : "22"}:00 Uhr.`); render(); return; }
+  items[k].t = g.m; dvSave(P, d, items);
+  const k2 = dayItems(P, d).findIndex(x => x.p.id === p.id && x.t === g.m);
+  toast(`„${p.title}“ → ${hhmm(g.m)}.${overlapMsg(P, d, k2)}`);
+});
+// Leere Stelle oder Lücke antippen: einfügen (bzw. gewählte Sendung aus dem Pool platzieren)
+document.addEventListener("click", e => {
+  if (!G) return;
+  const col = e.target.closest && e.target.closest("[data-dvcol]"); if (!col || e.target.closest(".dv-b") || col.classList.contains("lock")) return;
+  const d = +col.dataset.dvcol, gap = e.target.closest("[data-dvgap]");
+  const m = gap && dvPick == null ? +gap.dataset.dvgap.split("|")[1] : clamp(Math.round((e.clientY - col.getBoundingClientRect().top) / dvZoom / 5) * 5, 0, 1435);
+  dvInsert(d, m);
+});
+document.addEventListener("dragstart", e => { const t = e.target.closest && e.target.closest("[data-dvpool]"); if (t) { e.dataTransfer.setData("text/plain", "dvp:" + t.dataset.dvpool); e.dataTransfer.effectAllowed = "copy"; } });
+document.addEventListener("dragover", e => { if (e.target.closest && e.target.closest("[data-dvcol]")) e.preventDefault(); });
+document.addEventListener("drop", e => {
+  const col = e.target.closest && e.target.closest("[data-dvcol]"); if (!col || !G) return;
+  const v = e.dataTransfer.getData("text/plain"); if (!v.startsWith("dvp:")) return; e.preventDefault();
+  const P = me(), p = progOf(P, +v.slice(4)), d = +col.dataset.dvcol; if (!p || dvLocked(d)) return;
+  dvPlace(P, d, p, clamp(Math.round((e.clientY - col.getBoundingClientRect().top) / dvZoom / 5) * 5, 0, 1435));
+});
+// ---------------------------------------------------------------------
+// Überschneidungen lösen: Werbung kürzen, Abspann straffen, Kette verschieben, früher beginnen, austauschen
+// ---------------------------------------------------------------------
+// Kette verschieben: Sendung k beginnt um newT, Folgesendungen rücken nur so weit nach, bis eine Lücke den Versatz schluckt
+function dvCascade(P, d, k, newT) {
+  const wd = weekday(d), lives = dayLives(P, d), items = dayItems(P, d), x0 = items[k]; if (!x0) return;
+  x0.t = newT;
+  const order = items.map((x, j) => j).filter(j => j !== k && items[j].t >= newT - 0).sort((a, b) => items[a].t - items[b].t);
+  let prev = x0, moved = 0;
+  const fixLive = x => { let dur = itemDur(P, x.p, x.t, wd); for (const l of lives) if (x.t < l.end && x.t + dur > l.start) { x.t = l.end; dur = itemDur(P, x.p, x.t, wd); } };
+  fixLive(x0);
+  for (const j of order) {
+    const x = items[j], pEnd = prev.t + itemDur(P, prev.p, prev.t, wd), pSoft = prev.t + netOf(prev.p) - creditSq(prev.p);
+    if (x.t >= pEnd || (x.t >= pSoft && x.t > prev.t)) break; // Lücke oder Werbekürzung fängt den Versatz auf
+    x.t = ceil5(pEnd); fixLive(x); moved++; prev = x;
+  }
+  const keep = items.filter(x => x.t < 1440), out = items.length - keep.length;
+  dvSave(P, d, keep, `„${x0.p.title}“ beginnt um ${hhmm(x0.t)}${moved ? ` – ${moved} Folgesendung${moved > 1 ? "en rücken" : " rückt"} nach` : ""}${out ? `, ${out} passt nicht mehr in den Tag` : ""}.`);
+}
+// Entgangene Werbeerlöse durch gekürzte Werbung (Schätzung)
+function cutLoss(P, b) { const h = Math.floor(b.start / 60) % 24, ad = Math.min(b.cut, Math.max(0, itemDur(P, b.p, b.start, weekday(G.day)) - netOf(b.p))); return ad > 0 ? adBlockRevenue(P, h, expected(P, h), b.p, ad).pay : 0; }
+function dvOverDlg(d, k) {
+  const P = me(), { items, blocks } = dayBlocks(P, d), b = blocks.find(x => x.k === k); if (!b || !b.with.length) { dvOpen(d, k); return; }
+  const o = b.with[0], A = o.start <= b.start ? o : b, B = A === b ? o : b, ov = Math.min(A.end, B.end) - Math.max(A.start, B.start);
+  const tA = A.live ? A.title : A.p.title, tB = B.live ? B.title : B.p.title;
+  const gapBefore = A.live ? 0 : A.start - Math.max(0, ...blocks.filter(x => x !== A && x.start < A.start).map(x => x.end));
+  const sqA = A.live ? 0 : creditSq(A.p) + Math.max(0, itemDur(P, A.p, A.start, weekday(d)) - netOf(A.p));
+  const opts = [];
+  if (!B.live) opts.push([`„${esc(tB)}“ auf ${hhmm(A.end % 1440)} verschieben`, `Die Folgesendungen rücken nur so weit nach, bis eine Lücke den Versatz auffängt.`, `data-act="dvCasc" data-k="${d}|${B.k}|${A.end}"`]);
+  if (!A.live && gapBefore >= ov) opts.push([`„${esc(tA)}“ ${ov} Min. früher beginnen (${hhmm(A.start - ov)})`, `Davor ist eine Lücke von ${gapBefore} Min. – nichts anderes ändert sich.`, `data-act="dvCasc" data-k="${d}|${A.k}|${A.start - ov}"`]);
+  else if (!A.live) opts.push([`„${esc(tA)}“ früher beginnen`, `Nicht möglich: davor ist nur ${Math.max(0, gapBefore)} Min. Platz.`, "disabled"]);
+  if (!A.live && sqA) opts.push([`Werbung und Abspann in „${esc(tA)}“ kürzen`, ov <= sqA ? "Passiert automatisch – die Überschneidung ist dann keine mehr." : `Reicht nicht: maximal ${sqA} Min. lassen sich so einsparen, es fehlen ${ov - sqA} Min.`, "disabled"]);
+  if (B.live && !A.live) opts.push([`„${esc(tA)}“ hinter das Live-Event legen (${hhmm(B.end % 1440)})`, "Der Platz vor dem Live-Event bleibt frei – dort passt z. B. ein Kurzformat.", `data-act="dvCasc" data-k="${d}|${A.k}|${B.end}"`]);
+  if (!A.live) opts.push([`„${esc(tA)}“ gegen eine kürzere Sendung tauschen`, "Öffnet die Auswahl mit Längen und Startzeit.", `data-act="dvOpenK" data-k="${d}|${A.k}"`]);
+  if (!B.live) opts.push([`„${esc(tB)}“ gegen eine andere Sendung tauschen`, "Öffnet die Auswahl mit Längen und Startzeit.", `data-act="dvOpenK" data-k="${d}|${B.k}"`]);
+  opts.push(["Alle Überschneidungen des Tages auflösen", "Folgesendungen rücken nach; wo Werbung gekürzt werden kann, bleibt alles stehen.", `data-act="dvResolve" data-k="${d}"`]);
+  openModal(`<header><h2>Überschneidung · ${ov} Min.</h2><button class="btn" data-act="close">Schließen</button></header><div class="dbody">
+    <p class="lead">„${esc(tA)}“ (${hhmm(A.start)}–${hhmm(A.end % 1440)}) läuft ${ov} Min. in „${esc(tB)}“ (ab ${hhmm(B.start)}). Ohne Entscheidung beginnt „${esc(tB)}“ verspätet – das kostet Zuschauer, die zur angekündigten Zeit einschalten.</p>
+    <div class="picklist">${opts.map(([t, s, a]) => `<button class="pick" ${a}><b>${t}</b><span class="meta">${s}</span></button>`).join("")}</div></div>`);
+}
+// Assistent räumt auf: nichts in Live-Events, echte Überschneidungen rücken nach, Lücken werden gefüllt
+function autoTidy(P, d) {
+  if (dvLocked(d)) return;
+  const wd = weekday(d), lives = dayLives(P, d), all = dayItems(P, d);
+  let items = all.filter(x => { const e = x.t + itemDur(P, x.p, x.t, wd); return !lives.some(l => x.t < l.end && e > l.start); }).sort((a, b) => a.t - b.t);
+  let changed = items.length !== all.length, prevEnd = 0, prevSoft = 0;
+  for (const x of items) {
+    if (x.t < prevEnd && x.t < prevSoft) {
+      let t = ceil5(prevEnd), dur = itemDur(P, x.p, t, wd);
+      for (const l of lives) if (t < l.end && t + dur > l.start) { t = l.end; dur = itemDur(P, x.p, t, wd); }
+      x.t = t; changed = true;
+    }
+    prevEnd = x.t + itemDur(P, x.p, x.t, wd); prevSoft = x.t + netOf(x.p) - creditSq(x.p);
+  }
+  items = items.filter(x => x.t < 1440);
+  // Lücken – auch vor und nach Live-Events – mit passenden Sendungen bzw. Kurzformaten schließen
+  const used = new Set(items.filter(x => !x.p.filler).map(x => x.p.id));
+  for (let g = 0; g < 80; g++) {
+    const occ = items.map(x => [x.t, x.t + itemDur(P, x.p, x.t, wd)]).concat(lives.map(l => [l.start, l.end])).sort((a, b) => a[0] - b[0]);
+    let cov = 0, gap = null;
+    for (const [a, b] of occ) { if (a - cov >= 5) { gap = [cov, a]; break; } cov = Math.max(cov, b); }
+    if (!gap && 1440 - cov >= 5) gap = [cov, 1440];
+    if (!gap) break;
+    const len = gap[1] - gap[0], h = Math.floor(gap[0] / 60) % 24, prev = items.filter(x => x.t < gap[0]).pop();
+    const p = gapPick(P, len, h, wd, used, prev && prev.p.id);
+    if (!p || itemDur(P, p, gap[0], wd) > len) break;
+    items.push({ p, t: gap[0] }); used.add(p.id); changed = true;
+  }
+  if (changed) writeItems(P, d, items);
+}
 // =====================================================================
 // Formatprofil: Quotenverlauf, Publikum, Analyse und Maßnahmen je Sendung
 // =====================================================================
@@ -9384,6 +9732,7 @@ function openTitle(key) {
   const body = !tabs.length ? facts + szp + castPanel : profTab === "overview" ? fmtTabBody(t, "overview") + `<div style="margin-top:12px">${facts}</div>` + szp + castPanel : fmtTabBody(t, profTab);
   openModal(`<header><h2>${esc(t.title)}</h2><button class="btn" data-act="close">Schließen</button></header><div class="dbody">
     <div class="ttl-head"><div class="grow"><span class="chip real">${kindName}</span>${p ? ` <span class="chip">${esc(p.genre)}</span>` : ""}${p && p.own ? ' <span class="chip good">Eigenproduktion</span>' : p && p.home ? ' <span class="chip real">Eigenformat</span>' : ""}${p && p.sponsor ? ' <span class="chip">gesponsert</span>' : ""}${p && (p.fx || []).length ? ` <span class="chip warn">${p.fx.length} Maßnahme${p.fx.length > 1 ? "n" : ""} läuft</span>` : ""}
+      ${mine && p && !["film", "sport"].includes(p.kind) && !p.house ? `<div class="actions" style="margin-top:8px"><button class="btn small hot" data-act="fixDlg" data-id="${p.id}">Feste Sendetermine${slotsOf(p).length ? ` (${slotsOf(p).map(x => wdsName(x.wds) + " " + hhmm(x.t)).join(" · ")})` : " festlegen"}</button></div>` : ""}
       <p class="lead" style="margin-top:8px">${esc(DESC[t.title] || (p && p.own ? "Eigenproduktion des Senders." : "Keine Beschreibung vorhanden."))}</p></div>
       <div class="ttl-side"><small>Läuft bei</small><b>${t.owner && SIDX[t.owner] !== undefined ? sname(SIDX[t.owner]) : t.streamer ? sbadge(t.owner, 18) : esc(t.ownerName)}</b></div></div>
     ${tabs.length ? `<div class="ptabs">${tabs.map(([k, n]) => `<button data-act="profTab" data-k="${k}" class="${profTab === k ? "on" : ""}">${n}</button>`).join("")}</div>` : ""}
