@@ -1,0 +1,36 @@
+name: Besetzungsdatenbank (privat, verschlüsselt)
+
+# Recherchiert aus Wikidata (CC0), wer welche Sendung moderiert bzw. in welcher Serie spielt.
+# Das Ergebnis enthält Namen realer Personen und wird deshalb verschlüsselt (öffentlicher RSA-Schlüssel);
+# nur der Besitzer des privaten Schlüssels kann es lesen. Es wird kein Klartext veröffentlicht.
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/besetzung-db.yml"
+      - ".github/besetzung-db/cast.py"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - name: Besetzung recherchieren
+        run: python3 .github/besetzung-db/cast.py && ls -la besetzung.json
+      - name: Verschlüsseln
+        run: |
+          gzip -9 besetzung.json
+          openssl rand -hex 32 > key.bin
+          openssl enc -aes-256-cbc -pbkdf2 -salt -in besetzung.json.gz -out besetzung.enc -pass file:key.bin
+          openssl pkeyutl -encrypt -pubin -inkey .github/titel-db/pub.pem -in key.bin -out besetzung-key.enc
+          rm -f key.bin besetzung.json.gz
+      - name: Als Release-Datei ablegen
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view besetzung-db-enc -R "${{ github.repository }}" >/dev/null 2>&1 || gh release create besetzung-db-enc -R "${{ github.repository }}" --target "${{ github.sha }}" --title "Besetzungsdatenbank (verschlüsselt)" --notes "Verschlüsselt, nur für die private Spielversion lesbar."
+          gh release upload besetzung-db-enc besetzung.enc besetzung-key.enc -R "${{ github.repository }}" --clobber
