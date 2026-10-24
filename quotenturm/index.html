@@ -1259,7 +1259,7 @@ const MENU = [
   { id: "streaming", name: "Streaming", subs: [["stream", "Plattform", "Abos, Churn, ARPU und Preismodell"], ["catalog", "Katalog", "Titel und Verwertungsfenster"], ["smarket", "Wettbewerb", "Streamer im Vergleich und Top 10"]] },
   { id: "sport", name: "Sport", subs: [["rights", "Rechtemarkt", "Ausschreibungen und Gebote"], ["myrights", "Meine Rechte", "Pakete und Live-Termine"], ["spielplan", "Spielplan", "Rahmenterminkalender Fußball"]] },
   { id: "quoten", name: "Quoten", subs: [["table", "Quotentabelle", "Senderranking nach Marktanteil"], ["ratings", "Einschaltquoten", "Jede Stunde, jeder Sender"], ["rivals", "Konkurrenz", "Tagesplan der anderen Sender"], ["landscape", "Markt", "Sendergruppen und Streamer"]] },
-  { id: "sender", name: "Sender", subs: [["chiefs", "Rivalen", "Beziehungen zu den Senderchefs"], ["board", "Senderleitung", "Erwartungen, Vertrauen, Kredit"], ["finance", "Finanzen", "Erlöse, Kosten, EBITDA"], ["contracts", "Werbeverträge", "Laufende Werbeverträge"], ["adsales", "Vermarktung", "Erlöse, TKP, Kunden, Preisliste"], ["personal", "Personal", "Moderation, Kommentar, Produktion"], ["agency", "Werbeagentur", "Neue Werbekunden gewinnen"], ["jury", "Fernsehpreise", "Grimme, Fernsehpreis, Bambi, Henne"]] },
+  { id: "sender", name: "Sender", subs: [["chiefs", "Rivalen", "Beziehungen zu den Senderchefs"], ["board", "Senderleitung", "Erwartungen, Vertrauen, Kredit"], ["finance", "Finanzen", "Erlöse, Kosten, EBITDA"], ["contracts", "Werbeverträge", "Laufende Werbeverträge"], ["adsales", "Vermarktung", "Erlöse, TKP, Kunden, Preisliste"], ["personal", "Personal", "Moderation, Kommentar, Produktion"], ["karriere", "Karriere", "Job-Sicherheit, Arbeitsmarkt, Vorstand"], ["agency", "Werbeagentur", "Neue Werbekunden gewinnen"], ["jury", "Fernsehpreise", "Grimme, Fernsehpreis, Bambi, Henne"]] },
 ];
 let openMenu = null;
 const PAGE_SECTION = Object.fromEntries(MENU.flatMap(m => m.subs.map(([k]) => [k, m.id])));
@@ -1747,7 +1747,7 @@ function attrCell(st, i, c) {
     A = st.brand * Math.pow(p.q / 60, 1.5) * fit(p.genre, i) * topic * newsMult * rnd(0.9, 1.1);
     if (c.cont && p.kind !== "sport") A *= 0.96;
     if (p.pull) A *= 1 + p.pull * 0.12; // bekannte Titel ziehen mehr Publikum
-    A *= demoFactor(st, p) * hostMalus(p) * hostF(st, p) * polF(st, p); // passt die Sendung (und die Moderation) zum Publikum des Senders?
+    A *= demoFactor(st, p) * hostMalus(p) * hostF(st, p) * polF(st, p) * breakF(st, p); // passt die Sendung (und die Moderation) zum Publikum des Senders?
     if (p.kind === "sport") A *= commF(p); // Kommentator*in
     if (blMagazine(p) && !matchday(G.day)) A *= 0.35; // ohne Spieltag keine Bilder
     if (p.boost && (!p.boost.day || p.boost.day === G.day)) A *= 1 + p.boost.v; // Gaststar, Event-Ausgabe, Relaunch
@@ -3151,9 +3151,10 @@ function endDay() {
   G.yesterday = { day: G.day, res: G.today };
   const P = me();
   const avg = P.maSum / P.maDays;
-  let over = null;
-  if (P.conf <= 0) over = { win: false, why: `Die Senderleitung hat das Vertrauen verloren. Ihr Marktanteil lag zuletzt bei ${pct(P.dayMA)} – Ziel war ${pct(P.target)}.` };
-  else if (P.money < -10e6) over = { win: false, why: "Die Schulden sind zu hoch. Die Senderleitung zieht die Notbremse." };
+  let over = null; const C = ensureCareer();
+  if (C.out) { if (G.day >= seasonEnd()) G.seasonEnd = seasonEnd() + SEASON; }
+  else if (P.conf < 15) fireManager(`Die Job-Sicherheit ist auf ${P.conf} % gefallen; Marktanteil zuletzt ${pct(P.dayMA)}, Ziel ${pct(P.target)}.`);
+  else if (P.money < -10e6) fireManager("Die Schulden sind zu hoch – der Vorstand zieht die Notbremse.");
   else if (G.day >= seasonEnd()) {
     const rank = standings().findIndex(x => x.s === P) + 1;
     if (avg >= P.target) {
@@ -3161,7 +3162,7 @@ function endDay() {
       const old = P.target;
       P.target = Math.round(P.target * 1.02 * 10) / 10; P.maSum = 0; P.maDays = 0; P.conf = clamp(P.conf + 10, 0, 100);
       logMsg("Senderleitung", "Vertrag", `Saisonziel erreicht: ${pct(avg)} im Schnitt (Ziel ${pct(old)}), Platz ${rank}. Ihr Vertrag wird verlängert – Saison ${G.season} läuft bis ${dateShort(G.seasonEnd)}, neues Ziel ${pct(P.target)}.`, true);
-    } else over = { win: false, why: `Saisonziel verfehlt: ${pct(avg)} im Schnitt statt ${pct(P.target)}. Die Senderleitung verlängert Ihren Vertrag nicht.` };
+    } else { fireManager(`Saisonziel verfehlt: ${pct(avg)} im Schnitt statt ${pct(P.target)}.`); G.seasonEnd = seasonEnd() + SEASON; P.maSum = 0; P.maDays = 0; }
   }
   G.over = over;
   render(); renderTop();
@@ -3212,7 +3213,7 @@ function nextDay() {
   G.day++;
   for (const st of G.stations) st.fin = {};
   projectDay();
-  prodDay(); peopleDay(); newsroomDay(); trendDay(); awardsDay(); marketDay(); presaleDay(); rivalsDay(); formatDay(); postQuotenReport(); frameDay(); conflictCheck(); fmDay(); scoutDay(); rumorDay(); staffDay(); politicsDay();
+  prodDay(); peopleDay(); newsroomDay(); trendDay(); awardsDay(); marketDay(); presaleDay(); rivalsDay(); formatDay(); postQuotenReport(); frameDay(); conflictCheck(); fmDay(); scoutDay(); rumorDay(); staffDay(); politicsDay(); agendaDay(); if (G.day % 7 === 1) careerWeek(); if (G.career && G.career.out) fillHorizon(me());
   if (dateOf(G.day).getDate() === 1 && !G.event) setInterview(); // Interview zum Monatsbeginn
   if (G.mods.coverup && G.day >= G.mods.coverup.day) {
     const c = G.mods.coverup; G.mods.coverup = null;
@@ -3349,13 +3350,13 @@ function applyClubColors() {
 function render(top) {
   if (!G) return;
   renderNav(); renderTop();
-  const pages = { overview, inbox, plan: planPage, archiv, market, filmmarket: filmMarketPage, chiefs: rivalsPage, adsales: adsalesPage, spielplan: spielplanPage, formatmarkt: formatMarketPage, wochenplan: weekPlanPage, formatdev: formatDevPage, personal: staffPage, politik: politicsPage, stream: streamPage, catalog, smarket, rights: rightsPage, myrights, contracts, agency, ticker, table: tablePage, ratings, landscape, board, finance, jury, rivals, live: livePage, studio, newprod: newProdPage, casting, newsroom, export: exportPage };
+  const pages = { overview, inbox, plan: planPage, archiv, market, filmmarket: filmMarketPage, chiefs: rivalsPage, adsales: adsalesPage, spielplan: spielplanPage, formatmarkt: formatMarketPage, wochenplan: weekPlanPage, formatdev: formatDevPage, personal: staffPage, karriere: careerPage, politik: politicsPage, stream: streamPage, catalog, smarket, rights: rightsPage, myrights, contracts, agency, ticker, table: tablePage, ratings, landscape, board, finance, jury, rivals, live: livePage, studio, newprod: newProdPage, casting, newsroom, export: exportPage };
   const sc = $("content").scrollTop;
   $("content").innerHTML = (pages[page] || overview)(me());
   if (!top) $("content").scrollTop = sc;
 }
 const title = (t, aside = "") => `<div class="page-title"><div class="grow"><h1>${t}</h1></div>${aside}</div>`;
-const planLocked = () => G.phase !== "plan";
+const planLocked = () => G.phase !== "plan" || !!(G.career && G.career.out);
 const lockNote = () => planLocked() ? `<p class="lead mb">Der Sendetag läuft. Einkäufe und Planänderungen für heute sind erst morgen wieder möglich – außer über die Live-Regie.</p>` : "";
 
 // =====================================================================
@@ -3977,7 +3978,7 @@ function act(b) {
     case "fxGo": { const p = P.progs.find(x => x.id === id); if (p) startFx(P, p, b.dataset.k); render(); renderProfile(); return; }
     case "fxSponsor": { const p = P.progs.find(x => x.id === id); if (p && P.type === "privat" && !planLocked()) { p.sponsor = !p.sponsor; p.q = clamp(p.q + (p.sponsor ? -2 : 2), 5, 99); fxNote(p, "sponsor", p.sponsor ? "Sponsor gefunden – Zusatzerlös pro Ausstrahlung." : "Sponsoring beendet."); } render(); renderProfile(); return; }
     case "progCancel": { const p = P.progs.find(x => x.id === id); if (p && !planLocked()) progCancel(P, p); break; }
-    case "switchSt": if (!planLocked()) { switchStation(b.dataset.k); return; } break;
+    case "switchSt": if (!planLocked()) { openBoardPoker(b.dataset.k); return; } break;
     case "spyH": spyH = +b.dataset.k; break;
     case "filter": msgFilter = b.dataset.k; break;
     case "forceStart": closeModal(); startBroadcast(); return;
@@ -4053,6 +4054,9 @@ function act(b) {
     case "scoutGo": { const err = sendScout(b.dataset.k, b.dataset.v); toast(err || `${SCOUT_TEAMS[b.dataset.v][0]} fliegt zur ${b.dataset.k}. Der Report kommt nach der Messe.`); break; }
     case "devSet": G.devDraft = G.devDraft || { genre: "Show", slot: "Primetime", target: 1, budget: 50000 }; G.devDraft[b.dataset.k] = b.dataset.k === "target" ? +b.dataset.v : b.dataset.v; break;
     case "staffTab": staffTab = b.dataset.k; break;
+    case "talkField": G.talkSel = { ...(G.talkSel || { ids: [] }), field: b.dataset.k }; break;
+    case "boardPoker": openBoardPoker(b.dataset.k); return;
+    case "signJob": { const err = signContract(b.dataset.k, b.dataset.v); closeModal(); toast(err || "Willkommen an Bord!"); if (!err) { go("overview"); return; } break; }
     case "talkShow": G.talkSel = { pid: b.dataset.k, ids: [] }; break;
     case "talkGuest": { const sl = G.talkSel, g = b.dataset.k; if (sl) sl.ids = sl.ids.includes(g) ? sl.ids.filter(x => x !== g) : sl.ids.concat(g).slice(0, 4); break; }
     case "talkBook": { const sl = G.talkSel; const err = sl && bookTalk(sl.pid, sl.ids); toast(err || "Die Gäste haben zugesagt – sie sitzen in der nächsten Ausgabe."); if (!err) sl.ids = []; break; }
@@ -5848,7 +5852,9 @@ function politicsDay() {
   if (S.wk === wk) return talkResolve();
   S.wk = wk;
   for (const [k] of POL_AXES) S.ax[k] = clamp(Math.round(50 + (S.ax[k] - 50) * 0.7), 10, 95);
-  const t = pick(POL_TOPICS.filter(x => x.t !== S.topic.t));
+  agendaWeek();
+  const top = agTop(), pool0 = POL_TOPICS.filter(x => x.t !== S.topic.t), pref = pool0.filter(x => fieldOf(x.res) === top);
+  const t = pick(pref.length && Math.random() < 0.75 ? pref : pool0);
   for (const [k, v] of Object.entries(t.ax)) S.ax[k] = clamp(S.ax[k] + v + ri(-2, 3), 10, 95);
   S.topic = t; S.hist.unshift([G.day, t.t]); S.hist.length = Math.min(S.hist.length, 12);
   // Konkurrenz-Talks buchen ihre Gäste für die Woche
@@ -5864,7 +5870,8 @@ function talkCalc(p, ids) {
   const gs = ids.map(polById).filter(Boolean), S = ensurePol();
   if (!gs.length) return { gs, boost: 0, esc: 0, cost: 0, fit: 0, parties: 0, camps: 0, konf: 0, cross: null };
   const parties = new Set(gs.map(g => g.partei)).size, camps = new Set(gs.map(g => g.lager)).size;
-  const fit = gs.filter(g => g.res && g.res === S.topic.res).length;
+  const field = (G.talkSel && G.talkSel.field) || agTop(), ag = ensureAgenda()[field];
+  const fit = gs.filter(g => fieldOf(g.res) === field).length, mis = gs.filter(g => fieldOf(g.res) && fieldOf(g.res) !== field).length;
   const prom = gs.reduce((a, g) => a + polProm(g), 0) / 100;
   const host = hostOf(p), str = host ? staffAttrs(host).str : 10;
   // Konfliktwert nur aus der Struktur der Runde: Lager, Ressort-Kreuzfeuer, Zahl der Parteien, Lage – dazu am Sendetag Zufall 1–30
@@ -5874,9 +5881,10 @@ function talkCalc(p, ids) {
   const base = (reg.length && opp.length ? 20 : 0) + (cross ? 15 : 0) + 5 * (parties - 1) + Math.round(10 * crisis());
   const konf = base + 15.5; // Erwartungswert
   const esc = clamp(((20 - str) + konf / 10) / 100, 0.01, 0.45); // Stressfeste Moderation dämpft das Sende-Risiko
-  const boost = 0.03 * prom + 0.04 * fit + konf * 0.003;
+  const fixB = 0.03 * prom + 0.06 * fit * ag / 60 - 0.05 * mis + (ag - 50) / 300; // Fachkompetenz zum Thema zählt, fachfremde Gäste wirken inkompetent
+  const boost = fixB + konf * 0.003;
   const cost = gs.reduce((a, g) => a + 4000 + polProm(g) * 60, 0);
-  return { gs, boost, esc, cost, fit, parties, camps, konf, base, str, cross: cross ? cross.res : null };
+  return { gs, boost, esc, cost, fit, mis, field, ag, fixB, parties, camps, konf, base, str, cross: cross ? cross.res : null };
 }
 function bookTalk(pid, ids) {
   const P = me(), p = P.progs.find(x => x.id === pid), S = ensurePol();
@@ -5887,7 +5895,7 @@ function bookTalk(pid, ids) {
   book(P, "Redaktion", -c.cost);
   for (const id of ids) S.booked[id] = P.id;
   const konf = c.base + ri(1, 30), risk = clamp(((20 - c.str) + konf / 10) / 100, 0.01, 0.45);
-  p.guests = { ids, topic: S.topic.t, day: G.day, konf, cross: c.cross, str: c.str, esc: Math.random() < risk, boost: 0.03 * c.gs.reduce((a, g) => a + polProm(g), 0) / 100 + 0.04 * c.fit + konf * 0.003 };
+  p.guests = { ids, topic: AGENDA.find(x => x[0] === c.field)[1], day: G.day, konf, cross: c.cross, str: c.str, esc: Math.random() < risk, boost: c.fixB + konf * 0.003 };
   return null;
 }
 // Wirkung in der Quote (aus attrCell)
@@ -5918,17 +5926,18 @@ function politicsPage(P) {
   const S = ensurePol(), talks = P.progs.filter(isTalk), list = polList();
   let h = title("Politik & Talk", `<span class="muted">Themenwoche: <b>${esc(S.topic.t)}</b></span>`) + lockNote();
   h += `<div class="acols mb">${POL_AXES.map(([k, n, d]) => `<section class="panel pad"><small class="muted">${n}</small><div style="font-size:26px;font-weight:700">${S.ax[k]}</div><div class="goal" style="padding:0"><div class="track"><i style="width:${S.ax[k]}%;background:${S.ax[k] >= 65 ? "var(--bad)" : S.ax[k] <= 40 ? "var(--good)" : "var(--mid)"}"></i></div></div><p class="fine" style="margin:6px 0 0">${d}</p></section>`).join("")}</div>`;
+  h += `<section class="panel mb"><div class="ph"><h2>Globale Ereignis-Matrix</h2>${info("Dringlichkeit je Themenfeld (0–100). Über 80 drohen Eilmeldungen mit Programmentscheidung. Talkgäste mit passendem Ressort zum gewählten Hauptthema bringen Relevanz, fachfremde Gäste kosten Akzeptanz.")}</div><div class="slist">${AGENDA.map(([k, n, ic]) => { const v = ensureAgenda()[k]; return `<div class="srow"><b>${ic} ${n}</b><em class="${v > 80 ? "down" : ""}">${v}</em><span><div class="track" style="height:6px"><i style="width:${v}%;background:${v > 80 ? "var(--bad)" : v > 60 ? "var(--mid)" : "var(--good)"}"></i></div></span></div>`; }).join("")}</div></section>`;
   h += `<p class="lead mb">Angespannte Lage (${Math.round(crisis() * 100)} %): Nachrichten und Talk ${crisis() > 0.2 ? "gewinnen" : "gewinnen leicht"}, Shows und Reality verlieren etwas. Ihre Redaktionslinie „${STYLES[(G.newsroom || { style: 1 }).style]}“ ${(G.newsroom || {}).style === 2 ? "verliert in Krisenwochen" : "profitiert in Krisenwochen"}. Die investigative Linie kann Exklusiv-Recherchen liefern.</p>`;
   h += `<section class="panel mb"><div class="ph"><h2>Talk-Redaktion: Gäste buchen</h2>${info("Gäste werden nur über Partei, Lager und Amt beschrieben. Eine Runde mit mehreren Parteien und beiden Lagern ist kontroverser: mehr Quote, aber ein höheres Risiko, dass die Debatte entgleitet – abhängig von der Stressresistenz Ihrer Moderation.")}</div>`;
   if (!talks.length) h += '<p class="fine pad">Sie haben keine Talkshow im Programm. Entwickeln Sie eine im Studio (Show → Late-Night-Talk) oder über die Formatentwicklung.</p>';
   else {
     const sel = G.talkSel || (G.talkSel = { pid: talks[0].id, ids: [] }); if (!talks.some(p => p.id === sel.pid)) sel.pid = talks[0].id;
     const p = talks.find(x => x.id === sel.pid), c = talkCalc(p, sel.ids);
-    h += `<div class="pad"><div class="pills mb">${talks.map(t => `<button data-act="talkShow" data-k="${t.id}" class="${t.id === sel.pid ? "on" : ""}">${esc(t.title)}${t.guests && !t.guests.done ? " ✓" : ""}</button>`).join("")}</div>`;
+    h += `<div class="pad"><div class="pills mb">${AGENDA.map(([k, n, ic]) => `<button data-act="talkField" data-k="${k}" class="${(sel.field || agTop()) === k ? "on" : ""}">${ic} ${n} · ${ensureAgenda()[k]}</button>`).join("")}</div><div class="pills mb">${talks.map(t => `<button data-act="talkShow" data-k="${t.id}" class="${t.id === sel.pid ? "on" : ""}">${esc(t.title)}${t.guests && !t.guests.done ? " ✓" : ""}</button>`).join("")}</div>`;
     if (p.guests && !p.guests.done) h += `<p class="chip good">Gebucht für die nächste Ausgabe: ${p.guests.ids.map(polById).filter(Boolean).map(g => esc(g.name)).join(", ")}</p>`;
     h += `<div class="tbl"><table><thead><tr><th></th><th>Gast</th><th>Partei</th><th>Lager</th><th>Amt</th><th>Ressort</th><th>Status</th></tr></thead><tbody>${list.map(g => { const by = S.booked[g.id], on = sel.ids.includes(g.id), busy = by && by !== P.id;
-      return `<tr class="${on ? "sel" : ""}"><td><button class="btn small ${on ? "hot" : ""}" data-act="talkGuest" data-k="${g.id}" ${busy || (!on && sel.ids.length >= 4) ? "disabled" : ""}>${on ? "✓" : "+"}</button></td><td class="title">${esc(g.name)}</td><td>${esc(g.partei)}</td><td class="muted">${esc(g.lager)}</td><td class="muted">${esc(g.amt || "")}</td><td>${g.res && g.res === S.topic.res ? `<b>${esc(g.res)}</b>` : esc(g.res || "")}</td><td class="muted">${busy ? "bei " + esc(holderName(by)) : by === P.id ? "bei Ihnen" : "frei"}</td></tr>`; }).join("")}</tbody></table></div>
-      <div class="kv"><span>Runde</span><b>${c.gs.length} Gäste · ${c.parties} Parteien · ${c.camps > 1 ? "beide Lager" : "ein Lager"}${c.fit ? ` · ${c.fit}× Themenressort` : ""}${c.cross ? ` · Kreuzfeuer ${esc(c.cross)}` : ""}</b></div>
+      return `<tr class="${on ? "sel" : ""}"><td><button class="btn small ${on ? "hot" : ""}" data-act="talkGuest" data-k="${g.id}" ${busy || (!on && sel.ids.length >= 4) ? "disabled" : ""}>${on ? "✓" : "+"}</button></td><td class="title">${esc(g.name)}</td><td>${esc(g.partei)}</td><td class="muted">${esc(g.lager)}</td><td class="muted">${esc(g.amt || "")}</td><td>${fieldOf(g.res) && fieldOf(g.res) === (sel.field || agTop()) ? `<b class="up">${esc(g.res)} ✓</b>` : esc(g.res || "")}</td><td class="muted">${busy ? "bei " + esc(holderName(by)) : by === P.id ? "bei Ihnen" : "frei"}</td></tr>`; }).join("")}</tbody></table></div>
+      <div class="kv"><span>Runde</span><b>${c.gs.length} Gäste · ${c.parties} Parteien · ${c.camps > 1 ? "beide Lager" : "ein Lager"}${c.fit ? ` · ${c.fit}× Fach-Match` : ""}${c.mis ? ` · ${c.mis}× fachfremd` : ""}${c.cross ? ` · Kreuzfeuer ${esc(c.cross)}` : ""}</b></div>
       <div class="kv"><span>Konfliktintensität</span><b>${c.base + 1}–${c.base + 30} (Lager ${c.camps > 1 && c.gs.some(g => g.lager === "Regierung") && c.gs.some(g => g.lager === "Opposition") ? "+20" : "0"}${c.cross ? ", Ressort +15" : ""}, Zufall 1–30)</b></div>
       <div class="kv"><span>Quoten-Effekt</span><b class="up">+${Math.round(c.boost * 100)} %</b></div><div class="kv"><span>Sende-Risiko (entgleist)</span><b class="${c.esc > 0.2 ? "down" : ""}">${Math.round(c.esc * 100)} %</b></div><div class="kv"><span>Kosten</span><b>${eur(c.cost)}</b></div>
       <button class="btn hot" data-act="talkBook" ${!c.gs.length || planLocked() || (p.guests && !p.guests.done) ? "disabled" : ""}>Gäste einladen</button></div>`;
@@ -5943,6 +5952,158 @@ function polSave(txt) {
   const rows = String(txt).split(/\n/).map(l => l.split(";").map(x => x.trim())).filter(r => r[0] && r[1]).slice(0, 200).map((r, k) => ({ id: "pe" + hashStr(r[0]).toString(36), name: r[0].slice(0, 60), partei: r[1].slice(0, 20), lager: (r[2] || "Opposition").slice(0, 24), amt: (r[3] || "").slice(0, 60), res: (r[4] || "").slice(0, 20) }));
   try { localStorage.setItem(POL_KEY, JSON.stringify(rows)); } catch (e) { /* nur Sitzung */ }
   POL_CACHE = null; return rows.length;
+}
+// =====================================================================
+// Globale Ereignis-Matrix: fünf Themenfelder mit Dringlichkeit 0–100, Eilmeldungen mit Programmentscheidung
+// =====================================================================
+const AGENDA = [["wirt", "Wirtschaft", "📉"], ["klima", "Klima & Umwelt", "🌱"], ["kultur", "Kultur & Medien", "🎭"], ["ges", "Gesellschaft", "👥"], ["aussen", "Außenpolitik", "🏛️"]];
+const FIELD_OF_RES = { Finanzen: "wirt", Wirtschaft: "wirt", Umwelt: "klima", Digitales: "kultur", Kultur: "kultur", Arbeit: "ges", Gesundheit: "ges", Bauen: "ges", Bildung: "ges", Inneres: "ges", Verkehr: "ges", Justiz: "ges", Außen: "aussen", Verteidigung: "aussen" };
+const fieldOf = res => FIELD_OF_RES[res] || null;
+const BREAKING = {
+  wirt: ["Energiekrise verschärft – Gaspreise steigen drastisch", "Großbank in Schieflage – Börsen auf Talfahrt", "Haushaltskrise eskaliert – Koalition ringt um Sparpaket"],
+  klima: ["Unwetter im DACH-Raum – Hochwasseralarm in mehreren Regionen", "Hitzewelle: Rekordtemperaturen und Waldbrände", "Sturmflut an der Küste – Evakuierungen angeordnet"],
+  kultur: ["Grundsatzurteil zu KI und Urheberrecht", "Großer Datenleck-Skandal bei Plattformen", "Streit um Rundfunkbeitrag eskaliert"],
+  ges: ["Bundesweiter Streik legt Bahn und Nahverkehr lahm", "Rentenstreit: Großdemonstrationen in vielen Städten", "Cyberangriff auf Krankenhäuser"],
+  aussen: ["Internationale Handelsblockade verhängt", "Krisengipfel nach Eskalation an der EU-Außengrenze", "Gipfeltreffen gescheitert – Sanktionen angekündigt"],
+};
+function ensureAgenda() {
+  const S = ensurePol();
+  if (!S.ag) S.ag = { wirt: 50, klima: 40, kultur: 35, ges: 50, aussen: 50 };
+  return S.ag;
+}
+const agTop = () => { const a = ensureAgenda(); return AGENDA.map(([k]) => k).sort((x, y) => a[y] - a[x])[0]; };
+// Wöchentlich verschieben Weltereignisse die Prioritäten; die Bevölkerungs-Achsen folgen
+function agendaWeek() {
+  const a = ensureAgenda(), S = ensurePol();
+  for (const [k] of AGENDA) a[k] = clamp(Math.round(50 + (a[k] - 50) * 0.75 + ri(-15, 20)), 10, 100);
+  S.ax.wirt = clamp(Math.round(S.ax.wirt * 0.6 + a.wirt * 0.4), 10, 95);
+  S.ax.sich = clamp(Math.round(S.ax.sich * 0.6 + a.aussen * 0.4), 10, 95);
+  S.ax.stim = clamp(Math.round(S.ax.stim * 0.6 + (a.ges + a.klima) / 2 * 0.4), 10, 95);
+}
+// Täglich: kleine Schwankung; bei Dringlichkeit über 80 eine Eilmeldung mit Entscheidung für den Abend
+function agendaDay() {
+  const a = ensureAgenda(), S = ensurePol(), P = me();
+  for (const [k] of AGENDA) a[k] = clamp(a[k] + ri(-3, 3), 10, 100);
+  P.progs = P.progs.filter(p => !p.special || p.special.day >= G.day); // Sondersendungen von gestern
+  if (G.career && G.career.out) return;
+  const k = agTop(); if (a[k] <= 80 || (S.lastBreak && G.day - S.lastBreak < 6) || Math.random() > 0.3) return;
+  const c = P.sched[20], film = c && c.p && progOf(P, c.p);
+  if (!film || film.genre === "Nachrichten" || film.kind === "sport" || c.live) return;
+  S.lastBreak = G.day;
+  const t = pick(BREAKING[k]);
+  queueEvent({ id: "breaking", type: "Eilmeldung", title: `EILMELDUNG: ${t}`, text: `Dringlichkeit ${AGENDA.find(x => x[0] === k)[1]}: ${a[k]} von 100. Geplant heute um 20:15 Uhr: „${film.title}“. Die Konkurrenz bereitet Sondersendungen vor.`,
+    opts: [["Programm beibehalten", "Werbeerlöse bleiben, aber News-Publikum wandert ab; Vertrauen der Senderleitung −3."], ["15 Minuten Spezial vorschalten", "Hauptprogramm beginnt um 20:30 Uhr, Spotpreise im Spezial-Umfeld verdreifachen sich."], ["Programm kippen: 90 Minuten Brennpunkt", "Spitzenreichweite in allen Zielgruppen, der Film geht ohne verbrauchten Lauf zurück ins Archiv."]],
+    data: { k, t, score: a[k] } });
+}
+function makeSpecial(P, d, dur) {
+  const sp = { id: uid(), title: `${P.type === "oer" ? "Brennpunkt" : "Spezial"}: ${d.t.split(" – ")[0]}`, genre: "Nachrichten", kind: "show", q: 72 + Math.round(d.score / 10), len: Math.ceil(dur / 60), dur, topic: 1, wear: 1, fsk: 0, aired: 0, runs: 0, real: false, house: dur <= 15, special: { day: G.day, score: d.score } };
+  P.progs.push(sp); return sp;
+}
+EVENTS.push({ id: "breaking", type: "Eilmeldung", when: () => false, make: () => ({}), fn: (k, d) => {
+  const P = me(), S = ensurePol(); S.breakDay = { day: G.day, choice: k, field: d.k };
+  if (k === 0) { P.conf = clamp(P.conf - 3, 0, 100); logMsg("Senderleitung", "Eilmeldung", `Sie bleiben bei Ihrem Programm, während die Konkurrenz live über „${d.t}“ berichtet.`); return; }
+  editPlan(G.day, sc => {
+    const c = sc[20]; if (!c || !c.p) return;
+    if (k === 1) { const sp = makeSpecial(P, d, 15); sc[20] = { ...c, p: sp.id, t: 20 * 60 + 15, extra: [c.p, ...(c.extra || [])], xt: [20 * 60 + 30, ...(c.xt || (c.extra || []).map(() => null))] }; }
+    else { const sp = makeSpecial(P, d, 90), old = c.p; sc[20] = { p: sp.id, ad: c.ad, cont: false, live: false, t: 20 * 60 + 15 }; for (let i = 21; i < 24; i++) if (sc[i] && sc[i].p === old) sc[i] = { p: i === 21 ? sp.id : null, ad: sc[i].ad, cont: i === 21, live: false }; fillGaps(P, sc, weekday(G.day)); }
+  });
+  logMsg("Chefredaktion", "Eilmeldung", k === 1 ? `Spezial um 20:15 Uhr eingeplant – das Hauptprogramm beginnt um 20:30 Uhr.` : `Programmänderung: 90 Minuten Sondersendung ab 20:15 Uhr. Der Film bleibt ungesendet im Archiv.`, true);
+} });
+// Wirkung: Sondersendungen ziehen mit der Dringlichkeit, wer nicht reagiert, verliert News-Publikum
+function breakF(st, p) {
+  if (!p) return 1;
+  if (p.special) return 1 + p.special.score / 100 * 0.9;
+  const b = G.pol && G.pol.breakDay;
+  if (b && b.day === G.day && isMe(st) && b.choice === 0 && p.genre !== "Nachrichten") return 0.94;
+  return 1;
+}
+
+// =====================================================================
+// Karriere: Vorstand, Job-Sicherheit, Entlassung, Arbeitsmarkt und Vorstands-Poker
+// Gremien werden nur über die Institution benannt – keine Zitate echter Führungskräfte.
+// =====================================================================
+const BOARD_NAME = st => st.type === "oer" ? `Intendanz und Rundfunkrat (${st.name})` : `Geschäftsführung ${st.name}`;
+const BOARD_FOCUS = st => st.type === "oer" ? "Verjüngung: Reichweite in Z1/Z2 steigern, Seriosität halten" : "Werbeumsatz und Reichweite in der kaufkräftigen Z2 (30–49)";
+const PROMISES = [
+  { id: "risk", name: "Risiko-Kurs", text: st => st.type === "oer" ? "„Ich steigere die junge Reichweite um 15 % binnen einer Saison.“" : "„Ich hole den Quotensieg in der jungen Zielgruppe – mit großen Live-Events.“", bonus: 1.5e6, factor: 2, fail: "Junge Reichweite +15 % verfehlt" },
+  { id: "std", name: "Standard-Kurs", text: () => "„Ich erfülle alle Werbeverträge ohne Strafzahlungen.“", bonus: 0.5e6, factor: 1, fail: "Strafzahlungen aus Werbeverträgen" },
+  { id: "save", name: "Sparkurs", text: () => "„Ich konsolidiere die Finanzen – keine riskanten Großprojekte.“", bonus: -0.5e6, factor: 0.5, fail: "Kontostand unter Startniveau" },
+];
+function ensureCareer() {
+  if (!G.career) G.career = { out: false, malus: 0, hist: [{ st: me().id, from: 1, to: null, why: "Start" }], contract: null, negWeeks: 0, offers: [] };
+  return G.career;
+}
+const youthNow = P => { const h = (P.hist || []).slice(-7); return h.length ? h.reduce((a, x) => a + x.ma, 0) / h.length * (ST_YOUNG[P.id] || 1) : P.base; };
+function repScore() {
+  const P = me(), C = ensureCareer(), avg = P.maDays ? P.maSum / P.maDays : 0, perf = P.maDays >= 7 ? avg / P.target : 0.9;
+  return clamp(perf * 60 + (C.out ? 15 : P.conf * 0.3) + (G.awards || []).flatMap(a => a.res).filter(r => r.st === P.id).length * 8 - C.malus, 0, 120);
+}
+const repStars = () => clamp(Math.round(repScore() / 24), 1, 5);
+const needStars = st => clamp(Math.round((30 + st.base * 3.5) / 24), 1, 5);
+// Wöchentliche Vorstandsbewertung
+function careerWeek() {
+  const C = ensureCareer(), P = me();
+  C.malus = Math.max(0, C.malus - 1);
+  // Freie Stellen: Sender mit schwacher Leistung trennen sich von ihrer Programmdirektion
+  C.offers = G.stations.filter(st => !isMe(st) && (st.conf < 40 || Math.random() < 0.12)).map(st => st.id);
+  if (C.out) { if (C.offers.length) logMsg("Branchendienst", "Karriere", `Offene Posten: ${C.offers.map(holderName).join(", ")} suchen eine neue Programmdirektion.`, true); return; }
+  const ct = C.contract, f = ct ? ct.factor : 1, notes = [];
+  let d = 0;
+  C.negWeeks = P.money < 0 ? C.negWeeks + 1 : 0;
+  if (C.negWeeks >= 2) { d -= 8 * f; notes.push(`Konto seit ${C.negWeeks} Wochen im Minus`); }
+  if (G.stream && G.stream.subs && C.subs && G.stream.subs < C.subs * 0.95) { d -= 5 * f; notes.push("Streaming verliert deutlich Abos"); }
+  if (G.stream) C.subs = G.stream.subs;
+  if (P.brand < P.base * 0.85) { d -= 5 * f; notes.push("Image des Senders bröckelt"); }
+  if (ct && G.day - ct.day >= 28) {
+    const ok = ct.id === "risk" ? youthNow(P) >= ct.y0 * 1.15 : ct.id === "std" ? -(P.fin.Strafen || 0) <= ct.fines0 + 50000 : P.money >= ct.money0 * 0.9;
+    if (!ok) { d -= ct.id === "risk" ? 12 : 6; notes.push(`Vereinbartes Ziel verfehlt: ${PROMISES.find(x => x.id === ct.id).fail}`); }
+    else if ((G.day - ct.day) % 28 < 7) { d += 3; notes.push("Vereinbartes Ziel auf Kurs"); }
+  }
+  if (P.money > 2e6 && P.brand >= P.base) { d += 4; notes.push("Solide Finanzen und starkes Image"); }
+  d = Math.round(d);
+  if (d) { P.conf = clamp(P.conf + d, 0, 100); logMsg(BOARD_NAME(P), "Vorstand", `Wochenbewertung: ${notes.join(" · ")}. Job-Sicherheit ${d > 0 ? "+" : ""}${d} → ${P.conf} %.${P.conf < 25 ? " Ändern Sie umgehend den Kurs – sonst folgt die Freistellung." : ""}`, d < -8); }
+}
+// Entlassung statt Spielende: das Spiel läuft weiter, der Sender wird kommissarisch geführt
+function fireManager(why) {
+  const C = ensureCareer(), P = me();
+  if (C.out) return;
+  C.out = true; C.malus += 15; C.contract = null;
+  const h = C.hist[C.hist.length - 1]; if (h) { h.to = G.day; h.why = why; }
+  logMsg("Branchendienst", "Karriere", `Personalien: ${P.name} stellt die Programmdirektion mit sofortiger Wirkung frei. ${why}`, true);
+  logMsg(BOARD_NAME(P), "Vorstand", `Sie sind freigestellt. Ihr Büro wird geräumt. Bewerben Sie sich unter Sender → Karriere auf offene Posten.`, true);
+  C.offers = G.stations.filter(st => !isMe(st) && (st.conf < 50 || Math.random() < 0.3)).map(st => st.id);
+}
+// Neue Stelle mit Vorstands-Poker
+function signContract(sid, pid) {
+  const C = ensureCareer(), st = G.stations[SIDX[sid]], pr = PROMISES.find(x => x.id === pid); if (!st || !pr) return "Ungültig.";
+  if (repStars() < needStars(st)) return "Ihr Ansehen reicht für diesen Sender nicht.";
+  if (!isMe(st)) switchStation(sid);
+  const P = me(), bonus = r1000(pr.bonus * clamp(st.base / 8, 0.4, 2));
+  book(P, "Vorstandsbudget", bonus);
+  P.conf = 70; C.out = false; C.negWeeks = 0;
+  C.contract = { id: pid, factor: pr.factor, day: G.day, y0: youthNow(P), fines0: -(P.fin.Strafen || 0), money0: P.money, st: sid };
+  C.hist.push({ st: sid, from: G.day, to: null, why: pr.name });
+  C.offers = C.offers.filter(x => x !== sid);
+  logMsg(BOARD_NAME(P), "Vorstand", `Vertrag unterzeichnet (${pr.name}): ${pr.text(st)} Budget ${bonus >= 0 ? "+" : ""}${eur(bonus)}. Geduldsfaktor ×${pr.factor}.`, true);
+  return null;
+}
+function openBoardPoker(sid) {
+  const st = G.stations[SIDX[sid]]; if (!st) return;
+  openModal(`<header><h2>Vorstands-Poker: ${esc(st.name)}</h2><button class="btn" data-act="close">Schließen</button></header><div class="dbody">
+    <p><b>Gremium:</b> ${esc(BOARD_NAME(st))}<br><b>Fokus:</b> ${esc(BOARD_FOCUS(st))}</p>
+    <p class="fine">Je mutiger Ihr Versprechen, desto mehr Budget – und desto ungeduldiger der Vorstand, wenn Sie es verfehlen.</p>
+    ${PROMISES.map(pr => { const b = r1000(pr.bonus * clamp(st.base / 8, 0.4, 2)); return `<div class="card" style="margin:8px 0"><b>${pr.name}</b><p style="margin:4px 0">${esc(pr.text(st))}</p><p class="fine">Budget ${b >= 0 ? "+" : ""}${eur(b)} · Geduldsfaktor ×${pr.factor}</p><button class="btn hot small" data-act="signJob" data-k="${st.id}" data-v="${pr.id}">Unterschreiben</button></div>`; }).join("")}</div>`);
+}
+function careerPage(P) {
+  const C = ensureCareer(), s = repStars();
+  let h = title("Karriere", `<span class="muted">Ansehen ${"★".repeat(s)}${"☆".repeat(5 - s)}</span>`);
+  h += C.out ? `<section class="panel pad mb"><h2>Ohne Anstellung</h2><p>Der Sender wird kommissarisch geführt, das Spiel läuft weiter. Mit „Weiter“ vergehen die Tage, jede Woche werden neue Posten frei.</p></section>`
+    : `<section class="panel pad mb"><div class="goal"><div class="row"><b>Job-Sicherheit bei ${esc(P.name)}</b><span class="${P.conf < 25 ? "down" : "muted"}">${P.conf} %</span></div><div class="track"><i style="width:${P.conf}%;background:${P.conf < 25 ? "var(--bad)" : P.conf < 50 ? "var(--mid)" : "var(--good)"}"></i></div></div>
+      <p class="fine">Unter 15 % werden Sie freigestellt. ${C.contract ? `Vereinbart: <b>${PROMISES.find(x => x.id === C.contract.id).name}</b> (Geduld ×${C.contract.factor}).` : "Kein Zielversprechen vereinbart."}</p></section>`;
+  const open = G.stations.filter(st => !isMe(st) || C.out).map(st => ({ st, open: C.offers.includes(st.id), need: needStars(st) }));
+  h += `<section class="panel mb"><div class="ph"><h2>Arbeitsmarkt</h2><span class="aside">${C.offers.length} offene Posten</span></div><div class="tbl"><table><tbody>${open.map(({ st, open, need }) => `<tr><td class="title">${esc(st.name)}<div class="muted">${st.type === "oer" ? "öffentlich-rechtlich" : "privat"} · ${esc(BOARD_FOCUS(st))}</div></td><td class="num">${"★".repeat(need)}</td><td>${open ? (s >= need ? `<button class="btn hot small" data-act="boardPoker" data-k="${st.id}">Bewerben</button>` : '<span class="muted">Ansehen zu gering</span>') : '<span class="muted">besetzt</span>'}</td></tr>`).join("")}</tbody></table></div></section>`;
+  h += `<section class="panel"><div class="ph"><h2>Laufbahn</h2></div><div class="tbl"><table><tbody>${C.hist.slice().reverse().map(x => `<tr><td>${esc(holderName(x.st))}</td><td class="muted">${dateShort(x.from)} – ${x.to ? dateShort(x.to) : "heute"}</td><td class="muted">${esc(x.why || "")}</td></tr>`).join("")}</tbody></table></div></section>`;
+  return h;
 }
 // =====================================================================
 // Formatprofil: Quotenverlauf, Publikum, Analyse und Maßnahmen je Sendung
