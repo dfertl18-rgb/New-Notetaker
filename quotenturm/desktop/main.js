@@ -29,7 +29,7 @@ function createWindow() {
 // Das starke Modell (~4,7 GB) passt nicht in den Installer (Grenze ~2 GB) und wird beim ersten Start einmalig geladen.
 const STRONG_MODEL = { uri: "https://huggingface.co/bartowski/Qwen2.5-7B-Instruct-GGUF/resolve/main/Qwen2.5-7B-Instruct-Q4_K_M.gguf", file: "Qwen2.5-7B-Instruct-Q4_K_M.gguf", name: "Qwen2.5-7B-Instruct (Apache-2.0)", size: 4683074240 };
 const userModels = () => path.join(app.getPath("userData"), "models");
-const modelDirs = () => [userModels(), path.join(process.resourcesPath || "", "models"), path.join(__dirname, "models")].filter(d => fs.existsSync(d));
+const modelDirs = () => [userModels(), path.join(process.resourcesPath || "", "models"), process.env.PORTABLE_EXECUTABLE_DIR || "", path.dirname(process.execPath), path.join(__dirname, "models")].filter(d => d && fs.existsSync(d));
 const modelFile = () => { for (const d of modelDirs()) { const f = fs.readdirSync(d).filter(x => x.endsWith(".gguf") && !x.includes(".part")).sort((a, b) => fs.statSync(path.join(d, b)).size - fs.statSync(path.join(d, a)).size)[0]; if (f) return path.join(d, f); } return null; };
 let ai = null, aiQueue = Promise.resolve(), dl = null;
 async function loadAI() {

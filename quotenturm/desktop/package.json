@@ -64,7 +64,8 @@
         "de_DE"
       ],
       "runAfterFinish": true,
-      "deleteAppDataOnUninstall": false
+      "deleteAppDataOnUninstall": false,
+      "include": "build/installer.nsh"
     },
     "afterPack": "./afterpack.js",
     "asarUnpack": [
@@ -76,7 +77,6 @@
         "from": "models",
         "to": "models",
         "filter": [
-          "*.gguf",
           "LICENSE*"
         ]
       }

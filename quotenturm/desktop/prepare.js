@@ -25,6 +25,9 @@ html = html.replace("https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.ful
 const priv = path.join(src, "privat", "realdata.js");
 const share = process.argv.includes("--share"); // Weitergabe-Version: ohne private Daten
 if (!share && fs.existsSync(priv)) { html = html.replace("<script>", () => "<script>\n" + fs.readFileSync(priv, "utf8") + "</script>\n<script>"); console.log("Private Daten eingebettet."); }
+// Echte Senderlogos (Markenrechte) ebenfalls nur in der privaten Version
+const privLogos = path.join(src, "privat", "logos.js");
+if (!share && fs.existsSync(privLogos)) { html = html.replace("<script>", () => "<script>\n" + fs.readFileSync(privLogos, "utf8") + "</script>\n<script>"); console.log("Private Logos eingebettet."); }
 fs.writeFileSync(path.join(out, "index.html"), html);
 fs.copyFileSync(path.join(__dirname, "build", "icon.png"), path.join(out, "icon.png"));
 
