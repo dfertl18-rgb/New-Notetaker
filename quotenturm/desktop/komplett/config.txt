@@ -1,0 +1,6 @@
+;!@Install@!UTF-8!
+Title="Medienmanager 2027"
+BeginPrompt="Medienmanager 2027 mit eingebauter KI installieren?\n\nDas Entpacken dauert ein paar Minuten."
+Progress="yes"
+RunProgram="start.cmd"
+;!@InstallEnd@!

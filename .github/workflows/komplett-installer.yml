@@ -1,0 +1,48 @@
+name: Komplett-Installer (eine EXE mit KI)
+
+# Baut eine einzige selbstentpackende EXE: privater Installer (verschlüsselt, Passwort beim Besitzer)
+# + KI-Modell Qwen2.5-7B-Instruct (Apache-2.0). Ergebnis als Artefakt zum Herunterladen.
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/komplett-installer.yml"
+      - "quotenturm/desktop/komplett/**"
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            quotenturm/desktop/komplett
+      - name: Werkzeuge und Modell laden
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force out | Out-Null
+          Invoke-WebRequest "https://www.7-zip.org/a/7zr.exe" -OutFile out/7zr.exe
+          Invoke-WebRequest "https://www.7-zip.org/a/lzma2409.7z" -OutFile lzma.7z
+          & "C:\Program Files\7-Zip\7z.exe" e lzma.7z "bin/7zSD.sfx" -osfx -y
+          curl.exe -L --fail --retry 3 -o out/Qwen2.5-7B-Instruct-Q4_K_M.gguf "https://huggingface.co/bartowski/Qwen2.5-7B-Instruct-GGUF/resolve/main/Qwen2.5-7B-Instruct-Q4_K_M.gguf"
+          $h = (Get-FileHash out/Qwen2.5-7B-Instruct-Q4_K_M.gguf -Algorithm SHA256).Hash.ToLower()
+          if ($h -ne "65b8fcd92af6b4fefa935c625d1ac27ea29dcb6ee14589c55a8f115ceaaa1423") { throw "Prüfsumme falsch: $h" }
+          Copy-Item quotenturm/desktop/komplett/setup.7z.* out/
+          Copy-Item quotenturm/desktop/komplett/start.cmd out/
+          Get-ChildItem out, sfx
+      - name: Eine EXE bauen
+        shell: cmd
+        run: |
+          cd out
+          "C:\Program Files\7-Zip\7z.exe" a -t7z -mx0 ..\payload.7z * || exit /b 1
+          cd ..
+          copy /b sfx\7zSD.sfx + quotenturm\desktop\komplett\config.txt + payload.7z Medienmanager-2027-Komplett-mit-KI.exe || exit /b 1
+          dir Medienmanager-2027-Komplett-mit-KI.exe
+          del payload.7z
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Medienmanager-2027-Komplett-mit-KI
+          path: Medienmanager-2027-Komplett-mit-KI.exe
+          compression-level: 0
+          retention-days: 30
