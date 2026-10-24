@@ -416,6 +416,7 @@ td.cw { position: relative; } .cell-i { position: absolute; right: 8px; top: 8px
 .tsel { position: absolute; right: 34px; top: 8px; z-index: 1; background: var(--panel); color: var(--muted); border: 1px solid var(--line); border-radius: 4px; font-size: 12px; padding: 1px 2px; max-width: 74px; } .cell .tt { color: var(--text); font-variant-numeric: tabular-nums; }
 .moodbar { position: relative; height: 14px; border-radius: 7px; background: linear-gradient(90deg, hsl(350 70% 55%), hsl(0 0% 55%) 50%, hsl(215 70% 55%)); } .moodbar i { position: absolute; top: -4px; width: 6px; height: 22px; margin-left: -3px; border-radius: 3px; } .mood-now { border: 2px solid #fff; } .mood-you { background: var(--hot); width: 4px !important; outline: 2px dashed var(--hot); outline-offset: 2px; }
 .pick.on { border-color: var(--hot); background: color-mix(in srgb, var(--hot) 12%, var(--panel)); }
+textarea[data-draft] { font: inherit; color: inherit; background: transparent; border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; box-sizing: border-box; resize: vertical; } textarea[data-draft]:focus { outline: 2px solid var(--hot); }
 .ctxmenu { position: fixed; z-index: 9999; min-width: 230px; max-width: 320px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 12px 32px rgba(0,0,0,.45); padding: 6px; display: grid; gap: 2px; }
 .ctxmenu button { text-align: left; background: none; border: 0; color: inherit; padding: 7px 10px; border-radius: 6px; cursor: pointer; font: inherit; display: grid; } .ctxmenu button:hover { background: color-mix(in srgb, var(--hot) 18%, transparent); } .ctxmenu small { color: var(--muted); font-size: 11px; }
 .ctx-t { font-weight: 700; padding: 6px 10px; border-bottom: 1px solid var(--line); margin-bottom: 4px; } .ctx-h { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); padding: 6px 10px 2px; }
@@ -2298,16 +2299,27 @@ const BLUEPRINTS = [
   { id: "island", name: "Promi-Insel", genre: "Reality", cost: 1.2e6, live: 0, wear: 0.88, stream: 1.3, fit: ["Skandalnudel", "Improvisation"], aud: "Junge Erwachsene" },
   { id: "cook", name: "Koch-Duell", genre: "Reality", cost: 0.4e6, live: 0, wear: 0.9, stream: 0.9, fit: ["Publikumsnähe", "Empathie"], aud: "Familie" },
   { id: "docusoap", name: "Doku-Soap", genre: "Reality", cost: 0.3e6, live: 0, wear: 0.9, stream: 1.0, fit: ["Publikumsnähe", "Empathie"], aud: "Breites Publikum" },
+  { id: "panel", name: "Comedy-Panel", genre: "Show", cost: 0.5e6, live: 0, wear: 0.95, stream: 1.2, fit: ["Improvisation", "Publikumsnähe"], aud: "Junge Erwachsene" },
+  { id: "pitch", name: "Gründer-Pitch", genre: "Show", cost: 0.7e6, live: 0, wear: 0.93, stream: 1.0, fit: ["Empathie", "Stressresistent"], aud: "Erwachsene 30–59" },
+  { id: "game", name: "Spielshow Team gegen Team", genre: "Show", cost: 1.2e6, live: 0.1, wear: 0.94, stream: 1.1, fit: ["Improvisation", "Live-Sicherheit"], aud: "Junge Erwachsene" },
+  { id: "music", name: "Musikshow", genre: "Show", cost: 1.8e6, live: 0.2, wear: 0.96, stream: 0.6, fit: ["Live-Sicherheit", "Publikumsnähe"], aud: "Ältere" },
+  { id: "politalk", name: "Polit-Talk", genre: "Talk", cost: 0.35e6, live: 0.1, wear: 0.97, stream: 0.8, fit: ["Stressresistent", "Polarisierend"], aud: "Ältere" },
+  { id: "morning", name: "Morgenmagazin", genre: "Magazin", cost: 0.4e6, live: 0.05, wear: 0.98, stream: 0.5, fit: ["Publikumsnähe", "Live-Sicherheit"], aud: "Breites Publikum" },
+  { id: "survival", name: "Survival-Challenge", genre: "Reality", cost: 1.0e6, live: 0, wear: 0.9, stream: 1.3, fit: ["Improvisation", "Stressresistent"], aud: "Junge Erwachsene" },
+  { id: "makeover", name: "Makeover & Umstyling", genre: "Reality", cost: 0.35e6, live: 0, wear: 0.9, stream: 1.0, fit: ["Empathie", "Publikumsnähe"], aud: "Breites Publikum" },
+  { id: "experiment", name: "Sozial-Experiment", genre: "Reality", cost: 0.8e6, live: 0, wear: 0.86, stream: 1.4, fit: ["Empathie", "Improvisation"], aud: "Gen Z" },
+  { id: "farm", name: "Kuppelshow auf dem Land", genre: "Reality", cost: 0.5e6, live: 0, wear: 0.92, stream: 0.9, fit: ["Publikumsnähe", "Empathie"], aud: "Breites Publikum" },
+  { id: "container", name: "Container-Show", genre: "Reality", cost: 1.4e6, live: 0.2, wear: 0.85, stream: 1.4, fit: ["Live-Sicherheit", "Polarisierend"], aud: "Junge Erwachsene" },
 ];
 // Format-Typen im Kreativ-Modus. opts = Auswahl im Konzept (Genre, Vorlage, Thema …)
 const FORMATS = {
-  film: { name: "Spielfilm", sub: "90–120 Minuten", icon: '<rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M7 6l2 4M12 6l2 4M17 6l2 4"/>', roles: [["Schauspiel", "Hauptrolle"], ["Schauspiel", "Zweite Hauptrolle"]], days: 10, base: 1.6e6, optLabel: "Genre", opts: ["Krimi", "Komödie", "Drama", "Liebesfilm", "Action", "Science-Fiction"] },
-  serie: { name: "TV-Serie", sub: "Staffel mit 10 Folgen", icon: '<rect x="3" y="5" width="18" height="12" rx="2"/><path d="M8 21h8M12 17v4"/>', roles: [["Schauspiel", "Hauptrolle"], ["Schauspiel", "Zweite Hauptrolle"]], days: 8, base: 2.5e6, optLabel: "Genre", opts: ["Krimi", "Serie", "Sitcom", "Soap"] },
-  show: { name: "Show", sub: "Unterhaltung & Talk", icon: '<path d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.4 6.8 19.1l1-5.8L3.5 9.2l5.9-.9z"/>', roles: [["Moderation", "Moderation"], ["Moderation?", "Co-Moderation"]], days: 4, base: 0, optLabel: "Konzept-Vorlage", opts: ["gala", "quiz", "talent", "late"] },
-  reality: { name: "Reality-TV", sub: "Dating, Insel, Doku-Soap", icon: '<circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/>', roles: [["Moderation", "Moderation"], ["Reality", "Reality-Star"], ["Reality?", "Reality-Star"]], days: 4, base: 0, optLabel: "Konzept-Vorlage", opts: ["dating", "island", "cook", "docusoap"] },
+  film: { name: "Spielfilm", sub: "90–120 Minuten", icon: '<rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M7 6l2 4M12 6l2 4M17 6l2 4"/>', roles: [["Schauspiel", "Hauptrolle"], ["Schauspiel", "Zweite Hauptrolle"]], days: 10, base: 1.6e6, optLabel: "Genre", opts: ["Krimi", "Komödie", "Drama", "Liebesfilm", "Action", "Science-Fiction", "Thriller", "Horror", "Mystery", "Historienfilm", "Familienfilm", "Heimatfilm", "Tragikomödie"] },
+  serie: { name: "TV-Serie", sub: "Staffel mit 10 Folgen", icon: '<rect x="3" y="5" width="18" height="12" rx="2"/><path d="M8 21h8M12 17v4"/>', roles: [["Schauspiel", "Hauptrolle"], ["Schauspiel", "Zweite Hauptrolle"]], days: 8, base: 2.5e6, optLabel: "Genre", opts: ["Krimi", "Serie", "Sitcom", "Soap", "Krankenhausserie", "Anwaltsserie", "Polizeiserie", "Familienserie", "Dramedy", "Historienserie", "Mystery-Serie"] },
+  show: { name: "Show", sub: "Unterhaltung & Talk", icon: '<path d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.4 6.8 19.1l1-5.8L3.5 9.2l5.9-.9z"/>', roles: [["Moderation", "Moderation"], ["Moderation?", "Co-Moderation"]], days: 4, base: 0, optLabel: "Konzept-Vorlage", opts: ["gala", "quiz", "talent", "late", "panel", "pitch", "game", "music", "politalk", "morning"] },
+  reality: { name: "Reality-TV", sub: "Dating, Insel, Doku-Soap", icon: '<circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/>', roles: [["Moderation", "Moderation"], ["Reality", "Reality-Star"], ["Reality?", "Reality-Star"]], days: 4, base: 0, optLabel: "Konzept-Vorlage", opts: ["dating", "island", "cook", "docusoap", "survival", "makeover", "experiment", "farm", "container"] },
   doku: { name: "Dokumentation", sub: "Reportage & Doku", icon: '<circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/>', roles: [["Journalismus", "Autor*in"]], days: 5, base: 0.5e6, optLabel: "Thema", opts: ["Reportage", "Natur & Expedition", "Investigativ", "Zeitgeschichte"] },
   bio: { name: "Biografie", sub: "Biopic über ein Leben", icon: '<path d="M6 3h9l3 3v15H6z"/><path d="M9 10h6M9 14h6M9 18h4"/>', roles: [["Schauspiel", "Titelrolle"], ["Journalismus?", "Fachberatung"]], days: 9, base: 1.4e6, optLabel: "Lebensbereich", opts: ["Sport", "Musik", "Politik", "Wissenschaft", "Wirtschaft"] },
-  live: { name: "Live-Event", sub: "Einmalig, große Bühne", icon: '<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>', roles: [["Moderation", "Moderation"], ["Moderation?", "Co-Moderation"]], days: 3, base: 1.2e6, optLabel: "Anlass", opts: ["Preisverleihung", "Benefiz-Gala", "Konzert", "Silvesterparty"] },
+  live: { name: "Live-Event", sub: "Einmalig, große Bühne", icon: '<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>', roles: [["Moderation", "Moderation"], ["Moderation?", "Co-Moderation"]], days: 3, base: 1.2e6, optLabel: "Anlass", opts: ["Preisverleihung", "Benefiz-Gala", "Konzert", "Silvesterparty", "Musikpreis-Gala", "Sportlerwahl des Jahres", "Spendenmarathon", "Schlager-Open-Air", "Karnevalssitzung", "Musikwettbewerb-Vorentscheid", "Wahlabend-Spezial", "Jahresrückblick live", "Neujahrskonzert", "Stadtfest-Konzert", "Comedy-Preis", "Fußball-Public-Viewing-Show"] },
 };
 const DOKU_FIT = { "Reportage": "Auslandsreportage", "Natur & Expedition": "Natur & Expedition", "Investigativ": "Investigativ", "Zeitgeschichte": "Investigativ" };
 const CLASSES = { C: { m: 0.6, bonus: 25 }, B: { m: 1, bonus: 50 }, A: { m: 1.7, bonus: 75 }, AAA: { m: 3, bonus: 100 } };
@@ -2574,14 +2586,14 @@ function pState(p) {
 const pStatus = p => pState(p).label;
 const pAvail = p => ["free", "mine"].includes(pState(p).k);
 const projectGage = p => p.holder === me().id ? 0 : draft && draft.deals && draft.deals[p.id] ? draft.deals[p.id].fee : p.gage;
-const fmtGenre = d => d.kind === "show" || d.kind === "reality" ? BLUEPRINTS.find(b => b.id === d.opt).genre : d.kind === "doku" ? "Doku" : d.kind === "bio" ? "Drama" : d.kind === "live" ? "Show" : d.opt;
+const fmtGenre = d => d.kind === "show" || d.kind === "reality" ? BLUEPRINTS.find(b => b.id === d.opt).genre : d.kind === "doku" ? "Doku" : d.kind === "bio" ? "Drama" : d.kind === "live" ? "Show" : (SUBG[d.opt] || d.opt);
 const optName = (kind, o) => kind === "show" || kind === "reality" ? BLUEPRINTS.find(b => b.id === o).name : o === "Serie" ? "Drama" : o;
 function audience(d) {
   if (d.kind === "show" || d.kind === "reality") return BLUEPRINTS.find(b => b.id === d.opt).aud;
   if (d.kind === "doku") return "Gebildete Erwachsene";
   if (d.kind === "live") return "Breites Publikum";
   const g = fmtGenre(d);
-  return { "Krimi": "Ältere Zuschauer", "Komödie": "Familie", "Drama": "Erwachsene", "Liebesfilm": "Frauen 30+", "Action": "Männer 20–49", "Science-Fiction": "Junge Erwachsene", "Serie": "Erwachsene", "Sitcom": "Junge Erwachsene", "Soap": "Vorabendpublikum" }[g] || "Breites Publikum";
+  return { "Krimi": "Ältere Zuschauer", "Komödie": "Familie", "Drama": "Erwachsene", "Liebesfilm": "Erwachsene 30+", "Action": "Erwachsene 20–49", "Science-Fiction": "Junge Erwachsene", "Serie": "Erwachsene", "Sitcom": "Junge Erwachsene", "Soap": "Vorabendpublikum" }[g] || "Breites Publikum";
 }
 // Warnung, wenn der Entwurf eine vereinbarte Klausel bricht
 function slotWarn(p, d) {
@@ -2615,6 +2627,7 @@ function startProduction() {
   star = Math.round(star * castFitAvg(cast, FORMATS[d.kind].roles)); // fachfremde Besetzung mit Eignungsabschlag
   const bioP = d.kind === "bio" && d.bioOf ? person(d.bioOf) : null;
   if (bioP) script = clamp(script + Math.round((bioP.fame || 40) / 12), 1, 100); // bekannte Lebensgeschichte zieht
+  const de = descEval(d); script = clamp(script + de.bonus, 1, 100); // klares Konzept mit Aufhänger
   // Format-Match: Spezialität passt zur Vorlage, zum Thema oder zum Lieblingsgenre
   script = clamp(script + Math.round(c.house.q * houseFit(c.house, d.kind)), 1, 100); // Produktionspartner
   if (c.bp && c.bp.bonus) script = clamp(script + c.bp.bonus, 1, 100); // Lizenz- oder Eigenformat bringt seine Qualität mit
@@ -2632,6 +2645,7 @@ function startProduction() {
   cast.forEach(p => { p.busy = G.day + c.days; });
   const fallback = d.kind === "bio" ? (bioP ? `${bioP.name} – Ein Leben` : `Das Leben einer Legende (${d.opt})`) : d.kind === "live" ? `${d.opt} ${dateOf(G.day).getFullYear()}` : `${FORMATS[d.kind].name}: ${optName(d.kind, d.opt)}`;
   const prod = { house: d.house || "std", dna: dnaOf(d) ? { ...d.dna } : null, id: uid(), kind: d.kind, title: d.title.trim() || fallback, genre, bp: c.bp ? c.bp.id : null, opt: d.opt, cls: d.cls, cast: cast.map(p => p.id), writers: d.writers, trash: d.kind === "reality" && TRASH_BP.includes(d.opt), deals: d.deals || {}, script, star: Math.round(star), chem, R, days: c.days, left: c.days, cost: c.total, rhCfg: { rh: d.rh, rhDay: d.rhDay, rhHour: d.rhHour, eps: d.eps, fix: d.fix ?? "1", gb: d.gb } };
+  prod.desc = String(d.desc || "").slice(0, 700); prod.descScore = d.desc ? de.score : null; prod.aiNote = d.aiNote || null; prod.sub = SUBG[d.opt] ? d.opt : null; if (bioP) prod.bioOf = bioP.id;
   G.prods.push(prod);
   logMsg("Produktion", "Produktion", `Drehstart für „${prod.title}“ (${FORMATS[d.kind].name}, Klasse ${d.cls}). Fertigstellung in ${c.days} Tagen.`, true);
   draft = null;
@@ -2911,7 +2925,7 @@ function studio(P) {
     `<p class="lead mb">Eigenproduktionen entstehen aus Format, Drehbuch, Besetzung und Budget. Das Rating berechnet sich aus Drehbuch × 0,4 + Star-Power × 0,4 + Chemie × 0,1 + Budget × 0,1. Die Drehbuchqualität bleibt bis zur Fertigstellung verdeckt.</p>
     ${promoPanel(P)}
     <section class="panel mb"><div class="ph"><h2>In Produktion</h2><span class="aside">${running.length} Projekte</span></div>${running.length ? `<div class="tbl"><table><thead><tr><th>Titel</th><th>Format</th><th>Besetzung</th><th>Fortschritt</th><th class="num">Kosten</th></tr></thead><tbody>
-      ${running.map(pr => `<tr><td class="title"><b>${esc(pr.title)}</b><div class="muted">${esc(pr.genre)} · Klasse ${pr.cls}</div></td><td>${FORMATS[pr.kind].name}</td><td class="title muted">${pr.cast.map(id => esc(person(id).name)).join(", ")}</td><td><span class="mbar" style="width:110px"><i style="width:${Math.round((pr.days - pr.left) / pr.days * 100)}%;background:var(--hot)"></i></span> <span class="muted">noch ${pr.left} T.</span></td><td class="num">${meur(pr.cost)}</td></tr>`).join("")}
+      ${running.map(pr => `<tr><td class="title"><b>${esc(pr.title)}</b> <button class="info" data-act="prodInfo" data-k="${pr.id}" aria-label="Inhalt">i</button><div class="muted">${esc(pr.genre)} · Klasse ${pr.cls}</div></td><td>${FORMATS[pr.kind].name}</td><td class="title muted">${pr.cast.map(id => esc(person(id).name)).join(", ")}</td><td><span class="mbar" style="width:110px"><i style="width:${Math.round((pr.days - pr.left) / pr.days * 100)}%;background:var(--hot)"></i></span> <span class="muted">noch ${pr.left} T.</span></td><td class="num">${meur(pr.cost)}</td></tr>`).join("")}
     </tbody></table></div>` : '<div class="pad"><p class="lead">Keine laufenden Produktionen.</p></div>'}</section>
     <section class="panel"><div class="ph"><h2>Fertige Eigenproduktionen</h2></div>${done.length ? `<div class="tbl"><table><thead><tr><th>Titel</th><th>Format</th><th class="num">Rating</th><th class="num">Drehbuch</th><th class="num">Star-Power</th><th class="num">Chemie</th><th class="num">Kosten</th></tr></thead><tbody>
       ${done.map(pr => `<tr><td class="title">${esc(pr.title)}</td><td>${FORMATS[pr.kind].name}</td><td class="num">${attr(pr.R)}</td><td class="num">${pr.script}</td><td class="num">${pr.star}</td><td class="num">${pr.chem}</td><td class="num muted">${meur(pr.cost)}</td></tr>`).join("")}
@@ -2962,6 +2976,7 @@ function newProdPage(P) {
         <label class="field"><span>Arbeitstitel</span><input type="text" data-draft="title" maxlength="60" value="${esc(d.title)}" placeholder="${d.kind === "bio" ? "z. B. Die Kaiserin vom Platz" : d.kind === "live" ? "z. B. Die große Benefiz-Nacht" : "z. B. Mord am Isarufer"}"></label>
         <div class="kv"><span>Zielgruppe</span><b>${audience(d)}</b></div>
         ${d.kind === "bio" ? (() => { const q = d.bioOf && person(d.bioOf); return `<div class="slot-card ${q ? "filled" : ""}" style="margin-top:8px">${q ? avatar(q, 40) : '<span class="avatar empty">?</span>'}<div class="grow"><small>Biografie über</small><b>${q ? esc(q.name) : "Person wählen – jede Person ist möglich"}</b>${q && q.custom ? '<span class="fine">Echte Person: Das Spiel erfindet keine Lebensereignisse – nur Titel und Lebensbereich.</span>' : ""}</div><button class="btn ${q ? "" : "hot"}" data-act="dirOpen" data-k="alle" data-v="bio">${q ? "Ändern" : "Auswählen"}</button></div>`; })() : ""}</div>
+      ${descCard(d)}
       <div class="card"><div class="card-h"><h3>${["show", "reality", "live"].includes(d.kind) ? "Konzept-Team" : "Autoren"}</h3>${info("Nachwuchs ist günstig und riskant, kann aber Überraschungshits liefern. Die echte Drehbuchqualität sehen Sie erst bei Fertigstellung.")}</div>
         ${seg("writers", Object.entries(WRITERS).map(([k, w]) => [k, w.name, `Qualität ${w.lo}–${w.hi}`]))}</div>
       <div class="card"><div class="card-h"><h3>Budgetklasse</h3>${info("Das Budget fließt mit 10 % in das Rating ein und verlängert bei AAA die Produktion um 2 Tage.")}</div>
@@ -3490,6 +3505,7 @@ document.addEventListener("input", e => {
 });
 document.addEventListener("change", e => {
   const dk = e.target.dataset.draft;
+  if (dk === "desc" && draft) { draft.desc = e.target.value.slice(0, 700); draft.aiNote = null; setTimeout(render, 0); return; } // Textfeld: erst nach dem Verlassen neu zeichnen
   if (dk && draft && dk !== "title") {
     const v = e.target.value;
     if (dk.startsWith("cast")) draft.cast[+dk.slice(4)] = v || null;
@@ -4167,6 +4183,8 @@ function act(b) {
     case "planDay": planDay = wd; break;
     case "fillDay": { const dd = +b.dataset.k; if (!(dd === G.day && planLocked())) { const n = fillGaps(P, calDay(P, dd), weekday(dd)); autoTidy(P, dd); if (dd === G.day) buildToday(P); toast(n ? `${n} Sendungen in Lücken eingesetzt.` : "Keine Lücken."); } break; }
     case "dvZoom": case "dvPick": case "dvResolve": case "dvOver": case "dvOpenK": case "dvCasc": case "dvTime": case "dvDel": case "dvSwap": case "dvIns": case "fixDlg": case "fixWd": case "fixQuick": case "fixTime": case "fixAdd": case "fixDel": dvAction(P, k, b, id); return;
+    case "descAi": if (draft) descAi(draft, "descAiOut"); return;
+    case "prodInfo": { const pr = G.prods.find(x => String(x.id) === b.dataset.k); if (pr) prodInfo(pr); return; }
     case "swin": { const p = progOf(P, id); if (p) setWindow(P, p, b.dataset.k); break; }
     case "ctxPlan": { const p = progOf(P, id); if (!p) return; dvPick = p.id; planDay = planDay && planDay >= G.day ? planDay : G.day + 1; go("plan"); toast(`„${p.title}“ gewählt – jetzt die Uhrzeit im Kalender antippen.`); return; }
     case "autoWin": if (G.stream) G.stream.autoWin = b.dataset.k || null; break;
@@ -9029,6 +9047,69 @@ document.addEventListener("click", e => { if (ctxEl) setTimeout(hideCtx, 0); }, 
 document.addEventListener("keydown", e => { if (e.key === "Escape") hideCtx(); });
 document.addEventListener("change", e => { const id = e.target && e.target.dataset && e.target.dataset.swin; if (!id || !G) return; const P = me(), p = progOf(P, +id); if (p) { setWindow(P, p, e.target.value); render(); } });
 // =====================================================================
+// Konzept: Inhaltsbeschreibung, Einschätzung (Regeln + lokale KI), Untergenres
+// =====================================================================
+// Untergenres laufen in der Quote wie ihr Grundgenre
+const SUBG = { Thriller: "Krimi", Horror: "Action", Mystery: "Science-Fiction", Historienfilm: "Monumental", Familienfilm: "Komödie", Heimatfilm: "Liebesfilm", Tragikomödie: "Komödie",
+  Krankenhausserie: "Serie", Anwaltsserie: "Krimi", Familienserie: "Serie", Dramedy: "Komödie", Historienserie: "Monumental", "Mystery-Serie": "Science-Fiction", Polizeiserie: "Krimi" };
+// Schlagworte, die zu Format und Genre passen
+const DESC_KEYS = {
+  Krimi: ["mord", "ermitt", "kommissar", "fall", "täter", "spur", "verbrechen", "verdacht", "geheimnis"], Komödie: ["chaos", "humor", "lustig", "verwechslung", "witz", "skurril", "komisch"],
+  Drama: ["familie", "schicksal", "konflikt", "verlust", "neuanfang", "liebe", "schuld"], Liebesfilm: ["liebe", "hochzeit", "romantik", "herz", "begegnung", "sommer"],
+  Action: ["jagd", "explosion", "flucht", "kampf", "rettung", "verfolgung"], "Science-Fiction": ["zukunft", "zeit", "weltraum", "technologie", "fremd", "parallel"],
+  Serie: ["klinik", "ärzt", "kanzlei", "team", "alltag", "familie", "freunde"], Soap: ["intrige", "affäre", "familie", "geheimnis", "liebe"], Sitcom: ["wg", "nachbar", "büro", "chaos", "familie"],
+  Monumental: ["jahrhundert", "kaiser", "krieg", "epoche", "historisch", "dynastie"], Show: ["promi", "spiel", "duell", "live", "überraschung", "publikum", "finale", "team"],
+  Reality: ["kandidat", "challenge", "insel", "liebe", "wg", "experiment", "abenteuer", "überleben"], Talk: ["gäste", "debatte", "streit", "gesellschaft", "aktuell"],
+  Doku: ["recherche", "hintergrund", "reise", "natur", "geschichte", "aufdeck", "zeitzeug"], Magazin: ["service", "tipps", "aktuell", "reportage"],
+};
+const HOOKS = ["wendung", "twist", "cliffhanger", "überraschung", "ungewöhnlich", "erstmals", "noch nie", "einzigartig", "dilemma", "zeitdruck", "countdown", "live"];
+function descEval(d) {
+  const t = String(d.desc || "").toLowerCase(), words = t.split(/\s+/).filter(Boolean).length, g = fmtGenre(d);
+  if (!words) return { score: 0, bonus: 0, notes: ["Noch keine Beschreibung – ohne klares Konzept bleibt das Drehbuch Glückssache."] };
+  const keys = (DESC_KEYS[g] || []).filter(k => t.includes(k)), hooks = HOOKS.filter(k => t.includes(k));
+  const topic = G && G.pol && G.pol.topic ? G.pol.topic.t.toLowerCase().split(/\s+/).filter(w => w.length > 5 && t.includes(w.slice(0, 6))) : [];
+  let score = 2 + Math.min(3, keys.length) + Math.min(2, hooks.length) + (topic.length ? 1.5 : 0) + (words >= 20 && words <= 120 ? 1.5 : words < 8 ? -1 : 0);
+  score = clamp(Math.round(score), 0, 10);
+  const notes = [];
+  notes.push(keys.length ? `Trifft die Erwartungen ans Genre (${keys.slice(0, 3).join(", ")} …).` : `Wenig typische ${g}-Elemente – das Publikum weiß nicht, was es erwartet.`);
+  notes.push(hooks.length ? "Hat einen Haken, der neugierig macht." : "Es fehlt ein Aufhänger – eine Wendung, ein Dilemma oder ein Countdown.");
+  if (topic.length) notes.push("Greift das aktuelle Thema der Woche auf – das bringt Aufmerksamkeit.");
+  if (words < 20) notes.push("Etwas knapp – zwei, drei Sätze mehr schärfen das Profil."); else if (words > 120) notes.push("Sehr ausführlich – für den Pitch lieber zuspitzen.");
+  return { score, bonus: Math.round(score * 0.6), notes };
+}
+function descClean(t) {
+  if (!t) return null;
+  t = String(t).replace(/\s+/g, " ").trim();
+  if (/[^\u0000-ɏḀ-ỿ -⁯€]/.test(t) || t.length < 20 || t.length > 480 || AI_BAD.test(t)) return null;
+  const real = G.people.filter(q => q.custom).map(q => q.name).find(n => n && t.includes(n)); if (real) return null; // keine Aussagen über echte Personen
+  return t;
+}
+function descAi(d, targetId) {
+  const el = () => document.getElementById(targetId);
+  if (!aiOn()) { if (el()) el().textContent = "Lokale KI ist ausgeschaltet – oben steht die Einschätzung der Programmplanung."; return; }
+  if (el()) el().textContent = "Die KI liest das Konzept …";
+  const F = FORMATS[d.kind];
+  llm(`Du bist erfahrene Programmplanerin eines deutschen Fernsehsenders in einem Managerspiel. Schätze in zwei bis drei kurzen Sätzen ein, wie dieses Konzept beim Publikum ankommen könnte. Nenne eine Stärke und ein Risiko. Format: ${F.name}, Genre: ${fmtGenre(d)}${d.opt ? ` (${optName(d.kind, d.opt)})` : ""}, Zielgruppe: ${audience(d)}. Keine Zahlen, keine Namen echter Personen, keine Zitate. ${AI_RULES}\nKonzept: ${String(d.desc).slice(0, 600)}`, 40000)
+    .then(txt => { const c = descClean(txt); d.aiNote = c || null; if (el()) el().textContent = c ? `KI-Einschätzung: ${c}` : "Keine verwertbare Einschätzung – die Antwort wurde vom Filter verworfen."; });
+}
+function descCard(d) {
+  const e = descEval(d);
+  return `<div class="card"><div class="card-h"><h3>Inhalt – worum geht es?</h3>${info("Beschreiben Sie Handlung oder Ablauf in eigenen Worten. Ein klares Konzept mit Aufhänger hebt die Drehbuchqualität um bis zu 6 Punkte. Die lokale KI gibt eine Einschätzung – sie läuft nur auf Ihrem Rechner.")}</div>
+    <textarea data-draft="desc" rows="4" maxlength="700" style="width:100%" placeholder="${d.kind === "show" || d.kind === "reality" ? "z. B. Zwei Promi-Teams treten in verrückten Live-Spielen gegeneinander an – wer verliert, muss eine Woche lang …" : "z. B. Eine Kommissarin ermittelt in ihrem Heimatdorf – und stößt auf ein Geheimnis ihrer eigenen Familie …"}">${esc(d.desc || "")}</textarea>
+    <div class="kv"><span>Einschätzung Programmplanung</span><b>${d.desc ? `${e.score} / 10 · +${e.bonus} Drehbuch` : "–"}</b></div>
+    ${d.desc ? `<ul class="fine" style="margin:4px 0 6px 16px">${e.notes.map(n => `<li>${esc(n)}</li>`).join("")}</ul>` : ""}
+    <div class="actions"><button class="btn small" data-act="descAi" ${d.desc ? "" : "disabled"}>Lokale KI fragen: Wie kommt das an?</button></div>
+    <p class="fine" id="descAiOut">${d.aiNote ? `KI-Einschätzung: ${esc(d.aiNote)}` : ""}</p></div>`;
+}
+function prodInfo(pr) {
+  openModal(`<header><h2>${esc(pr.title)}</h2><button class="btn" data-act="close">Schließen</button></header><div class="dbody">
+    <p class="lead">${FORMATS[pr.kind].name} · ${esc(pr.sub || optName(pr.kind, pr.opt))} · Klasse ${pr.cls} · ${pr.left > 0 ? `fertig in ${pr.left} Tagen` : "fertig"}</p>
+    <h3>Inhalt</h3><p>${pr.desc ? esc(pr.desc) : '<span class="muted">Keine Beschreibung hinterlegt.</span>'}</p>
+    ${pr.desc ? `<div class="kv"><span>Einschätzung Programmplanung</span><b>${pr.descScore ?? "–"} / 10</b></div>` : ""}
+    ${pr.aiNote ? `<p class="fine">KI-Einschätzung: ${esc(pr.aiNote)}</p>` : ""}
+    <h3>Besetzung</h3><p>${pr.cast.map(id => person(id)).filter(Boolean).map(q => personLink(q)).join(", ") || "–"}</p></div>`);
+}
+// =====================================================================
 // Formatprofil: Quotenverlauf, Publikum, Analyse und Maßnahmen je Sendung
 // =====================================================================
 // Affinität zur Zielgruppe 14–49 (Spielwerte): Sender-Image × Genre
@@ -10055,7 +10136,7 @@ function openTitle(key) {
   openModal(`<header><h2>${esc(t.title)}</h2><button class="btn" data-act="close">Schließen</button></header><div class="dbody">
     <div class="ttl-head"><div class="grow"><span class="chip real">${kindName}</span>${p ? ` <span class="chip">${esc(p.genre)}</span>` : ""}${p && p.own ? ' <span class="chip good">Eigenproduktion</span>' : p && p.home ? ' <span class="chip real">Eigenformat</span>' : ""}${p && p.sponsor ? ' <span class="chip">gesponsert</span>' : ""}${p && (p.fx || []).length ? ` <span class="chip warn">${p.fx.length} Maßnahme${p.fx.length > 1 ? "n" : ""} läuft</span>` : ""}
       ${mine && p && !["film", "sport"].includes(p.kind) && !p.house ? `<div class="actions" style="margin-top:8px">${canManageCast(me(), p) ? `<button class="btn small" data-act="castMgr" data-id="${p.id}">Besetzung verwalten</button>` : ""}<button class="btn small hot" data-act="fixDlg" data-id="${p.id}">Feste Sendetermine${slotsOf(p).length ? ` (${slotsOf(p).map(x => wdsName(x.wds) + " " + hhmm(x.t)).join(" · ")})` : " festlegen"}</button></div>` : ""}
-      <p class="lead" style="margin-top:8px">${esc(DESC[t.title] || (p && p.own ? "Eigenproduktion des Senders." : "Keine Beschreibung vorhanden."))}</p></div>
+      <p class="lead" style="margin-top:8px">${esc(DESC[t.title] || (p && (p.desc || (prodOf(p) || {}).desc)) || (p && p.own ? "Eigenproduktion des Senders." : "Keine Beschreibung vorhanden."))}</p></div>
       <div class="ttl-side"><small>Läuft bei</small><b>${t.owner && SIDX[t.owner] !== undefined ? sname(SIDX[t.owner]) : t.streamer ? sbadge(t.owner, 18) : esc(t.ownerName)}</b></div></div>
     ${tabs.length ? `<div class="ptabs">${tabs.map(([k, n]) => `<button data-act="profTab" data-k="${k}" class="${profTab === k ? "on" : ""}">${n}</button>`).join("")}</div>` : ""}
     <div style="margin-top:12px">${body}</div>
