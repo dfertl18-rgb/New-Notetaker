@@ -1,7 +1,7 @@
 name: KI-Modell bereitstellen
 
-# Lädt das freie Sprachmodell (Apache-2.0) einmalig von HuggingFace und legt es als Release-Datei ab,
-# damit die Windows-Builds es in den Installer packen können.
+# Lädt das freie Sprachmodell Qwen2.5-7B-Instruct (Apache-2.0) einmalig und legt es in Teilen (< 2 GB je Datei)
+# als Release-Dateien ab, damit es zusammen mit dem Windows-Installer ausgeliefert werden kann.
 on:
   workflow_dispatch:
   push:
@@ -15,17 +15,16 @@ jobs:
   model:
     runs-on: ubuntu-latest
     steps:
-      - name: Modell herunterladen
+      - name: Modell herunterladen und teilen
         run: |
-          curl -L --fail --retry 3 -o qwen2.5-1.5b-instruct-q4_k_m.gguf "https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/qwen2.5-1.5b-instruct-q4_k_m.gguf"
-          curl -L --fail --retry 3 -o LICENSE-Qwen2.5.txt "https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/LICENSE" || echo "Apache-2.0 – siehe https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF" > LICENSE-Qwen2.5.txt
-          curl -L --fail --retry 3 -o gemma-2-2b-it-Q4_K_M.gguf "https://huggingface.co/bartowski/gemma-2-2b-it-GGUF/resolve/main/gemma-2-2b-it-Q4_K_M.gguf"
-          curl -L --fail --retry 3 -o GEMMA-TERMS.txt "https://ai.google.dev/gemma/terms" || echo "Gemma Terms of Use – https://ai.google.dev/gemma/terms" > GEMMA-TERMS.txt
-          sha256sum qwen2.5-1.5b-instruct-q4_k_m.gguf gemma-2-2b-it-Q4_K_M.gguf | tee SHA256.txt
+          curl -L --fail --retry 3 -o Qwen2.5-7B-Instruct-Q4_K_M.gguf "https://huggingface.co/bartowski/Qwen2.5-7B-Instruct-GGUF/resolve/main/Qwen2.5-7B-Instruct-Q4_K_M.gguf"
+          curl -L --fail --retry 3 -o LICENSE-Qwen2.5.txt "https://huggingface.co/Qwen/Qwen2.5-7B-Instruct/resolve/main/LICENSE" || echo "Apache-2.0 – https://huggingface.co/Qwen/Qwen2.5-7B-Instruct" > LICENSE-Qwen2.5.txt
+          sha256sum Qwen2.5-7B-Instruct-Q4_K_M.gguf | tee SHA256-7B.txt
+          split -b 1900M -d -a 2 Qwen2.5-7B-Instruct-Q4_K_M.gguf Qwen2.5-7B-Instruct-Q4_K_M.gguf.part
           ls -la
-      - name: Als Release-Datei ablegen
+      - name: Als Release-Dateien ablegen
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release view ki-modell-v1 -R "${{ github.repository }}" >/dev/null 2>&1 || gh release create ki-modell-v1 -R "${{ github.repository }}" --target "${{ github.sha }}" --title "KI-Modell für Medienmanager 2027" --notes "Qwen2.5-1.5B-Instruct (GGUF Q4_K_M, Lizenz Apache-2.0) für die eingebaute KI. Quelle: https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF"
-          gh release upload ki-modell-v1 qwen2.5-1.5b-instruct-q4_k_m.gguf gemma-2-2b-it-Q4_K_M.gguf SHA256.txt LICENSE-Qwen2.5.txt GEMMA-TERMS.txt -R "${{ github.repository }}" --clobber
+          gh release view ki-modell-v1 -R "${{ github.repository }}" >/dev/null 2>&1 || gh release create ki-modell-v1 -R "${{ github.repository }}" --target "${{ github.sha }}" --title "KI-Modell für Medienmanager 2027" --notes "Freie Sprachmodelle (Apache-2.0) für die eingebaute KI."
+          gh release upload ki-modell-v1 Qwen2.5-7B-Instruct-Q4_K_M.gguf.part* SHA256-7B.txt LICENSE-Qwen2.5.txt -R "${{ github.repository }}" --clobber
