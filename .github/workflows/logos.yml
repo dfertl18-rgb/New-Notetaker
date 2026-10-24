@@ -1,0 +1,33 @@
+name: Senderlogos (privat, verschlüsselt)
+
+# Lädt Senderlogos über Wikidata/Wikimedia Commons und legt sie verschlüsselt ab (nur private Spielversion; Markenrechte bei den Sendern).
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/logos.yml"
+      - ".github/titel-db/logos.py"
+
+permissions:
+  contents: write
+
+jobs:
+  logos:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Logos laden
+        run: python3 .github/titel-db/logos.py && ls -la logos.json
+      - name: Verschlüsseln
+        run: |
+          gzip -9 logos.json
+          openssl rand -hex 32 > key.bin
+          openssl enc -aes-256-cbc -pbkdf2 -salt -in logos.json.gz -out logos.enc -pass file:key.bin
+          openssl pkeyutl -encrypt -pubin -inkey .github/titel-db/pub.pem -in key.bin -out logos-key.enc
+          rm -f key.bin logos.json.gz
+      - name: Als Release-Datei ablegen
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view titel-db-enc -R "${{ github.repository }}" >/dev/null 2>&1 || gh release create titel-db-enc -R "${{ github.repository }}" --target "${{ github.sha }}" --title "Titeldatenbank (verschlüsselt)" --notes "Verschlüsselt, nur für die private Spielversion lesbar."
+          gh release upload titel-db-enc logos.enc logos-key.enc -R "${{ github.repository }}" --clobber
