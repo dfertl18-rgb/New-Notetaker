@@ -1503,7 +1503,7 @@ function makeNews() {
 }
 const emptyDay = () => HOURS.map(() => ({ p: null, ad: null, cont: false, live: false }));
 // Mindestgebot pro Jahr (Gesamt-DACH); bezahlt wird anteilig pro Tag
-const rightPrice = r => r1000(r.q * r.q * 420 * 13 * rnd(0.9, 1.15));
+const rightPrice = r => r1000(r.q * r.q * 420 * (r.award ? 1.6 : 13) * rnd(0.9, 1.15)); // Preisverleihung: ein Abend pro Jahr
 // Vertragslaufzeit je Rechtepaket in Jahren
 const RIGHT_YEARS = { bl: 2, bl2: 2, pokal: 2, uel: 1, f1: 1, nfl: 1, hbl: 2, hwm: 2, winter: 2, eis: 1, elf: 1, dtm: 1, darts: 1 };
 const rightYears = r => RIGHT_YEARS[r.id] || 1;
@@ -1563,6 +1563,7 @@ function newGame(stationId) {
   G.project = null; G.mods = {}; G.event = null; G.eventLog = [];
   initPeople();
   applyEditorPeople();
+  linkCastDB();
   linkImported();
   assignCasts();
   G.tenders = []; G.deals = []; G.payHeld = []; G.presales = [];
@@ -1822,7 +1823,7 @@ function placeEvents() {
   for (const st of G.stations) st.live = [];
   for (const { r, d, m, o } of eventsOn(G.day)) {
     const st = G.stations[SIDX[o.owner || r.owner]]; if (!st) continue;
-    const ev = { id: uid(), title: `${d.sport}: ${m ? m.fix : d.fix()}`, comp: d.name, genre: "Sport", kind: "sport", q: m ? Math.round(m.q * injuryF(m.fix)) : d.q, len: d.len, h: d.h, t: m ? m.t : d.h * 60, dur: m ? m.dur : d.len * 60, topic: 1, fsk: 0, real: true };
+    const ev = { id: uid(), title: d.award ? (m ? m.fix : d.name) : `${d.sport}: ${m ? m.fix : d.fix()}`, comp: d.name, genre: d.award ? "Show" : "Sport", kind: "sport", q: m ? Math.round(m.q * injuryF(m.fix)) : d.q, len: d.len, h: d.h, t: m ? m.t : d.h * 60, dur: m ? m.dur : d.len * 60, topic: 1, fsk: 0, real: true };
     const cm = (G.comm || {})[r.id], cq = cm && person(cm); if (cq && cq.holder === st.id) ev.comm = cm;
     st.live.push(ev);
     if (isMe(st)) logMsg("Sportredaktion", "Sport", `Heute live um ${hhmm(ev.t)}: ${ev.title} (${d.name}).`);
@@ -2346,7 +2347,8 @@ const TRAITS = {
   Journalismus: ["Investigativ", "Natur & Expedition", "Auslandsreportage"],
 };
 const ACT_GENRES = ["Krimi", "Komödie", "Drama", "Liebesfilm", "Action", "Science-Fiction", "Sitcom", "Soap", "Serie"];
-const SPEC_NAME = { Schauspiel: "Schauspiel", Moderation: "Entertainer", Reality: "Reality", Nachrichten: "News-Sprecher*in", Journalismus: "Journalismus" };
+const SPEC_NAME = { Schauspiel: "Schauspiel", Moderation: "Entertainer", Reality: "Reality", Nachrichten: "News-Sprecher*in", Journalismus: "Journalismus", Kommentar: "Kommentar", Produktion: "Produktion",
+  Comedy: "Comedy", Musik: "Musik", Influencer: "Creator", Experte: "Expert*in", Koch: "TV-Koch/Köchin", Regie: "Regie", Drehbuch: "Drehbuch", Kritik: "TV-Kritik", Prominente: "Prominente" };
 // Werte 10–100, wenige echte Stars, viel Mittelfeld
 const stat = () => Math.round(10 + 90 * Math.pow(Math.random(), 1.35));
 const baseGage = (talent, cha) => r1000(20000 + Math.pow(talent * 0.6 + cha * 0.4, 2.2) * 40);
@@ -2425,6 +2427,15 @@ const holderLabel = id => !id ? "vertragsfrei" : SIDX[id] !== undefined ? STATIO
 const EPONYM = ["Markus Lanz", "maischberger", "Barbara Salesch – Das Strafgericht", "Joko & Klaas gegen ProSieben", "Die Geissens"];
 function castNeed(p) {
   if (p.kind === "sport" || p.genre === "Teleshopping") return [];
+  const t = String(p.title || "").toLowerCase();
+  if (p.kind !== "film" && !["Krimi", "Serie", "Soap", "Sitcom", "Drama", "Komödie", "Action", "Science-Fiction", "Liebesfilm", "Monumental"].includes(p.genre)) {
+    if (/koch|küche|kitchen|grill den|lafer|lecker|die küchenschlacht|das perfekte dinner/.test(t)) return [["Koch", "Koch/Köchin"], ["Koch", "Koch/Köchin"]];
+    if (/heute-show|heute show|anstalt|tv total|comedy|satire|ladies night|quatsch|kalkofe|nuhr|sketch|genial daneben|7 tage, 7 köpfe|schillerstraße/.test(t)) return [["Moderation", "Moderation"], ["Comedy", "Comedy"], ["Comedy", "Comedy"]];
+    if (/schlager|feste der|hitparade|musikantenstadl|zarrella|silbereisen|voice of germany|the masked singer|sing meinen song|konzert|musik/.test(t)) return [["Moderation", "Moderation"], ["Musik", "Musik / Jury"]];
+    if (/doppelpass|sportschau|sportstudio|bundesliga|fußball|sport/.test(t)) return [["Moderation", "Moderation"], ["Experte", "Expert*in"]];
+    if (/dschungel|ich bin ein star|big brother|promi|realitystars|sommerhaus|kampf der/.test(t)) return [["Moderation", "Moderation"], ["Prominente", "Kandidat*in"], ["Influencer", "Kandidat*in"]];
+    if (/hart aber fair|maischberger|anne will|lanz|illner|presseclub|talk/.test(t) || p.genre === "Talk") return [["Moderation", "Moderation"]];
+  }
   if (p.genre === "Nachrichten") return [["Nachrichten", "Anchor"], ["Nachrichten", "Co-Anchor"]];
   if (["Talk", "Show"].includes(p.genre)) return [["Moderation", "Moderation"], ["Moderation", "Co-Moderation"]].slice(0, p.genre === "Talk" ? 1 : 2);
   if (p.genre === "Magazin") return [["Moderation", "Moderation"]];
@@ -2434,14 +2445,17 @@ function castNeed(p) {
 }
 // Eigenformate der Sender (Tatort, GZSZ, Lanz …) werden mit Personen aus der Datenbank besetzt und an den Sender gebunden
 function assignCasts() {
-  const free = role => G.people.filter(p => p.role === role && !p.holder && !p.show);
+  const FALLBACK = { Koch: "Moderation", Comedy: "Moderation", Musik: "Moderation", Experte: "Kommentar", Prominente: "Reality", Influencer: "Reality" };
+  const free0 = role => G.people.filter(p => p.role === role && !p.holder && !p.show);
+  // Echte Personen nie frei zuordnen – nur über belegte Mitwirkung (Besetzungsdatenbank, „Bekannt aus“)
+  const free = role => { const l = free0(role).filter(q => !q.custom); return l.length || !FALLBACK[role] ? l : free0(FALLBACK[role]).filter(q => !q.custom); };
   for (const st of G.stations) for (const prog of st.progs) {
     if (!(prog.home || prog.filler) || EPONYM.includes(prog.title)) continue;
     prog.cast = prog.cast || [];
     // bereits verknüpfte echte Personen behalten, nur freie Rollen ergänzen
     for (const [role, label] of castNeed(prog).slice(prog.cast.length)) {
       const fit = q => (q.genres || []).includes(prog.genre) || (q.genres || []).includes(prog.kind === "serie" ? "Serie" : prog.genre) ? 40 : 0;
-      const pool = free(role).filter(q => !q.custom).sort((a, b) => (b.fame + b.talent + fit(b)) - (a.fame + a.talent + fit(a)));
+      const pool = free(role).sort((a, b) => (b.fame + b.talent + fit(b)) - (a.fame + a.talent + fit(a)));
       const p = pool[Math.min(pool.length - 1, Math.floor(Math.pow(Math.random(), prog.filler ? 0.5 : 2.5) * Math.min(pool.length, 400)))];
       if (!p) continue;
       if (aiExcl(p) && !prog.cast.length) p.holder = st.id; else p.prodAt = st.id; // nur das Hauptgesicht exklusiv
@@ -3018,7 +3032,7 @@ function newProdPage(P) {
 }
 // Darsteller-, Moderatoren- und Journalisten-Verzeichnis
 const DIR_SORTS = [["buzz", "Charisma"], ["talent", "Talent"], ["gage", "Gage"], ["scandal", "Skandalfaktor"]];
-const DIR_TITLES = { alle: "Personen-Verzeichnis", Schauspiel: "Darsteller-Verzeichnis", Moderation: "Moderatoren-Verzeichnis", Reality: "Reality-Verzeichnis", Journalismus: "Journalisten-Verzeichnis", Nachrichten: "Nachrichtengesichter" };
+const DIR_TITLES = { Comedy: "Comedy-Verzeichnis", Musik: "Musik-Verzeichnis", Influencer: "Creator-Verzeichnis", Experte: "Expert*innen", Koch: "TV-Köche", Prominente: "Prominente", Kommentar: "Kommentator*innen", alle: "Personen-Verzeichnis", Schauspiel: "Darsteller-Verzeichnis", Moderation: "Moderatoren-Verzeichnis", Reality: "Reality-Verzeichnis", Journalismus: "Journalisten-Verzeichnis", Nachrichten: "Nachrichtengesichter" };
 let dirQuery = "", dirLimit = 40, castQuery = "", castLimit = 40, castStatus = "alle";
 function sortedPeople(role, q = "", status = "alle") {
   const ql = q.trim().toLowerCase();
@@ -3081,7 +3095,7 @@ function renderCastList() {
   $("castList").innerHTML = list.slice(0, castLimit).map(p => personRow(p, castAction)).join("") + moreBtn(Math.min(castLimit, list.length), list.length, "castMore");
 }
 function casting(P) {
-  const roles = [["alle", "Alle"], ["Schauspiel", "Schauspiel"], ["Moderation", "Entertainer"], ["Reality", "Reality"], ["Nachrichten", "News"], ["Journalismus", "Journalismus"], ["Kommentar", "Kommentar"], ["Produktion", "Showrunner"]];
+  const roles = [["alle", "Alle"], ["Schauspiel", "Schauspiel"], ["Moderation", "Entertainer"], ["Reality", "Reality"], ["Nachrichten", "News"], ["Journalismus", "Journalismus"], ["Kommentar", "Kommentar"], ["Produktion", "Showrunner"], ["Comedy", "Comedy"], ["Musik", "Musik"], ["Influencer", "Creator"], ["Experte", "Expert*innen"], ["Koch", "TV-Küche"], ["Prominente", "Prominente"], ["Regie", "Regie"], ["Drehbuch", "Drehbuch"], ["Kritik", "TV-Kritik"]];
   const states = [["alle", "Alle"], ["free", "Frei"], ["rival", "Exklusiv Konkurrenz"], ["busy", "Im Dreh"], ["mine", "Bei Ihnen"]];
   const count = k => G.people.filter(p => k === "free" ? pAvail(p) : pState(p).k === k).length;
   setTimeout(renderCastList, 0);
@@ -4194,6 +4208,8 @@ function act(b) {
     case "next": closeModal(); if (G.over) showEnd(); else { planDay = null; nextDay(); } return;
     case "planDay": planDay = wd; break;
     case "fillDay": { const dd = +b.dataset.k; if (!(dd === G.day && planLocked())) { const n = fillGaps(P, calDay(P, dd), weekday(dd)); autoTidy(P, dd); if (dd === G.day) buildToday(P); toast(n ? `${n} Sendungen in Lücken eingesetzt.` : "Keine Lücken."); } break; }
+    case "frameDlg": { const [dd, st] = b.dataset.k.split("|").map(Number); frameDlg(dd, st); return; }
+    case "frameAdd": { const [dd, st, kk] = b.dataset.k.split("|"); closeModal(); frameAdd(P, +dd, +st, kk); return; }
     case "dvZoom": case "dvPick": case "dvResolve": case "dvOver": case "dvOpenK": case "dvCasc": case "dvTime": case "dvDel": case "dvSwap": case "dvIns": case "fixDlg": case "fixWd": case "fixQuick": case "fixTime": case "fixAdd": case "fixDel": dvAction(P, k, b, id); return;
     case "descAi": if (draft) descAi(draft, "descAiOut"); return;
     case "prodInfo": { const pr = G.prods.find(x => String(x.id) === b.dataset.k); if (pr) prodInfo(pr); return; }
@@ -6156,7 +6172,11 @@ function polList() {
   if (POL_CACHE) return POL_CACHE;
   let own = null; try { own = JSON.parse(localStorage.getItem(POL_KEY) || "null"); } catch (e) { own = null; }
   const priv = typeof window !== "undefined" && window.MM_PRIVATE && window.MM_PRIVATE.politicians;
-  POL_CACHE = (Array.isArray(own) && own.length ? own : priv && priv.length ? priv : POL_FALLBACK).map((g, k) => ({ id: g.id || "pol" + k, ...g }));
+  const LAGER = { SPD: "Regierung", CDU: "Regierung", CSU: "Regierung", "Grüne": "Opposition", "Die Linke": "Opposition", Linke: "Opposition", AfD: "Opposition", FDP: "außerparlamentarisch", BSW: "außerparlamentarisch" };
+  const xp = (typeof window !== "undefined" && window.MM_PRIVATE && window.MM_PRIVATE.extraPol) || [];
+  let base = Array.isArray(own) && own.length ? own : priv && priv.length ? priv : POL_FALLBACK;
+  if (base === priv && xp.length) { const nm = new Set(base.map(g => normName(g.name))); base = base.concat(xp.filter(g => !nm.has(normName(g.name))).map((g, k) => ({ id: "px" + k, name: g.name, partei: g.partei, lager: g.intl ? "International" : LAGER[g.partei] || "Opposition", amt: g.kurz || "", res: "Partei", intl: g.intl }))); }
+  POL_CACHE = base.map((g, k) => ({ id: g.id || "pol" + k, ...g }));
   return POL_CACHE;
 }
 const polById = id => polList().find(g => g.id === id);
@@ -6180,7 +6200,7 @@ function politicsDay() {
   // Konkurrenz-Talks buchen ihre Gäste für die Woche
   S.booked = {};
   const rivalsTalk = G.stations.filter(st => !isMe(st) && st.progs.some(isTalk));
-  const pool = shuffle(polList().slice()).sort((a, b) => (b.res === t.res) - (a.res === t.res) || polProm(b) - polProm(a) + ri(-25, 25));
+  const pool = shuffle(polList().filter(g => !g.intl)).sort((a, b) => (b.res === t.res) - (a.res === t.res) || polProm(b) - polProm(a) + ri(-25, 25));
   let n = 0; for (const st of rivalsTalk) for (let k = 0; k < 2 && n < pool.length; k++) S.booked[pool[n++].id] = st.id;
   postArticle("Hauptstadt-Briefing", "Politik", `Themenwoche: ${t.t}`, [`Die politische Agenda wird in dieser Woche von „${t.t}“ bestimmt.`, `Lage: ${POL_AXES.map(([k, n]) => `${n} ${S.ax[k]}`).join(" · ")}. Je angespannter die Lage, desto mehr Menschen schalten Nachrichten und Talk ein – Boulevard verliert an Zugkraft.`, `Bereits vergeben: ${Object.entries(S.booked).slice(0, 6).map(([id, sid]) => `${polById(id).name} (${holderName(sid)})`).join(", ") || "noch niemand"}.`]);
   talkResolve();
@@ -7769,7 +7789,12 @@ function titleDB() {
   const kindWd = ty => { const t = (ty || []).join(" ").toLowerCase(); return /film/.test(t) && !/serie/.test(t) ? "film" : /miniserie/.test(t) ? "mini" : /serie|soap|sitcom|telenovela|series/.test(t) ? "serie" : /dokument|reportage/.test(t) ? "doku" : "show"; };
   for (const w of M.wd || []) {
     const i = w.imdb && im.get(w.imdb); if (i) used.add(i.i);
-    const g = i ? gde(i.g) : [], k = i ? i.k : kindWd(w.ty);
+    // Wikidata kennt Shows genauer als IMDb (dort oft „tvSeries“): Kabarett, Spielshow, Kochsendung, Talk … sind Sendungen, keine Serien
+    const wty = (w.ty || []).join(" "), wg = (w.g || []).join(" ").toLowerCase();
+    const showG = /kabarett|satire|spielshow|quiz|kochsendung|talk|castingshow|late-night|musiksendung|unterhaltungssendung|reality|magazin|nachricht/.test(wg);
+    const isShow = showG || (/fernsehsendung|show/i.test(wty) && !/fernsehserie|soap|sitcom|telenovela|film/i.test(wty));
+    const g2 = /talk/.test(wg) ? "Talk" : /nachricht/.test(wg) ? "Nachrichten" : /magazin/.test(wg) ? "Magazin" : /reality|doku-soap/.test(wg) ? "Reality" : "Show";
+    const g = isShow ? [g2] : i ? gde(i.g) : [], k = isShow ? "show" : i ? i.k : kindWd(w.ty);
     all.push({ key: w.q, orig0: 1, n: (i && i.de) || w.n || (i && i.n), k: k === "doku" ? "show" : k, doku: k === "doku" || g.includes("Doku") || /dokument|reportage/i.test((w.ty || []).concat(w.g || []).join(" ")),
       y: w.y0 || (i && i.y), y1: w.y1 || (i && i.y1), s: w.s || (i && i.se), e: w.e || (i && i.ep), r: i && i.r, v: i ? i.v : 0, rt: i && i.rt, g: g.length ? g : (w.g || []).slice(0, 2), net: w.net || [], imdb: w.imdb, orig: w.o || [], de: true, alt: [w.n, i && i.n, i && i.de].filter(Boolean) });
   }
@@ -8016,7 +8041,7 @@ function guestPanel(P, p) {
     <div class="kv"><span>Gast suchen</span><input type="search" id="guestSearch" style="flex:1;min-width:240px" value="${esc(guestQ)}" placeholder="Name (mind. 2 Zeichen) – sonst die bekanntesten freien Personen"></div>
     <div class="tbl"><table><tbody>${list.map(q => `<tr><td>${personLink(q)}<div class="fine">${esc(SPEC_NAME[q.role] || q.role)} · Bekanntheit ${matrix(q).bekannt}/20</div></td><td class="num">${eur(guestFee(q))}</td><td class="num">+${Math.round(guestBoost(q, p) * 100)} %</td><td class="num"><button class="btn small hot" data-act="guestBook" data-k="${q.id}" data-id="${p.id}">Einladen</button></td></tr>`).join("") || '<tr><td class="muted">Keine verfügbaren Personen gefunden.</td></tr>'}</tbody></table></div>
     <p class="fine">Wirkung hängt von der Bekanntheit des Gastes und davon ab, wie gut ein Gastauftritt zum Format passt (Talk und Show am stärksten).</p>
-    ${["Talk", "Magazin", "Nachrichten"].includes(p.genre) ? `<h4 style="margin:12px 0 6px">Gäste aus der Politik</h4><div class="tbl"><table><tbody>${polList().filter(g => !ql || g.name.toLowerCase().includes(ql) || String(g.partei).toLowerCase().includes(ql) || String(g.res).toLowerCase().includes(ql)).slice(0, 8).map(g => `<tr><td><b>${esc(g.name)}</b><div class="fine">${esc([g.partei, g.lager, g.amt].filter(Boolean).join(" · "))}</div></td><td class="num">${eur(polFee(g))}</td><td class="num">+${Math.round(polBoost(g) * 100)} %</td><td class="num"><button class="btn small hot" data-act="polBook" data-k="${esc(g.id)}" data-id="${p.id}">Einladen</button></td></tr>`).join("")}</tbody></table></div><p class="fine">Politikgäste werden nur über Partei, Lager, Amt und Ressort beschrieben. Passt das Ressort zur aktuellen Themenlage, wirkt der Auftritt stärker.</p>` : ""}`
+    ${["Talk", "Magazin", "Nachrichten"].includes(p.genre) ? `<h4 style="margin:12px 0 6px">Gäste aus der Politik</h4><div class="tbl"><table><tbody>${polList().filter(g => !g.intl).filter(g => !ql || g.name.toLowerCase().includes(ql) || String(g.partei).toLowerCase().includes(ql) || String(g.res).toLowerCase().includes(ql)).slice(0, 8).map(g => `<tr><td><b>${esc(g.name)}</b><div class="fine">${esc([g.partei, g.lager, g.amt].filter(Boolean).join(" · "))}</div></td><td class="num">${eur(polFee(g))}</td><td class="num">+${Math.round(polBoost(g) * 100)} %</td><td class="num"><button class="btn small hot" data-act="polBook" data-k="${esc(g.id)}" data-id="${p.id}">Einladen</button></td></tr>`).join("")}</tbody></table></div><p class="fine">Politikgäste werden nur über Partei, Lager, Amt und Ressort beschrieben. Passt das Ressort zur aktuellen Themenlage, wirkt der Auftritt stärker.</p>` : ""}`
     : '<p class="fine">Das Format ist in den nächsten zwei Wochen nicht eingeplant.</p>'}</div></section>`;
 }
 function guestBook(P, p, qid, day) {
@@ -8355,7 +8380,7 @@ function seqTimeline(P, d, lock) {
   const rd0 = rundown(P, sc, wd);
   let rd = rd0;
   if (!isToday) { // Live-Events künftiger Tage stehen fest im Ablauf
-    const lives = eventsOn(d).filter(e => e.o.owner === P.id).map(({ d: def, m }) => ({ live: true, start: m ? m.t : def.h * 60, end: m ? m.t + m.dur : (def.h + def.len) * 60, title: `${def.sport}: ${m ? m.fix : def.name}` }));
+    const lives = eventsOn(d).filter(e => e.o.owner === P.id).map(({ d: def, m }) => ({ live: true, start: m ? m.t : def.h * 60, end: m ? m.t + m.dur : (def.h + def.len) * 60, title: def.award ? (m ? m.fix : def.name) : `${def.sport}: ${m ? m.fix : def.name}` }));
     if (lives.length) {
       const out = [];
       for (const x of rd) {
@@ -8438,7 +8463,7 @@ const itemDur = (P, p, t, wd) => p.kind === "sport" ? netDur(p) : grossDur(P, p,
 // Einträge eines Kalendertags mit geplanter Startzeit (Überschneidungen sind möglich)
 const dayItems = (P, d) => rundown(P, calDay(P, d), weekday(d)).filter(x => !x.gap && !x.c.live).map(x => ({ p: x.p, t: x.planned }));
 function dayLives(P, d) {
-  return eventsOn(d).filter(e => e.o.owner === P.id).map(({ d: def, m }) => ({ live: true, start: m ? m.t : def.h * 60, end: m ? m.t + m.dur : (def.h + def.len) * 60, title: `${def.sport}: ${m ? m.fix : def.name}` }));
+  return eventsOn(d).filter(e => e.o.owner === P.id).map(({ d: def, m }) => ({ live: true, start: m ? m.t : def.h * 60, end: m ? m.t + m.dur : (def.h + def.len) * 60, title: def.award ? (m ? m.fix : def.name) : `${def.sport}: ${m ? m.fix : def.name}` }));
 }
 // Einträge ins Stundenraster schreiben: erste Sendung einer Stunde ist der Sendeplatz, weitere folgen mit fester Startzeit
 function writeItems(P, d, items) {
@@ -8506,7 +8531,7 @@ function dayView(P, d, lock) {
   const blockHtml = blocks.map(b => {
     const ht = Math.max(12, (Math.min(b.end, 1440) - b.start) * PX - 2), pos = `top:${b.start * PX}px;height:${ht}px;left:calc(${b.col} * (100% - 60px) / ${b.cols} + 60px);width:calc((100% - 60px) / ${b.cols} - 4px)`;
     const warn = b.with.length ? `<span class="dv-warn" ${b.live || lock ? "" : `data-act="dvOver" data-k="${d}|${b.k}"`}>⚠ ${b.live || lock ? "" : "Lösen: "}Überschneidung mit ${b.with.map(o => `„${esc(o.p ? o.p.title : o.title)}“ (${Math.min(b.end, o.end) - Math.max(b.start, o.start)} Min.)`).join(", ")}</span>` : "";
-    if (b.live) return `<div class="dv-b live ${b.with.length ? "over" : ""}" style="${pos}"><div class="dv-t"><b>${hhmm(b.start)}–${hhmm(b.end % 1440)}</b> ● LIVE · ${esc(b.title)}</div>${warn}</div>`;
+    if (b.live) return `<div class="dv-b live ${b.with.length ? "over" : ""}" style="${pos}"><div class="dv-t"><b>${hhmm(b.start)}–${hhmm(b.end % 1440)}</b> ● LIVE · ${esc(b.title)}</div>${lock ? "" : `<button class="btn small" data-act="frameDlg" data-k="${d}|${b.start}" style="margin-top:4px">Rahmenprogramm planen</button>`}${warn}</div>`;
     const p = b.p, youth = !youthOk(p, Math.floor(b.start / 60) % 24);
     return `<div class="dv-b ${b.with.length ? "over" : ""} ${youth ? "bad" : ""} ${p.house ? "house" : ""} k-${p.kind}" style="${pos}" ${lock ? "" : `data-dv="${d}|${b.k}"`} data-ctx="p|${p.id}" title="${esc(p.title)} · ${hhmm(b.start)}–${hhmm(b.end % 1440)}">
       <div class="dv-t"><b>${hhmm(b.start)}–${hhmm(b.end % 1440)}</b> ${esc(p.title)}</div>
@@ -8901,11 +8926,17 @@ function moraleF(p) {
 // Weiterbildung, Entlassen, Folgen nachbestellen, Biografie über jede Person, Abwerben mit Folgen
 // =====================================================================
 const ROLE_FIT = {
-  Moderation: { Moderation: 1, Kommentar: 0.85, Nachrichten: 0.8, Journalismus: 0.75, Reality: 0.65, Schauspiel: 0.6, Produktion: 0.4 },
-  Schauspiel: { Schauspiel: 1, Moderation: 0.6, Reality: 0.6, Kommentar: 0.45, Nachrichten: 0.45, Journalismus: 0.45, Produktion: 0.35 },
+  Moderation: { Moderation: 1, Kommentar: 0.85, Nachrichten: 0.8, Comedy: 0.8, Journalismus: 0.75, Musik: 0.65, Koch: 0.65, Reality: 0.65, Influencer: 0.6, Prominente: 0.6, Experte: 0.6, Schauspiel: 0.6, Kritik: 0.55, Produktion: 0.4 },
+  Schauspiel: { Schauspiel: 1, Comedy: 0.7, Moderation: 0.6, Reality: 0.6, Musik: 0.55, Prominente: 0.5, Influencer: 0.45, Kommentar: 0.45, Nachrichten: 0.45, Journalismus: 0.45, Produktion: 0.35 },
   Nachrichten: { Nachrichten: 1, Journalismus: 0.9, Moderation: 0.7, Kommentar: 0.65, Schauspiel: 0.45, Reality: 0.35, Produktion: 0.4 },
   Journalismus: { Journalismus: 1, Nachrichten: 0.9, Moderation: 0.65, Kommentar: 0.7, Schauspiel: 0.4, Reality: 0.35, Produktion: 0.5 },
-  Reality: { Reality: 1, Moderation: 0.8, Schauspiel: 0.75, Kommentar: 0.6, Nachrichten: 0.5, Journalismus: 0.5, Produktion: 0.5 },
+  Reality: { Reality: 1, Prominente: 0.95, Influencer: 0.9, Moderation: 0.8, Schauspiel: 0.75, Comedy: 0.75, Musik: 0.7, Koch: 0.65, Kommentar: 0.6, Nachrichten: 0.5, Journalismus: 0.5, Produktion: 0.5 },
+  Comedy: { Comedy: 1, Moderation: 0.75, Schauspiel: 0.65, Influencer: 0.6, Musik: 0.55, Reality: 0.55 },
+  Musik: { Musik: 1, Moderation: 0.5, Prominente: 0.45, Influencer: 0.45, Comedy: 0.4, Schauspiel: 0.4 },
+  Koch: { Koch: 1, Moderation: 0.5, Prominente: 0.4, Reality: 0.4 },
+  Experte: { Experte: 1, Kommentar: 0.8, Journalismus: 0.7, Moderation: 0.5, Nachrichten: 0.55 },
+  Prominente: { Prominente: 1, Reality: 0.9, Influencer: 0.85, Musik: 0.7, Moderation: 0.7, Schauspiel: 0.7, Comedy: 0.7 },
+  Influencer: { Influencer: 1, Prominente: 0.8, Reality: 0.75, Comedy: 0.65, Moderation: 0.6 },
   Kommentar: { Kommentar: 1, Moderation: 0.75, Journalismus: 0.7, Nachrichten: 0.7, Schauspiel: 0.4, Reality: 0.45, Produktion: 0.4 },
 };
 const fitFor = (q, role) => { role = String(role || "").replace("?", ""); if (!q || !ROLE_FIT[role]) return 1; return Math.max(ROLE_FIT[role][q.role] ?? 0.5, (q.skills || {})[role] || 0); };
@@ -8991,6 +9022,7 @@ function orderEps(P, p, n) {
   logMsg("Produktion", "Produktion", `„${p.title}“: ${n} neue Folgen bestellt (${meur(c)}), fertig am ${dateShort(p.order.ready)}.`, true);
 }
 function castDay(P) {
+  ensureAwardRights(); frameCleanup(P);
   if (!G.exMig) { G.exMig = 1; for (const q of G.people) if (q.holder && q.holder !== P.id && !(G.sv && q.holder === G.sv.id) && !aiExcl(q)) { q.prodAt = q.holder; q.holder = null; } } // ältere Spielstände: zu viele Exklusivverträge auflösen
   for (const q of G.people) if (q.course && G.day >= q.course.until) {
     const k = q.course.k, c = COURSES[k]; q.skills = { ...(q.skills || {}), [k]: Math.min(0.95, fitFor(q, k) + c.plus) }; q.course = null; q.sat = clamp(pSat(q) + 5, 0, 100);
@@ -9410,6 +9442,88 @@ function careerProfile(P) {
       ${C.out ? "" : '<button class="btn small red" data-act="resign">Zurücktreten</button>'}</div>
     <p class="fine">Halbe Sterne zählen: Wer bis zu einen halben Stern unter der Anforderung liegt, bekommt ein Gespräch – mit geringerer Chance. Große Sender erwarten einen Abschluss (${MGR_LIC[1].n} ab mittleren, ${MGR_LIC[3].n} bei den größten). Mehr als ein Wechsel pro Jahr gilt als sprunghaft.</p></div></section>`;
 }
+// =====================================================================
+// Besetzung realer Formate (private Datei, aus Wikidata): wer moderiert / spielt wirklich in welcher Sendung.
+// Echte Moderation und Besetzung ersetzen die erfundene; fehlende Personen werden mit Namen und Rolle angelegt (keine erfundenen Daten).
+// =====================================================================
+function linkCastDB() {
+  const M = typeof window !== "undefined" && window.MM_PRIVATE, C = M && M.cast; if (!C || !G) return 0;
+  const byName = new Map(G.people.map(q => [normName(q.name), q]));
+  let n = 0;
+  for (const st of G.stations) for (const prog of st.progs) {
+    const e = C[normT(prog.title)]; if (!e || prog.kind === "film") continue;
+    const hosts = (e.h || []).slice(0, 2), cast = (e.c || []).slice(0, 6);
+    if (!hosts.length && !cast.length) continue;
+    // erfundene Mitwirkende lösen
+    for (const c of prog.cast || []) { const q = person(c.id); if (q && !q.custom && q.show === prog.id) { q.show = null; q.prodAt = null; if (q.holder === st.id) q.holder = null; } }
+    prog.cast = [];
+    const add = (name, role, label) => {
+      let q = byName.get(normName(name));
+      if (!q) { q = ensurePerson({ id: "w_" + normName(name).replace(/\s+/g, "_"), code: "WD-" + normName(name).replace(/\s+/g, "-"), name, role, talent: 60, buzz: 60, rel: 80, gage: role === "Schauspiel" ? 120000 : 180000, custom: true, age: null, origin: "DE", langs: "Deutsch", genres: role === "Schauspiel" ? ["Serie", "Krimi"] : ["Show"], known: prog.title, knownAt: st.name, holder: null, until: 0, busy: 0, ban: 0, lean: 0, fame: 55 }); G.people.push(q); byName.set(normName(name), q); }
+      if (q.show && q.show !== prog.id && q.holder && q.holder !== st.id) return; // bereits anderswo gebunden
+      prog.cast.push({ id: q.id, role: label }); q.show = q.show || prog.id;
+      if (!q.holder && !isMe(st) && aiExcl(q) && label === "Moderation" && prog.cast.length === 1) { q.holder = st.id; q.until = G.day + ri(180, 900); } else if (!q.holder) q.prodAt = st.id;
+      n++;
+    };
+    hosts.forEach(h => add(h[0], "Moderation", "Moderation"));
+    cast.forEach(c => add(c[0], "Schauspiel", c[1] ? `Rolle: ${c[1]}` : "Besetzung"));
+    if (hosts.length) prog.host = (byName.get(normName(hosts[0][0])) || {}).id || prog.host;
+  }
+  KNOWN = null;
+  return n;
+}
+// =====================================================================
+// Preisverleihungen als Rechte-Ausschreibungen: feste Termine, US-Shows live in der deutschen Nacht,
+// deutsche Preise am Abend. Rahmenprogramm (Vorbericht, Roter Teppich, Nachbericht) um Events und Sport planbar.
+// =====================================================================
+// [id, Name, Monat (0–11), Wochentag, n-ter, Tage danach, Start (Min.), Dauer, Zugkraft]
+const AWARD_EVENTS = [
+  ["oscar", "Oscars – Liveübertragung", 2, 0, 1, 1, 60, 225, 82],       // Sonntag in Los Angeles → Montag 01:00 deutscher Zeit
+  ["emmy", "Emmy Awards – Liveübertragung", 8, 0, 3, 1, 120, 180, 62],
+  ["globes", "Golden Globes – Liveübertragung", 0, 0, 2, 1, 120, 180, 66],
+  ["grammy", "Grammy Awards – Liveübertragung", 1, 0, 1, 1, 120, 210, 64],
+  ["bambi", "Bambi – Medienpreis-Gala", 10, 4, 3, 0, 1215, 165, 78],
+  ["dtfp", "Deutscher Fernsehpreis – Gala", 8, 3, 4, 0, 1215, 150, 70],
+  ["grimme", "Grimme-Preis – Verleihung", 3, 5, 1, 0, 1215, 120, 58],
+  ["musik", "Musikpreis-Gala (Pop & Schlager)", 2, 6, 4, 0, 1215, 180, 72],
+  ["sportler", "Sportler des Jahres – Gala", 11, 0, 3, 0, 1215, 135, 68],
+  ["panther", "Blauer Panther – TV & Streaming Award", 5, 4, 2, 0, 1215, 120, 60],
+];
+for (const [id, name, m, wd, n, plus, t, dur, q] of AWARD_EVENTS) {
+  CAL["aw_" + id] = day => { const y = dateOf(day).getFullYear(), dt = nthWd(y, m, wd, n); return dayOf(dt) + plus === day ? [{ t, dur, fix: `${name.split(" – ")[0]} ${y}`, q }] : []; };
+  RIGHTS.push({ id: "aw_" + id, name: `${name} (${t < 360 ? "nachts " : ""}${hhmm(t)})`, sport: "Preisverleihung", holder: null, q, wd: -1, h: Math.floor(t / 60), len: Math.ceil(dur / 60), every: 1, from: 1, cal: "aw_" + id, fix: () => name, tags: "event", award: true });
+}
+// ältere Spielstände: neue Rechte nachtragen
+function ensureAwardRights() {
+  for (const r of RIGHTS) if (!G.rights.some(x => x.id === r.id)) { const x = { id: r.id, owner: null, days: 0, price: 0, bid: 0, fee: 0, alpFee: 0, next: null, tender: null }; G.rights.push(x); if (typeof openTender === "function") openTender(x); }
+}
+// Rahmenprogramm: Vorbericht / Roter Teppich davor, Nachbericht danach – nur am Tag des Events
+function frameDlg(d, start) {
+  const P = me(), l = dayLives(P, d).find(x => x.start === start); if (!l) return;
+  const award = /Oscars|Emmy|Globes|Grammy|Bambi|Fernsehpreis|Grimme|Musikpreis|Sportler|Panther/.test(l.title);
+  const opts = [["pre30", award ? "Roter Teppich" : "Vorberichte", 30, -1], ["pre60", award ? "Roter Teppich – die große Vorshow" : "Vorberichte & Countdown", 60, -1], ["post30", award ? "Die Gewinner – Nachbericht" : "Analyse & Stimmen", 30, 1], ["post60", award ? "Die Nacht der Preise – Nachbericht" : "Die Analyse – lange Nacht", 60, 1]];
+  openModal(`<header><h2>Rahmenprogramm · ${esc(l.title)}</h2><button class="btn" data-act="close">Schließen</button></header><div class="dbody">
+    <p class="lead">Live ${hhmm(l.start)}–${hhmm(l.end % 1440)}. Ein Rahmenprogramm holt das Publikum früher ab und hält es danach – es profitiert direkt von der Zugkraft des Events.</p>
+    <div class="picklist">${opts.map(([k, n, dur, side]) => { const at = side < 0 ? l.start - dur : l.end; const cost = r1000(dur * 2500 * (award ? 1.4 : 1)); return `<button class="pick" data-act="frameAdd" data-k="${d}|${start}|${k}" ${at < 0 && !award ? "disabled" : ""}><b>${esc(n)}</b><span class="meta"><span class="chip">${dur} Min.</span><span>${hhmm((at + 1440) % 1440)}–${hhmm((at + dur + 1440) % 1440)}</span><span>${eur(cost)}</span></span></button>`; }).join("")}</div>
+    <p class="fine">Sendungen davor, die mit dem Rahmenprogramm kollidieren, zeigt der Kalender als Überschneidung – dort lassen sie sich verschieben oder tauschen.</p></div>`);
+}
+function frameAdd(P, d, start, k) {
+  const l = dayLives(P, d).find(x => x.start === start); if (!l) return;
+  const award = /Oscars|Emmy|Globes|Grammy|Bambi|Fernsehpreis|Grimme|Musikpreis|Sportler|Panther/.test(l.title);
+  const dur = /60/.test(k) ? 60 : 30, pre = k.startsWith("pre"), at = pre ? l.start - dur : l.end, cost = r1000(dur * 2500 * (award ? 1.4 : 1));
+  if (at < 0 || at >= 1440) { toast("Das Rahmenprogramm läge außerhalb dieses Sendetags."); return; }
+  if (P.money < cost) { toast("Dafür reicht das Budget nicht."); return; }
+  book(P, "Eigenproduktion", -cost);
+  const name = pre ? (award ? (dur === 60 ? "Roter Teppich – die große Vorshow" : "Roter Teppich") : (dur === 60 ? "Vorberichte & Countdown" : "Vorberichte")) : (award ? (dur === 60 ? "Die Nacht der Preise" : "Die Gewinner") : (dur === 60 ? "Die Analyse – lange Nacht" : "Analyse & Stimmen"));
+  const ev = l.title.split(":").pop().trim();
+  const p = { id: uid(), title: `${ev} – ${name}`, genre: award ? "Show" : "Magazin", kind: "show", q: clamp(Math.round(l.q ? l.q * 0.8 : 65), 30, 90), len: 1, dur, topic: 1, wear: 1, fsk: 0, real: false, home: P.id, aired: 0, runs: 0, price: 0, frame: { day: d, pre }, boost: { day: d, v: 0.15 } };
+  P.progs.push(p);
+  const wd = weekday(d), items = dayItems(P, d).filter(x => !(x.t < at + dur && x.t + itemDur(P, x.p, x.t, wd) > at)); // was dort lief, weicht
+  items.push({ p, t: at }); dvSave(P, d, items);
+  toast(`„${p.title}“ eingeplant: ${hhmm(at)}–${hhmm((at + dur) % 1440)}.${overlapMsg(P, d, dayItems(P, d).findIndex(x => x.p === p))}`);
+}
+// Rahmenprogramme sind Eintagsfliegen
+function frameCleanup(P) { P.progs = P.progs.filter(p => !p.frame || p.frame.day >= G.day); }
 // =====================================================================
 // Formatprofil: Quotenverlauf, Publikum, Analyse und Maßnahmen je Sendung
 // =====================================================================
@@ -10069,6 +10183,11 @@ const OER_GENRES = ["Krimi", "Drama", "Doku", "Kultur"];
 let EDB = null, TITLES = null, edSel = null, edQuery = "", edRole = "alle", edMsg = null;
 function seedPrivate(D) {
   const M = typeof window !== "undefined" && window.MM_PRIVATE;
+  if (M && Array.isArray(M.extra) && (D.extraV || 0) < 1) {
+    const nm = new Set(D.people.map(e => normName(e.name)));
+    for (const e of M.extra) if (!nm.has(normName(e.name))) { D.people.push({ ...e, gage: e.gage || autoGage(e.talent, e.charisma) }); nm.add(normName(e.name)); }
+    D.extraV = 1;
+  }
   if (!M || !Array.isArray(M.people) || (D.privV || 0) >= M.version) return D;
   try { gameTitleSet(); } catch (err) { return D; } // Skript wird noch geladen
   const have = new Map(D.people.map(e => [e.eindeutige_id, e]));
@@ -10199,10 +10318,10 @@ function applyEditorPeople() {
   for (const e of D.people) {
     if (!playable(e)) continue;
     const id = "x_" + e.eindeutige_id, old = idx.get(id);
-    const p = old || { genres: e.rolle === "Schauspiel" ? ["Drama", "Krimi"] : e.rolle === "Moderation" ? ["Show"] : e.rolle === "Reality" ? ["Reality"] : e.rolle === "Nachrichten" ? ["Nachrichten"] : e.rolle === "Kommentar" ? ["Sport"] : e.rolle === "Produktion" ? ["Show", "Reality"] : ["Doku"],
+    const p = old || { genres: ({ Comedy: ["Comedy", "Show"], Musik: ["Show", "Musik"], Influencer: ["Reality", "Show"], Experte: e.fach === "Sport" ? ["Sport"] : ["Doku", "Talk"], Koch: ["Show", "Reality"], Prominente: ["Reality", "Show"], Regie: ["Drama", "Krimi"], Drehbuch: ["Drama", "Krimi"], Kritik: ["Kultur"] })[e.rolle] || (e.rolle === "Schauspiel" ? ["Drama", "Krimi"] : e.rolle === "Moderation" ? ["Show"] : e.rolle === "Reality" ? ["Reality"] : e.rolle === "Nachrichten" ? ["Nachrichten"] : e.rolle === "Kommentar" ? ["Sport"] : e.rolle === "Produktion" ? ["Show", "Reality"] : ["Doku"]),
       trait: e.ruhestand ? "Im Ruhestand" : null, lean: 0, holder: null, until: 0, busy: 0, ban: 0 };
     Object.assign(p, { id, code: e.eindeutige_id, name: e.name, role: e.rolle, talent: e.talent, buzz: e.charisma, rel: 110 - e.skandal, gage: e.gage, custom: true,
-      age: e.alter || p.age, origin: e.herkunft || p.origin, langs: e.sprachen || ORIGIN_LANG[e.herkunft] || (e.herkunft ? "" : "Deutsch"), langsSrc: !!e.sprachen, known: e.bekannt_aus || p.known, knownAt: e.sender || p.knownAt, hasVita: !!e.vita });
+      age: e.alter || p.age, origin: e.herkunft || p.origin, langs: e.sprachen || ORIGIN_LANG[e.herkunft] || (e.herkunft ? "" : "Deutsch"), langsSrc: !!e.sprachen, known: e.bekannt_aus || p.known, knownAt: e.sender || p.knownAt, hasVita: !!e.vita, kurz: e.kurz || p.kurz, src: e.quelle || p.src });
     if (e.preset) { p.preset = e.preset; p.at = null; }
     if (e.bekanntheit) { p.fame = e.bekanntheit; p.pop = p.pop || clamp(Math.round(e.bekanntheit * 0.8 + 10), 5, 100); }
     ensurePerson(p);
@@ -10285,7 +10404,7 @@ function showEditor() { loadDB(); loadTitles(); edSel = null; edMsg = null; rend
 function renderEditor() {
   const D = loadDB(), T = loadTitles(), ql = edQuery.trim().toLowerCase();
   const list = D.people.filter(e => (edRole === "alle" || e.rolle === edRole) && (!ql || e.name.toLowerCase().includes(ql) || e.eindeutige_id.toLowerCase().includes(ql)));
-  const roles = [["alle", "Alle"], ["Schauspiel", "Schauspiel"], ["Moderation", "Entertainer"], ["Reality", "Reality"], ["Nachrichten", "News"], ["Journalismus", "Journalismus"], ["Kommentar", "Kommentar"], ["Produktion", "Showrunner"]];
+  const roles = [["alle", "Alle"], ["Schauspiel", "Schauspiel"], ["Moderation", "Entertainer"], ["Reality", "Reality"], ["Nachrichten", "News"], ["Journalismus", "Journalismus"], ["Kommentar", "Kommentar"], ["Produktion", "Showrunner"], ["Comedy", "Comedy"], ["Musik", "Musik"], ["Influencer", "Creator"], ["Experte", "Expert*innen"], ["Koch", "TV-Küche"], ["Prominente", "Prominente"], ["Regie", "Regie"], ["Drehbuch", "Drehbuch"], ["Kritik", "TV-Kritik"]];
   const d = $("dialog"); d.className = "dialog wide"; $("modal").hidden = false;
   d.innerHTML = `<header><h2>Editor & Datenimport</h2><button class="btn" data-act="edClose">Schließen</button></header><div class="dbody">
     <div class="ed-bar">
@@ -10458,6 +10577,7 @@ function openPerson(id) {
     ${(() => { const m = matrix(p); return attrCol("Können", [["Talent", m.talent], ["Charisma", m.charisma], ["Ausstrahlung", m.ausstrahlung], ["Zuverlässigkeit", m.zuv], ["Skandalfaktor", m.skandal, true]]) + attrCol("Markt", [["Bekanntheit", m.bekannt], ["Beliebtheit", m.beliebt], ["Werbewert", m.werbewert], ["Social Media", m.social]]); })()}
     <section class="acol acol-info"><h3>Info</h3>
       <div class="irow"><small>Herkunft</small><b>${esc(p.origin || "–")}${p.custom && edbEntry(p) && edbEntry(p).geburtsort ? ` · geboren in ${esc(edbEntry(p).geburtsort)}` : ""}</b></div><div class="irow"><small>Sprachen</small><b>${esc(p.langs)}</b></div>
+      ${p.kurz ? `<div class="irow"><small>Kurzprofil</small><b>${esc(p.kurz)}</b><span class="fine">${esc(p.src || "")}</span></div>` : ""}
       <div class="irow"><small>Fach</small><b>${esc((p.genres || []).join(", ") || SPEC_NAME[p.role])}</b></div><div class="irow"><small>Eigenschaft</small><b>${esc(p.trait || "–")}</b>${traitFx(p.trait) ? `<span class="fine">${esc(traitFx(p.trait))}</span>` : ""}</div>
       ${p.role === "Nachrichten" ? `<div class="irow"><small>Haltung</small><b>${LINES[p.lean + 2]}</b></div>` : ""}
       <div class="irow"><small>Sonderwunsch</small><b>${pClause(p) ? CLAUSES[pClause(p)].name : "keiner"}</b></div></section></div>`;
