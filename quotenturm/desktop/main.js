@@ -26,12 +26,31 @@ function createWindow() {
 }
 
 // Eingebaute KI: Sprachmodell (GGUF) lokal per node-llama-cpp – Grafikkarte (Vulkan) wenn vorhanden, sonst Prozessor.
-// Das starke Modell (~4,7 GB) passt nicht in den Installer (Grenze ~2 GB) und wird beim ersten Start einmalig geladen.
+// Das Modell (~4,7 GB) liegt neben Setup.exe (ganz oder in Teilen *.gguf.partNN) und wird bei der Installation übernommen;
+// liegen nur Teile vor (z. B. neben der portablen EXE), setzt die App sie beim Start einmalig zusammen. Download nur als Rückfall.
 const STRONG_MODEL = { uri: "https://huggingface.co/bartowski/Qwen2.5-7B-Instruct-GGUF/resolve/main/Qwen2.5-7B-Instruct-Q4_K_M.gguf", file: "Qwen2.5-7B-Instruct-Q4_K_M.gguf", name: "Qwen2.5-7B-Instruct (Apache-2.0)", size: 4683074240 };
 const userModels = () => path.join(app.getPath("userData"), "models");
 const modelDirs = () => [userModels(), path.join(process.resourcesPath || "", "models"), process.env.PORTABLE_EXECUTABLE_DIR || "", path.dirname(process.execPath), path.join(__dirname, "models")].filter(d => d && fs.existsSync(d));
 const modelFile = () => { for (const d of modelDirs()) { const f = fs.readdirSync(d).filter(x => x.endsWith(".gguf") && !x.includes(".part")).sort((a, b) => fs.statSync(path.join(d, b)).size - fs.statSync(path.join(d, a)).size)[0]; if (f) return path.join(d, f); } return null; };
 let ai = null, aiQueue = Promise.resolve(), dl = null;
+// Teil-Dateien (Modell.gguf.part01 …) zu einer Datei zusammensetzen – blockiert das Spiel nicht
+async function joinParts() {
+  if (modelFile()) return;
+  for (const d of modelDirs()) {
+    const parts = fs.readdirSync(d).filter(x => /\.gguf\.part\d+$/.test(x)).sort();
+    if (!parts.length) continue;
+    const name = parts[0].replace(/\.part\d+$/, ""), tmp = path.join(userModels(), name + ".tmp");
+    fs.mkdirSync(userModels(), { recursive: true });
+    dl = { progress: 0 };
+    const total = parts.reduce((a, p) => a + fs.statSync(path.join(d, p)).size, 0); let done = 0;
+    const out = fs.createWriteStream(tmp);
+    for (const p of parts) await new Promise((res, rej) => { const rs = fs.createReadStream(path.join(d, p)); rs.on("data", c => { done += c.length; dl.progress = done / total; }); rs.on("error", rej); rs.on("end", res); rs.pipe(out, { end: false }); });
+    await new Promise(res => out.end(res));
+    fs.renameSync(tmp, path.join(userModels(), name)); dl = null;
+    for (const p of parts) try { fs.unlinkSync(path.join(d, p)); } catch (e) { /* schreibgeschützt: Teile bleiben liegen */ }
+    return;
+  }
+}
 async function loadAI() {
   if (ai) return ai;
   const file = modelFile(); if (!file) throw new Error("Kein Modell installiert");
@@ -67,5 +86,5 @@ ipcMain.handle("ai:gen", (_e, prompt, maxTokens) => {
   return job.catch(err => { console.error("KI:", err.message); return null; });
 });
 
-app.whenReady().then(createWindow);
+app.whenReady().then(() => { createWindow(); joinParts().catch(err => { dl = null; console.error("KI-Teile:", err.message); }); });
 app.on("window-all-closed", () => app.quit());
