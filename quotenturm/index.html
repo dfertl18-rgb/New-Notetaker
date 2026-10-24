@@ -414,6 +414,23 @@ td.cw { position: relative; } .cell-i { position: absolute; right: 8px; top: 8px
 .tsel { position: absolute; right: 34px; top: 8px; z-index: 1; background: var(--panel); color: var(--muted); border: 1px solid var(--line); border-radius: 4px; font-size: 12px; padding: 1px 2px; max-width: 74px; } .cell .tt { color: var(--text); font-variant-numeric: tabular-nums; }
 .xlist { display: grid; gap: 3px; padding: 0 10px 8px; } .xrow { display: flex; gap: 8px; align-items: center; font-size: 13px; border-left: 2px solid var(--line); padding-left: 8px; } .xrow .grow { flex: 1; min-width: 0; } .xlist > .btn { justify-self: start; }
 .warnline { color: var(--mid) !important; white-space: normal; }
+.wp { display: grid; grid-template-columns: 230px minmax(0, 1fr) 280px; gap: 12px; align-items: start; }
+.wp-pool, .wp-side { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 10px; position: sticky; top: 8px; max-height: calc(100vh - 140px); overflow: auto; }
+.wp-pool h3, .wp-side h3 { margin: 0 0 8px; font-family: var(--font-head); font-size: 18px; } .wp-side h4 { margin: 10px 0 4px; font-size: 13px; }
+.wp-list { display: grid; gap: 4px; margin-top: 8px; } .wp-item { background: var(--panel-2); border-radius: 6px; padding: 6px 8px; cursor: grab; display: grid; gap: 1px; border: 1px solid transparent; } .wp-item.on { border-color: var(--hot); }
+.wp-item b { font-size: 13px; } .wp-item span { font-size: 11px; color: var(--muted); }
+.wp-gridwrap { overflow-x: auto; } .wp-grid { display: grid; grid-template-columns: 44px repeat(7, minmax(108px, 1fr)); gap: 4px; min-width: 820px; }
+.wp-axis { position: relative; } .wp-axis span { position: absolute; right: 4px; font-size: 10px; color: var(--muted); transform: translateY(-6px); }
+.wp-dh { height: 24px; font-weight: 700; font-size: 13px; text-align: center; margin-bottom: 4px; } .wp-dh.today { color: var(--hot); }
+.wp-col { position: relative; background: var(--row); border-radius: 6px; overflow: hidden; } .wp-col.over { outline: 2px dashed var(--hot); } .wp-col.lock { opacity: 0.75; }
+.wp-tick { position: absolute; left: 0; right: 0; height: 1px; background: var(--line); }
+.wp-b { position: absolute; left: 6px; right: 2px; border-radius: 4px; padding: 2px 5px; overflow: hidden; font-size: 11px; line-height: 1.25; cursor: pointer; display: grid; align-content: start; border-left: 3px solid; }
+.wp-b b { font-size: 11.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .wp-b small, .wp-b span { color: var(--muted); font-size: 10px; }
+.wp-b.own { background: rgba(34,197,94,.16); border-color: var(--good); } .wp-b.fix { background: rgba(239,68,68,.18); border-color: var(--bad); } .wp-b.ext { left: 12px; opacity: .92; }
+.wp-b.gap { background: transparent; border: 1px dashed var(--line); color: var(--muted); } .wp-b.sel { outline: 2px solid var(--hot); z-index: 2; }
+.wp-hi { position: absolute; left: 0; width: 4px; background: var(--mid); opacity: .9; z-index: 1; }
+.legend-dot { display: inline-block; width: 10px; height: 10px; border-radius: 2px; vertical-align: -1px; margin: 0 2px 0 6px; } .legend-dot.red { background: var(--bad); } .legend-dot.green { background: var(--good); } .legend-dot.yellow { background: var(--mid); }
+@media (max-width: 1100px) { .wp { grid-template-columns: 1fr; } .wp-pool, .wp-side { position: static; max-height: 360px; } }
 .ptabs button.on { color: var(--hot); } .ptabs button.on::after { content: ""; position: absolute; left: 10px; right: 10px; bottom: -1px; height: 2px; background: var(--hot); }
 .acols { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 .acol h3 { margin: 0 0 6px; font-family: var(--font-head); font-size: 16px; color: var(--muted); border-bottom: 1px solid var(--line); padding-bottom: 4px; }
@@ -1236,7 +1253,7 @@ const HEADLINES = [
 // Menüführung: Hauptpunkt → Aufklappmenü mit allen Unterseiten [Seite, Name, Erklärung]
 const MENU = [
   { id: "portal", name: "Portal", subs: [["overview", "Übersicht", "Dashboard mit Nachrichten, Tabelle und Kennzahlen"], ["inbox", "Posteingang", "Alle Meldungen aus dem Haus"]] },
-  { id: "programm", name: "Programm", subs: [["plan", "Sendekalender", "Programm 0–24 Uhr, 6 Wochen im Voraus"], ["archiv", "Archiv", "Eigene Filme, Serien und Formate"], ["filmmarket", "Filmrechte", "Pakete, Studios, Filmmärkte"], ["market", "Programmhandel", "Filme und Serienlizenzen kaufen"], ["ticker", "Nachrichten", "Meldungen von Ticker24 einkaufen"]] },
+  { id: "programm", name: "Programm", subs: [["wochenplan", "Wochenplan", "Wochenraster mit Ziehen & Ablegen und Prognose"], ["plan", "Sendekalender", "Programm 0–24 Uhr, 6 Wochen im Voraus"], ["archiv", "Archiv", "Eigene Filme, Serien und Formate"], ["filmmarket", "Filmrechte", "Pakete, Studios, Filmmärkte"], ["market", "Programmhandel", "Filme und Serienlizenzen kaufen"], ["formatmarkt", "Formatmarkt", "Formatrechte, Bieterfenster im März"], ["ticker", "Nachrichten", "Meldungen von Ticker24 einkaufen"]] },
   { id: "produktion", name: "Produktion", subs: [["studio", "Studio", "Eigene Filme, Serien, Shows und Dokus"], ["casting", "Casting", "Stars, Moderation, Nachrichtengesichter"], ["newsroom", "Nachrichtenredaktion", "Blattlinie, Stil, Etat und Sprecher*in"], ["export", "Rechtemarkt international", "Formate und Produktionen ins Ausland verkaufen"]] },
   { id: "streaming", name: "Streaming", subs: [["stream", "Plattform", "Abos, Churn, ARPU und Preismodell"], ["catalog", "Katalog", "Titel und Verwertungsfenster"], ["smarket", "Wettbewerb", "Streamer im Vergleich und Top 10"]] },
   { id: "sport", name: "Sport", subs: [["rights", "Rechtemarkt", "Ausschreibungen und Gebote"], ["myrights", "Meine Rechte", "Pakete und Live-Termine"], ["spielplan", "Spielplan", "Rahmenterminkalender Fußball"]] },
@@ -1511,7 +1528,7 @@ const HORIZON = 42;
 // Kalendertag des eigenen Senders; neue Tage starten als Kopie der Wochenvorlage des Vorgängers
 function calDay(P, d) {
   P.cal = P.cal || {};
-  if (!P.cal[d]) P.cal[d] = P.week[weekday(d)].map(c => ({ p: c.p, ad: c.ad, cont: c.cont, live: false, ...(c.t != null ? { t: c.t } : {}), ...(c.extra ? { extra: c.extra.slice(), ...(c.xt ? { xt: c.xt.slice() } : {}) } : {}) }));
+  if (!P.cal[d]) { P.cal[d] = P.week[weekday(d)].map(c => ({ p: c.p, ad: c.ad, cont: c.cont, live: false, ...(c.t != null ? { t: c.t } : {}), ...(c.extra ? { extra: c.extra.slice(), ...(c.xt ? { xt: c.xt.slice() } : {}) } : {}) })); if (G && G.stations && G.stations.length) fillGaps(P, P.cal[d], weekday(d)); }
   return P.cal[d];
 }
 const schedFor = (P, d) => d === G.day ? P.sched : calDay(P, d);
@@ -1728,7 +1745,7 @@ function attrCell(st, i, c) {
     A = st.brand * Math.pow(p.q / 60, 1.5) * fit(p.genre, i) * topic * newsMult * rnd(0.9, 1.1);
     if (c.cont && p.kind !== "sport") A *= 0.96;
     if (p.pull) A *= 1 + p.pull * 0.12; // bekannte Titel ziehen mehr Publikum
-    A *= demoFactor(st, p); // passt die Sendung zum Publikum des Senders?
+    A *= demoFactor(st, p) * hostMalus(p); // passt die Sendung zum Publikum des Senders?
     if (blMagazine(p) && !matchday(G.day)) A *= 0.35; // ohne Spieltag keine Bilder
     if (p.boost && (!p.boost.day || p.boost.day === G.day)) A *= 1 + p.boost.v; // Gaststar, Event-Ausgabe, Relaunch
     if (p.young) A *= 1 + p.young / 1000 * Math.min(1.5, ST_YOUNG[st.id] || 1);
@@ -3185,7 +3202,7 @@ function nextDay() {
   G.day++;
   for (const st of G.stations) st.fin = {};
   projectDay();
-  prodDay(); peopleDay(); newsroomDay(); trendDay(); awardsDay(); marketDay(); presaleDay(); rivalsDay(); formatDay(); postQuotenReport(); frameDay(); conflictCheck();
+  prodDay(); peopleDay(); newsroomDay(); trendDay(); awardsDay(); marketDay(); presaleDay(); rivalsDay(); formatDay(); postQuotenReport(); frameDay(); conflictCheck(); fmDay();
   if (dateOf(G.day).getDate() === 1 && !G.event) setInterview(); // Interview zum Monatsbeginn
   if (G.mods.coverup && G.day >= G.mods.coverup.day) {
     const c = G.mods.coverup; G.mods.coverup = null;
@@ -3273,6 +3290,7 @@ document.addEventListener("click", e => {
   }
 });
 document.addEventListener("input", e => {
+  if (e.target.id === "wpSearch") { wpQuery = e.target.value; const pos = e.target.selectionStart; render(); const s2 = $("wpSearch"); if (s2) { s2.focus(); s2.setSelectionRange(pos, pos); } return; }
   if (e.target.id === "dirSearch") { dirQuery = e.target.value; dirLimit = 40; renderDirectory(); return; }
   if (e.target.id === "avName") { AV.name = e.target.value.slice(0, 40); return; }
   if (e.target.id === "negoPct" && nego) { nego.pct = +e.target.value; const u = nego.type === "excl" ? " / Woche" : ""; $("negoPctTxt").textContent = nego.pct + " %"; $("negoAmt").textContent = eur(negoOffer(nego)) + u; if ($("negoTotal")) $("negoTotal").textContent = `Gesamt über ${nego.weeks} Wochen: ${eur(negoOffer(nego) * nego.weeks)}`; return; }
@@ -3319,7 +3337,7 @@ function applyClubColors() {
 function render(top) {
   if (!G) return;
   renderNav(); renderTop();
-  const pages = { overview, inbox, plan: planPage, archiv, market, filmmarket: filmMarketPage, chiefs: rivalsPage, adsales: adsalesPage, spielplan: spielplanPage, stream: streamPage, catalog, smarket, rights: rightsPage, myrights, contracts, agency, ticker, table: tablePage, ratings, landscape, board, finance, jury, rivals, live: livePage, studio, newprod: newProdPage, casting, newsroom, export: exportPage };
+  const pages = { overview, inbox, plan: planPage, archiv, market, filmmarket: filmMarketPage, chiefs: rivalsPage, adsales: adsalesPage, spielplan: spielplanPage, formatmarkt: formatMarketPage, wochenplan: weekPlanPage, stream: streamPage, catalog, smarket, rights: rightsPage, myrights, contracts, agency, ticker, table: tablePage, ratings, landscape, board, finance, jury, rivals, live: livePage, studio, newprod: newProdPage, casting, newsroom, export: exportPage };
   const sc = $("content").scrollTop;
   $("content").innerHTML = (pages[page] || overview)(me());
   if (!top) $("content").scrollTop = sc;
@@ -4011,6 +4029,13 @@ function act(b) {
     case "negoPoach": { const p = person(nego.id), fee = abloese(p); if (P.money < fee || planLocked()) return; rivalEvent(p.holder, -Math.round(15 + p.fame / 4), `${p.name} abgeworben`); unbind(p); const old = holderName(p.holder); book(P, "Redaktion & Gagen", -fee); p.holder = null; p.until = 0; p.ct = null;
       logMsg("Branchendienst", "Konkurrenz", `${P.name} zahlt ${meur(fee)} Ablöse an ${old} für ${p.name} – jetzt beginnt der Gagen-Poker.`, true); renderNego(); return; }
     case "decide": decide(+b.dataset.k); return;
+    case "wpWeek": wpWeek = clamp(wpWeek + +b.dataset.k, 0, 5); wpSel = null; break;
+    case "wpNight": wpNight = !wpNight; break;
+    case "wpFilter": wpFilter = b.dataset.k; break;
+    case "wpPick": wpPick = wpPick === id ? null : id; if (wpPick != null) toast("Jetzt die Startzeit im Raster antippen – oder die Sendung hineinziehen."); break;
+    case "wpSel": { const [dd, ss] = b.dataset.k.split("|").map(Number); wpSel = [dd, ss]; break; }
+    case "wpDel": { const [dd, ii] = b.dataset.k.split("|").map(Number); if (!(dd === G.day && planLocked())) { editPlan(dd, sc => clearAt(P, sc, ii)); wpSel = null; } break; }
+    case "fmBid2": { const v = +($("fmb-" + id) || {}).value || 0, wh = !!($("fmh-" + id) || {}).checked, err = fmBid(id, v, wh); toast(err || `Gebot über ${eur(r1000(v))} pro Folge abgegeben – Entscheidung am 31. März.`); break; }
     case "adAuto": G.adAuto = G.adAuto === false; toast(`Disposition ${G.adAuto ? "automatisch" : "manuell"}.`); break;
     case "adBook": if (!planLocked()) toast(`${adAutoBook(P)} Spots eingebucht.`); break;
     case "adList": if (!planLocked()) { G.adList = +b.dataset.k; toast(`Preisliste ${Math.round(G.adList * 100)} % – gilt für neue Angebote.`); } break;
@@ -5089,6 +5114,222 @@ function spielplanPage(P) {
   }
   return h;
 }
+// =====================================================================
+// Format-Transfermarkt: Rechtelaufzeiten, Bieterfenster im März, Abwerben gegen Lizenzgebühr pro Folge
+// =====================================================================
+// Senderproduktionen (Nachrichten, Magazine, Reihen) sind nicht handelbar
+const NONTRADE = new Set(["Tatort", "Polizeiruf 110", "Sportschau", "das aktuelle sportstudio", "Morgenmagazin", "Weltspiegel", "wiso", "Leute heute", "Brisant", "Landesschau", "Visite", "Terra X",
+  "ARTE-Themenabend", "ARTE Journal", "Opernabend live", "Xenius", "Punkt 12", "Explosiv", "stern TV", "taff", "Galileo", "ProSieben Newstime", "Sat.1-Frühstücksfernsehen", "Nachrichten aus der Region", "RTLZWEI News"]);
+const tradable = p => p && p.home && !p.house && !p.filler && p.genre !== "Nachrichten" && !NONTRADE.has(p.title);
+const dDate = d => dateOf(d).toLocaleDateString("de-DE");
+const marchEnd = y => dayOf(new Date(y, 2, 31));
+const fmtFee = p => r1000(Math.pow(p.q, 2) * 38 * (p.len || 1) + 20000);
+function ensureFormatRights() {
+  for (const st of G.stations) for (const p of st.progs) if (tradable(p) && !p.rightsUntil) {
+    p.rightsUntil = marchEnd(2027 + hashStr(p.title) % 3);
+    p.fee = p.fee || fmtFee(p);
+  }
+}
+const fmWindow = (day = G.day) => dateOf(day).getMonth() === 2;
+const nextWindowYear = () => { const d = dateOf(G.day); return d.getMonth() > 2 ? d.getFullYear() + 1 : d.getFullYear(); };
+function hostOf(p) { const c = titleCast(p, p.title).find(x => /Moderation/.test(x.role)); return c ? person(c.id) : null; }
+const loyalty = q => q ? (q.loy != null ? q.loy : (q.loy = clamp(Math.round(6 + (q.rel || 50) / 8 + (hashStr(q.id) % 5)), 1, 20))) : 10;
+function expiringFormats(y = nextWindowYear()) {
+  ensureFormatRights();
+  const end = marchEnd(y);
+  return G.stations.flatMap(st => st.progs.filter(p => tradable(p) && p.rightsUntil === end).map(p => ({ st, p })));
+}
+// Gebot abgeben (Lizenzgebühr pro Folge); optional Moderation mit abwerben
+function fmBid(pid, fee, withHost) {
+  const it = expiringFormats().find(x => x.p.id === pid); if (!it || isMe(it.st)) return "Format nicht im Angebot.";
+  if (!fmWindow()) return "Das Bieterfenster ist nur im März geöffnet.";
+  if (fee < r1000(it.p.fee * 1.1)) return `Mindestgebot: ${eur(r1000(it.p.fee * 1.1))} pro Folge.`;
+  G.fmBids = (G.fmBids || []).filter(b => b.pid !== pid).concat([{ pid, fee: r1000(fee), withHost: !!withHost, day: G.day }]);
+  return "";
+}
+// Am 31. März entscheidet sich alles; am 20. März melden sich Rivalen für Ihre eigenen Formate
+function fmDay() {
+  ensureFormatRights();
+  const d = dateOf(G.day), y = d.getFullYear(), P = me();
+  if (d.getMonth() === 2 && d.getDate() === 1) logMsg("Branchendienst", "Programm", `Das Bieterfenster für Formatrechte ist geöffnet: ${expiringFormats(y).length} Formate laufen am 31. März aus. Gebote bis Monatsende.`, true);
+  if (d.getMonth() === 2 && d.getDate() === 20) {
+    for (const { p } of expiringFormats(y).filter(x => isMe(x.st))) {
+      if (Math.random() > 0.35 + p.q / 300) continue;
+      const rival = pick(G.stations.filter(s => !isMe(s) && s.type === "privat")), offer = r1000(p.fee * rnd(1.15, 1.5));
+      queueEvent({ id: "fmPoach", type: "Konkurrenz", title: `${rival.name} will „${p.title}“`, text: `Die Produktionsfirma meldet ein Gebot von ${rival.name}: ${eur(offer)} pro Folge. Ihre Rechte laufen am 31. März aus.`,
+        opts: [["Mitgehen", `Sie zahlen künftig ${eur(r1000(offer * 1.05))} pro Folge.`], ["Nachverhandeln", "50 % Chance, mit 95 % des Gebots zu halten."], ["Ziehen lassen", `Das Format wechselt zu ${rival.name}.`]], data: { pid: p.id, rival: rival.id, offer } });
+    }
+  }
+  if (d.getMonth() === 2 && d.getDate() === 31) fmResolve(y);
+}
+EVENTS.push({ id: "fmPoach", type: "Konkurrenz", when: () => false, make: () => ({}), fn: (k, data) => {
+  const P = me(), p = P.progs.find(x => x.id === data.pid); if (!p) return;
+  if (k === 0 || (k === 1 && Math.random() < 0.5)) { p.epCost = r1000(data.offer * (k === 0 ? 1.05 : 0.95)); p.fee = p.epCost; p.rightsUntil = marchEnd(dateOf(G.day).getFullYear() + 3); logMsg("Programmplanung", "Programm", `„${p.title}“ bleibt bei Ihnen – für ${eur(p.epCost)} pro Folge, Vertrag bis ${dDate(p.rightsUntil)}.`, true); return; }
+  p.lostTo = data.rival; p.lostFee = data.offer;
+  logMsg("Programmplanung", "Programm", `„${p.title}“ wird zum 31. März zu ${holderName(data.rival)} wechseln.`, true);
+} });
+function moveFormat(p, from, to, fee) {
+  from.progs = from.progs.filter(x => x !== p);
+  (isMe(from) ? allPlans(from) : from.week).forEach(day => day.forEach(c => { if (c.p === p.id) { c.p = null; c.cont = false; } }));
+  if (from.sched) from.sched.forEach(c => { if (c.p === p.id) { c.p = null; c.cont = false; } });
+  to.progs.push(p);
+  p.movedAt = G.day; p.epCost = fee; p.fee = fee; p.rightsUntil = marchEnd(dateOf(G.day).getFullYear() + 3); p.lostTo = null;
+}
+function fmResolve(y) {
+  const P = me(), bids = G.fmBids || [];
+  for (const { st, p } of expiringFormats(y)) {
+    // Bieter: Spieler, KI-Sender (nur zu Senderprofil passende Formate)
+    const offers = [];
+    const mine = bids.find(b => b.pid === p.id);
+    if (mine && !isMe(st)) offers.push({ st: P, fee: mine.fee, bid: mine });
+    for (const o of G.stations) if (!isMe(o) && o !== st && o.type === "privat" && Math.random() < 0.12 * (p.q / 70) && demoFactor(o, p) > 0.8) offers.push({ st: o, fee: r1000(p.fee * rnd(1.1, 1.45)) });
+    if (isMe(st) && p.lostTo) { const o = G.stations[SIDX[p.lostTo]]; if (o) { moveFormat(p, st, o, p.lostFee); logMsg("Branchendienst", "Konkurrenz", `Formatwechsel: „${p.title}“ läuft ab sofort bei ${o.name}.`, true); } continue; }
+    if (isMe(st)) { p.rightsUntil = marchEnd(y + 3); continue; } // eigene Formate verlängern sich automatisch, wenn kein Rivale zugeschlagen hat
+    const keep = r1000(p.fee * rnd(1.05, 1.4) * (p.q >= 75 ? 1.15 : 1)); // Halteangebot des Inhabers
+    const best = offers.sort((a, b) => b.fee - a.fee)[0];
+    if (!best || best.fee <= keep) { p.fee = Math.max(p.fee, best ? best.fee : p.fee); p.rightsUntil = marchEnd(y + 3); if (mine) logMsg("Branchendienst", "Programm", `„${p.title}“ bleibt bei ${st.name} – Ihr Gebot (${eur(mine.fee)}) reichte nicht.`, true); continue; }
+    moveFormat(p, st, best.st, best.fee);
+    rivalEvent(st.id, isMe(best.st) ? -25 : 0, `Format „${p.title}“ abgeworben`);
+    if (isMe(best.st)) {
+      const h = hostOf(p);
+      if (h && h.holder === st.id) {
+        if (best.bid.withHost && loyalty(h) < 16) { h.holder = P.id; h.until = G.day + 3 * 365; logMsg("Branchendienst", "Personal", `${h.name} wechselt mit „${p.title}“ zu ${P.name}.`, true); }
+        else { p.hostLost = h.id; logMsg("Branchendienst", "Personal", `${h.name} bleibt bei ${st.name}. „${p.title}“ muss neu besetzt werden – das Publikum vermisst sein Gesicht der Sendung.`, true); }
+      }
+      logMsg("Programmplanung", "Programm", `Zuschlag! „${p.title}“ läuft ab sofort bei Ihnen – ${eur(best.fee)} pro Folge, Vertrag bis ${dDate(p.rightsUntil)}. Achtung: Im ersten Jahr fremdelt das Stammpublikum.`, true);
+    } else logMsg("Branchendienst", "Konkurrenz", `Formatwechsel: „${p.title}“ geht von ${st.name} zu ${best.st.name}.`);
+  }
+  G.fmBids = [];
+}
+// Format ohne sein Gesicht verliert Publikum, bis eine neue Moderation gebunden ist
+const hostMalus = p => p && p.hostLost && G.day - (p.movedAt || 0) < 180 ? 0.65 : 1; // nach einem halben Jahr hat sich das Publikum gewöhnt
+function formatMarketPage(P) {
+  const y = nextWindowYear(), list = expiringFormats(y), open = fmWindow(), bids = G.fmBids || [];
+  let h = title("Formatmarkt", `<span class="muted">${open ? `Bieterfenster offen bis ${dateShort(marchEnd(y))}` : `Nächstes Bieterfenster: 1.–31. März ${y}`}</span>`) + lockNote();
+  h += `<p class="lead mb">Formatrechte laufen über drei Jahre und enden jeweils am 31. März. Im März bieten Sie eine Lizenzgebühr pro Folge – der bisherige Sender versucht zu halten, andere Sender bieten mit. Wechselt ein Format, fremdelt das Stammpublikum ein Jahr lang (−20 %); wie gut es zu Ihrem Publikum passt, zeigt der Profil-Fit. Bleibt das Gesicht der Sendung beim alten Sender, verliert das Format zusätzlich deutlich – bieten Sie deshalb auch für die Moderation.</p>`;
+  const rows = list.filter(x => !isMe(x.st)).sort((a, b) => b.p.q - a.p.q);
+  h += `<section class="panel mb"><div class="ph"><h2>Auslaufende Formatrechte ${y}</h2><span class="aside">${rows.length} Formate</span></div>${rows.length ? `<div class="tbl"><table><thead><tr><th>Format</th><th>Sender</th><th class="num">Qualität</th><th class="num">Profil-Fit bei Ihnen</th><th>Moderation</th><th class="num">Gebühr bisher</th><th>Ihr Gebot pro Folge</th></tr></thead><tbody>
+    ${rows.map(({ st, p }) => { const b = bids.find(x => x.pid === p.id), host = hostOf(p), fitv = demoFactor(P, { ...p, movedAt: null }); return `<tr><td class="title">${titleLink(`${st.id}|${p.id}`, p.title)}<div class="muted">${esc(p.genre)} · ${zLine(P, p)}</div></td><td>${sname(st.i)}</td><td class="num">${attr(p.q)}</td><td class="num ${fitv < 0.7 ? "down" : fitv > 1 ? "up" : ""}">${Math.round(fitv * 100)} %</td>
+      <td class="title">${host ? `${personLink(host)}<div class="muted">Loyalität ${loyalty(host)}</div>` : '<span class="muted">–</span>'}</td><td class="num">${eur(p.fee)}</td>
+      <td><div class="actions"><input type="number" id="fmb-${p.id}" step="10000" min="${r1000(p.fee * 1.1)}" value="${b ? b.fee : r1000(p.fee * 1.25)}" style="width:120px" ${open && !planLocked() ? "" : "disabled"}><label class="muted" style="font-size:12px"><input type="checkbox" id="fmh-${p.id}" ${b && b.withHost ? "checked" : ""}> mit Moderation</label><button class="btn small hot" data-act="fmBid2" data-id="${p.id}" ${open && !planLocked() ? "" : "disabled"}>${b ? "Ändern" : "Bieten"}</button></div></td></tr>`; }).join("")}</tbody></table></div>` : '<p class="fine pad">Keine handelbaren Formate.</p>'}</section>`;
+  const own = P.progs.filter(p => tradable(p) || (p.movedAt && p.rightsUntil)).sort((a, b) => (a.rightsUntil || 0) - (b.rightsUntil || 0));
+  h += `<section class="panel"><div class="ph"><h2>Ihre Formatrechte</h2></div>${own.length ? `<div class="tbl"><table><tbody>${own.map(p => `<tr><td class="title">${titleLink(`${P.id}|${p.id}`, p.title)}</td><td class="num">${p.epCost ? eur(p.epCost) + " / Folge" : '<span class="muted">Hausformat</span>'}</td><td class="num">bis ${p.rightsUntil ? dDate(p.rightsUntil) : "–"}</td><td>${p.lostTo ? `<span class="chip fsk">wechselt zu ${esc(holderName(p.lostTo))}</span>` : p.hostLost ? '<span class="chip warn">ohne Stamm-Moderation</span>' : ""}</td></tr>`).join("")}</tbody></table></div>` : '<p class="fine pad">Keine handelbaren Formate.</p>'}</section>`;
+  return h;
+}
+// =====================================================================
+// Sendeplan-Editor: Wochenraster mit Ziehen & Ablegen, Content-Pool und Prognose
+// Rot = fest/live, Grün = frei belegt, Gelb = Highlight der Konkurrenz parallel
+// =====================================================================
+let wpWeek = 0, wpSel = null, wpPick = null, wpNight = false, wpFilter = "alle", wpQuery = "";
+const WP_PX = 1.15; // Pixel pro Minute
+const wpFrom = () => wpNight ? 0 : 6 * 60;
+function wpMonday() { const d = G.day; return d - ((weekday(d) + 6) % 7) + wpWeek * 7; }
+// Konkurrenz-Highlights eines Tages: Live-Sport und starke Programme ab 17 Uhr
+function rivalHighlights(day) {
+  const out = [];
+  for (const e of liveOn(day)) if (e.owner !== me().id && e.q >= 75) out.push({ st: e.owner, start: e.start, end: e.end, title: e.title, q: e.q, live: true });
+  for (const st of G.stations) {
+    if (isMe(st)) continue;
+    const sc = day === G.day ? st.sched : st.week[weekday(day)];
+    for (const it of rundown(st, sc, weekday(day))) if (!it.gap && it.start >= 17 * 60 && it.p.kind !== "sport" && it.p.q >= 82) out.push({ st: st.id, start: it.start, end: it.end, title: it.p.title, q: it.p.q });
+  }
+  return out;
+}
+// Geschätzter Marktanteil einer geplanten Sendung gegen die Konkurrenz zur selben Zeit
+function forecast(P, day, it) {
+  const wd = weekday(day), mid = Math.min(1439, it.start + 30), h = Math.floor(mid / 60);
+  const aOf = (st, p) => !p ? st.brand * 0.3 : st.brand * Math.pow(p.q / 60, 1.5) * (p.kind === "sport" ? 1.7 : fit(p.genre, h) * (0.35 + 0.65 * (p.topic || 1))) * demoFactor(st, p) * hostMalus(p);
+  let mine = aOf(P, it.p), sum = mine;
+  const rd = rundown(P, day === G.day ? P.sched : calDay(P, day), wd), k = rd.findIndex(x => !x.gap && x.start === it.start), prev = k > 0 ? rd.slice(0, k).reverse().find(x => !x.gap) : null;
+  const flow = prev ? zOverlap(P, prev.p, it.p) : 0;
+  mine += prev ? 0.25 * flow * aOf(P, prev.p) : 0; sum = mine;
+  const comp = [];
+  for (const st of G.stations) {
+    if (isMe(st)) continue;
+    const live = liveOn(day).find(e => e.owner === st.id && e.start <= mid && e.end > mid);
+    const sc = day === G.day ? st.sched : st.week[wd], x = rundown(st, sc, wd).find(y => !y.gap && y.start <= mid && y.end > mid);
+    const p = live ? { kind: "sport", genre: "Sport", q: live.q, title: live.title } : x && x.p;
+    const a = aOf(st, p); sum += a; comp.push({ st, p, a });
+  }
+  const ma = mine / sum * (1 - otherShare() - payDrain(day, h)) * 100;
+  return { ma, flow, prev, comp: comp.sort((a, b) => b.a - a.a).slice(0, 3), z: zMix(P, it.p), v: BASE[h] * ma / 100 };
+}
+function weekPlanPage(P) {
+  const mon = wpMonday(), from = wpFrom(), H = (1440 - from) * WP_PX;
+  const days = Array.from({ length: 7 }, (_, k) => mon + k).filter(d => d >= G.day - 6);
+  for (const d of days) if (d > G.day || (d === G.day && !planLocked())) fillGaps(P, d === G.day ? calDay(P, d) : calDay(P, d), weekday(d)); // lückenlos auch in der Vorschau
+  let h = title("Wochenplan", `<div class="actions"><button class="btn small" data-act="wpWeek" data-k="-1" ${wpWeek <= 0 ? "disabled" : ""}>‹ Woche</button><span class="muted">${dateShort(mon)} – ${dateShort(mon + 6)}</span><button class="btn small" data-act="wpWeek" data-k="1" ${wpWeek >= 5 ? "disabled" : ""}>Woche ›</button><button class="btn small" data-act="wpNight">${wpNight ? "ab 6 Uhr" : "0–24 Uhr"}</button></div>`);
+  h += `<p class="lead mb">Ziehen Sie Sendungen aus dem Content-Pool in den Wochenplan oder verschieben Sie Blöcke (am Handy: Sendung antippen, dann Zeitpunkt antippen). Die Länge im Raster ist die echte Sendezeit inklusive Werbung. <span class="legend-dot red"></span> fest/live · <span class="legend-dot green"></span> frei belegt · <span class="legend-dot yellow"></span> Highlight der Konkurrenz.</p>`;
+  // Content-Pool
+  const genres = ["alle", "Film", "Serie", "Show", "Info", "Sport"], gOf = p => p.kind === "film" ? "Film" : p.kind === "serie" ? "Serie" : ["Nachrichten", "Magazin", "Doku", "Talk"].includes(p.genre) ? "Info" : p.kind === "sport" ? "Sport" : "Show";
+  const pool = P.progs.filter(p => p.kind !== "sport" && !p.house && !p.exclusive && (wpFilter === "alle" || gOf(p) === wpFilter) && (!wpQuery || p.title.toLowerCase().includes(wpQuery.toLowerCase())) && !(p.kind === "film" && p.runs >= p.maxRuns)).sort((a, b) => b.q - a.q).slice(0, 80);
+  const left = `<aside class="wp-pool"><h3>Content-Pool</h3><input class="search" id="wpSearch" placeholder="Suchen …" value="${esc(wpQuery)}"><div class="pills">${genres.map(g => `<button data-act="wpFilter" data-k="${g}" class="${wpFilter === g ? "on" : ""}">${g}</button>`).join("")}</div>
+    <div class="wp-list">${pool.map(p => `<div class="wp-item ${wpPick === p.id ? "on" : ""}" draggable="true" data-drag="${p.id}" data-act="wpPick" data-id="${p.id}"><b>${esc(p.title)}</b><span>${esc(p.genre)} · ${netDur(p)} Min. · Q ${p.q}${p.fsk >= 12 ? ` · FSK ${p.fsk}` : ""}${p.aired === 0 ? " · Premiere" : ""}</span></div>`).join("")}</div></aside>`;
+  // Raster
+  const ticks = []; for (let m = Math.ceil(from / 60) * 60; m < 1440; m += 60) ticks.push(m);
+  const cols = days.map(d => {
+    const wd = weekday(d), sc = d === G.day ? P.sched : calDay(P, d), rd = rundown(P, sc, wd), lock = d === G.day && planLocked();
+    const blocks = rd.filter(x => x.end > from && x.start < 1440).map(x => {
+      const top = (Math.max(x.start, from) - from) * WP_PX, ht = Math.max(8, (Math.min(x.end, 1440) - Math.max(x.start, from)) * WP_PX - 1);
+      if (x.gap) return x.end - x.start >= 5 ? `<div class="wp-b gap" style="top:${top}px;height:${ht}px">${ht >= 14 ? `<small>${hhmm(x.start)} Lücke</small>` : ""}</div>` : "";
+      const fixed = x.c.live || x.p.kind === "sport" || (anchored(x.p) && !x.extra), sel = wpSel && wpSel[0] === d && wpSel[1] === x.start, w = slotWarnings(P, d, rd, x).length;
+      return `<div class="wp-b ${fixed ? "fix" : "own"} ${x.extra ? "ext" : ""} ${sel ? "sel" : ""}" style="top:${top}px;height:${ht}px" ${!fixed && !x.extra && !lock ? `draggable="true" data-drag-from="${d}|${x.i}"` : ""} data-act="wpSel" data-k="${d}|${x.start}" title="${esc(x.p.title)} · ${tRange(x)}">
+        <small>${hhmm(x.start)}${w ? " ⚠" : ""}</small><b>${esc(x.p.title)}</b>${ht > 34 ? `<span>${x.end - x.start} Min.${x.p.aired === 0 ? " · Premiere" : ""}</span>` : ""}</div>`;
+    }).join("");
+    const hi = rivalHighlights(d).filter(x => x.end > from).map(x => `<div class="wp-hi" style="top:${(Math.max(x.start, from) - from) * WP_PX}px;height:${Math.max(6, (Math.min(x.end, 1440) - Math.max(x.start, from)) * WP_PX)}px" title="${esc(holderName(x.st))}: ${esc(x.title)} ${hhmm(x.start)}"></div>`).join("");
+    return `<div class="wp-day"><div class="wp-dh ${d === G.day ? "today" : ""}">${WD[wd]} ${dateOf(d).getDate()}.${dateOf(d).getMonth() + 1}.</div><div class="wp-col ${lock ? "lock" : ""}" data-drop="${d}" style="height:${H}px">${ticks.map(m => `<i class="wp-tick" style="top:${(m - from) * WP_PX}px"></i>`).join("")}${hi}${blocks}</div></div>`;
+  }).join("");
+  const axis = `<div class="wp-axis" style="height:${H}px;margin-top:28px">${ticks.map(m => `<span style="top:${(m - from) * WP_PX}px">${hhmm(m)}</span>`).join("")}</div>`;
+  // Prognose
+  let right = '<aside class="wp-side"><h3>Prognose</h3><p class="fine">Wählen Sie eine Sendung im Raster.</p></aside>';
+  if (wpSel) {
+    const [d, start] = wpSel, sc = d === G.day ? P.sched : calDay(P, d), rd = rundown(P, sc, weekday(d)), it = rd.find(x => !x.gap && x.start === start);
+    if (it) {
+      const f = forecast(P, d, it), w = slotWarnings(P, d, rd, it), pressure = f.comp.length && f.comp[0].a > (f.ma > 0 ? 0 : 1) ? (f.comp.reduce((s, c) => s + c.a, 0) / Math.max(0.01, f.comp.length) > me().brand * 0.9 ? "HOCH" : "MITTEL") : "NIEDRIG";
+      right = `<aside class="wp-side"><h3>${esc(it.p.title)}</h3><p class="muted" style="margin:0 0 8px">${WDL[weekday(d)]}, ${dateShort(d)} · ${tRange(it)} · ${it.end - it.start} Min.</p>
+        <div class="tiles"><div class="tile"><small>Erwartet</small><b>${pct(f.ma)}</b><span>ca. ${mio(f.v)} Mio.</span></div><div class="tile"><small>Audience Flow</small><b>${f.prev ? Math.round(f.flow * 100) + " %" : "–"}</b><span>${f.prev ? `von „${esc(f.prev.p.title)}“` : "keine Vorsendung"}</span></div></div>
+        <div class="pad" style="padding:8px 0">${ZN.map((n, k) => `<div class="agebar"><span>Z${k + 1}</span><div class="track"><i style="width:${f.z[k] * 100}%"></i></div><b>${pct(f.z[k] * 100)}</b></div>`).join("")}</div>
+        <h4>Konkurrenz-Druck: ${pressure}</h4><div class="tbl"><table><tbody>${f.comp.map(c => `<tr><td>${sname(c.st.i)}</td><td class="title">${c.p ? esc(c.p.title) : "–"}</td></tr>`).join("")}</tbody></table></div>
+        ${w.map(x => `<p class="warnline" style="margin:6px 0 0">⚠ ${esc(x)}</p>`).join("")}
+        ${!it.c.live && !it.extra && !(d === G.day && planLocked()) ? `<div class="actions" style="margin-top:10px"><select class="tsel2" data-tsel="${d}|${it.i}">${tOpts(it.i, it.c.t)}</select><button class="btn small red" data-act="wpDel" data-k="${d}|${it.i}">Entfernen</button></div>` : ""}</aside>`;
+    }
+  }
+  return h + `<div class="wp">${left}<div class="wp-gridwrap"><div class="wp-grid">${axis}${cols}</div></div>${right}</div>`;
+}
+// Ablegen: Minute aus der Y-Position, auf 5 Minuten gerundet
+function wpDrop(d, y, pid, from) {
+  const P = me(); if (d === G.day && planLocked()) { toast("Heute läuft bereits die Sendung – der Tag ist gesperrt."); return; }
+  const min = clamp(Math.round((wpFrom() + y / WP_PX) / 5) * 5, 0, 1435), i = Math.floor(min / 60);
+  let p = P.progs.find(x => x.id === pid);
+  if (from) { const [fd, fi] = from.split("|").map(Number), src = fd === G.day ? P.sched : calDay(P, fd); p = progOf(P, src[fi].p); if (!p) return; editPlan(fd, sc => clearAt(P, sc, fi)); }
+  if (!p) return;
+  const sc = d === G.day ? P.sched : calDay(P, d);
+  if (!youthOk(p, i)) { toast(`🚫 Nicht möglich: „${p.title}“ hat FSK ${p.fsk} und darf erst ab ${p.fsk >= 18 ? "23" : "22"}:00 Uhr laufen.`); return; }
+  const why = canPlace(P, sc, p, i); if (why) { toast(`🚫 ${why}`); return; }
+  editPlan(d, s => { placeAt(P, s, i, p); if (min % 60) s[i].t = min; else delete s[i].t; });
+  wpSel = [d, rundown(P, d === G.day ? P.sched : calDay(P, d), weekday(d)).find(x => x.i === i && !x.extra)?.start ?? min];
+  const it = rundown(P, d === G.day ? P.sched : calDay(P, d), weekday(d)).find(x => x.i === i && !x.extra);
+  const w = it ? slotWarnings(P, d, rundown(P, d === G.day ? P.sched : calDay(P, d), weekday(d)), it) : [];
+  toast(w.length ? `⚠ ${w[0]}` : `„${p.title}“ eingeplant: ${it ? tRange(it) : hhmm(min)}.`);
+  render();
+}
+document.addEventListener("dragstart", e => {
+  const t = e.target.closest && e.target.closest("[data-drag],[data-drag-from]"); if (!t) return;
+  e.dataTransfer.setData("text/plain", t.dataset.drag ? "p:" + t.dataset.drag : "f:" + t.dataset.dragFrom); e.dataTransfer.effectAllowed = "move";
+});
+document.addEventListener("dragover", e => { const c = e.target.closest && e.target.closest("[data-drop]"); if (c) { e.preventDefault(); c.classList.add("over"); } });
+document.addEventListener("dragleave", e => { const c = e.target.closest && e.target.closest("[data-drop]"); if (c) c.classList.remove("over"); });
+document.addEventListener("drop", e => {
+  const c = e.target.closest && e.target.closest("[data-drop]"); if (!c || !G) return; e.preventDefault();
+  const v = e.dataTransfer.getData("text/plain"), y = e.clientY - c.getBoundingClientRect().top;
+  if (v.startsWith("p:")) wpDrop(+c.dataset.drop, y, +v.slice(2)); else if (v.startsWith("f:")) wpDrop(+c.dataset.drop, y, null, v.slice(2));
+});
+// Tippen statt Ziehen: Sendung gewählt → leere Stelle im Raster antippen
+document.addEventListener("click", e => {
+  if (!G || wpPick == null) return;
+  const c = e.target.closest && e.target.closest("[data-drop]"); if (!c || e.target.closest(".wp-b")) return;
+  const pid = wpPick; wpPick = null; wpDrop(+c.dataset.drop, e.clientY - c.getBoundingClientRect().top, pid);
+});
 // =====================================================================
 // Formatprofil: Quotenverlauf, Publikum, Analyse und Maßnahmen je Sendung
 // =====================================================================
