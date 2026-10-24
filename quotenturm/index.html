@@ -4911,28 +4911,57 @@ function season(sy) {
   S.euro = [[0, 8, 3], [0, 9, 1], [0, 9, 3], [0, 10, 1], [0, 10, 4], [0, 11, 2], [1, 0, 3], [1, 0, 4], [1, 1, 3], [1, 1, 4], [1, 2, 2], [1, 2, 3], [1, 3, 1], [1, 3, 2], [1, 3, 4], [1, 4, 1]].map(x => tue(...x));
   S.pokal = [[0, 9, 4], [1, 1, 1], [1, 2, 1], [1, 3, 3]].map(x => tue(...x));
   S.pokalFinal = dayOf(nthWd(sy + 1, 4, 6, 4));
+  // Offizielle Rahmentermine, soweit hinterlegt (2026/27: Angaben laut DFB-Rahmenterminkalender, vom Spieler geliefert)
+  const O = OFFICIAL_FRAME[sy];
+  if (O) {
+    const D = (y, m, d) => dayOf(new Date(y, m - 1, d));
+    S.start = D(...O.start); S.end = D(...O.end); S.winter = O.winter.map(x => D(...x));
+    S.windows = O.windows.map(x => D(...x)); S.pokal = O.pokal.map(x => typeof x === "number" ? S.pokal[x] : D(...x)); S.pokalFinal = D(...O.pokalFinal);
+    S.start2 = D(...O.bl2.start); S.end2 = D(...O.bl2.end); S.winter2 = O.bl2.winter.map(x => D(...x)); S.off2 = O.bl2.off.map(x => D(...x));
+    S.mw = Object.fromEntries(O.midweek.map(x => [D(...x), true]));
+  }
   S.inWindow = d => S.windows.some(w => d >= w && d <= w + 5);
-  // Spieltage: jedes Wochenende der Saison außer Winterpause und Länderspielfenster
-  S.md = {}; let n = 0;
-  for (let sat = S.start + 1; sat <= S.end; sat += 7) { if ((sat >= S.winter[0] && sat <= S.winter[1]) || S.inWindow(sat)) continue; S.md[sat] = ++n; }
+  // Spieltage: jedes Wochenende der Saison außer Winterpause und Länderspielfenster; Englische Woche dienstags/mittwochs
+  S.md = {}; S.md2 = {}; let n = 0;
+  const mwSorted = Object.keys(S.mw || {}).map(Number).sort((a, b) => a - b);
+  for (let sat = S.start + 1; sat <= S.end; sat += 7) {
+    for (const t of mwSorted) if (t > sat - 7 && t < sat && n < 34) { S.md[t] = ++n; S.md[t + 1] = n; }
+    if ((sat >= S.winter[0] && sat <= S.winter[1]) || S.inWindow(sat) || n >= 34) continue; S.md[sat] = ++n;
+  }
+  let n2 = 0; const st2 = S.start2 ?? S.start, en2 = S.end2 ?? S.end, w2 = S.winter2 || S.winter;
+  for (let sat = st2 + 1; sat <= en2 + 1; sat += 7) { if ((sat >= w2[0] && sat <= w2[1]) || S.inWindow(sat) || (S.off2 || []).some(o => Math.abs(o - sat) <= 1) || n2 >= 34) continue; S.md2[sat] = ++n2; }
   return (SEASONS[sy] = S);
 }
 // Spieltag des Wochenendes, zu dem ein Tag gehört (Fr/Sa/So), sonst 0
-function matchday(day) {
-  const wd = weekday(day); if (![5, 6, 0].includes(wd)) return 0;
+function matchday(day, liga = 1) {
+  const wd = weekday(day), S0 = season(seasonOf(day));
+  if (liga === 1 && [2, 3].includes(wd) && S0.md[day]) return S0.md[day];
+  if (![5, 6, 0].includes(wd)) return 0;
   const sat = day + (wd === 5 ? 1 : wd === 0 ? -1 : 0), S = season(seasonOf(sat));
-  return S.md[sat] || 0;
+  return (liga === 2 ? S.md2 : S.md)[sat] || 0;
 }
+const OFFICIAL_FRAME = {
+  2026: { start: [2026, 8, 28], end: [2027, 5, 22], winter: [[2026, 12, 20], [2027, 1, 8]], midweek: [[2027, 3, 2]],
+    windows: [[2026, 9, 21], [2026, 9, 28], [2026, 11, 9], [2027, 3, 22]],
+    pokal: [[2026, 8, 21], 0, [2026, 12, 1], [2027, 2, 2], [2027, 2, 9], 3], pokalFinal: [2027, 5, 29],
+    bl2: { start: [2026, 8, 7], end: [2027, 5, 23], winter: [[2026, 12, 20], [2027, 1, 15]], off: [[2027, 5, 1]] } },
+};
 const euroWeek = day => { const S = season(seasonOf(day)); return S.euro.find(t => day >= t && day <= t + 2) || null; };
 // Paarungen eines Spieltags mit Anstoßzeiten; 2-Tage-Regel: wer donnerstags international spielt, spielt sonntags
 function mdFixtures(day, liga) {
-  const md = matchday(day); if (!md) return [];
-  const sat = day + ({ 5: 1, 6: 0, 0: -1 })[weekday(day)], sy = seasonOf(sat), rnd0 = seeded(sy * 1000 + md * 7 + (liga === 2 ? 3 : 0));
+  const md = matchday(day, liga); if (!md) return [];
+  const mwk = [2, 3].includes(weekday(day));
+  const sat = mwk ? day - weekday(day) + 2 : day + ({ 5: 1, 6: 0, 0: -1 })[weekday(day)], sy = seasonOf(sat), rnd0 = seeded(sy * 1000 + md * 7 + (liga === 2 ? 3 : 0));
   const clubs = (liga === 2 ? BL2_18 : BL18).slice(); for (let k = clubs.length - 1; k > 0; k--) { const j = Math.floor(rnd0() * (k + 1)); [clubs[k], clubs[j]] = [clubs[j], clubs[k]]; }
   const pairs = []; for (let k = 0; k < 18; k += 2) pairs.push({ home: clubs[k], away: clubs[k + 1], att: pop(clubs[k]) + pop(clubs[k + 1]) });
   const thu = euroWeek(sat - 3) ? sat - 2 : null, euroClubs = thu ? EL_DE.concat(ECL_DE) : [];
   const forced = pairs.filter(p => euroClubs.includes(p.home) || euroClubs.includes(p.away)), rest = pairs.filter(p => !forced.includes(p)).sort((a, b) => b.att - a.att);
   const out = [];
+  if (mwk) { // Englische Woche: Dienstag und Mittwoch, 18:30 und 20:30 Uhr
+    if (liga === 2) return [];
+    pairs.forEach((p, k) => out.push({ ...p, dw: k < 4 ? 2 : 3, t: k % 2 ? 1230 : 1110, comp: "Bundesliga" }));
+    return out.filter(f => f.dw === weekday(day));
+  }
   if (liga === 2) {
     const slots = [[5, 1110], [5, 1110], [6, 1230], [6, 780], [6, 780], [6, 780], [0, 810], [0, 810], [0, 810]];
     const order = [rest[0], ...rest.slice(1)];
