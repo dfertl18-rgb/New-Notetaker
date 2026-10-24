@@ -431,6 +431,7 @@ td.cw { position: relative; } .cell-i { position: absolute; right: 8px; top: 8px
 .wp-hi { position: absolute; left: 0; width: 4px; background: var(--mid); opacity: .9; z-index: 1; }
 .legend-dot { display: inline-block; width: 10px; height: 10px; border-radius: 2px; vertical-align: -1px; margin: 0 2px 0 6px; } .legend-dot.red { background: var(--bad); } .legend-dot.green { background: var(--good); } .legend-dot.yellow { background: var(--mid); }
 @media (max-width: 1100px) { .wp { grid-template-columns: 1fr; } .wp-pool, .wp-side { position: static; max-height: 360px; } }
+.article .chip { display: inline-block; width: auto; } .slink { cursor: pointer; } .slink:hover { color: var(--hot); text-decoration: underline; } .article p { line-height: 1.6; } .art-h { font-family: var(--font-head); font-size: 24px; margin: 8px 0 4px; }
 .ptabs button.on { color: var(--hot); } .ptabs button.on::after { content: ""; position: absolute; left: 10px; right: 10px; bottom: -1px; height: 2px; background: var(--hot); }
 .acols { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 .acol h3 { margin: 0 0 6px; font-family: var(--font-head); font-size: 16px; color: var(--muted); border-bottom: 1px solid var(--line); padding-bottom: 4px; }
@@ -1704,7 +1705,7 @@ function placeEvents() {
   for (const st of G.stations) st.live = [];
   for (const { r, d, m, o } of eventsOn(G.day)) {
     const st = G.stations[SIDX[o.owner || r.owner]]; if (!st) continue;
-    const ev = { id: uid(), title: `${d.sport}: ${m ? m.fix : d.fix()}`, comp: d.name, genre: "Sport", kind: "sport", q: m ? Math.round(m.q) : d.q, len: d.len, h: d.h, t: m ? m.t : d.h * 60, dur: m ? m.dur : d.len * 60, topic: 1, fsk: 0, real: true };
+    const ev = { id: uid(), title: `${d.sport}: ${m ? m.fix : d.fix()}`, comp: d.name, genre: "Sport", kind: "sport", q: m ? Math.round(m.q * injuryF(m.fix)) : d.q, len: d.len, h: d.h, t: m ? m.t : d.h * 60, dur: m ? m.dur : d.len * 60, topic: 1, fsk: 0, real: true };
     st.live.push(ev);
     if (isMe(st)) logMsg("Sportredaktion", "Sport", `Heute live um ${hhmm(ev.t)}: ${ev.title} (${d.name}).`);
   }
@@ -3209,7 +3210,7 @@ function nextDay() {
   G.day++;
   for (const st of G.stations) st.fin = {};
   projectDay();
-  prodDay(); peopleDay(); newsroomDay(); trendDay(); awardsDay(); marketDay(); presaleDay(); rivalsDay(); formatDay(); postQuotenReport(); frameDay(); conflictCheck(); fmDay(); scoutDay();
+  prodDay(); peopleDay(); newsroomDay(); trendDay(); awardsDay(); marketDay(); presaleDay(); rivalsDay(); formatDay(); postQuotenReport(); frameDay(); conflictCheck(); fmDay(); scoutDay(); rumorDay();
   if (dateOf(G.day).getDate() === 1 && !G.event) setInterview(); // Interview zum Monatsbeginn
   if (G.mods.coverup && G.day >= G.mods.coverup.day) {
     const c = G.mods.coverup; G.mods.coverup = null;
@@ -3359,13 +3360,13 @@ const lockNote = () => planLocked() ? `<p class="lead mb">Der Sendetag läuft. E
 // Seiten: Portal
 // =====================================================================
 function messagesPanel(limit) {
-  const filters = [["all", "Alle"], ["unread", "Ungelesen"], ["Quote", "Quote"], ["Sport", "Sport"], ["Streaming", "Streaming"], ["Werbung", "Werbung"], ["Konkurrenz", "Konkurrenz"]];
+  const filters = [["all", "Alle"], ["unread", "Ungelesen"], ["Quote", "Quote"], ["Gerücht", "Gerüchte"], ["Bestätigt", "Bestätigt"], ["Personal", "Personal"], ["Skandal", "Boulevard"], ["Sport", "Sport"], ["Streaming", "Streaming"], ["Werbung", "Werbung"], ["Konkurrenz", "Konkurrenz"]];
   let list = G.log.filter(l => msgFilter === "all" ? true : msgFilter === "unread" ? !l.read : l.tag === msgFilter);
   if (limit) list = list.slice(0, limit);
   let h = "", lastDay = null;
   for (const l of list) {
     if (l.day !== lastDay) { h += `<div class="mday">${dateShort(l.day)}</div>`; lastDay = l.day; }
-    h += `<div class="msg ${l.read ? "" : "new"}"><span class="from">${esc(l.from)}</span><span class="chip tag">${esc(l.tag)}</span><span class="txt">${l.rep ? repCard(l.rep) : esc(l.msg)}</span><time>${l.t}</time></div>`;
+    h += `<div class="msg ${l.read ? "" : "new"}"><span class="from">${esc(l.from)}</span><span class="chip tag">${esc(l.tag)}</span><span class="txt">${l.rep ? repCard(l.rep) : l.art ? `<span class="tlink" data-act="art" data-k="${l.aid}">${esc(l.msg)}</span>${l.rumor && l.rumor !== "open" ? ` <span class="chip ${l.rumor === "bestätigt" ? "good" : ""}">${l.rumor}</span>` : ""}` : esc(l.msg)}</span><time>${l.t}</time></div>`;
   }
   return `<section class="panel"><div class="ph"><h2>Nachrichten</h2></div>
     <div class="pad" style="padding-bottom:10px"><div class="pills">${filters.map(([k, n]) => `<button data-act="filter" data-k="${k}" class="${msgFilter === k ? "on" : ""}">${n}${k === "unread" ? ` (${G.log.filter(x => !x.read).length})` : ""}</button>`).join("")}</div></div>
@@ -3498,7 +3499,7 @@ function overview(P) {
       <section class="panel"><div class="ph"><h2>Formkurve</h2><span class="aside">Marktanteil vs. Ziel</span></div><div class="form">${form.map(d => `<div>${d ? dateOf(d.day).toLocaleDateString("de-DE", { weekday: "short" }) : "–"}<i class="${d ? (d.d >= 0 ? "w" : d.d >= -0.5 ? "d" : "l") : ""}">${d ? pct(d.ma).replace(" %", "") : ""}</i></div>`).join("")}</div></section>
     </div></div>`;
 }
-function inbox() { return title("Posteingang", `<span class="muted">${G.log.length} Nachrichten</span>`) + messagesPanel(0); }
+function inbox() { return title("Posteingang", `<span class="muted">${G.log.length} Nachrichten</span>`) + rumorPanel() + messagesPanel(0); }
 
 // =====================================================================
 // Seiten: Programm
@@ -4051,6 +4052,7 @@ function act(b) {
     case "devSet": G.devDraft = G.devDraft || { genre: "Show", slot: "Primetime", target: 1, budget: 50000 }; G.devDraft[b.dataset.k] = b.dataset.k === "target" ? +b.dataset.v : b.dataset.v; break;
     case "devGo": { const dd = G.devDraft || { genre: "Show", slot: "Primetime", target: 1, budget: 50000 }; const err = startDev(dd.genre, dd.slot, dd.target, +($("devBudget") || {}).value || dd.budget); toast(err || "Die Redaktion legt los – Pitch in vier Wochen."); break; }
     case "findBuy": { const err = buyFind(id); if (err) toast(err); break; }
+    case "art": openArticle(+b.dataset.k); return;
     case "fmBid2": { const v = +($("fmb-" + id) || {}).value || 0, wh = !!($("fmh-" + id) || {}).checked, err = fmBid(id, v, wh); toast(err || `Gebot über ${eur(r1000(v))} pro Folge abgegeben – Entscheidung am 31. März.`); break; }
     case "adAuto": G.adAuto = G.adAuto === false; toast(`Disposition ${G.adAuto ? "automatisch" : "manuell"}.`); break;
     case "adBook": if (!planLocked()) toast(`${adAutoBook(P)} Spots eingebucht.`); break;
@@ -4945,6 +4947,7 @@ function fixturesOn(day) {
   if (pk != null) { const a = BL18[Math.floor(r() * 18)], b = BL2_18.concat(BL18)[Math.floor(r() * 36)]; out.push({ comp: "DFB-Pokal", t: 1245, title: `${a} – ${b === a ? "Hamburger SV" : b}`, tv: "ARD/ZDF", q: 80 + pop(a) / 10 }); }
   if (day === S.pokalFinal) out.push({ comp: "DFB-Pokal Finale", t: 1200, title: `${BL18[Math.floor(r() * 4)]} – ${BL18[4 + Math.floor(r() * 10)]}`, tv: "ARD", q: 96 });
   for (const w of S.windows) if (day === w + 1 || day === w + 4) out.push({ comp: day === w + 1 ? "Länderspiel" : "Nations League", t: 1245, title: `Deutschland – ${NT_OPP[(w + day) % NT_OPP.length]}`, tv: day === w + 1 ? "RTL" : "ZDF", q: 95, nt: true });
+  out.forEach(f => { f.q *= injuryF(f.title); });
   return out.sort((a, b) => a.t - b.t);
 }
 // Free-TV-Rechte im Spiel greifen auf den Kalender zu: [{t (Minute), dur, fix, q}]
@@ -5563,6 +5566,124 @@ function formatDevPage(P) {
     ${finds.map(x => `<tr><td class="title"><b>${esc(x.name)}</b><div class="muted">${esc(x.genre)} · ${esc(x.origin)} · ${esc(x.fair)}</div></td><td>${esc(x.holder)}</td><td class="muted">${x.z.map((v, k) => `Z${k + 1} ${Math.round(v * 100)}`).join(" · ")}</td><td class="num">${stars5(x.est)}</td><td class="num">${eur(r1000(x.fee * (x.rival ? 1.3 : 1)))}${x.rival ? `<div class="down" style="font-size:12px">${esc(holderName(x.rival))} bietet mit</div>` : ""}</td><td class="num"><button class="btn small hot" data-act="findBuy" data-id="${x.id}" ${planLocked() ? "disabled" : ""}>Rechte sichern</button></td></tr>`).join("")}</tbody></table></div>` : '<p class="fine pad">Noch keine Reports – schicken Sie jemanden auf die nächste Messe.</p>'}</section>`;
   h += `<section class="panel"><div class="ph"><h2>Ihre Formatlizenzen & Konzepte</h2></div>${(G.licenses || []).length ? `<div class="tbl"><table><tbody>${G.licenses.map(l => `<tr><td class="title"><b>${esc(l.name)}</b><div class="muted">${l.own ? "Eigenentwicklung" : "Lizenz"} · ${esc(l.genre)}</div></td><td class="muted">${l.z.map((v, k) => `Z${k + 1} ${Math.round(v * 100)}`).join(" · ")}</td><td class="num"><button class="btn small" data-page="newprod">Im Studio produzieren</button></td></tr>`).join("")}</tbody></table></div>` : '<p class="fine pad">Noch keine.</p>'}</section>`;
   return h;
+}
+// =====================================================================
+// News-Ticker: Gerüchte, die sich bewahrheiten oder dementiert werden; Artikel mit klickbaren Namen
+// Platzhalter im Text: {p:ID} Person, {s:ID} Sender, {t:SENDER|ID} Sendung
+// Private Skandale nur bei frei erfundenen Personen; bei echten Personen bleiben Meldungen beruflich.
+// =====================================================================
+function artHtml(t) {
+  return esc(t).replace(/\{p:([A-Za-z0-9_-]+)\}/g, (_, id) => { const q = person(id) || person(+id); return q ? personLink(q) : "?"; })
+    .replace(/\{s:([a-z0-9]+)\}/g, (_, id) => SIDX[id] !== undefined ? `<span class="slink" data-station="${id}">${esc(STATIONS[SIDX[id]].name)}</span>` : esc(holderName(id)))
+    .replace(/\{t:([a-z0-9]+)\|(\d+)\}/g, (_, sid, pid) => { const st = G.stations[SIDX[sid]], p = st && st.progs.find(x => x.id === +pid); return p ? titleLink(`${sid}|${pid}`, p.title) : "eine Sendung"; });
+}
+const artPlain = t => t.replace(/\{p:([A-Za-z0-9_-]+)\}/g, (_, id) => (person(id) || person(+id) || {}).name || "?").replace(/\{s:([a-z0-9]+)\}/g, (_, id) => holderName(id))
+  .replace(/\{t:([a-z0-9]+)\|(\d+)\}/g, (_, sid, pid) => { const st = G.stations[SIDX[sid]], p = st && st.progs.find(x => x.id === +pid); return p ? p.title : "eine Sendung"; });
+function postArticle(from, tag, head, paras, toastIt) {
+  logMsg(from, tag, artPlain(head), toastIt);
+  G.log[0].aid = uid(); G.log[0].art = { head, paras };
+}
+function openArticle(aid) {
+  const l = G.log.find(x => x.aid === aid); if (!l) return;
+  openModal(`<header><h2>${esc(l.from)}</h2><button class="btn" data-act="close">Schließen</button></header><div class="dbody article">
+    <span class="chip tag">${esc(l.tag)}</span><h3 class="art-h">${artHtml(l.art.head)}</h3><p class="muted" style="margin:0 0 10px">${dateShort(l.day)}, ${l.t}</p>
+    ${l.art.paras.map(x => `<p>${artHtml(x)}</p>`).join("")}${l.rumor ? `<p class="fine">Status: ${l.rumor === "open" ? "unbestätigt" : l.rumor}</p>` : ""}</div>`);
+}
+const RUMOR_SRC = ["Branchen-Flüsterer", "Medien-Insider", "TV-Klatsch", "Quotenticker", "Serien-Gerüchteküche"];
+const isReal = q => q && q.custom;
+function rumorDay() {
+  G.rumors = G.rumors || [];
+  // Auflösung fälliger Gerüchte
+  for (const r of G.rumors.filter(x => x.status === "open" && x.due <= G.day)) resolveRumor(r);
+  G.rumors = G.rumors.filter(x => x.status === "open" || x.due > G.day - 30).slice(-60);
+  if (Math.random() > 0.7) return;
+  const P = me(), others = G.stations.filter(s => !isMe(s) && s.base >= 2.5);
+  const kinds = ["wechsel", "wechsel", "absetzung", "staffel", "casting", "gage", "verletzung", "boulevard"];
+  const k = pick(kinds), src = pick(RUMOR_SRC);
+  const stars = G.people.filter(q => q.holder && q.fame >= 60 && !q.busy);
+  if (k === "wechsel" && stars.length) {
+    const q = pick(stars), to = pick(others.filter(s => s.id !== q.holder)); if (!to) return;
+    const r = { id: uid(), kind: k, cat: "Personal", truth: Math.random() < 0.45, due: G.day + ri(6, 14), status: "open", pid: q.id, to: to.id, from: q.holder };
+    G.rumors.push(r);
+    postArticle(src, "Gerücht", `Wechselgerücht: {p:${q.id}} soll mit {s:${to.id}} verhandeln`, [`Nach Informationen aus Branchenkreisen trafen sich {p:${q.id}} und die Programmdirektion von {s:${to.id}} in den vergangenen Tagen mehrfach.`, `Beim bisherigen Arbeitgeber {s:${q.holder}} gibt man sich offiziell gelassen. Ein Wechsel würde ${q.show ? "auch die Zukunft der Sendung offenlassen" : "das Gefüge im Haus verändern"}.`, `Ob mehr dahintersteckt oder der Berater nur die Gage nach oben treiben will, dürfte sich in den nächsten zwei Wochen zeigen.`]);
+    G.log[0].rumor = "open"; r.aid = G.log[0].aid;
+  } else if (k === "absetzung") {
+    const st = pick(others), p = st.progs.filter(x => x.home && (x.hist || []).length >= 3 && x.genre !== "Nachrichten" && !NONTRADE.has(x.title)).sort((a, b) => fmtStats(a).ma - fmtStats(b).ma)[0]; if (!p) return;
+    const r = { id: uid(), kind: k, cat: "Gerüchte", truth: Math.random() < 0.5, due: G.day + ri(7, 15), status: "open", st: st.id, pid: p.id };
+    G.rumors.push(r);
+    postArticle(src, "Gerücht", `Wackelt {t:${st.id}|${p.id}}? Absetzung im Gespräch`, [`Die Quoten von {t:${st.id}|${p.id}} lagen zuletzt bei ${pct(fmtStats(p).ma)} – zu wenig für den Sendeplatz, heißt es bei {s:${st.id}}.`, `Intern soll bereits über eine Nachfolge gesprochen werden. Offiziell bestätigt ist nichts.`]);
+    G.log[0].rumor = "open"; r.aid = G.log[0].aid;
+  } else if (k === "staffel") {
+    const st = pick(others), p = st.progs.filter(x => x.kind === "serie" && x.home)[0] || st.progs.find(x => x.kind === "serie"); if (!p) return;
+    const r = { id: uid(), kind: k, cat: "Produktion", truth: Math.random() < 0.6, due: G.day + ri(5, 12), status: "open", st: st.id, pid: p.id };
+    G.rumors.push(r);
+    postArticle(src, "Gerücht", `Neue Staffel von {t:${st.id}|${p.id}} in Planung?`, [`Laut Produktionskreisen laufen bei {s:${st.id}} die Vorbereitungen für neue Folgen von {t:${st.id}|${p.id}}.`, `Drehbuchautoren sollen bereits unter Vertrag sein, ein Drehstart wäre in wenigen Wochen möglich.`]);
+    G.log[0].rumor = "open"; r.aid = G.log[0].aid;
+  } else if (k === "casting") {
+    const free = G.people.filter(q => !q.holder && q.fame >= 50); if (!free.length) return;
+    const q = pick(free), st = pick(others);
+    const r = { id: uid(), kind: k, cat: "Gerüchte", truth: Math.random() < 0.5, due: G.day + ri(5, 10), status: "open", pid: q.id, to: st.id };
+    G.rumors.push(r);
+    postArticle(src, "Gerücht", `Casting: {s:${st.id}} will {p:${q.id}} für ein neues Format`, [`{p:${q.id}} ist derzeit ohne festen Vertrag – und offenbar heiß begehrt. {s:${st.id}} soll ein Angebot für eine neue Primetime-Show vorbereiten.`, `Wer schneller ist, sichert sich das Gesicht.`]);
+    G.log[0].rumor = "open"; r.aid = G.log[0].aid;
+  } else if (k === "gage") {
+    const mine = G.people.filter(q => q.holder === P.id && q.ct); if (!mine.length) return;
+    const q = pick(mine);
+    const r = { id: uid(), kind: k, cat: "Personal", truth: Math.random() < 0.55, due: G.day + ri(4, 9), status: "open", pid: q.id };
+    G.rumors.push(r);
+    postArticle(src, "Gerücht", `{p:${q.id}} unzufrieden mit der Gage bei {s:${P.id}}?`, [`Im Umfeld von {p:${q.id}} ist von Unmut die Rede: Andere Gesichter im Haus verdienten deutlich mehr.`, `Der Berater soll bereits ein Gespräch über eine Anpassung angefragt haben.`]);
+    G.log[0].rumor = "open"; r.aid = G.log[0].aid;
+  } else if (k === "verletzung") {
+    const club = pick(BL18.slice(0, 8)), days = ri(10, 28);
+    G.injury = G.injury || {}; G.injury[club] = G.day + days;
+    postArticle("Sport-Ticker", "Sport", `Verletzungssorgen bei ${club}: Leistungsträger fällt aus`, [`${club} muss mehrere Wochen auf einen Leistungsträger verzichten (Muskelverletzung, Ausfall ca. ${Math.round(days / 7)} Wochen).`, `Für die Übertragungen bedeutet das: Die Spiele des Klubs verlieren an Zugkraft – Experten rechnen mit rund 15 % weniger Interesse.`]);
+  } else if (k === "boulevard") {
+    const q = pick(G.people.filter(x => !isReal(x) && x.fame >= 55 && x.holder)); if (!q) return; // nur erfundene Personen
+    const intensity = ri(2, 9), mrw = intensity * Math.round(q.fame / 5);
+    if (mrw < 30) return;
+    const big = mrw > 120;
+    const txt = pick([[`Ärger im Nobelclub: {p:${q.id}} gerät mit dem Türsteher aneinander`, `Zeugen berichten von einem lauten Wortgefecht. Das Management spricht von einem Missverständnis.`],
+      [`Liebes-Aus bei {p:${q.id}}`, `Nach Informationen der Boulevardpresse ist die Beziehung beendet. Ob das Publikum am Wochenende aus Mitgefühl einschaltet?`],
+      [`Wut-Auftritt hinter den Kulissen: {p:${q.id}} verlässt die Probe`, `Grund soll ein Streit über den Sendeablauf gewesen sein.`]]);
+    if (big) { q.pop = Math.max(5, q.pop - 10); q.zFit = (q.zFit || [1, 1, 1, 1]).map((v, i) => i === 3 ? v * 0.7 : v); }
+    postArticle(big ? "Express-Zeitung · Eilmeldung" : "Boulevard", "Skandal", txt[0], [txt[1], big ? `Die Werbekunden von {s:${q.holder}} beobachten die Lage – bei älteren Zuschauern dürfte das Image leiden.` : "Die Aufregung dürfte sich schnell legen."], big && q.holder === P.id);
+  }
+}
+function resolveRumor(r) {
+  const P = me(), q = r.pid && person(r.pid);
+  r.status = r.truth ? "bestätigt" : "dementiert";
+  const l = G.log.find(x => x.aid === r.aid); if (l) l.rumor = r.status;
+  const confirm = (head, paras) => postArticle(r.truth ? "Branchendienst · Bestätigt" : "Branchendienst · Dementi", r.truth ? "Bestätigt" : "Dementi", head, paras);
+  if (r.kind === "wechsel" && q) {
+    if (!r.truth || q.holder !== r.from) { confirm(`Dementi: {p:${q.id}} bleibt bei {s:${q.holder || r.from}}`, ["Die Gespräche sollen ohne Ergebnis geblieben sein."]); r.truth = false; r.status = "dementiert"; return; }
+    if (q.holder === P.id) { if (!G.event && rivalOf(r.to)) setPoachAttempt(r.to, q); else { q.pat = Math.max(0, (q.pat ?? 80) - 20); } confirm(`Bestätigt: {s:${r.to}} legt ein Angebot für {p:${q.id}} vor`, ["Jetzt liegt es an Ihnen: mitgehen oder ziehen lassen?"]); return; }
+    unbind(q); q.holder = r.to; q.until = G.day + ri(200, 700);
+    confirm(`Bestätigt: {p:${q.id}} wechselt zu {s:${r.to}}`, [`Der Wechsel ist perfekt. {s:${r.from}} muss die Lücke schließen.`]);
+  } else if (r.kind === "absetzung") {
+    const st = G.stations[SIDX[r.st]], p = st && st.progs.find(x => x.id === r.pid); if (!p) return;
+    if (!r.truth) { confirm(`Dementi: {t:${r.st}|${p.id}} läuft weiter`, ["Der Sender hält am Format fest – vorerst."]); return; }
+    confirm(`Bestätigt: {s:${r.st}} setzt {t:${r.st}|${p.id}} ab`, ["Der Sendeplatz wird neu vergeben – eine Chance für Sie, mit einem passenden Gegenprogramm Zuschauer zu gewinnen."]);
+    st.progs = st.progs.filter(x => x !== p); st.week.forEach(d => d.forEach(c => { if (c.p === p.id) { c.p = null; c.cont = false; } }));
+  } else if (r.kind === "staffel") {
+    const st = G.stations[SIDX[r.st]], p = st && st.progs.find(x => x.id === r.pid); if (!p) return;
+    if (r.truth) { p.topic = Math.min(1, p.topic + 0.25); p.hypeTv = (p.hypeTv || 0) + 10; }
+    confirm(r.truth ? `Bestätigt: neue Folgen von {t:${r.st}|${p.id}}` : `Dementi: keine neuen Folgen von {t:${r.st}|${p.id}}`, [r.truth ? "Der Sender kündigt die Rückkehr mit großer Kampagne an." : "Ein Sprecher nennt die Berichte „reine Spekulation“."]);
+  } else if (r.kind === "casting" && q) {
+    if (r.truth && !q.holder) { q.holder = r.to; q.until = G.day + ri(200, 500); confirm(`Bestätigt: {p:${q.id}} unterschreibt bei {s:${r.to}}`, ["Wer früher reagiert hätte, hätte das Gesicht selbst haben können."]); }
+    else { r.truth = false; r.status = "dementiert"; if (l) l.rumor = r.status; confirm(`Dementi: kein Vertrag zwischen {p:${q.id}} und {s:${r.to}}`, [q.holder ? "Inzwischen ist die Person anderweitig gebunden." : "Die Person ist weiterhin frei."]); }
+  } else if (r.kind === "gage" && q) {
+    if (r.truth && q.holder === P.id) { q.pat = Math.max(0, (q.pat ?? 80) - 25); q.wantRaise = 0.15; confirm(`Bestätigt: {p:${q.id}} fordert 15 % mehr`, ["Ohne Anpassung droht beim nächsten Vertragsende der Abschied."]); }
+    else { r.truth = false; r.status = "dementiert"; if (l) l.rumor = r.status; } if (!(r.truth && q.holder === P.id)) confirm(`Dementi: {p:${q.id}} fühlt sich wohl`, ["Das Management spricht von „frei erfundenen Geschichten“."]);
+  }
+}
+// Verletzungen schwächen die Zugkraft eines Klubs
+const injuryF = title => { const inj = G.injury || {}; return Object.entries(inj).some(([c, until]) => until >= G.day && title.includes(c)) ? 0.85 : 1; };
+function rumorPanel() {
+  const list = (G.rumors || []).slice().reverse().slice(0, 12);
+  if (!list.length) return "";
+  const done = (G.rumors || []).filter(r => r.status !== "open"), hit = done.filter(r => r.status === "bestätigt").length;
+  return `<section class="panel mb"><div class="ph"><h2>Gerüchteküche</h2><span class="aside">${done.length ? `${hit} von ${done.length} bewahrheitet` : "Beobachten lohnt sich"}</span></div><div class="tbl"><table><tbody>
+    ${list.map(r => { const l = G.log.find(x => x.aid === r.aid); return `<tr><td class="muted">${l ? dateShort(l.day) : ""}</td><td class="title">${l ? `<span class="tlink" data-act="art" data-k="${r.aid}">${esc(l.msg)}</span>` : esc(r.kind)}</td><td><span class="chip ${r.status === "bestätigt" ? "good" : r.status === "dementiert" ? "" : "warn"}">${r.status === "open" ? `offen bis ${dateShort(r.due)}` : r.status}</span></td></tr>`; }).join("")}</tbody></table></div></section>`;
 }
 // =====================================================================
 // Formatprofil: Quotenverlauf, Publikum, Analyse und Maßnahmen je Sendung
