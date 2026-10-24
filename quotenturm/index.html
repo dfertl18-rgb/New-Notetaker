@@ -414,6 +414,8 @@ td.cw { position: relative; } .cell-i { position: absolute; right: 8px; top: 8px
 @media (max-width: 700px) { .home-row { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .season { display: grid; grid-template-columns: repeat(12, 1fr); gap: 4px; height: 110px; align-items: end; } .season div { display: grid; grid-template-rows: 1fr auto; height: 100%; justify-items: center; gap: 3px; } .season i { width: 70%; align-self: end; background: var(--line); border-radius: 3px 3px 0 0; display: block; } .season .on i { background: var(--hot); } .season span { font-size: 11px; color: var(--muted); }
 .tsel { position: absolute; right: 34px; top: 8px; z-index: 1; background: var(--panel); color: var(--muted); border: 1px solid var(--line); border-radius: 4px; font-size: 12px; padding: 1px 2px; max-width: 74px; } .cell .tt { color: var(--text); font-variant-numeric: tabular-nums; }
+.moodbar { position: relative; height: 14px; border-radius: 7px; background: linear-gradient(90deg, hsl(350 70% 55%), hsl(0 0% 55%) 50%, hsl(215 70% 55%)); } .moodbar i { position: absolute; top: -4px; width: 6px; height: 22px; margin-left: -3px; border-radius: 3px; } .mood-now { border: 2px solid #fff; } .mood-you { background: var(--hot); width: 4px !important; outline: 2px dashed var(--hot); outline-offset: 2px; }
+.pick.on { border-color: var(--hot); background: color-mix(in srgb, var(--hot) 12%, var(--panel)); }
 .dv-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--line); }
 .dv { display: grid; grid-template-columns: 240px 1fr; gap: 0; } .dv-pool { border-right: 1px solid var(--line); padding: 10px; display: grid; gap: 6px; align-content: start; max-height: 75vh; overflow: auto; } .dv-list { display: grid; gap: 4px; }
 .dv-scroll { max-height: 75vh; overflow: auto; position: relative; } .dv-col { position: relative; margin: 0 8px; user-select: none; } .dv-col:not(.lock) { cursor: copy; }
@@ -633,6 +635,7 @@ td.cw { position: relative; } .cell-i { position: absolute; right: 8px; top: 8px
     <nav id="mainnav" aria-label="Hauptmenü"></nav>
     <div class="top-spacer"></div>
     <button id="searchBtn" class="btn ghost small" data-act="search" title="Suche (Strg+K)" aria-label="Suche" style="margin-right:4px">🔍</button>
+    <button id="edBtn" class="btn ghost small" data-act="editor" title="Editor & Datenbank" aria-label="Editor" style="margin-right:4px">✏️</button>
     <button id="setBtn" class="btn ghost small" data-act="openSettings" title="Einstellungen" aria-label="Einstellungen" style="margin-right:8px">⚙️</button>
     <div class="datewrap"><div class="datebox"><b id="dateTxt">Do 22 Okt 2026</b><span id="dateSub">Sendeabend heute</span></div>
     <div class="timebox" id="clock">08:00</div></div>
@@ -1857,7 +1860,7 @@ function attrCell(st, i, c) {
     if (c.cont && p.kind !== "sport") A *= 0.96;
     if (p.pull) A *= 1 + p.pull * 0.12; // bekannte Titel ziehen mehr Publikum
     A *= szAttr(p) * guestF(p); // Staffelpause: nur Wiederholung; Gäste-Assistent
-    A *= demoFactor(st, p) * hostMalus(p) * hostF(st, p) * exclF(st, p) * polF(st, p) * breakF(st, p) * pressF(st, p) * genreSeason(p); // passt die Sendung (und die Moderation) zum Publikum des Senders?
+    A *= demoFactor(st, p) * hostMalus(p) * hostF(st, p) * exclF(st, p) * polF(st, p) * lineF(st, p) * moraleF(p) * breakF(st, p) * pressF(st, p) * genreSeason(p); // passt die Sendung (und die Moderation) zum Publikum des Senders?
     if (p.kind === "sport") A *= commF(p); // Kommentator*in
     if (blMagazine(p) && !matchday(G.day)) A *= 0.35; // ohne Spieltag keine Bilder
     if (p.boost && (!p.boost.day || p.boost.day === G.day)) A *= 1 + p.boost.v; // Gaststar, Event-Ausgabe, Relaunch
@@ -2867,7 +2870,7 @@ function newsroomCalc() {
 }
 function newsroomDay() {
   const P = me(), c = newsroomCalc(), N = G.newsroom;
-  P.progs.filter(p => p.genre === "Nachrichten").forEach(p => { p.q = c.q; p.topic = Math.max(p.topic, 0.5 + 0.1 * c.extreme); });
+  P.progs.filter(p => p.genre === "Nachrichten").forEach(p => { p.q = clamp(c.q + newsQ(p), 15, 99); p.topic = Math.max(p.topic, 0.5 + 0.1 * c.extreme); });
   if (N.style === 0 && c.cred >= 70) P.favor += 0.3;
   if (N.style === 2) { P.favor = Math.max(0, P.favor - 0.3); if (Math.random() < 0.06) { const fine = r1000(rnd(30000, 90000)); book(P, "Strafen", -fine); P.conf = clamp(P.conf - 1, 0, 100); logMsg("Landesmedienanstalt", "Nachrichten", `Prüfverfahren wegen verletzter Sorgfaltspflicht: Ein Boulevard-Beitrag fiel auf eine Falschmeldung herein. Bußgeld ${eur(fine)}.`, true); } }
   if (c.extreme === 2 && Math.random() < 0.15) {
@@ -3051,7 +3054,8 @@ function casting(P) {
       <div class="pills">${DIR_SORTS.map(([k, n]) => `<button data-act="dirSortPage" data-k="${k}" class="${dirSort === k ? "on" : ""}">${n}</button>`).join("")}</div></div>
     <div class="plist" id="castList"></div>`;
 }
-function newsroom(P) {
+const newsroom = P => newsroom0(P) + newsMoodPanel(P) + newsFmtPanel(P);
+function newsroom0(P) {
   const N = G.newsroom, c = newsroomCalc(), a = c.a;
   const meter = (label, v, max, color, txt) => `<div class="eff"><div class="eff-h"><span>${label}</span><b>${txt}</b></div><span class="sbar big"><i style="width:${clamp(v / max * 100, 0, 100)}%;background:${color}"></i></span></div>`;
   return title("Nachrichtenredaktion", `<span class="muted">gilt für alle Nachrichtensendungen von ${esc(P.name)}</span>`) +
@@ -3373,7 +3377,7 @@ function nextDay() {
   G.day++;
   for (const st of G.stations) st.fin = {};
   projectDay();
-  prodDay(); peopleDay(); newsroomDay(); trendDay(); awardsDay(); marketDay(); presaleDay(); rivalsDay(); formatDay(); postQuotenReport(); frameDay(); conflictCheck(); fmDay(); scoutDay(); rumorDay(); staffDay(); politicsDay(); agendaDay(); seasonTick(); cineDay(); inhouseDay(); socialDay(); hofDay(); pressDay(); financeDay(); maDay(); if (G.day % 7 === 1) { careerWeek(); financeWeek(); contractWeek(); fmtTradeWeek(); } if (G.day % 84 === 0) quarterReport(); if (G.career && (G.career.out || G.career.mode === "stream")) fillHorizon(me()); svDay(); primeCheck(); szDay();
+  prodDay(); peopleDay(); newsroomDay(); trendDay(); awardsDay(); marketDay(); presaleDay(); rivalsDay(); formatDay(); postQuotenReport(); frameDay(); conflictCheck(); fmDay(); scoutDay(); rumorDay(); staffDay(); politicsDay(); agendaDay(); seasonTick(); cineDay(); inhouseDay(); socialDay(); moraleDay(me()); hofDay(); pressDay(); financeDay(); maDay(); if (G.day % 7 === 1) { careerWeek(); financeWeek(); contractWeek(); fmtTradeWeek(); } if (G.day % 84 === 0) quarterReport(); if (G.career && (G.career.out || G.career.mode === "stream")) fillHorizon(me()); svDay(); primeCheck(); szDay();
   if (dateOf(G.day).getDate() === 1 && !G.event) setInterview(); // Interview zum Monatsbeginn
   if (G.mods.coverup && G.day >= G.mods.coverup.day) {
     const c = G.mods.coverup; G.mods.coverup = null;
@@ -4148,6 +4152,7 @@ function act(b) {
     case "planDay": planDay = wd; break;
     case "fillDay": { const dd = +b.dataset.k; if (!(dd === G.day && planLocked())) { const n = fillGaps(P, calDay(P, dd), weekday(dd)); autoTidy(P, dd); if (dd === G.day) buildToday(P); toast(n ? `${n} Sendungen in Lücken eingesetzt.` : "Keine Lücken."); } break; }
     case "dvZoom": case "dvPick": case "dvResolve": case "dvOver": case "dvOpenK": case "dvCasc": case "dvTime": case "dvDel": case "dvSwap": case "dvIns": case "fixDlg": case "fixWd": case "fixQuick": case "fixTime": case "fixAdd": case "fixDel": dvAction(P, k, b, id); return;
+    case "nfNew": case "nfEdit": case "nfLen": case "nfMod": case "nfSave": nfAction(P, k, b, id); return;
     case "sqIns": case "sqRep": case "sqPick": case "sqDel": case "sqMove": sqAction(P, k, b, id); return;
     case "addExtra": { const [dd, ii] = b.dataset.k.split("|").map(Number); if (dd === G.day && planLocked()) return; openExtraPicker(P, dd, ii); return; }
     case "pickExtra": { const [dd, ii] = b.dataset.k.split("|").map(Number); editPlan(dd, sc => { sc[ii].extra = (sc[ii].extra || []).concat(id); }); closeModal(); break; }
@@ -6125,7 +6130,7 @@ function politicsDay() {
   const top = agTop(), pool0 = POL_TOPICS.filter(x => x.t !== S.topic.t), pref = pool0.filter(x => fieldOf(x.res) === top);
   const t = pick(pref.length && Math.random() < 0.75 ? pref : pool0);
   for (const [k, v] of Object.entries(t.ax)) S.ax[k] = clamp(S.ax[k] + v + ri(-2, 3), 10, 95);
-  S.topic = t; S.hist.unshift([G.day, t.t]); S.hist.length = Math.min(S.hist.length, 12);
+  S.topic = t; moodWeek(t); S.hist.unshift([G.day, t.t]); S.hist.length = Math.min(S.hist.length, 12);
   // Konkurrenz-Talks buchen ihre Gäste für die Woche
   S.booked = {};
   const rivalsTalk = G.stations.filter(st => !isMe(st) && st.progs.some(isTalk));
@@ -8705,6 +8710,143 @@ function autoTidy(P, d) {
     items.push({ p, t: gap[0] }); used.add(p.id); changed = true;
   }
   if (changed) writeItems(P, d, items);
+}
+// =====================================================================
+// Nachrichtenformate aus Bausteinen: Länge, Wetter, Börse, Sport, Regionales …
+// und eine Stimmung im Land, an der sich die Blattlinie misst.
+// =====================================================================
+// [id, Name, Minuten, Qualität, Zielgruppen-Verschiebung Z1–Z4, Werbefaktor, Beschreibung]
+const NEWS_MODS = [
+  ["head", "Schlagzeilen & Berichte", 5, 0, [0, 0, 0, 0], 0, "Pflichtteil jeder Ausgabe"],
+  ["wetter", "Wetter", 3, 1, [0, 0.02, 0.05, 0.06], 0.03, "Breites Publikum, sponsorfähig"],
+  ["boerse", "Börse & Wirtschaft", 4, 1, [-0.04, 0.06, 0.08, 0], 0.05, "Kaufkräftige Zuschauer, höhere Werbepreise"],
+  ["sport", "Sport", 5, 1, [0.08, 0.07, 0.02, -0.02], 0.02, "Jüngere Zuschauer, stark an Spieltagen"],
+  ["regio", "Regionales", 4, 1, [-0.02, 0.02, 0.06, 0.08], 0, "Nähe und Vertrauen"],
+  ["kultur", "Kultur & Leute", 3, 1, [0.02, 0.02, 0.03, 0.03], 0, "Abwechslung, Boulevard-Nähe"],
+  ["service", "Verbraucher & Service", 4, 1, [0, 0.06, 0.05, 0.03], 0.02, "Nutzwert – Preise, Recht, Gesundheit"],
+  ["gast", "Studiogast / Interview", 6, 3, [0, 0.02, 0.04, 0.04], 0, "Mehr Tiefe, kostet Sendezeit"],
+  ["komm", "Kommentar", 2, 1, [0, 0, 0.02, 0.02], -0.02, "Blattlinie wirkt doppelt so stark"],
+];
+const NEWS_LENS = [5, 10, 15, 20, 25, 30, 45, 60];
+const modOf = id => NEWS_MODS.find(m => m[0] === id);
+function newsCalc(len, mods) {
+  const ms = ["head", ...mods.filter(m => m !== "head")].map(modOf).filter(Boolean);
+  const content = ms.reduce((a, m) => a + m[2], 0) + Math.round(len * 0.35); // Nachrichtenstoff wächst mit der Länge
+  let q = ms.reduce((a, m) => a + m[3], 0);
+  const rushed = Math.max(0, content - len), thin = Math.max(0, Math.round(len * 0.75) - content);
+  q -= rushed * 2 + thin;
+  if (len >= 30 && ms.length >= 5) q += 2; // vollwertiges Journal
+  const z = ZGEN.Nachrichten.map((v, k) => clamp(v + ms.reduce((a, m) => a + m[4][k], 0), 0.1, 1.2));
+  const adF = Math.round((1 + ms.reduce((a, m) => a + m[5], 0)) * 100) / 100;
+  return { ms, content, q: Math.round(q), rushed, thin, z, adF, komm: ms.some(m => m[0] === "komm") };
+}
+function newsApply(p) {
+  if (!p.news) return;
+  const c = newsCalc(p.news.len, p.news.mods);
+  p.dur = p.news.len; p.len = Math.max(1, Math.ceil(p.news.len / 60)); p.zp = c.z; p.adF = c.adF;
+}
+const newsQ = p => p && p.news ? newsCalc(p.news.len, p.news.mods).q : 0;
+// ---------------------------------------------------------------------
+// Stimmung im Land: −2 (links) … +2 (rechts), driftet wöchentlich; Themen geben Impulse.
+// Beide Richtungen wirken spiegelgleich – das Spiel bewertet keine Haltung.
+// ---------------------------------------------------------------------
+function ensureMood() { if (!G.mood) G.mood = { lean: rnd(-0.5, 0.5), hist: [] }; return G.mood; }
+function moodWeek(topic) {
+  const M = ensureMood(), push = topic ? ((hashStr(topic.t) % 5) - 2) * 0.12 : 0;
+  M.lean = clamp(M.lean * 0.85 + push + rnd(-0.35, 0.35), -2, 2);
+  M.hist.unshift([G.day, Math.round(M.lean * 100) / 100]); M.hist.length = Math.min(M.hist.length, 16);
+  const f = lineFit(), before = M.lastFit;
+  M.lastFit = f;
+  if (before != null && Math.abs(f - before) >= 0.35) logMsg("Branchendienst Medienplatz", "Nachrichten", f > before ? `Stimmungsumschwung: Die Blattlinie von ${me().name} trifft gerade den Nerv vieler Zuschauer – die Nachrichten legen zu.` : `Stimmungsumschwung: Die Blattlinie von ${me().name} liegt quer zur aktuellen Stimmung im Land – Zuschauer wandern zu anderen Nachrichten ab.`, true);
+}
+const moodName = l => l <= -1.3 ? "deutlich links" : l <= -0.5 ? "eher links" : l < 0.5 ? "ausgeglichen" : l < 1.3 ? "eher rechts" : "deutlich rechts";
+const moodColor = l => `hsl(${l < 0 ? 350 : 215} ${Math.round(Math.min(1, Math.abs(l) / 2) * 70)}% 55%)`;
+// Passung Blattlinie ↔ Stimmung: +1 trifft genau, −1 liegt maximal daneben
+function lineFit() { const N = G.newsroom; if (!N) return 0; return 1 - Math.abs((N.line - 2) - ensureMood().lean) / 2; }
+function lineF(st, p) {
+  if (!isMe(st) || !G.newsroom || !p) return 1;
+  const news = p.genre === "Nachrichten", half = p.genre === "Magazin" || isTalk(p);
+  if (!news && !half) return 1;
+  const extreme = Math.abs(G.newsroom.line - 2);
+  let w = (0.08 + 0.14 * crisis()) * (half ? 0.5 : 1) * (p.news && newsCalc(p.news.len, p.news.mods).komm ? 2 : 1);
+  return 1 + w * lineFit() + 0.03 * extreme; // Treue Kernzuschauer bei klarer Linie
+}
+function newsMoodPanel(P) {
+  const M = ensureMood(), N = G.newsroom, f = lineFit(), c = crisis();
+  const pos = v => ((v + 2) / 4 * 100).toFixed(1) + "%";
+  return `<section class="panel mb" style="margin-top:12px"><div class="ph"><h2>Stimmung im Land</h2><span class="aside">wöchentlich neu · je angespannter die Lage, desto stärker wirkt die Blattlinie</span></div>
+    <div class="pad"><div class="moodbar"><i class="mood-you" style="left:${pos(N.line - 2)}" title="Ihre Blattlinie"></i><i class="mood-now" style="left:${pos(M.lean)};background:${moodColor(M.lean)}" title="Stimmung"></i></div>
+    <div class="lean-labels" style="margin-top:4px">${LINES.map(l => `<span class="muted" style="flex:1;text-align:center;font-size:12px">${l}</span>`).join("")}</div>
+    <div class="tiles" style="margin-top:10px"><div class="tile"><small>Stimmung</small><b style="font-size:18px;color:${moodColor(M.lean)}">${moodName(M.lean)}</b><span>${M.hist[1] ? (M.lean > M.hist[1][1] + 0.1 ? "dreht nach rechts" : M.lean < M.hist[1][1] - 0.1 ? "dreht nach links" : "stabil") : "erste Woche"}</span></div>
+      <div class="tile"><small>Passung Ihrer Linie</small><b class="${f >= 0.5 ? "up" : f < 0 ? "down" : ""}">${Math.round((f + 1) * 50)} %</b><span>${f >= 0.5 ? "trifft den Nerv" : f < 0 ? "liegt quer zur Stimmung" : "teilweise"}</span></div>
+      <div class="tile"><small>Gewicht der Linie</small><b>${Math.round((0.08 + 0.14 * c) * 100)} %</b><span>Lage ${c > 0.5 ? "angespannt" : c > 0.2 ? "unruhig" : "ruhig"}</span></div>
+      <div class="tile"><small>Wirkung auf Nachrichten</small><b class="${lineF(P, { genre: "Nachrichten" }) >= 1 ? "up" : "down"}">${((lineF(P, { genre: "Nachrichten" }) - 1) * 100).toFixed(1).replace(".", ",")} %</b><span>Magazine & Talk halb so stark</span></div></div>
+    <p class="fine">Die Stimmung ist ein Spielwert ohne Bezug zu echten Umfragen. Eine Linie nah an der Stimmung bringt Reichweite, eine klare Schlagseite treue Kernzuschauer, aber weniger Werbekunden. Ein Kommentar-Baustein verdoppelt die Wirkung – in beide Richtungen.</p></div></section>`;
+}
+// ---------------------------------------------------------------------
+// Formate verwalten
+// ---------------------------------------------------------------------
+let nfDraft = null;
+function newsFmtPanel(P) {
+  const list = P.progs.filter(p => p.genre === "Nachrichten" && !p.house);
+  return `<section class="panel mb"><div class="ph"><h2>Nachrichtenformate</h2><button class="btn hot small" data-act="nfNew">+ Neues Nachrichtenformat</button></div>
+    <div class="tbl"><table><thead><tr><th>Format</th><th>Länge</th><th>Bausteine</th><th class="num">Qualität</th><th></th></tr></thead><tbody>
+    ${list.map(p => { const mods = p.news ? p.news.mods : ["wetter"]; return `<tr><td class="title">${titleLink(`${P.id}|${p.id}`, p.title)}${slotsOf(p).length ? `<div class="muted">${slotsOf(p).map(s => wdsName(s.wds) + " " + hhmm(s.t)).join(" · ")}</div>` : ""}</td><td>${netDur(p)} Min.</td><td>${["head", ...mods].map(id => `<span class="chip">${esc(modOf(id)[1])}</span>`).join(" ")}</td><td class="num">${p.q}</td><td class="r"><button class="btn small" data-act="nfEdit" data-id="${p.id}">Bearbeiten</button> <button class="btn small" data-act="fixDlg" data-id="${p.id}">Sendetermine</button></td></tr>`; }).join("") || '<tr><td colspan="5" class="muted">Noch keine Nachrichtensendung.</td></tr>'}
+    </tbody></table></div></section>`;
+}
+function openNewsFmt(P) {
+  const d = nfDraft, c = newsCalc(d.len, d.mods), base = newsroomCalc().q;
+  openModal(`<header><h2>${d.pid ? "Nachrichtenformat bearbeiten" : "Neues Nachrichtenformat"}</h2><button class="btn" data-act="close">Schließen</button></header><div class="dbody">
+    <label class="muted">Name <input class="search" id="nfTitle" value="${esc(d.title)}" style="max-width:360px"></label>
+    <h3 style="margin-top:12px">Länge</h3><div class="pills">${NEWS_LENS.map(l => `<button class="${d.len === l ? "on" : ""}" data-act="nfLen" data-k="${l}">${l} Min.</button>`).join("")}</div>
+    <h3 style="margin-top:12px">Bausteine</h3><div class="picklist">${NEWS_MODS.map(m => { const on = m[0] === "head" || d.mods.includes(m[0]); return `<button class="pick ${on ? "on" : ""}" data-act="nfMod" data-k="${m[0]}" ${m[0] === "head" ? "disabled" : ""}><b>${on ? "✓ " : ""}${esc(m[1])} · ${m[2]} Min.</b><span class="meta">${esc(m[6])}${m[5] ? ` · Werbung ${m[5] > 0 ? "+" : ""}${Math.round(m[5] * 100)} %` : ""}</span></button>`; }).join("")}</div>
+    <div class="tiles" style="margin-top:12px"><div class="tile"><small>Inhalt</small><b>${c.content} / ${d.len} Min.</b><span>${c.rushed ? `<span class="down">gehetzt (−${c.rushed * 2} Q)</span>` : c.thin ? `<span class="down">gestreckt (−${c.thin} Q)</span>` : "passt"}</span></div>
+      <div class="tile"><small>Qualität</small><b>${clamp(base + c.q, 15, 99)}</b><span>Redaktion ${base} ${c.q >= 0 ? "+" : "−"} ${Math.abs(c.q)} Bausteine</span></div>
+      <div class="tile"><small>Werbewert</small><b>×${c.adF.toLocaleString("de-DE")}</b><span>${c.komm ? "Kommentar: Linie wirkt doppelt" : ""}</span></div></div>
+    <div class="pad" style="padding:8px 0">${ZN.map((n, k) => `<div class="agebar"><span>${n}</span><div class="track"><i style="width:${c.z[k] / 1.2 * 100}%"></i></div></div>`).join("")}</div>
+    <div class="actions"><button class="btn hot" data-act="nfSave">${d.pid ? "Übernehmen" : "Format anlegen"}</button>${d.pid ? "" : '<span class="fine">Danach direkt feste Sendetermine wählen.</span>'}</div></div>`);
+}
+function nfAction(P, k, b, id) {
+  switch (k) {
+    case "nfNew": nfDraft = { pid: null, title: `${P.name} Nachrichten kompakt`, len: 15, mods: ["wetter"] }; break;
+    case "nfEdit": { const p = progOf(P, id); if (!p) return; nfDraft = { pid: p.id, title: p.title, len: p.news ? p.news.len : netDur(p), mods: p.news ? p.news.mods.slice() : ["wetter", "sport"] }; break; }
+    case "nfLen": nfDraft.len = +b.dataset.k; break;
+    case "nfMod": { const m = b.dataset.k; nfDraft.mods = nfDraft.mods.includes(m) ? nfDraft.mods.filter(x => x !== m) : nfDraft.mods.concat(m); break; }
+    case "nfSave": {
+      const t = (document.getElementById("nfTitle") || {}).value; if (t && t.trim()) nfDraft.title = t.trim().slice(0, 60);
+      const d = nfDraft; let p = d.pid && progOf(P, d.pid);
+      if (!p) { p = { id: uid(), title: d.title, genre: "Nachrichten", kind: "show", q: 50, len: 1, topic: 1, wear: 1, fsk: 0, real: false, home: P.id, aired: 0, runs: 0, price: 0 }; P.progs.push(p); }
+      p.title = d.title; p.news = { len: d.len, mods: d.mods.slice() }; newsApply(p);
+      p.q = clamp(newsroomCalc().q + newsQ(p), 15, 99);
+      closeModal(); toast(`„${p.title}“: ${d.len} Min. mit ${d.mods.length + 1} Bausteinen.${d.pid ? " Der Sendekalender zeigt die neue Länge – bitte auf Überschneidungen achten." : ""}`);
+      if (!d.pid) openFixDlg(P, p); else render();
+      nfDraft = null; return;
+    }
+  }
+  if (nfDraft) openNewsFmt(P);
+}
+// Quotenerfolg hebt die Moral aller Mitwirkenden eigener Formate und Produktionen, Flops drücken sie
+function moraleDay(P) {
+  const avg = Math.max(0.1, stationAvgMA(P)), good = [], bad = [];
+  for (const x of P.progs) {
+    if (x.kind === "sport" || x.house || x.filler || !(x.own || x.prod || x.home === P.id)) continue;
+    const h = (x.hist || []).filter(e => e[0] >= G.day - 1); if (!h.length) continue;
+    const ma = Math.max(...h.map(e => e[3])), r = ma / avg, d = r >= 1.6 ? 4 : r >= 1.2 ? 2 : r < 0.6 ? -2 : 0;
+    if (!d) continue;
+    const ids = new Set([x.host, ...titleCast(x, x.title).map(c => c.id)].filter(Boolean));
+    let n = 0;
+    for (const id of ids) { const q = person(id); if (!q || q.moralDay === G.day) continue; q.moralDay = G.day; q.sat = clamp(pSat(q) + d, 0, 100); n++; }
+    if (n) (d > 0 ? good : bad).push(`„${x.title}“ (${pct(ma)}, ${n} ${n === 1 ? "Person" : "Personen"})`);
+  }
+  if (good.length) logMsg("Casting", "Personal", `Gute Quoten heben die Moral: ${good.slice(0, 3).join(", ")} – Zufriedenheit steigt, Teams arbeiten motivierter.`);
+  if (bad.length) logMsg("Casting", "Personal", `Schwache Quoten drücken die Stimmung: ${bad.slice(0, 3).join(", ")}.`);
+}
+// Motivierte Teams spielen besser: Ø-Zufriedenheit von Moderation und Besetzung wirkt bis ±5 %
+function moraleF(p) {
+  if (!p || p.kind === "sport" || p.house) return 1;
+  const qs = [p.host, ...((prodOf(p) || {}).cast || [])].filter(Boolean).map(person).filter(Boolean);
+  if (!qs.length) return 1;
+  return 1 + clamp((qs.reduce((a, q) => a + pSat(q), 0) / qs.length - 55) / 900, -0.05, 0.05);
 }
 // =====================================================================
 // Formatprofil: Quotenverlauf, Publikum, Analyse und Maßnahmen je Sendung
