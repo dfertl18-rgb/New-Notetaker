@@ -6590,8 +6590,21 @@ let EDB = null, TITLES = null, edSel = null, edQuery = "", edRole = "alle", edMs
 function seedPrivate(D) {
   const M = typeof window !== "undefined" && window.MM_PRIVATE;
   if (!M || !Array.isArray(M.people) || (D.privV || 0) >= M.version) return D;
+  try { gameTitleSet(); } catch (err) { return D; } // Skript wird noch geladen
   const have = new Map(D.people.map(e => [e.eindeutige_id, e]));
   for (const e of M.people) { const o = have.get(e.eindeutige_id); if (!o) D.people.push({ ...e, gage: e.gage || autoGage(e.talent, e.charisma) }); else if (e.preset && !o.manual) o.preset = e.preset; }
+  // Vita-Profile (Wikidata-Format): gleichnamige Einträge ergänzen, Code und Vorgaben bleiben erhalten
+  if (Array.isArray(M.vita) && M.vitaCols) {
+    const byName = new Map(D.people.map(e => [e.name.toLowerCase(), e]));
+    for (const row of M.vita) {
+      const o = {}; M.vitaCols.forEach((c, k) => { o[c] = row[k]; });
+      const e = rowToVitaPerson(o); if (!e) continue;
+      const old = byName.get(e.name.toLowerCase());
+      if (old) { if (old.manual) continue; const known = [...new Set(String(old.bekannt_aus || "").split(/;\s*/).concat(e.bekannt_aus.split(/;\s*/)).filter(Boolean))].join("; ");
+        Object.assign(old, e, { eindeutige_id: old.eindeutige_id, rolle: old.rolle || e.rolle, bekannt_aus: known, sender: old.sender || e.sender, herkunft: old.herkunft || e.herkunft, bekanntheit: Math.max(old.bekanntheit || 0, e.bekanntheit), preset: old.preset, talent: old.preset ? old.talent : e.talent, charisma: old.preset ? old.charisma : e.charisma }); }
+      else { D.people.push(e); byName.set(e.name.toLowerCase(), e); }
+    }
+  }
   D.privV = M.version; EDB_IDX = null; storeDB();
   return D;
 }
