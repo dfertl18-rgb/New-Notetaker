@@ -1,0 +1,29 @@
+name: KI-Modell bereitstellen
+
+# Lädt das freie Sprachmodell (Apache-2.0) einmalig von HuggingFace und legt es als Release-Datei ab,
+# damit die Windows-Builds es in den Installer packen können.
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/ki-modell.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  model:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Modell herunterladen
+        run: |
+          curl -L --fail --retry 3 -o qwen2.5-1.5b-instruct-q4_k_m.gguf "https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/qwen2.5-1.5b-instruct-q4_k_m.gguf"
+          curl -L --fail --retry 3 -o LICENSE-Qwen2.5.txt "https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/LICENSE" || echo "Apache-2.0 – siehe https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF" > LICENSE-Qwen2.5.txt
+          sha256sum qwen2.5-1.5b-instruct-q4_k_m.gguf | tee SHA256.txt
+          ls -la
+      - name: Als Release-Datei ablegen
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view ki-modell-v1 -R "${{ github.repository }}" >/dev/null 2>&1 || gh release create ki-modell-v1 -R "${{ github.repository }}" --target "${{ github.sha }}" --title "KI-Modell für Medienmanager 2027" --notes "Qwen2.5-1.5B-Instruct (GGUF Q4_K_M, Lizenz Apache-2.0) für die eingebaute KI. Quelle: https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF"
+          gh release upload ki-modell-v1 qwen2.5-1.5b-instruct-q4_k_m.gguf SHA256.txt LICENSE-Qwen2.5.txt -R "${{ github.repository }}" --clobber
