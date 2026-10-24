@@ -554,6 +554,55 @@ td.cw { position: relative; } .cell-i { position: absolute; right: 8px; top: 8px
   .hero-img .score { font-size: 32px; }
 }
 @media (prefers-reduced-motion: reduce) { .lbar i, #toast { transition: none; } }
+/* Startbildschirm */
+#home { position: fixed; inset: 0; z-index: 40; background: #0b0a16; color: #f1eefc; overflow: auto; font-family: var(--font, Inter, sans-serif); }
+#home[hidden] { display: none; }
+.hm-scene { position: absolute; inset: 0; overflow: hidden; background: radial-gradient(120% 90% at 75% 40%, #2a2150 0%, #14112a 45%, #0b0a16 75%); }
+.hm-wall { position: absolute; right: 3%; top: 14%; width: 38%; display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; transform: perspective(900px) rotateY(-14deg); transform-origin: right center; }
+.hm-mon { display: block; aspect-ratio: 16/10; border-radius: 6px; background: #111; border: 3px solid #2b2840; box-shadow: 0 0 30px rgba(140,90,255,.25); position: relative; overflow: hidden; }
+.hm-mon b { position: absolute; inset: 0; background: linear-gradient(135deg, hsl(var(--h) 70% 45%), hsl(calc(var(--h) + 60) 70% 25%)); opacity: .75; animation: hmFlick 4s ease-in-out infinite; animation-delay: var(--d); }
+.hm-mon:nth-child(5) b { background: repeating-linear-gradient(90deg, #fff 0 12.5%, #ff0 12.5% 25%, #0ff 25% 37.5%, #0f0 37.5% 50%, #f0f 50% 62.5%, #f00 62.5% 75%, #00f 75% 87.5%, #000 87.5% 100%); opacity: .8; }
+@keyframes hmFlick { 0%, 100% { filter: brightness(1); } 50% { filter: brightness(.65); } }
+.hm-onair { position: absolute; right: 22%; top: 4%; padding: 6px 18px; border-radius: 6px; font: 700 20px/1 "Barlow Condensed", sans-serif; letter-spacing: .2em; color: #fff; background: #d11a3c; box-shadow: 0 0 24px #ff2d55; animation: hmPulse 2.4s ease-in-out infinite; }
+@keyframes hmPulse { 50% { box-shadow: 0 0 6px #ff2d55; opacity: .85; } }
+.hm-desk { position: absolute; right: 0; bottom: 0; width: 62%; height: 26%; background: linear-gradient(180deg, #2a2540, #141225); border-top: 4px solid #7c3aed; display: flex; gap: 3%; padding: 3% 6%; clip-path: polygon(8% 0, 100% 0, 100% 100%, 0 100%); }
+.hm-desk span { flex: 1; height: 26px; border-radius: 4px; background: repeating-linear-gradient(90deg, #3b355a 0 8px, #1d1a30 8px 12px); box-shadow: inset 0 0 0 1px #4a4370; }
+.hm-glow { position: absolute; right: 0; top: 0; bottom: 0; width: 8px; background: #7c3aed; box-shadow: 0 0 60px 20px rgba(124,58,237,.45); }
+.hm-ui { position: relative; z-index: 1; padding: 22px 28px 40px; max-width: 900px; }
+.hm-top small { opacity: .7; font-size: 13px; }
+.hm-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 4px 0 22px; }
+.hm-logo { font: 700 36px/1 "Barlow Condensed", sans-serif; margin-right: 8px; letter-spacing: .02em; }
+.hm-btn { font: 500 14px/1 Inter, sans-serif; color: #f1eefc; background: rgba(40,36,66,.85); border: 1px solid #3b3560; border-radius: 6px; padding: 9px 12px; cursor: pointer; }
+.hm-btn.on { background: #7c3aed; border-color: #a78bfa; }
+.hm-user { cursor: default; }
+.hm-more { position: relative; }
+.hm-menu { position: absolute; top: 110%; left: 0; z-index: 3; display: flex; flex-direction: column; min-width: 200px; background: #1d1a33; border: 1px solid #3b3560; border-radius: 8px; overflow: hidden; }
+.hm-menu button { text-align: left; padding: 10px 14px; background: none; border: 0; color: #f1eefc; cursor: pointer; font: 14px Inter, sans-serif; }
+.hm-menu button:hover { background: #2c2750; }
+.hm-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.hm-card { position: relative; display: flex; flex-direction: column; justify-content: flex-start; align-items: flex-start; padding-bottom: 44px !important; text-align: left; color: #f1eefc; background: rgba(30,26,52,.92); border: 2px solid #3b3560; border-radius: 10px; padding: 14px 16px; min-height: 150px; cursor: pointer; overflow: hidden; font-family: Inter, sans-serif; transition: transform .12s, border-color .12s; }
+.hm-card:hover { border-color: #b388ff; transform: translateY(-2px); }
+.hm-card h2, .hm-card h3, .hm-card p { position: relative; z-index: 1; }
+.hm-card h2 { margin: 0 0 8px; font: 700 28px/1.05 "Barlow Condensed", sans-serif; color: #c4a2ff; }
+.hm-card h3 { margin: 0 0 8px; font: 800 20px/1.1 "Barlow Condensed", sans-serif; letter-spacing: .04em; }
+.hm-card p { margin: 0; font-size: 15px; line-height: 1.45; color: #ded8f5; max-width: 30ch; }
+.hm-hero { grid-column: 1 / -1; min-height: 300px; }
+.hm-hero p { max-width: 46ch; font-weight: 600; }
+.hm-art { position: absolute; left: 0; right: 0; bottom: 0; height: 70%; z-index: 0; }
+.hm-studio { background: linear-gradient(180deg, transparent, #0d0b1c 85%), radial-gradient(60% 80% at 50% 100%, #3a2a7a 0%, #17132e 70%); }
+.hm-studio i { position: absolute; top: 6%; width: 22%; height: 70%; background: linear-gradient(180deg, rgba(255,255,255,.55), transparent); clip-path: polygon(45% 0, 55% 0, 100% 100%, 0 100%); opacity: .45; }
+.hm-studio i:nth-child(1) { left: 8%; } .hm-studio i:nth-child(2) { left: 39%; } .hm-studio i:nth-child(3) { left: 70%; }
+.hm-studio em { position: absolute; left: 20%; right: 20%; bottom: 10%; height: 18%; border-radius: 50%; background: radial-gradient(#8b5cf6, transparent 70%); filter: blur(4px); }
+.hm-link { position: absolute; left: 16px; bottom: 12px; font-weight: 700; text-decoration: underline; text-underline-offset: 4px; }
+.hm-badge { position: absolute; right: 14px; bottom: 10px; font-size: 54px; opacity: .9; }
+.hm-stream { background: linear-gradient(135deg, #3b1d8f, #1b2b8a 55%, #0e7490); }
+.hm-oer { background: linear-gradient(135deg, #b91c1c, #e11d48); border-color: #f87171; }
+.hm-stream p, .hm-oer p { color: #fff; max-width: 24ch; }
+.hm-wide { grid-column: 1 / -1; min-height: 110px; flex-direction: row !important; align-items: center !important; justify-content: space-around !important; padding-bottom: 14px !important; background: #ddd3ff; border-color: #c4b5fd; }
+.hm-academy { font: 800 44px/1 "Barlow Condensed", sans-serif; color: #15122a; letter-spacing: .02em; }
+.hm-academy span { color: #7c3aed; }
+.hm-stamp { font: 700 30px/1 "Barlow Condensed", sans-serif; color: #15122a; padding: 8px 14px; border: 3px solid #e11d48; border-left-color: #7c3aed; border-right-color: #7c3aed; }
+@media (max-width: 760px) { .hm-grid { grid-template-columns: 1fr; } .hm-wall { opacity: .25; width: 90%; } .hm-desk { opacity: .3; } .hm-academy { font-size: 30px; } .hm-stamp { font-size: 20px; } }
 </style>
 </head>
 <body>
@@ -2253,7 +2302,12 @@ function castingEngine(n = 4000) {
   return out;
 }
 let PIDX = null, PIDX_SRC = null;
-const person = id => { if (PIDX_SRC !== G.people) { PIDX = new Map(G.people.map(p => [p.id, p])); PIDX_SRC = G.people; } return PIDX.get(id); };
+const person = id => { if (PIDX_SRC !== G.people) { PIDX = new Map(G.people.map(p => [p.id, p])); PIDX_SRC = G.people; } return PIDX.get(id) || (G.pAlias && G.pAlias[id] ? PIDX.get(G.pAlias[id]) : undefined); };
+// Gleiche Person, andere Schreibweise: „Klöppel“ = „Kloeppel“, „Müller“ = „Mueller“, Akzente und Bindestriche egal
+const normName = n => String(n || "").toLowerCase().replace(/ä/g, "ae").replace(/ö/g, "oe").replace(/ü/g, "ue").replace(/ß/g, "ss").normalize("NFKD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z]+/g, " ").trim();
+// Sprachen aus der Herkunft – keine erfundenen Zusatzsprachen bei echten Personen
+const ORIGIN_LANG = { DE: "Deutsch", AT: "Deutsch", CH: "Deutsch", LI: "Deutsch", US: "Englisch", GB: "Englisch", CA: "Englisch", AU: "Englisch", NZ: "Englisch", IE: "Englisch", FR: "Französisch", ES: "Spanisch", MX: "Spanisch", CL: "Spanisch", AR: "Spanisch", IT: "Italienisch", TR: "Türkisch", PL: "Polnisch", NL: "Niederländisch", DK: "Dänisch", SE: "Schwedisch", NO: "Norwegisch", KR: "Koreanisch", JP: "Japanisch", BR: "Portugiesisch", PT: "Portugiesisch", RU: "Russisch" };
+const speaksGerman = p => /deutsch/i.test(p.langs || "") || ["DE", "AT", "CH", "LI"].includes(p.origin);
 // =====================================================================
 // Personen-Datenbank 2.0: Code für Fotos, Bekanntheit, Beliebtheit, Herkunft, Vita
 // Alle generierten Personen sind frei erfunden. Ein Geschlecht wird bewusst nicht gespeichert.
@@ -2279,6 +2333,7 @@ function ensurePerson(p, k) {
   p.origin = p.origin || origin;
   const [a0, a1] = AGE_RANGE[p.role] || [20, 70];
   p.age = p.age || (p.custom ? null : Math.round(a0 + (a1 - a0) * Math.pow(r(), 1.2))); // echte Personen: kein erfundenes Alter
+  if (p.custom && !p.langsSrc) p.langs = ORIGIN_LANG[p.origin] || (p.origin ? "" : "Deutsch"); // echte Personen: nur die Landessprache, sofern nichts belegt ist
   p.langs = p.langs || ["Deutsch", r() < 0.8 ? "Englisch" : null, origin === "CH" && r() < 0.5 ? "Französisch" : null, origin === "TR" ? "Türkisch" : origin === "IT" ? "Italienisch" : origin === "PL" ? "Polnisch" : null].filter(Boolean).join(", ");
   p.fame = p.fame || clamp(Math.round(p.buzz * 0.5 + p.talent * 0.3 + (r() - 0.5) * 30 + (p.age > 40 ? 6 : 0)), 3, 100);
   p.pop = p.pop || clamp(Math.round(p.fame * 0.4 + p.rel * 0.45 + (r() - 0.5) * 20), 3, 100);
@@ -2881,7 +2936,7 @@ function personRow(p, action) {
   const st = pState(p);
   return `<div class="prow ${st.k === "mine" ? "mine" : ""}">
     ${avatar(p, 46)}
-    <div class="prow-main"><b class="plink" data-person="${p.id}">${esc(p.name)}</b><span class="muted">${SPEC_NAME[p.role]} · ${esc(p.trait)}${p.role === "Nachrichten" ? ` · ${LINES[p.lean + 2]}` : ["Schauspiel", "Moderation"].includes(p.role) ? ` · ${p.genres.join(", ")}` : ""}</span></div>
+    <div class="prow-main"><b class="plink" data-person="${p.id}">${esc(p.name)}</b><span class="muted">${SPEC_NAME[p.role]}${speaksGerman(p) ? "" : " · spricht kein Deutsch"} · ${esc(p.trait)}${p.role === "Nachrichten" ? ` · ${LINES[p.lean + 2]}` : ["Schauspiel", "Moderation"].includes(p.role) ? ` · ${p.genres.join(", ")}` : ""}</span></div>
     <div class="prow-stats"><span>Talent</span>${bar(p.talent, "#22c55e")}<em>${p.talent}</em><span>Charisma</span>${bar(p.buzz, "#7c3aed")}<em>${p.buzz}</em><span>Skandal</span>${bar(110 - p.rel, "#ef4444")}<em>${110 - p.rel}</em></div>
     <div class="prow-side"><b>${meur(p.gage)}</b><span class="status"><i style="background:${st.color}"></i>${esc(st.label)}</span>${st.k === "rival" ? `<span class="muted">Ablöse ${meur(abloese(p))}</span>` : ""}</div>
     <div class="prow-act">${action(p, st)}</div></div>`;
@@ -3927,21 +3982,6 @@ function openPicker(kind, i, wd, live) {
   }
   openModal(`<header><h2>${live ? "" : dateShort(wd)} ${hh(i)} · ${kind === "prog" ? (live ? "Notfall-Wiederholung" : "Programm wählen") : "Werbespot wählen"}</h2><button class="btn" data-act="close">Abbrechen</button></header><div class="dbody"><div class="picklist">${list}</div></div>`, true);
 }
-function showStart() {
-  const has = hasSave();
-  openModal(`<div class="splash"><span class="muted">TV- & Streaming-Manager · Saison 2026/27</span><h1>Medien<em>manager</em> 2027</h1>
-      <p>Übernehmen Sie die Programmdirektion eines deutschen Fernsehsenders. Planen Sie das Programm von 0 bis 24 Uhr für jeden Wochentag, kaufen Sie Filme, Serien und Sportrechte, bestücken Sie Ihren Streamer und verfolgen Sie live, wie sich elf Konkurrenten und die Streamingdienste um die Zuschauer streiten.</p></div>
-    <div class="dbody">
-      <ul class="rules">
-        <li><b>Morgens planen</b>Wochenplan 0–24 Uhr, Programmhandel, Rechte-Auktionen, Werbung, Streaming-Katalog. Die Zeit steht still.</li>
-        <li><b>Weiter</b>Der Tag bis 18 Uhr wird ausgewertet, der Abend läuft live in der Regie – mit Werbeblöcken und Notfall-Wiederholungen.</li>
-        <li><b>Senderleitung</b>Erreichen Sie Ihr Marktanteil-Ziel nach jeweils ${SEASON} Tagen – dann geht es in die nächste Saison. Sinkt das Vertrauen auf 0, sind Sie raus.</li>
-        <li><b>Regeln</b>ÖRR: Beitrag statt Werbung nach 20 Uhr. Jugendschutz: FSK 16 ab 22, FSK 18 ab 23 Uhr.</li>
-      </ul>
-      <div class="actions">${has ? '<button class="btn hot" data-act="load">Spielstand fortsetzen</button>' : ""}<button class="btn ${has ? "" : "hot"}" data-act="choose">Neues Spiel – Sender wählen</button><button class="btn" data-act="editor">Editor & Datenimport</button></div>
-      <p class="fine">Private Spielversion. Sender-, Film- und Serientitel dienen als Kulisse; Quoten, Preise, Abozahlen und Bewertungen sind simuliert. Eigene Logo-Dateien können im Ordner logos/ abgelegt werden. Der Spielstand bleibt nur lokal auf diesem Gerät.</p>
-    </div>`);
-}
 function showChoose() {
   openModal(`<header><h2>Sender wählen</h2><button class="btn" data-act="back">Zurück</button></header><div class="dbody">
     <p class="lead">Große Sender haben starke Marken und hohe Erwartungen, kleine Sender wenig Geld, aber Luft nach oben.</p>
@@ -3997,17 +4037,31 @@ function toast(msg) {
 // =====================================================================
 function act(b) {
   const k = b.dataset.act;
-  if (k === "choose") { showAvatar(); return; }
+  if (k === "choose") { QUICKSTART = null; showAvatar(); return; }
+  if (k === "homeQuick") { QUICKSTART = b.dataset.k; showAvatar(); return; }
+  if (k === "close" && !G) { closeModal(); return; }
+  if (k === "homeNews") { homeModal("news"); return; }
+  if (k === "homeRules") { homeModal("rules"); return; }
+  if (k === "homePrivacy") { homeModal("privacy"); return; }
+  if (k === "homeSettings") { homeModal("settings"); return; }
+  if (k === "homeMore") { const m = $("homeMenu"); if (m) m.hidden = !m.hidden; return; }
+  if (k === "homeImport") { const f = $("homeFile"); if (f) f.click(); return; }
+  if (k === "homeQuit") { window.close(); return; }
   if (k === "avSet") { AV[b.dataset.k] = b.dataset.v; const tot = avPoints(); while (AV.neg + AV.cre + AV.med > tot) { const kk = ["med", "cre", "neg"].find(x => AV[x] > 0); AV[kk]--; } showAvatar(); return; }
   if (k === "avPt") { AV[b.dataset.k] = clamp(AV[b.dataset.k] + +b.dataset.v, 0, 15); showAvatar(); return; }
-  if (k === "avDone") { AV.name = ($("avName").value || "").trim().slice(0, 40); showChoose(); return; }
+  if (k === "avDone") { AV.name = ($("avName").value || "").trim().slice(0, 40);
+    if (QUICKSTART) { const [kind, id] = QUICKSTART.split(":"); QUICKSTART = null; closeModal(); hideHome(); hist = []; fut = []; planDay = null;
+      newGame(kind === "station" ? id : "kabel1"); go("overview", true);
+      if (kind === "stream") { G.quickStream = true; const e = signContract(id, "std"); delete G.quickStream; if (!e) go("svhq"); }
+      return; }
+    showChoose(); return; }
   if (k === "back") { showStart(); return; }
   if (k === "editor") { showEditor(); return; }
   if (k === "edClearAds") { AD_POOL = null; if (IDB.db) idbSet(ADS_KEY, null).catch(() => {}); else try { localStorage.removeItem(ADS_KEY); } catch (e) {} edMsg = ["Importierte Werbekunden gelöscht – das Spiel nutzt wieder die erfundenen Marken.", "good"]; renderEditor(); return; }
   if (k === "edCodes") { exportCodes(); return; }
   if (["edClose", "edRole", "edPick", "edNew", "edSave", "edDelete", "edClearTitles", "edClearPeople"].includes(k)) { edAct(k, b); return; }
-  if (k === "pickStation") { closeModal(); hist = []; fut = []; planDay = null; newGame(b.dataset.k); go("overview", true); return; }
-  if (k === "load") { load().then(ok => { if (ok) { closeModal(); hist = []; fut = []; planDay = null; startDay(); go("overview", true); } else toast("Spielstand konnte nicht geladen werden."); }); return; }
+  if (k === "pickStation") { closeModal(); hideHome(); hist = []; fut = []; planDay = null; newGame(b.dataset.k); go("overview", true); return; }
+  if (k === "load") { load().then(ok => { if (ok) { closeModal(); hideHome(); hist = []; fut = []; planDay = null; startDay(); go("overview", true); } else toast("Spielstand konnte nicht geladen werden."); }); return; }
   if (!G) return;
   const P = me();
   const id = b.dataset.id ? +b.dataset.id : null, i = b.dataset.i !== undefined && b.dataset.i !== "undefined" ? +b.dataset.i : null;
@@ -4486,7 +4540,7 @@ function planWith(id) {
 function ensemblePanel(P) {
   const list = G.people.filter(p => p.holder === P.id).sort((a, b) => b.gage - a.gage);
   return `<section class="panel mb"><div class="ph"><h2>Ihr Ensemble</h2><span class="aside">${list.length} Stars unter Vertrag · ${eur(list.reduce((a, p) => a + (p.ct ? p.ct.wk : p.gage * 0.35), 0))} pro Woche</span></div>
-    ${list.length ? `<div class="ens">${list.map(p => { const st = pState(p); return `<div class="ens-card">${avatar(p, 48)}<div class="grow"><b class="plink" data-person="${p.id}">${esc(p.name)}</b><span class="muted">${SPEC_NAME[p.role]} · ${esc(p.trait)}</span>
+    ${list.length ? `<div class="ens">${list.map(p => { const st = pState(p); return `<div class="ens-card">${avatar(p, 48)}<div class="grow"><b class="plink" data-person="${p.id}">${esc(p.name)}</b><span class="muted">${SPEC_NAME[p.role]}${speaksGerman(p) ? "" : " · spricht kein Deutsch"} · ${esc(p.trait)}</span>
       <span class="muted">Talent ${p.talent} · Charisma ${p.buzz} · bis ${dateShort(p.until)}</span>${p.ct && (p.ct.clauses || []).length ? `<span class="chip real" style="justify-self:start">${p.ct.clauses.map(k => CLAUSES[k].name).join(" · ")}</span>` : ""}</div>
       <div class="act2"><button class="btn hot small" data-act="planWith" data-k="${p.id}" ${planLocked() || st.k === "busy" ? "disabled" : ""}>${p.role === "Nachrichten" ? "Als Anchor" : st.k === "busy" ? "Im Dreh" : "Projekt planen"}</button><button class="btn small" data-act="nego" data-k="${p.id}" data-v="cast" ${planLocked() ? "disabled" : ""}>Verlängern</button></div></div>`; }).join("")}</div>`
       : '<p class="fine pad">Noch keine eigenen Stars. Verpflichten Sie Personen über die Casting-Kartei.</p>'}</section>`;
@@ -6250,7 +6304,7 @@ function openStreamPoker(sid) {
 function signContract(sid, pid) {
   if (SV_JOBS[sid]) {
     const C = ensureCareer(), pr = PROMISES.find(x => x.id === pid); if (!pr) return "Ungültig.";
-    if (repStars() < SV_JOBS[sid]) return "Ihr Ansehen reicht für diesen Streamer nicht.";
+    if (!G.quickStream && repStars() < SV_JOBS[sid]) return "Ihr Ansehen reicht für diesen Streamer nicht.";
     if (isStreamJob() && G.sv.id === sid) return "Sie leiten diesen Dienst bereits.";
     if (isStreamJob()) { const m0 = svM(); if (m0) m0.boss = false; }
     const h0 = C.hist[C.hist.length - 1]; if (h0 && !h0.to) { h0.to = G.day; h0.why = h0.why || "Wechsel"; }
@@ -7494,9 +7548,10 @@ const traitFx = t => TRAIT_FX[t] || "";
 const fachHit = (p, genre) => (p.genres || []).includes(genre) || (genre === "Sitcom" && (p.genres || []).includes("Komödie"));
 // Star-Power aus der Matrix (0–100), Gewichtung nach Berufsfeld
 function starPower(cast, genre, hosted) {
-  const v = cast.map(p => { const m = matrix(p);
+  const v = cast.map(p => { const m = matrix(p), de = speaksGerman(p);
     let s = hosted ? (m.charisma * 0.45 + m.ausstrahlung * 0.2 + m.talent * 0.2 + m.zuv * 0.15) : (m.talent * 0.6 + m.ausstrahlung * 0.25 + m.charisma * 0.15);
     s *= 5;
+    if (!de) s *= hosted ? 0.3 : 0.8; // ohne Deutsch: Moderation kaum möglich, Fiction nur synchronisiert
     if (fachHit(p, genre)) s *= 1.1;
     if (p.trait === "Comedy-Timing" && ["Komödie", "Sitcom", "Comedy"].includes(genre)) s *= 1.15;
     return s; });
@@ -7844,7 +7899,7 @@ function couple(P, p, idx) {
 let guestQ = "", guestFor = null;
 const guestFit = (q, p) => ({ Talk: 1, Show: 1, Magazin: 0.8, Reality: 0.8, Komödie: 0.6, Soap: 0.6, Serie: 0.5, Krimi: 0.4, Doku: 0.5, Nachrichten: 0.3 })[p.genre] ?? 0.4;
 const guestFee = q => r1000(Math.max(15000, q.gage * 0.2));
-const guestBoost = (q, p) => Math.round((0.05 + (q.fame || 40) / 400) * guestFit(q, p) * 100) / 100;
+const guestBoost = (q, p) => Math.round((0.05 + (q.fame || 40) / 400) * guestFit(q, p) * (speaksGerman(q) ? 1 : 0.5) * 100) / 100; // mit Dolmetscher wirkt ein Talkgast schwächer
 function guestPanel(P, p) {
   const dates = fmtDates(P, p);
   const ql = guestQ.trim().toLowerCase();
@@ -7885,6 +7940,55 @@ function facePanel(st, p) {
   for (const id of ids) if (!seen.has(id)) { seen.add(id); const q = person(id); if (q) list.push(q); }
   if (!list.length) return "";
   return `<section class="panel" style="margin-top:12px"><div class="ph"><h2>Gesicht des Formats</h2></div><div class="tbl"><table><tbody>${list.slice(0, 4).map(q => { const m = matrix(q); return `<tr><td>${avatar(q, 30)}</td><td class="title">${personLink(q)}<div class="fine">${esc(SPEC_NAME[q.role] || q.role)}</div></td><td class="num">Bekanntheit <b>${m.bekannt}</b></td><td class="num">Beliebtheit <b>${m.beliebt}</b></td><td class="num">Charisma <b>${m.charisma}</b></td></tr>`; }).join("")}</tbody></table></div></section>`;
+}
+
+// =====================================================================
+// Startbildschirm: Hauptmenü mit Karten (neue Karriere, laden, Schnellstarts, Akademie) vor einer Regieraum-Kulisse
+// =====================================================================
+const APP_VERSION = "1.2";
+let QUICKSTART = null; // Schnellstart: Sender bzw. Streamer nach der Profilerstellung direkt übernehmen
+const WHATS_NEW = [
+  ["Sendetag", "Start um 8 Uhr, Tagesprogramm im Zeitraffer mit Live-Ticker, ab 18 Uhr Live-Regie."],
+  ["Staffeln & Folgen", "Staffelformate mit Folgenzahl, Live oder Aufzeichnung, Staffelpause und Neubestellung."],
+  ["Formatprofil", "Aus dem Wochenplan öffnen: Gesicht des Formats, Wunschgast, Kopplung an passende Anlässe."],
+  ["Titeldatenbank", "Private Version: Senderarchive aus echten Erstausstrahlungen, IMDb-Werte, Lizenzanfragen."],
+  ["Personen", "Einheitliche Attribut-Matrix, Sprachen nach Herkunft, keine Dubletten bei Schreibvarianten."],
+  ["Streaming", "Karriere beim Streamer, Streamer-Historie und Katalog, Logos und Logo-Creator."],
+];
+function homeScene() {
+  const mons = Array.from({ length: 12 }, (_, k) => `<i class="hm-mon" style="--h:${(k * 47) % 360};--d:${(k % 5) * 0.7}s"><b></b></i>`).join("");
+  return `<div class="hm-scene" aria-hidden="true"><div class="hm-wall">${mons}</div><div class="hm-onair">ON AIR</div><div class="hm-desk"><span></span><span></span><span></span><span></span><span></span><span></span></div><div class="hm-glow"></div></div>`;
+}
+function showStart() {
+  closeModal();
+  let el = $("home"); if (!el) { el = document.createElement("div"); el.id = "home"; document.body.appendChild(el); }
+  const has = hasSave(), desk = !!(window.mmAI || /Electron/i.test(navigator.userAgent));
+  el.hidden = false;
+  el.innerHTML = `${homeScene()}<div class="hm-ui">
+    <div class="hm-top"><small>${APP_VERSION}</small><div class="hm-bar"><b class="hm-logo">MM27</b>
+      <button class="hm-btn" data-act="homeNews">Was ist neu?</button><button class="hm-btn on" data-act="homeSettings">⚙ Einstellungen</button>
+      <span class="hm-more"><button class="hm-btn" data-act="homeMore">Mehr ▾</button><span class="hm-menu" id="homeMenu" hidden><button data-act="editor">Editor & Datenbank</button><button data-act="homeRules">Spielprinzip</button><button data-act="homePrivacy">Datenschutz</button></span></span>
+      <span class="hm-btn hm-user">👤 ${esc(AV.name || "Programmdirektion")}</span>${desk ? '<button class="hm-btn" data-act="homeQuit">Beenden</button>' : ""}</div></div>
+    <div class="hm-grid">
+      <button class="hm-card hm-hero" data-act="choose"><h2>Neue Karriere starten</h2><p>Übernehmen Sie die Programmdirektion eines Senders – und arbeiten Sie sich nach oben.</p><span class="hm-art hm-studio"><i></i><i></i><i></i><em></em></span></button>
+      <button class="hm-card" data-act="${has ? "load" : "homeImport"}"><h2>Spiel laden</h2><p>${has ? "Ihren gespeicherten Spielstand fortsetzen." : "Noch kein Spielstand auf diesem Gerät – Spielstand-Datei laden."}</p>${has ? '<span class="hm-link" data-act="homeImport">oder Datei laden ›</span>' : ""}</button>
+      <button class="hm-card" data-act="editor"><h2>Datenbank</h2><p>Personen, Titel, Fotos und IMDb-Dateien verwalten – alles bleibt lokal.</p></button>
+      <button class="hm-card hm-stream" data-act="homeQuick" data-k="stream:netflix"><h3>STREAMER-KARRIERE</h3><p>Leiten Sie einen Streamingdienst in DACH: Abos, Kündigungen, Originals.</p><span class="hm-link">Schnellstart ›</span><span class="hm-badge">▶</span></button>
+      <button class="hm-card hm-oer" data-act="homeQuick" data-k="station:zdf"><h3>Öffentlich-rechtlich</h3><p>Beitrag statt Werbung, Auftrag und Quote im Gleichgewicht – übernehmen Sie das ZDF.</p><span class="hm-link">Schnellstart ›</span><span class="hm-badge">📡</span></button>
+      <button class="hm-card hm-wide" data-act="homeRules"><b class="hm-academy">MEDIEN<span>·</span>AKADEMIE</b><span class="hm-stamp">SPIELPRINZIP & TIPPS</span></button>
+    </div>
+    <input type="file" accept=".json" data-upload="save" id="homeFile" hidden></div>`;
+}
+function hideHome() { const el = $("home"); if (el) el.hidden = true; }
+function homeModal(kind) {
+  if (kind === "news") openModal(`<header><h2>Was ist neu in ${APP_VERSION}?</h2><button class="btn" data-act="close">Schließen</button></header><div class="dbody"><div class="slist">${WHATS_NEW.map(([a, b]) => `<div class="srow"><b>${esc(a)}</b><em></em><span>${esc(b)}</span></div>`).join("")}</div></div>`);
+  if (kind === "rules") openModal(`<header><h2>Spielprinzip</h2><button class="btn" data-act="close">Schließen</button></header><div class="dbody"><ul class="rules">
+    <li><b>Morgens planen</b>Wochenplan, Programmhandel, Rechte, Werbung, Streaming. Die Zeit steht still, bis Sie „Weiter“ drücken.</li>
+    <li><b>Sendetag</b>Ab 8 Uhr läuft das Tagesprogramm im Zeitraffer, ab 18 Uhr übernehmen Sie live die Regie.</li>
+    <li><b>Endlose Karriere</b>Es gibt kein Spielende. Erfolg steigert Ihre Reputation, Misserfolg kostet den Job – dann bewerben Sie sich neu, auch bei Streamern.</li>
+    <li><b>Realismus</b>Formate haben Staffeln, Verträge Laufzeiten, Lizenzen Ausstrahlungsrechte. ÖRR: keine Werbung nach 20 Uhr. Jugendschutz: FSK 16 ab 22, FSK 18 ab 23 Uhr.</li></ul></div>`);
+  if (kind === "privacy") openModal(`<header><h2>Datenschutz</h2><button class="btn" data-act="close">Schließen</button></header><div class="dbody"><p>Das Spiel sammelt keine Daten. Spielstände, eigene Datenbanken, Fotos und Logos liegen nur auf diesem Gerät. Die eingebaute KI läuft lokal ohne Internetverbindung.</p><p class="fine">Echte Personen werden neutral dargestellt: keine erfundenen Zitate, kein Privatleben, keine Charakter-Etiketten.</p></div>`);
+  if (kind === "settings") openModal(`<header><h2>Einstellungen</h2><button class="btn" data-act="close">Schließen</button></header><div class="dbody">${settingsPage()}</div>`);
 }
 
 // =====================================================================
@@ -8550,24 +8654,39 @@ function seedPrivate(D) {
   for (const e of M.people) { const o = have.get(e.eindeutige_id); if (!o) D.people.push({ ...e, gage: e.gage || autoGage(e.talent, e.charisma) }); else if (e.preset && !o.manual) o.preset = e.preset; }
   // Vita-Profile (Wikidata-Format): gleichnamige Einträge ergänzen, Code und Vorgaben bleiben erhalten
   if (Array.isArray(M.vita) && M.vitaCols) {
-    const byName = new Map(D.people.map(e => [e.name.toLowerCase(), e]));
+    const byName = new Map(D.people.map(e => [normName(e.name), e]));
     for (const row of M.vita) {
       const o = {}; M.vitaCols.forEach((c, k) => { o[c] = row[k]; });
       const e = rowToVitaPerson(o); if (!e) continue;
-      const old = byName.get(e.name.toLowerCase());
+      const old = byName.get(normName(e.name));
       if (old) { if (old.manual) continue; const known = [...new Set(String(old.bekannt_aus || "").split(/;\s*/).concat(e.bekannt_aus.split(/;\s*/)).filter(Boolean))].join("; ");
         Object.assign(old, e, { eindeutige_id: old.eindeutige_id, rolle: old.rolle || e.rolle, bekannt_aus: known, sender: old.sender || e.sender, herkunft: old.herkunft || e.herkunft, bekanntheit: Math.max(old.bekanntheit || 0, e.bekanntheit), preset: old.preset, talent: old.preset ? old.talent : e.talent, charisma: old.preset ? old.charisma : e.charisma }); }
-      else { D.people.push(e); byName.set(e.name.toLowerCase(), e); }
+      else { D.people.push(e); byName.set(normName(e.name), e); }
     }
   }
   D.privV = M.version; EDB_IDX = null; storeDB();
   return D;
 }
+// Editor-Datenbank: gleiche Person in anderer Schreibweise (Klöppel/Kloeppel) zu einem Eintrag zusammenführen
+let EDB_DEDUP = false;
+function dedupeDB(D) {
+  if (EDB_DEDUP || !D || !Array.isArray(D.people)) return D; EDB_DEDUP = true;
+  const by = new Map(), out = []; let merged = 0;
+  for (const e of D.people) { const k = normName(e.name); const o = by.get(k);
+    if (!o) { by.set(k, e); out.push(e); continue; }
+    const [keep, gone] = (e.manual && !o.manual) || (String(e.bekannt_aus || "").length > String(o.bekannt_aus || "").length && !o.manual) ? [e, o] : [o, e];
+    keep.bekannt_aus = [...new Set(String(keep.bekannt_aus || "").split(/;\s*/).concat(String(gone.bekannt_aus || "").split(/;\s*/)).filter(Boolean))].join("; ");
+    for (const f of ["herkunft", "alter", "sprachen", "sender", "vita", "geburtsort", "quelle", "imdb_url"]) if (!keep[f] && gone[f]) keep[f] = gone[f];
+    keep.bekanntheit = Math.max(keep.bekanntheit || 0, gone.bekanntheit || 0);
+    if (keep !== o) { out[out.indexOf(o)] = keep; by.set(k, keep); } merged++; }
+  if (merged) { D.people = out; EDB_IDX = null; storeDB(); }
+  return D;
+}
 function loadDB() {
-  if (EDB) return seedPrivate(EDB);
+  if (EDB) return dedupeDB(seedPrivate(EDB));
   try { EDB = JSON.parse(localStorage.getItem(DB_KEY) || "null"); } catch (e) { EDB = null; }
   if (!EDB || !Array.isArray(EDB.people)) EDB = { people: [] };
-  return seedPrivate(EDB);
+  return dedupeDB(seedPrivate(EDB));
 }
 function loadTitles() {
   if (TITLES) return TITLES;
@@ -8662,7 +8781,7 @@ function applyEditorPeople() {
     const p = old || { genres: e.rolle === "Schauspiel" ? ["Drama", "Krimi"] : e.rolle === "Moderation" ? ["Show"] : e.rolle === "Reality" ? ["Reality"] : e.rolle === "Nachrichten" ? ["Nachrichten"] : e.rolle === "Kommentar" ? ["Sport"] : e.rolle === "Produktion" ? ["Show", "Reality"] : ["Doku"],
       trait: e.ruhestand ? "Im Ruhestand" : null, lean: 0, holder: null, until: 0, busy: 0, ban: 0 };
     Object.assign(p, { id, code: e.eindeutige_id, name: e.name, role: e.rolle, talent: e.talent, buzz: e.charisma, rel: 110 - e.skandal, gage: e.gage, custom: true,
-      age: e.alter || p.age, origin: e.herkunft || p.origin, langs: e.sprachen || p.langs || "", known: e.bekannt_aus || p.known, knownAt: e.sender || p.knownAt, hasVita: !!e.vita });
+      age: e.alter || p.age, origin: e.herkunft || p.origin, langs: e.sprachen || ORIGIN_LANG[e.herkunft] || (e.herkunft ? "" : "Deutsch"), langsSrc: !!e.sprachen, known: e.bekannt_aus || p.known, knownAt: e.sender || p.knownAt, hasVita: !!e.vita });
     if (e.preset) { p.preset = e.preset; p.at = null; }
     if (e.bekanntheit) { p.fame = e.bekanntheit; p.pop = p.pop || clamp(Math.round(e.bekanntheit * 0.8 + 10), 5, 100); }
     ensurePerson(p);
@@ -8673,10 +8792,20 @@ function applyEditorPeople() {
 // Keine Dubletten: erfundene Figuren mit dem Namen einer echten Person (oder doppelt vergeben) bekommen einen neuen Namen;
 // doppelte Einträge derselben echten Person (gleicher Code) werden zusammengeführt
 function dedupePeople() {
-  const norm = n => String(n || "").toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ").trim();
-  const seenCode = new Map(), drop = new Set();
-  for (const p of G.people) if (p.custom && p.code) { const o = seenCode.get(p.code); if (o) drop.add(p); else seenCode.set(p.code, p); }
+  const norm = normName;
+  const seenCode = new Map(), seenName = new Map(), drop = new Set(); G.pAlias = G.pAlias || {};
+  const richness = p => (p.hasVita ? 4 : 0) + String(p.known || "").length / 100 + (p.fame || 0) / 100 + (p.holder ? 2 : 0);
+  for (const p of G.people) if (p.custom) {
+    const k = p.code || p.id, nk = normName(p.name), o = seenCode.get(k) || seenName.get(nk);
+    if (o && o !== p) { const [keep, gone] = richness(p) > richness(o) ? [p, o] : [o, p];
+      keep.known = [...new Set(String(keep.known || "").split(/;\s*/).concat(String(gone.known || "").split(/;\s*/)).filter(Boolean))].join("; ");
+      keep.fame = Math.max(keep.fame || 0, gone.fame || 0); if (!keep.holder && gone.holder) { keep.holder = gone.holder; keep.until = gone.until; keep.show = gone.show; keep.ct = gone.ct; }
+      drop.add(gone); G.pAlias[gone.id] = keep.id; seenCode.set(k, keep); seenName.set(nk, keep);
+      for (const pr of G.prods || []) pr.cast = (pr.cast || []).map(id => id === gone.id ? keep.id : id);
+      for (const st of G.stations || []) for (const pg of st.progs) if (pg.host === gone.id) pg.host = keep.id;
+    } else { seenCode.set(k, p); seenName.set(nk, p); } }
   if (drop.size) G.people = G.people.filter(p => !drop.has(p));
+  for (const p of G.people) if (p.custom && !p.langsSrc) p.langs = ORIGIN_LANG[p.origin] || (p.origin ? "" : "Deutsch");
   const taken = new Set(G.people.filter(p => p.custom).map(p => norm(p.name)));
   let renamed = 0;
   for (const p of G.people) { if (p.custom) continue;
@@ -9102,17 +9231,17 @@ async function importPeopleFile(file) {
   }
   // Vita-Format: Wikidata-ID als eindeutige_id; vorhandene Einträge gleichen Namens werden ergänzt statt doppelt angelegt
   if (rows.length && pickKey(rows[0], ["ausgewählte arbeiten / stationen"]) !== undefined) {
-    const D = loadDB(), byName = new Map(D.people.map(e => [e.name.toLowerCase(), e]));
+    const D = loadDB(), byName = new Map(D.people.map(e => [normName(e.name), e]));
     let add = 0, upd = 0, bad = 0;
     const fresh = [];
     for (const o of rows) {
       const e = rowToVitaPerson(o); if (!e) { bad++; continue; }
-      const old = byName.get(e.name.toLowerCase());
+      const old = byName.get(normName(e.name));
       if (old) { // vorhandene Angaben behalten, Titel zusammenführen
         const known = [...new Set(String(old.bekannt_aus || "").split(/;\s*/).concat(e.bekannt_aus.split(/;\s*/)).filter(Boolean))].join("; ");
         Object.assign(old, e, { eindeutige_id: old.eindeutige_id, rolle: old.rolle || e.rolle, bekannt_aus: known, sender: old.sender || e.sender, herkunft: old.herkunft || e.herkunft, bekanntheit: Math.max(old.bekanntheit || 0, e.bekanntheit) }); upd++;
       }
-      else { fresh.push(e); byName.set(e.name.toLowerCase(), e); }
+      else { fresh.push(e); byName.set(normName(e.name), e); }
     }
     const r = upsert(D.people, fresh, "eindeutige_id"); add = r.add; upd += r.upd;
     await storeDBAsync();
@@ -9125,8 +9254,8 @@ async function importPeopleFile(file) {
   for (const o of rows) {
     const e = rowToPerson(o, prefix, clean);
     if (!e) { bad++; continue; }
-    const key = e.name.toLowerCase();
-    if (seen.has(key)) { dup++; continue; } // gleiche Namen zusammenführen
+    const key = normName(e.name);
+    if (seen.has(key)) { dup++; continue; } // gleiche Namen (auch andere Schreibweise) zusammenführen
     if (e.bekannt_aus && FAKE_CREDIT.test(e.bekannt_aus)) { e.bekannt_aus = ""; e.generiert = true; gen++; }
     seen.add(key); out.push(e);
   }
