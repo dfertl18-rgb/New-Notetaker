@@ -1254,7 +1254,7 @@ const HEADLINES = [
 // Menüführung: Hauptpunkt → Aufklappmenü mit allen Unterseiten [Seite, Name, Erklärung]
 const MENU = [
   { id: "portal", name: "Portal", subs: [["overview", "Übersicht", "Dashboard mit Nachrichten, Tabelle und Kennzahlen"], ["inbox", "Posteingang", "Alle Meldungen aus dem Haus"]] },
-  { id: "programm", name: "Programm", subs: [["wochenplan", "Wochenplan", "Wochenraster mit Ziehen & Ablegen und Prognose"], ["plan", "Sendekalender", "Programm 0–24 Uhr, 6 Wochen im Voraus"], ["archiv", "Archiv", "Eigene Filme, Serien und Formate"], ["filmmarket", "Filmrechte", "Pakete, Studios, Filmmärkte"], ["market", "Programmhandel", "Filme und Serienlizenzen kaufen"], ["formatmarkt", "Formatmarkt", "Formatrechte, Bieterfenster im März"], ["ticker", "Nachrichten", "Meldungen von Ticker24 einkaufen"]] },
+  { id: "programm", name: "Programm", subs: [["wochenplan", "Wochenplan", "Wochenraster mit Ziehen & Ablegen und Prognose"], ["politik", "Politik & Talk", "Themenlage, Talkgäste, Redaktionslinie"], ["plan", "Sendekalender", "Programm 0–24 Uhr, 6 Wochen im Voraus"], ["archiv", "Archiv", "Eigene Filme, Serien und Formate"], ["filmmarket", "Filmrechte", "Pakete, Studios, Filmmärkte"], ["market", "Programmhandel", "Filme und Serienlizenzen kaufen"], ["formatmarkt", "Formatmarkt", "Formatrechte, Bieterfenster im März"], ["ticker", "Nachrichten", "Meldungen von Ticker24 einkaufen"]] },
   { id: "produktion", name: "Produktion", subs: [["studio", "Studio", "Eigene Filme, Serien, Shows und Dokus"], ["formatdev", "Formatentwicklung", "Messen, Scouting, Ideenschmiede"], ["casting", "Casting", "Stars, Moderation, Nachrichtengesichter"], ["newsroom", "Nachrichtenredaktion", "Blattlinie, Stil, Etat und Sprecher*in"], ["export", "Rechtemarkt international", "Formate und Produktionen ins Ausland verkaufen"]] },
   { id: "streaming", name: "Streaming", subs: [["stream", "Plattform", "Abos, Churn, ARPU und Preismodell"], ["catalog", "Katalog", "Titel und Verwertungsfenster"], ["smarket", "Wettbewerb", "Streamer im Vergleich und Top 10"]] },
   { id: "sport", name: "Sport", subs: [["rights", "Rechtemarkt", "Ausschreibungen und Gebote"], ["myrights", "Meine Rechte", "Pakete und Live-Termine"], ["spielplan", "Spielplan", "Rahmenterminkalender Fußball"]] },
@@ -1747,7 +1747,7 @@ function attrCell(st, i, c) {
     A = st.brand * Math.pow(p.q / 60, 1.5) * fit(p.genre, i) * topic * newsMult * rnd(0.9, 1.1);
     if (c.cont && p.kind !== "sport") A *= 0.96;
     if (p.pull) A *= 1 + p.pull * 0.12; // bekannte Titel ziehen mehr Publikum
-    A *= demoFactor(st, p) * hostMalus(p) * hostF(st, p); // passt die Sendung (und die Moderation) zum Publikum des Senders?
+    A *= demoFactor(st, p) * hostMalus(p) * hostF(st, p) * polF(st, p); // passt die Sendung (und die Moderation) zum Publikum des Senders?
     if (p.kind === "sport") A *= commF(p); // Kommentator*in
     if (blMagazine(p) && !matchday(G.day)) A *= 0.35; // ohne Spieltag keine Bilder
     if (p.boost && (!p.boost.day || p.boost.day === G.day)) A *= 1 + p.boost.v; // Gaststar, Event-Ausgabe, Relaunch
@@ -3212,7 +3212,7 @@ function nextDay() {
   G.day++;
   for (const st of G.stations) st.fin = {};
   projectDay();
-  prodDay(); peopleDay(); newsroomDay(); trendDay(); awardsDay(); marketDay(); presaleDay(); rivalsDay(); formatDay(); postQuotenReport(); frameDay(); conflictCheck(); fmDay(); scoutDay(); rumorDay(); staffDay();
+  prodDay(); peopleDay(); newsroomDay(); trendDay(); awardsDay(); marketDay(); presaleDay(); rivalsDay(); formatDay(); postQuotenReport(); frameDay(); conflictCheck(); fmDay(); scoutDay(); rumorDay(); staffDay(); politicsDay();
   if (dateOf(G.day).getDate() === 1 && !G.event) setInterview(); // Interview zum Monatsbeginn
   if (G.mods.coverup && G.day >= G.mods.coverup.day) {
     const c = G.mods.coverup; G.mods.coverup = null;
@@ -3349,7 +3349,7 @@ function applyClubColors() {
 function render(top) {
   if (!G) return;
   renderNav(); renderTop();
-  const pages = { overview, inbox, plan: planPage, archiv, market, filmmarket: filmMarketPage, chiefs: rivalsPage, adsales: adsalesPage, spielplan: spielplanPage, formatmarkt: formatMarketPage, wochenplan: weekPlanPage, formatdev: formatDevPage, personal: staffPage, stream: streamPage, catalog, smarket, rights: rightsPage, myrights, contracts, agency, ticker, table: tablePage, ratings, landscape, board, finance, jury, rivals, live: livePage, studio, newprod: newProdPage, casting, newsroom, export: exportPage };
+  const pages = { overview, inbox, plan: planPage, archiv, market, filmmarket: filmMarketPage, chiefs: rivalsPage, adsales: adsalesPage, spielplan: spielplanPage, formatmarkt: formatMarketPage, wochenplan: weekPlanPage, formatdev: formatDevPage, personal: staffPage, politik: politicsPage, stream: streamPage, catalog, smarket, rights: rightsPage, myrights, contracts, agency, ticker, table: tablePage, ratings, landscape, board, finance, jury, rivals, live: livePage, studio, newprod: newProdPage, casting, newsroom, export: exportPage };
   const sc = $("content").scrollTop;
   $("content").innerHTML = (pages[page] || overview)(me());
   if (!top) $("content").scrollTop = sc;
@@ -4052,7 +4052,12 @@ function act(b) {
     case "wpDel": { const [dd, ii] = b.dataset.k.split("|").map(Number); if (!(dd === G.day && planLocked())) { editPlan(dd, sc => clearAt(P, sc, ii)); wpSel = null; } break; }
     case "scoutGo": { const err = sendScout(b.dataset.k, b.dataset.v); toast(err || `${SCOUT_TEAMS[b.dataset.v][0]} fliegt zur ${b.dataset.k}. Der Report kommt nach der Messe.`); break; }
     case "devSet": G.devDraft = G.devDraft || { genre: "Show", slot: "Primetime", target: 1, budget: 50000 }; G.devDraft[b.dataset.k] = b.dataset.k === "target" ? +b.dataset.v : b.dataset.v; break;
-    case "staffTab": staffTab = k; break;
+    case "staffTab": staffTab = b.dataset.k; break;
+    case "talkShow": G.talkSel = { pid: b.dataset.k, ids: [] }; break;
+    case "talkGuest": { const sl = G.talkSel, g = b.dataset.k; if (sl) sl.ids = sl.ids.includes(g) ? sl.ids.filter(x => x !== g) : sl.ids.concat(g).slice(0, 4); break; }
+    case "talkBook": { const sl = G.talkSel; const err = sl && bookTalk(sl.pid, sl.ids); toast(err || "Die Gäste haben zugesagt – sie sitzen in der nächsten Ausgabe."); if (!err) sl.ids = []; break; }
+    case "polSave": toast(`${polSave(($("polEdit") || {}).value || "")} Personen gespeichert (nur auf diesem Gerät).`); break;
+    case "polReset": try { localStorage.removeItem(POL_KEY); } catch (e) { /* egal */ } POL_CACHE = null; toast("Gästeliste zurückgesetzt."); break;
     case "devGo": { const dd = G.devDraft || { genre: "Show", slot: "Primetime", target: 1, budget: 50000 }; const err = startDev(dd.genre, dd.slot, dd.target, +($("devBudget") || {}).value || dd.budget); toast(err || "Die Redaktion legt los – Pitch in vier Wochen."); break; }
     case "findBuy": { const err = buyFind(id); if (err) toast(err); break; }
     case "art": openArticle(+b.dataset.k); return;
@@ -5694,6 +5699,7 @@ function rumorPanel() {
 // Personal: Moderation, Sport-Kommentar, Showrunner/Produktion – Attribute 1–20, Zufriedenheit, Einsatz
 // =====================================================================
 SPEC_NAME.Kommentar = "Sport-Kommentar"; SPEC_NAME.Produktion = "Showrunner & Produktion";
+TRAITS.Kommentar = ["Live-Sicherheit", "Emotionaler Erzähler", "Taktik-Experte", "Statistik-Fuchs", "Publikumsnähe"]; TRAITS.Produktion = ["Quoten-Instinkt", "Kostendisziplin", "Trendscout", "Formaterfinder", "Routinier"];
 AGE_RANGE.Kommentar = [26, 68]; AGE_RANGE.Produktion = [30, 70];
 const A20 = v => clamp(Math.round(v), 1, 20);
 // Attribute: aus Vorgaben (z. B. Daten-Import) oder abgeleitet aus Talent, Buzz, Zuverlässigkeit und Alter
@@ -5707,8 +5713,8 @@ function staffAttrs(q) {
     v: 2,
     cha: base.cha ?? A20((q.buzz || f) / 5 + (r() - 0.5) * 4),
     str: base.str ?? A20((q.rel || 60) / 5 + (r() - 0.5) * 4),
-    loy: base.loy ?? A20(6 + (q.rel || 60) / 9 + (r() - 0.5) * 6),
-    gg: base.gg ?? A20(8 + f / 10 + (r() - 0.5) * 6),
+    loy: base.loy ?? (q.custom ? 10 : A20(6 + (q.rel || 60) / 9 + (r() - 0.5) * 6)),
+    gg: base.gg ?? (q.custom ? 10 : A20(8 + f / 10 + (r() - 0.5) * 6)),
     z: base.z || [A20(10 + young * 8 + (r() - 0.5) * 4), A20(11 + young * 4 + (r() - 0.5) * 4), A20(11 - young * 4 + (r() - 0.5) * 4), A20(10 - young * 8 + (r() - 0.5) * 4)],
     fach: base.fach ?? A20((q.talent || 50) / 5 + (r() - 0.5) * 6), emo: base.emo ?? A20((q.buzz || 50) / 5 + (r() - 0.5) * 6),
     krea: base.krea ?? A20((q.talent || 50) / 5 + (r() - 0.5) * 6), bud: base.bud ?? A20(8 + (q.rel || 60) / 10 + (r() - 0.5) * 6),
@@ -5720,23 +5726,25 @@ const sat = q => q.sat ?? (q.sat = 70);
 // Pool ergänzen: Kommentator*innen und Showrunner (frei erfundene Namen, falls keine Daten importiert sind)
 function ensureStaffPool() {
   const have = r => G.people.filter(q => q.role === r).length;
-  const mk = (role, n) => { for (let k = 0; k < n; k++) { const talent = stat(), buzz = stat(), rel = 40 + ri(0, 60); G.people.push({ id: "c" + Math.random().toString(36).slice(2, 9), name: `${pick(FIRST_NAMES)} ${pick(LAST_NAMES)}`, role, talent, buzz, rel, gage: baseGage(talent, buzz) * (role === "Produktion" ? 0.6 : 0.4), genres: role === "Kommentar" ? ["Sport"] : ["Show", "Reality"], trait: pick(TRAITS), lean: 0, holder: null, until: 0, busy: 0, ban: 0 }); } };
+  const mk = (role, n) => { for (let k = 0; k < n; k++) { const talent = stat(), buzz = stat(), rel = 40 + ri(0, 60); G.people.push({ id: "c" + Math.random().toString(36).slice(2, 9), name: `${pick(FIRST_NAMES)} ${pick(LAST_NAMES)}`, role, talent, buzz, rel, gage: baseGage(talent, buzz) * (role === "Produktion" ? 0.6 : 0.4), genres: role === "Kommentar" ? ["Sport"] : ["Show", "Reality"], trait: pick(TRAITS[role]), lean: 0, holder: null, until: 0, busy: 0, ban: 0 }); } };
   if (have("Kommentar") < 30) mk("Kommentar", 40);
   if (have("Produktion") < 20) mk("Produktion", 30);
   PIDX_SRC = null;
+  for (const q of G.people) if (q.custom && q.role === "Kommentar" && !q.holder && q.knownAt) { const sid = stationIdByName(q.knownAt); if (sid && !isMe(G.stations[SIDX[sid]])) { q.holder = sid; q.until = G.day + ri(300, 900); } }
   // Die großen Sender haben ihre Stammkommentatoren und Produzenten
   for (const st of G.stations) {
     if (isMe(st) || st.base < 4) continue;
     for (const role of ["Kommentar", "Produktion"]) if (!G.people.some(q => q.role === role && q.holder === st.id)) { const q = G.people.filter(x => x.role === role && !x.holder).sort((a, b) => b.talent - a.talent)[ri(0, 5)]; if (q) { q.holder = st.id; q.until = G.day + ri(200, 900); } }
   }
 }
+function stationIdByName(n) { const k = String(n).toLowerCase().replace(/^das erste$/, "ard"); const st = STATIONS.find(s => s.name.toLowerCase() === k || s.id === k); return st ? st.id : null; }
 // Moderation: Charisma und Zielgruppen-Fit der Moderation wirken auf die Sendung
 function hostF(st, p) {
   if (!p || p.kind === "sport" || p.kind === "film" || p.house) return 1;
   if (p._hf && p._hf[0] === G.day) return p._hf[1];
   const q = p.host ? person(p.host) : hostOf(p);
   let f = 1;
-  if (q && q.holder === st.id) { const a = staffAttrs(q), z = zMix(st, p); f = 1 + (a.cha - 10) / 120 + z.reduce((s, v, k) => s + v * (a.z[k] - 10) / 100, 0); }
+  if (q && (q.holder === st.id || (!q.holder && p.real))) { const a = staffAttrs(q), z = zMix(st, p); f = 1 + (a.cha - 10) / 120 + z.reduce((s, v, k) => s + v * (a.z[k] - 10) / 100, 0); }
   p._hf = [G.day, clamp(f, 0.8, 1.2)];
   return p._hf[1];
 }
@@ -5793,6 +5801,139 @@ function staffPage(P) {
   if (staffTab === "Kommentar") h += `<section class="panel"><div class="ph"><h2>Einsatz bei Ihren Sportrechten</h2></div>${rights.length ? `<div class="tbl"><table><tbody>${rights.map(r => `<tr><td class="title">${esc(RDEF(r.id).name)}</td><td><select data-comm="${r.id}"><option value="">– Hauskommentar –</option>${list.map(({ q, a }) => `<option value="${q.id}" ${(G.comm || {})[r.id] === q.id ? "selected" : ""}>${esc(q.name)} (CHA ${a.cha}, Emotion ${a.emo})</option>`).join("")}</select></td></tr>`).join("")}</tbody></table></div>` : '<p class="fine pad">Sie halten derzeit keine Sportrechte.</p>'}</section>`;
   if (staffTab === "Produktion") h += `<p class="fine">Showrunner wählen Sie im Studio bei der Produktion: Kreativität und Trend-Gespür heben die Qualität, Budgetdisziplin senkt die Kosten pro Folge.</p>`;
   return h;
+}
+// =====================================================================
+// Politik & Talk: Gesellschaftslage (drei Achsen), Themenwoche, Talkgäste aus der Politik
+// Neutral: Gäste tragen nur Partei, Lager und Amt – keine Charakterwerte. Wie hitzig eine Runde wird,
+// ergibt sich aus der Zusammensetzung (Parteien, Lager), der Stressresistenz der Moderation und Zufall.
+// =====================================================================
+const POL_AXES = [["wirt", "Wirtschaftslage", "Sorge um Jobs, Preise, Haushalt"], ["sich", "Sicherheitslage", "Außen- und innere Sicherheit"], ["stim", "Gesellschaftliche Stimmung", "Polarisierung, Protest, Debatten"]];
+const POL_TOPICS = [
+  { t: "Haushaltsstreit im Bundestag", res: "Finanzen", ax: { wirt: 10, stim: 4 } }, { t: "Rentenreform", res: "Arbeit", ax: { wirt: 6, stim: 6 } },
+  { t: "Bundeswehr und Wehrdienst", res: "Verteidigung", ax: { sich: 10, stim: 4 } }, { t: "Migration und Grenzkontrollen", res: "Inneres", ax: { sich: 6, stim: 10 } },
+  { t: "Energiepreise und Industrie", res: "Wirtschaft", ax: { wirt: 10 } }, { t: "Krankenhausreform und Beiträge", res: "Gesundheit", ax: { wirt: 4, stim: 5 } },
+  { t: "Bahnchaos und Infrastruktur", res: "Verkehr", ax: { wirt: 4, stim: 4 } }, { t: "Wohnungsnot und Mieten", res: "Bauen", ax: { wirt: 5, stim: 6 } },
+  { t: "Bildung und Schulen", res: "Bildung", ax: { stim: 3 } }, { t: "Klimaziele und Heizungen", res: "Umwelt", ax: { wirt: 4, stim: 7 } },
+  { t: "Nahost und Diplomatie", res: "Außen", ax: { sich: 8, stim: 5 } }, { t: "Cyberangriffe auf Behörden", res: "Digitales", ax: { sich: 8 } },
+  { t: "Streikwelle im Verkehr", res: "Arbeit", ax: { wirt: 5, stim: 5 } }, { t: "Landtagswahl am Wochenende", res: "Partei", ax: { stim: 9 } },
+  { t: "Ruhige Woche in Berlin", res: "", ax: { wirt: -6, sich: -6, stim: -6 } },
+];
+// Prominenz ergibt sich nur aus dem Amt
+const POL_RANK = [[/ehem/i, 62], [/vizekanzler/i, 88], [/kanzler/i, 100], [/bundesminister|minister(in)? für|ministerpräsident/i, 80], [/partei|fraktion|vorsitz|chef/i, 72], [/./, 45]];
+const polProm = g => POL_RANK.find(([re]) => re.test(g.amt || ""))[1];
+// Ersatzliste ohne echte Personen (öffentlicher Build); die private Datei liefert echte Namen
+const POL_FALLBACK = [["CDU", "Regierung", "Bundesminister*in für Finanzen", "Finanzen"], ["SPD", "Regierung", "Bundesminister*in für Arbeit", "Arbeit"], ["CSU", "Regierung", "Bundesminister*in des Innern", "Inneres"], ["SPD", "Regierung", "Bundesminister*in der Verteidigung", "Verteidigung"],
+  ["CDU", "Regierung", "Fraktionsvorsitz", "Partei"], ["AfD", "Opposition", "Fraktionsvorsitz", "Partei"], ["Grüne", "Opposition", "Fraktionsvorsitz", "Partei"], ["Linke", "Opposition", "Fraktionsvorsitz", "Partei"],
+  ["SPD", "Regierung", "Abgeordnete*r", "Gesundheit"], ["Grüne", "Opposition", "Abgeordnete*r", "Umwelt"], ["AfD", "Opposition", "Abgeordnete*r", "Inneres"], ["Linke", "Opposition", "Abgeordnete*r", "Bauen"], ["FDP", "außerparlamentarisch", "Parteivorsitz", "Wirtschaft"]]
+  .map(([partei, lager, amt, res], k) => ({ id: "pol" + k, name: `${["Andrea", "Jonas", "Sabine", "Mehmet", "Karin", "Lukas", "Petra", "Tobias", "Miriam", "Stefan", "Anja", "Daniel", "Julia"][k]} ${["Brandt", "Kessler", "Roth", "Yilmaz", "Hartmann", "Vogel", "Seidel", "Krämer", "Lorenz", "Beck", "Franke", "Albers", "Winter"][k]}`, partei, lager, amt, res }));
+const POL_KEY = "medienmanager-politik-v1";
+let POL_CACHE = null;
+function polList() {
+  if (POL_CACHE) return POL_CACHE;
+  let own = null; try { own = JSON.parse(localStorage.getItem(POL_KEY) || "null"); } catch (e) { own = null; }
+  const priv = typeof window !== "undefined" && window.MM_PRIVATE && window.MM_PRIVATE.politicians;
+  POL_CACHE = (Array.isArray(own) && own.length ? own : priv && priv.length ? priv : POL_FALLBACK).map((g, k) => ({ id: g.id || "pol" + k, ...g }));
+  return POL_CACHE;
+}
+const polById = id => polList().find(g => g.id === id);
+function ensurePol() {
+  if (!G.pol) G.pol = { ax: { wirt: 50, sich: 50, stim: 50 }, topic: POL_TOPICS[0], wk: -1, booked: {}, hist: [] };
+  return G.pol;
+}
+const crisis = () => { const a = ensurePol().ax; return clamp(((a.wirt + a.sich + a.stim) / 3 - 50) / 40, 0, 1); };
+const isTalk = p => p && p.genre === "Talk";
+// Wöchentliche Themenlage: Achsen schwingen zur Mitte zurück, ein neues Thema setzt Impulse
+function politicsDay() {
+  const S = ensurePol(), wk = Math.floor(G.day / 7);
+  if (S.wk === wk) return talkResolve();
+  S.wk = wk;
+  for (const [k] of POL_AXES) S.ax[k] = clamp(Math.round(50 + (S.ax[k] - 50) * 0.7), 10, 95);
+  const t = pick(POL_TOPICS.filter(x => x.t !== S.topic.t));
+  for (const [k, v] of Object.entries(t.ax)) S.ax[k] = clamp(S.ax[k] + v + ri(-2, 3), 10, 95);
+  S.topic = t; S.hist.unshift([G.day, t.t]); S.hist.length = Math.min(S.hist.length, 12);
+  // Konkurrenz-Talks buchen ihre Gäste für die Woche
+  S.booked = {};
+  const rivalsTalk = G.stations.filter(st => !isMe(st) && st.progs.some(isTalk));
+  const pool = shuffle(polList().slice()).sort((a, b) => (b.res === t.res) - (a.res === t.res) || polProm(b) - polProm(a) + ri(-25, 25));
+  let n = 0; for (const st of rivalsTalk) for (let k = 0; k < 2 && n < pool.length; k++) S.booked[pool[n++].id] = st.id;
+  postArticle("Hauptstadt-Briefing", "Politik", `Themenwoche: ${t.t}`, [`Die politische Agenda wird in dieser Woche von „${t.t}“ bestimmt.`, `Lage: ${POL_AXES.map(([k, n]) => `${n} ${S.ax[k]}`).join(" · ")}. Je angespannter die Lage, desto mehr Menschen schalten Nachrichten und Talk ein – Boulevard verliert an Zugkraft.`, `Bereits vergeben: ${Object.entries(S.booked).slice(0, 6).map(([id, sid]) => `${polById(id).name} (${holderName(sid)})`).join(", ") || "noch niemand"}.`]);
+  talkResolve();
+}
+// Gäste für die nächste Ausgabe einer eigenen Talkshow
+function talkCalc(p, ids) {
+  const gs = ids.map(polById).filter(Boolean), S = ensurePol();
+  if (!gs.length) return { gs, boost: 0, esc: 0, cost: 0, fit: 0, parties: 0, camps: 0 };
+  const parties = new Set(gs.map(g => g.partei)).size, camps = new Set(gs.map(g => g.lager)).size;
+  const fit = gs.filter(g => g.res && g.res === S.topic.res).length;
+  const prom = gs.reduce((a, g) => a + polProm(g), 0) / 100;
+  const host = hostOf(p), str = host ? staffAttrs(host).str : 10;
+  const esc = clamp(0.04 + 0.05 * (parties - 1) + (camps > 1 ? 0.06 : 0) + (10 - str) / 100 + 0.08 * crisis(), 0.02, 0.45);
+  const boost = 0.03 * prom + 0.04 * fit + (camps > 1 ? 0.04 : 0) + 0.1 * crisis();
+  const cost = gs.reduce((a, g) => a + 4000 + polProm(g) * 60, 0);
+  return { gs, boost, esc, cost, fit, parties, camps };
+}
+function bookTalk(pid, ids) {
+  const P = me(), p = P.progs.find(x => x.id === pid), S = ensurePol();
+  if (!p || !isTalk(p)) return "Keine Talkshow.";
+  if (ids.some(id => S.booked[id] && S.booked[id] !== P.id)) return "Ein Gast ist diese Woche schon bei der Konkurrenz.";
+  const c = talkCalc(p, ids); if (!c.gs.length) return "Bitte Gäste wählen.";
+  if (P.money < c.cost) return "Budget reicht nicht.";
+  book(P, "Redaktion", -c.cost);
+  for (const id of ids) S.booked[id] = P.id;
+  p.guests = { ids, topic: S.topic.t, day: G.day, esc: Math.random() < c.esc, boost: c.boost };
+  return null;
+}
+// Wirkung in der Quote (aus attrCell)
+function polF(st, p) {
+  if (!p || !G.pol) return 1;
+  const c = crisis();
+  if (p.genre === "Nachrichten" || p.genre === "Magazin") { const style = isMe(st) && G.newsroom ? G.newsroom.style : 1; return 1 + c * (style === 2 ? -0.06 : 0.1) + (isMe(st) && G.pol.scoop >= G.day ? 0.15 : 0); }
+  if (isTalk(p) && !isMe(st)) return 1 + c * 0.08 + 0.03 * Object.values(G.pol.booked || {}).filter(x => x === st.id).length;
+  if (isTalk(p)) return 1 + c * 0.08 + (p.guests && !p.guests.done ? p.guests.boost + (p.guests.esc ? 0.12 : 0) : 0);
+  if (p.genre === "Show" || p.genre === "Reality") return 1 - c * 0.04;
+  return 1;
+}
+// Nach der Sendung: Branchenecho; investigative Redaktion kann exklusiv berichten
+function talkResolve() {
+  const P = me(), S = ensurePol();
+  for (const p of P.progs.filter(x => x.guests && !x.guests.done && x.lastAired && x.lastAired >= x.guests.day && x.lastAired < G.day)) {
+    const g = p.guests, names = g.ids.map(polById).filter(Boolean).map(x => `${x.name} (${x.partei})`);
+    g.done = true;
+    if (g.esc) { S.ax.stim = clamp(S.ax.stim + 2, 10, 95); P.favor = Math.max(0, P.favor - 0.2); postArticle("Medien-Insider", "Politik", `Hitzige Debatte bei {t:${P.id}|${p.id}}`, [`Beim Thema „${g.topic}“ ging es in der Runde mit ${names.join(", ")} hoch her – die Moderation hatte Mühe, die Diskussion zu ordnen.`, `Die Sendung ist heute Gesprächsthema in den sozialen Netzwerken. Kritiker bemängeln die Gesprächsführung, die Quote profitiert.`], true); }
+    else postArticle("Medien-Insider", "Politik", `{t:${P.id}|${p.id}}: sachliche Runde zu „${g.topic}“`, [`Zu Gast waren ${names.join(", ")}. Die Diskussion blieb sachlich, die Positionen wurden klar herausgearbeitet.`]);
+  }
+  if (G.newsroom && G.newsroom.style === 0 && (!S.scoop || S.scoop < G.day - 10) && Math.random() < 0.02 + 0.04 * crisis()) {
+    S.scoop = G.day + 3; postArticle("Eigene Redaktion", "Politik", `Exklusiv-Recherche zu „${S.topic.t}“`, [`Ihre Nachrichtenredaktion hat interne Unterlagen zu „${S.topic.t}“ ausgewertet. Andere Medien zitieren Ihren Sender.`, `Die Nachrichten profitieren drei Tage lang von der Aufmerksamkeit.`], true);
+  }
+}
+function politicsPage(P) {
+  const S = ensurePol(), talks = P.progs.filter(isTalk), list = polList();
+  let h = title("Politik & Talk", `<span class="muted">Themenwoche: <b>${esc(S.topic.t)}</b></span>`) + lockNote();
+  h += `<div class="acols mb">${POL_AXES.map(([k, n, d]) => `<section class="panel pad"><small class="muted">${n}</small><div style="font-size:26px;font-weight:700">${S.ax[k]}</div><div class="goal" style="padding:0"><div class="track"><i style="width:${S.ax[k]}%;background:${S.ax[k] >= 65 ? "var(--bad)" : S.ax[k] <= 40 ? "var(--good)" : "var(--mid)"}"></i></div></div><p class="fine" style="margin:6px 0 0">${d}</p></section>`).join("")}</div>`;
+  h += `<p class="lead mb">Angespannte Lage (${Math.round(crisis() * 100)} %): Nachrichten und Talk ${crisis() > 0.2 ? "gewinnen" : "gewinnen leicht"}, Shows und Reality verlieren etwas. Ihre Redaktionslinie „${STYLES[(G.newsroom || { style: 1 }).style]}“ ${(G.newsroom || {}).style === 2 ? "verliert in Krisenwochen" : "profitiert in Krisenwochen"}. Die investigative Linie kann Exklusiv-Recherchen liefern.</p>`;
+  h += `<section class="panel mb"><div class="ph"><h2>Talk-Redaktion: Gäste buchen</h2>${info("Gäste werden nur über Partei, Lager und Amt beschrieben. Eine Runde mit mehreren Parteien und beiden Lagern ist kontroverser: mehr Quote, aber ein höheres Risiko, dass die Debatte entgleitet – abhängig von der Stressresistenz Ihrer Moderation.")}</div>`;
+  if (!talks.length) h += '<p class="fine pad">Sie haben keine Talkshow im Programm. Entwickeln Sie eine im Studio (Show → Late-Night-Talk) oder über die Formatentwicklung.</p>';
+  else {
+    const sel = G.talkSel || (G.talkSel = { pid: talks[0].id, ids: [] }); if (!talks.some(p => p.id === sel.pid)) sel.pid = talks[0].id;
+    const p = talks.find(x => x.id === sel.pid), c = talkCalc(p, sel.ids);
+    h += `<div class="pad"><div class="pills mb">${talks.map(t => `<button data-act="talkShow" data-k="${t.id}" class="${t.id === sel.pid ? "on" : ""}">${esc(t.title)}${t.guests && !t.guests.done ? " ✓" : ""}</button>`).join("")}</div>`;
+    if (p.guests && !p.guests.done) h += `<p class="chip good">Gebucht für die nächste Ausgabe: ${p.guests.ids.map(polById).filter(Boolean).map(g => esc(g.name)).join(", ")}</p>`;
+    h += `<div class="tbl"><table><thead><tr><th></th><th>Gast</th><th>Partei</th><th>Lager</th><th>Amt</th><th>Ressort</th><th>Status</th></tr></thead><tbody>${list.map(g => { const by = S.booked[g.id], on = sel.ids.includes(g.id), busy = by && by !== P.id;
+      return `<tr class="${on ? "sel" : ""}"><td><button class="btn small ${on ? "hot" : ""}" data-act="talkGuest" data-k="${g.id}" ${busy || (!on && sel.ids.length >= 4) ? "disabled" : ""}>${on ? "✓" : "+"}</button></td><td class="title">${esc(g.name)}</td><td>${esc(g.partei)}</td><td class="muted">${esc(g.lager)}</td><td class="muted">${esc(g.amt || "")}</td><td>${g.res && g.res === S.topic.res ? `<b>${esc(g.res)}</b>` : esc(g.res || "")}</td><td class="muted">${busy ? "bei " + esc(holderName(by)) : by === P.id ? "bei Ihnen" : "frei"}</td></tr>`; }).join("")}</tbody></table></div>
+      <div class="kv"><span>Runde</span><b>${c.gs.length} Gäste · ${c.parties} Parteien · ${c.camps > 1 ? "beide Lager" : "ein Lager"}${c.fit ? ` · ${c.fit}× Fachressort` : ""}</b></div>
+      <div class="kv"><span>Quoten-Effekt</span><b class="up">+${Math.round(c.boost * 100)} %</b></div><div class="kv"><span>Risiko hitzige Debatte</span><b class="${c.esc > 0.2 ? "down" : ""}">${Math.round(c.esc * 100)} %</b></div><div class="kv"><span>Kosten</span><b>${eur(c.cost)}</b></div>
+      <button class="btn hot" data-act="talkBook" ${!c.gs.length || planLocked() || (p.guests && !p.guests.done) ? "disabled" : ""}>Gäste einladen</button></div>`;
+  }
+  h += `</section><section class="panel"><div class="ph"><h2>Gästeliste bearbeiten</h2><span class="aside">${window.MM_PRIVATE && window.MM_PRIVATE.politicians ? "aus der privaten Datei" : "Platzhalter"} · nur lokal gespeichert</span></div><div class="pad">
+    <p class="fine">Eine Zeile pro Person: Name;Partei;Lager;Amt;Ressort. Lager z. B. Regierung, Opposition, außerparlamentarisch.</p>
+    <textarea id="polEdit" rows="6" style="width:100%;font:13px ui-monospace,monospace">${esc(list.map(g => [g.name, g.partei, g.lager, g.amt || "", g.res || ""].join(";")).join("\n"))}</textarea>
+    <div class="row"><button class="btn" data-act="polSave">Speichern</button> <button class="btn ghost" data-act="polReset">Zurücksetzen</button></div></div></section>`;
+  return h;
+}
+function polSave(txt) {
+  const rows = String(txt).split(/\n/).map(l => l.split(";").map(x => x.trim())).filter(r => r[0] && r[1]).slice(0, 200).map((r, k) => ({ id: "pe" + hashStr(r[0]).toString(36), name: r[0].slice(0, 60), partei: r[1].slice(0, 20), lager: (r[2] || "Opposition").slice(0, 24), amt: (r[3] || "").slice(0, 60), res: (r[4] || "").slice(0, 20) }));
+  try { localStorage.setItem(POL_KEY, JSON.stringify(rows)); } catch (e) { /* nur Sitzung */ }
+  POL_CACHE = null; return rows.length;
 }
 // =====================================================================
 // Formatprofil: Quotenverlauf, Publikum, Analyse und Maßnahmen je Sendung
@@ -6446,11 +6587,19 @@ const TMDB_GENRES = { crime: "Krimi", mystery: "Krimi", krimi: "Krimi", comedy: 
 // Senderzuordnung: Krimi & Anspruch an die Öffentlich-Rechtlichen, Unterhaltung an die Privaten
 const OER_GENRES = ["Krimi", "Drama", "Doku", "Kultur"];
 let EDB = null, TITLES = null, edSel = null, edQuery = "", edRole = "alle", edMsg = null;
+function seedPrivate(D) {
+  const M = typeof window !== "undefined" && window.MM_PRIVATE;
+  if (!M || !Array.isArray(M.people) || (D.privV || 0) >= M.version) return D;
+  const have = new Map(D.people.map(e => [e.eindeutige_id, e]));
+  for (const e of M.people) { const o = have.get(e.eindeutige_id); if (!o) D.people.push({ ...e, gage: e.gage || autoGage(e.talent, e.charisma) }); else if (e.preset && !o.manual) o.preset = e.preset; }
+  D.privV = M.version; EDB_IDX = null; storeDB();
+  return D;
+}
 function loadDB() {
-  if (EDB) return EDB;
+  if (EDB) return seedPrivate(EDB);
   try { EDB = JSON.parse(localStorage.getItem(DB_KEY) || "null"); } catch (e) { EDB = null; }
   if (!EDB || !Array.isArray(EDB.people)) EDB = { people: [] };
-  return EDB;
+  return seedPrivate(EDB);
 }
 function loadTitles() {
   if (TITLES) return TITLES;
@@ -6542,10 +6691,11 @@ function applyEditorPeople() {
   for (const e of D.people) {
     if (!playable(e)) continue;
     const id = "x_" + e.eindeutige_id, old = idx.get(id);
-    const p = old || { genres: e.rolle === "Schauspiel" ? ["Drama", "Krimi"] : e.rolle === "Moderation" ? ["Show"] : e.rolle === "Reality" ? ["Reality"] : e.rolle === "Nachrichten" ? ["Nachrichten"] : ["Doku"],
-      trait: e.ruhestand ? "Im Ruhestand" : pick(TRAITS[e.rolle]), lean: 0, holder: null, until: 0, busy: 0, ban: 0 };
+    const p = old || { genres: e.rolle === "Schauspiel" ? ["Drama", "Krimi"] : e.rolle === "Moderation" ? ["Show"] : e.rolle === "Reality" ? ["Reality"] : e.rolle === "Nachrichten" ? ["Nachrichten"] : e.rolle === "Kommentar" ? ["Sport"] : e.rolle === "Produktion" ? ["Show", "Reality"] : ["Doku"],
+      trait: e.ruhestand ? "Im Ruhestand" : pick(TRAITS[e.rolle] || TRAITS.Moderation), lean: 0, holder: null, until: 0, busy: 0, ban: 0 };
     Object.assign(p, { id, code: e.eindeutige_id, name: e.name, role: e.rolle, talent: e.talent, buzz: e.charisma, rel: 110 - e.skandal, gage: e.gage, custom: true,
       age: e.alter || p.age, origin: e.herkunft || p.origin, langs: e.sprachen || p.langs || "", known: e.bekannt_aus || p.known, knownAt: e.sender || p.knownAt, hasVita: !!e.vita });
+    if (e.preset) { p.preset = e.preset; p.at = null; }
     if (e.bekanntheit) { p.fame = e.bekanntheit; p.pop = p.pop || clamp(Math.round(e.bekanntheit * 0.8 + 10), 5, 100); }
     ensurePerson(p);
     if (!old) { G.people.push(p); idx.set(id, p); }

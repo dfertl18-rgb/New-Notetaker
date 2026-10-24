@@ -21,6 +21,9 @@ html = html.replace(/<link rel="preconnect"[^>]*>\n?/g, "").replace(/<link rel="
 fs.mkdirSync(path.join(out, "vendor"), { recursive: true });
 fs.copyFileSync(path.join(__dirname, "node_modules", "xlsx", "dist", "xlsx.full.min.js"), path.join(out, "vendor", "xlsx.full.min.js"));
 html = html.replace("https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js", "vendor/xlsx.full.min.js");
+// Private Daten (echte Personen) nur, wenn lokal vorhanden – der Ordner privat/ wird nicht ins Repository übernommen
+const priv = path.join(src, "privat", "realdata.js");
+if (fs.existsSync(priv)) { html = html.replace("<script>", () => "<script>\n" + fs.readFileSync(priv, "utf8") + "</script>\n<script>"); console.log("Private Daten eingebettet."); }
 fs.writeFileSync(path.join(out, "index.html"), html);
 
 const logos = path.join(src, "logos");
