@@ -1258,8 +1258,8 @@ const MENU = [
   { id: "produktion", name: "Produktion", subs: [["studio", "Studio", "Eigene Filme, Serien, Shows und Dokus"], ["formatdev", "Formatentwicklung", "Messen, Scouting, Ideenschmiede"], ["casting", "Casting", "Stars, Moderation, Nachrichtengesichter"], ["newsroom", "Nachrichtenredaktion", "Blattlinie, Stil, Etat und Sprecher*in"], ["export", "Rechtemarkt international", "Formate und Produktionen ins Ausland verkaufen"]] },
   { id: "streaming", name: "Streaming", subs: [["stream", "Plattform", "Abos, Churn, ARPU und Preismodell"], ["catalog", "Katalog", "Titel und Verwertungsfenster"], ["smarket", "Wettbewerb", "Streamer im Vergleich und Top 10"]] },
   { id: "sport", name: "Sport", subs: [["rights", "Rechtemarkt", "Ausschreibungen und Gebote"], ["myrights", "Meine Rechte", "Pakete und Live-Termine"], ["spielplan", "Spielplan", "Rahmenterminkalender Fußball"]] },
-  { id: "quoten", name: "Quoten", subs: [["table", "Quotentabelle", "Senderranking nach Marktanteil"], ["ratings", "Einschaltquoten", "Jede Stunde, jeder Sender"], ["rivals", "Konkurrenz", "Tagesplan der anderen Sender"], ["landscape", "Markt", "Sendergruppen und Streamer"]] },
-  { id: "sender", name: "Sender", subs: [["chiefs", "Rivalen", "Beziehungen zu den Senderchefs"], ["board", "Senderleitung", "Erwartungen, Vertrauen, Kredit"], ["finance", "Finanzen", "Erlöse, Kosten, EBITDA"], ["contracts", "Werbeverträge", "Laufende Werbeverträge"], ["adsales", "Vermarktung", "Erlöse, TKP, Kunden, Preisliste"], ["personal", "Personal", "Moderation, Kommentar, Produktion"], ["karriere", "Karriere", "Job-Sicherheit, Arbeitsmarkt, Vorstand"], ["agency", "Werbeagentur", "Neue Werbekunden gewinnen"], ["jury", "Fernsehpreise", "Grimme, Fernsehpreis, Bambi, Henne"]] },
+  { id: "quoten", name: "Quoten", subs: [["table", "Quotentabelle", "Senderranking nach Marktanteil"], ["ratings", "Einschaltquoten", "Jede Stunde, jeder Sender"], ["rivals", "Konkurrenz", "Tagesplan der anderen Sender"], ["landscape", "Markt", "Sendergruppen und Streamer"], ["mediaana", "Media-Analyse", "Marktanteile Z1–Z4 je Sender, Quartal"]] },
+  { id: "sender", name: "Sender", subs: [["chiefs", "Rivalen", "Beziehungen zu den Senderchefs"], ["board", "Senderleitung", "Erwartungen, Vertrauen, Kredit"], ["finance", "Finanzen", "Erlöse, Kosten, EBITDA"], ["contracts", "Werbeverträge", "Laufende Werbeverträge"], ["adsales", "Vermarktung", "Erlöse, TKP, Kunden, Preisliste"], ["personal", "Personal", "Moderation, Kommentar, Produktion"], ["karriere", "Karriere", "Job-Sicherheit, Arbeitsmarkt, Vorstand"], ["bank", "Bank & Bilanz", "Kredite, Liquidität, Abschreibung, Spielstand"], ["agency", "Werbeagentur", "Neue Werbekunden gewinnen"], ["jury", "Fernsehpreise", "Grimme, Fernsehpreis, Bambi, Henne"]] },
 ];
 let openMenu = null;
 const PAGE_SECTION = Object.fromEntries(MENU.flatMap(m => m.subs.map(([k]) => [k, m.id])));
@@ -1774,7 +1774,7 @@ function airHour(i) {
     const st = r.st;
     r.v = tv * r.A / sum;
     r.exp = st.last[i];
-    st.last[i] = r.v;
+    st.last[i] = r.v; zAcc(st, r);
     r.title = r.p ? r.p.title + (r.p.kind === "serie" ? ` (Folge ${(r.p.ep % r.p.eps) + 1})` : "") : "Testbild";
     if (!G.record || r.v > G.record.v) G.record = { v: r.v, title: r.title, st: st.i, day: G.day, h: i };
     if (r.p && !r.c.cont) airedOnce(st, r.p, i);
@@ -2481,6 +2481,7 @@ function draftCalc(d) {
 function startProduction() {
   const P = me(), d = draft, c = draftCalc(d);
   if (c.missing || P.money < c.total || planLocked()) return;
+  if (G.prodFreeze >= G.day) { toast(`Ausschüttungssperre der Bank bis ${dateShort(G.prodFreeze)}: keine neuen Eigenproduktionen.`); return; }
   const W = WRITERS[d.writers];
   let script = ri(W.lo, W.hi);
   if (d.writers === "jung" && Math.random() < 0.12) script = Math.min(99, script + 35); // Überraschungshit
@@ -3154,7 +3155,6 @@ function endDay() {
   let over = null; const C = ensureCareer();
   if (C.out) { if (G.day >= seasonEnd()) G.seasonEnd = seasonEnd() + SEASON; }
   else if (P.conf < 15) fireManager(`Die Job-Sicherheit ist auf ${P.conf} % gefallen; Marktanteil zuletzt ${pct(P.dayMA)}, Ziel ${pct(P.target)}.`);
-  else if (P.money < -10e6) fireManager("Die Schulden sind zu hoch – der Vorstand zieht die Notbremse.");
   else if (G.day >= seasonEnd()) {
     const rank = standings().findIndex(x => x.s === P) + 1;
     if (avg >= P.target) {
@@ -3213,7 +3213,7 @@ function nextDay() {
   G.day++;
   for (const st of G.stations) st.fin = {};
   projectDay();
-  prodDay(); peopleDay(); newsroomDay(); trendDay(); awardsDay(); marketDay(); presaleDay(); rivalsDay(); formatDay(); postQuotenReport(); frameDay(); conflictCheck(); fmDay(); scoutDay(); rumorDay(); staffDay(); politicsDay(); agendaDay(); if (G.day % 7 === 1) careerWeek(); if (G.career && G.career.out) fillHorizon(me());
+  prodDay(); peopleDay(); newsroomDay(); trendDay(); awardsDay(); marketDay(); presaleDay(); rivalsDay(); formatDay(); postQuotenReport(); frameDay(); conflictCheck(); fmDay(); scoutDay(); rumorDay(); staffDay(); politicsDay(); agendaDay(); financeDay(); maDay(); if (G.day % 7 === 1) { careerWeek(); financeWeek(); } if (G.day % 84 === 0) quarterReport(); if (G.career && G.career.out) fillHorizon(me());
   if (dateOf(G.day).getDate() === 1 && !G.event) setInterview(); // Interview zum Monatsbeginn
   if (G.mods.coverup && G.day >= G.mods.coverup.day) {
     const c = G.mods.coverup; G.mods.coverup = null;
@@ -3350,7 +3350,7 @@ function applyClubColors() {
 function render(top) {
   if (!G) return;
   renderNav(); renderTop();
-  const pages = { overview, inbox, plan: planPage, archiv, market, filmmarket: filmMarketPage, chiefs: rivalsPage, adsales: adsalesPage, spielplan: spielplanPage, formatmarkt: formatMarketPage, wochenplan: weekPlanPage, formatdev: formatDevPage, personal: staffPage, karriere: careerPage, politik: politicsPage, stream: streamPage, catalog, smarket, rights: rightsPage, myrights, contracts, agency, ticker, table: tablePage, ratings, landscape, board, finance, jury, rivals, live: livePage, studio, newprod: newProdPage, casting, newsroom, export: exportPage };
+  const pages = { overview, inbox, plan: planPage, archiv, market, filmmarket: filmMarketPage, chiefs: rivalsPage, adsales: adsalesPage, spielplan: spielplanPage, formatmarkt: formatMarketPage, wochenplan: weekPlanPage, formatdev: formatDevPage, personal: staffPage, karriere: careerPage, bank: bankPage, mediaana: maPage, politik: politicsPage, stream: streamPage, catalog, smarket, rights: rightsPage, myrights, contracts, agency, ticker, table: tablePage, ratings, landscape, board, finance, jury, rivals, live: livePage, studio, newprod: newProdPage, casting, newsroom, export: exportPage };
   const sc = $("content").scrollTop;
   $("content").innerHTML = (pages[page] || overview)(me());
   if (!top) $("content").scrollTop = sc;
@@ -4054,6 +4054,9 @@ function act(b) {
     case "scoutGo": { const err = sendScout(b.dataset.k, b.dataset.v); toast(err || `${SCOUT_TEAMS[b.dataset.v][0]} fliegt zur ${b.dataset.k}. Der Report kommt nach der Messe.`); break; }
     case "devSet": G.devDraft = G.devDraft || { genre: "Show", slot: "Primetime", target: 1, budget: 50000 }; G.devDraft[b.dataset.k] = b.dataset.k === "target" ? +b.dataset.v : b.dataset.v; break;
     case "staffTab": staffTab = b.dataset.k; break;
+    case "loan": { const err = takeLoan(b.dataset.k); toast(err || "Vertrag unterzeichnet."); break; }
+    case "maZ": maZ = +b.dataset.k; break;
+    case "saveExport": exportSave(); toast("Spielstand-Datei wird gespeichert."); return;
     case "talkField": G.talkSel = { ...(G.talkSel || { ids: [] }), field: b.dataset.k }; break;
     case "boardPoker": openBoardPoker(b.dataset.k); return;
     case "signJob": { const err = signContract(b.dataset.k, b.dataset.v); closeModal(); toast(err || "Willkommen an Bord!"); if (!err) { go("overview"); return; } break; }
@@ -6106,6 +6109,169 @@ function careerPage(P) {
   return h;
 }
 // =====================================================================
+// Bilanz & Bank: Rechte-Abschreibung je Lauf, Kreditlinie mit Dispozins, Bankkredite mit Auflagen, Controlling
+// Banknamen sind frei erfunden.
+// =====================================================================
+const FILM_W = n => n <= 1 ? [1] : n === 2 ? [0.7, 0.3] : [0.6, 0.3, 0.1];
+// Kaufpreis wird als Rechtevermögen geführt und mit jedem Lauf abgeschrieben (60/30/10)
+function amortRun(st, p) {
+  if (!p.price || p.epCost || p.own) return 0;
+  if (p.book == null) p.book = p.price;
+  const w = FILM_W(p.maxRuns || 3)[p.runs - 1] || 0, dep = Math.min(p.book, r1000(p.price * w));
+  p.book -= dep; st.amort = (st.amort || 0) + dep; st.amortW = (st.amortW || 0) + dep;
+  return dep;
+}
+const rightsValue = st => st.progs.filter(p => p.kind === "film" && p.price && !p.own).reduce((a, p) => a + (p.book != null ? p.book : p.price * (1 - FILM_W(p.maxRuns || 3).slice(0, p.runs).reduce((x, y) => x + y, 0))), 0);
+const imageOf = st => clamp(Math.round(st.brand / st.base * 60 + (st.favor || 0) / 2), 0, 100);
+const DISPO = 0.115;
+function creditLimit(P) { return r1000(5e6 * clamp(P.base / 8, 0.4, 2) * ((P.loans || []).some(l => l.bank === "landes") ? 1.5 : 1)); }
+const BANKS = [
+  { id: "medien", name: "Deutsche Medienbank AG", rate: 6.5, vol: 1.5e6, weeks: 24, need: 60, profile: "Konservativ, nur bei starkem Image (ab 60)", cond: "Ausschüttungssperre: drei Wochen keine neuen Eigenproduktionen" },
+  { id: "landes", name: "Landesbank DACH", rate: 8.5, vol: 0, weeks: 26, need: 0, profile: "Marktüblich, solide Strukturen", cond: "Kreditlinie +50 %, dafür kontrolliert ein Kontrollrat mit: −2 % Job-Sicherheit pro Woche" },
+  { id: "vc", name: "Media Venture Capital", rate: 14.5, vol: 2e6, weeks: 20, need: 0, profile: "Hohes Risiko, hilft auch kurz vor der Zahlungsunfähigkeit", cond: "Rechte-Pfändung: nach drei verpassten Raten wird Ihr wertvollster Film gepfändet" },
+];
+const bankScale = P => clamp(P.base / 8, 0.4, 2);
+function takeLoan(id) {
+  const P = me(), b = BANKS.find(x => x.id === id); if (!b) return "Unbekannt.";
+  P.loans = P.loans || [];
+  if (P.loans.some(l => l.bank === id)) return "Bei dieser Bank läuft bereits ein Kredit.";
+  if (imageOf(P) < b.need) return `Die Bank lehnt ab: Image ${imageOf(P)} unter ${b.need}.`;
+  const vol = r1000(b.vol * bankScale(P));
+  P.loans.push({ bank: id, vol, rest: vol, rate: b.rate, weeks: b.weeks, left: b.weeks, missed: 0, from: G.day });
+  if (vol) book(P, "Bankkredite", vol);
+  if (id === "medien") G.prodFreeze = G.day + 21;
+  if (P.money - vol < 0 && P.money >= 0) { P.conf = clamp(P.conf + 10, 0, 100); }
+  postArticle("Finanz-Controlling", "Finanzen", `${b.name}: ${vol ? `${eur(vol)} Kredit zu ${b.rate.toLocaleString("de-DE")} %` : `Kreditlinie auf ${eur(creditLimit(P))} erweitert`}`, [vol ? `Die Bank überweist ${eur(vol)}. Zins ${b.rate.toLocaleString("de-DE")} % p. a., Laufzeit ${b.weeks} Wochen mit gleichen Tilgungsraten.` : `Die Kreditlinie steigt auf ${eur(creditLimit(P))}, Dispozins ${(DISPO * 100).toLocaleString("de-DE")} % p. a.`, `Auflage: ${b.cond}.`], true);
+  return null;
+}
+// Täglich: Dispozins auf das überzogene Konto, Zahlungsunfähigkeit jenseits der Kreditlinie
+function financeDay() {
+  for (const st of G.stations) if (st.money < 0) book(st, "Zinsen (Dispo)", -r1000(-st.money * DISPO / 365));
+  const P = me(), C = ensureCareer();
+  if (!C.out && P.money < -creditLimit(P)) fireManager(`Kreditlinie von ${eur(creditLimit(P))} überschritten – Zahlungsunfähigkeit droht.`);
+}
+// Wöchentlich: Zins und Tilgung, Pfändung, Controlling-Bericht
+function financeWeek() {
+  const P = me(); P.loans = P.loans || [];
+  let zins = 0, tilg = 0;
+  for (const l of P.loans.slice()) {
+    const b = BANKS.find(x => x.id === l.bank), z = r1000(l.rest * l.rate / 100 / 52), t = l.vol ? r1000(Math.min(l.rest, l.vol / l.weeks)) : 0;
+    const can = P.money - z - t > -creditLimit(P) * 0.9 || l.bank !== "vc";
+    if (!can) { l.missed++; if (l.missed >= 3) seizeFilm(P, l); continue; }
+    book(P, "Zinsen (Kredite)", -z); if (t) book(P, "Kredittilgung", -t);
+    zins += z; tilg += t; l.rest -= t; l.left--;
+    if (l.bank === "landes") P.conf = clamp(P.conf - 2, 0, 100);
+    if (l.left <= 0 || (l.vol && l.rest <= 0)) { P.loans = P.loans.filter(x => x !== l); logMsg("Finanz-Controlling", "Finanzen", `${b.name}: Kredit vollständig zurückgeführt.`, true); }
+  }
+  // Ergebnis der Woche: Zahlungen ohne Investitionen und Finanzierung, dazu die Abschreibungen
+  const diff = {};
+  for (const h of P.hist.slice(-7)) for (const [k, v] of Object.entries(h.fin || {})) diff[k] = (diff[k] || 0) + v;
+  const skip = ["Programmkäufe", "Bankkredite", "Kredittilgung", "Vorstandsbudget"];
+  const cash = Object.entries(diff).filter(([k]) => !skip.includes(k)).reduce((a, [, v]) => a + v, 0);
+  const amort = P.amortW || 0; P.amortW = 0;
+  const res = cash - amort, lim = creditLimit(P), use = P.money < 0 ? -P.money / lim : 0;
+  P.weekRes = (P.weekRes || []).concat([[G.day, res, amort, zins]]).slice(-26);
+  if (use >= 0.75) postArticle("Revision", "Finanzen", "Dringende Warnung vor Zahlungsunfähigkeit", [`Wir nutzen ${Math.round(use * 100)} % der Kreditlinie (${eur(-P.money)} von ${eur(lim)}). Dispo- und Kreditzinsen dieser Woche: ${eur(zins + r1000(-P.money * DISPO / 52))}.`, `Ohne frische Liquidität – starke Werbeumfelder, ein Großevent mit vielen Werbeblöcken oder eine Umschuldung unter Sender → Bank & Bilanz – muss der Vorstand die Notbremse ziehen.`], true);
+  else if (res > 0 && amort < Math.max(1, cash) * 0.2) postArticle("Finanz-Controlling", "Finanzen", `Bilanzschonende Woche: ${meur(res)} Ergebnis`, [`Wenige teure Premieren, daher nur ${eur(amort)} Abschreibung auf Filmrechte. Das Ergebnis nach Abschreibung liegt bei ${meur(res)}.`]);
+}
+function seizeFilm(P, l) {
+  const f = P.progs.filter(p => p.kind === "film" && p.price && p.runs < p.maxRuns).sort((a, b) => (b.book ?? b.price) - (a.book ?? a.price))[0];
+  l.missed = 0;
+  if (!f) return;
+  P.progs = P.progs.filter(p => p !== f);
+  allPlans(P).forEach(d => d.forEach(c => { if (c.p === f.id) { c.p = null; c.cont = false; } if (c.extra) c.extra = c.extra.filter(x => x !== f.id); }));
+  buildToday(P);
+  postArticle("Rechteabteilung", "Finanzen", `Pfändung: „${f.title}“ an Media Venture Capital`, ["Wir haben die Tilgung zum dritten Mal nicht bedient. Der Kreditgeber hat die vereinbarte Sicherheit gezogen: Die Rechte sind mit sofortiger Wirkung eingefroren und aus dem Sendeplan entfernt.", "Prüfen Sie die betroffenen Sendeplätze im Wochenplan."], true);
+}
+function bankPage(P) {
+  const lim = creditLimit(P), use = P.money < 0 ? -P.money / lim : 0, loans = P.loans || [];
+  let h = title("Bank & Bilanz", `<span class="muted">Image ${imageOf(P)} · Kreditlinie ${meur(lim)}</span>`) + lockNote();
+  h += `<div class="tiles mb"><div class="tile"><small>Liquidität</small><b class="${P.money < 0 ? "down" : ""}">${meur(P.money)}</b><span>${P.money < 0 ? `Dispo ${(DISPO * 100).toLocaleString("de-DE")} % p. a.` : "Guthaben"}</span></div>
+    <div class="tile"><small>Kreditlinie genutzt</small><b class="${use > 0.75 ? "down" : ""}">${Math.round(use * 100)} %</b><span>von ${meur(lim)}</span></div>
+    <div class="tile"><small>Rechtevermögen</small><b>${meur(rightsValue(P))}</b><span>Filme, abgeschrieben 60/30/10 je Lauf</span></div>
+    <div class="tile"><small>Bankkredite</small><b>${meur(loans.reduce((a, l) => a + l.rest, 0))}</b><span>${loans.length} laufend</span></div></div>`;
+  const wr = (P.weekRes || []).slice(-8).reverse();
+  h += `<section class="panel mb"><div class="ph"><h2>Wochenergebnis</h2>${info("Zahlungsströme ohne Rechtekäufe und Kredite, abzüglich der Abschreibung auf gesendete Filme. Premieren belasten das Ergebnis stark, Wiederholungen kaum.")}</div>${wr.length ? `<div class="tbl"><table><thead><tr><th>Woche bis</th><th class="num">Abschreibung</th><th class="num">Zinsen</th><th class="num">Ergebnis</th></tr></thead><tbody>${wr.map(([d, r, a, z]) => `<tr><td>${dateShort(d)}</td><td class="num">${eur(a)}</td><td class="num">${eur(z)}</td><td class="num ${r < 0 ? "down" : "up"}">${meur(r)}</td></tr>`).join("")}</tbody></table></div>` : '<p class="fine pad">Der erste Wochenbericht folgt am Montag.</p>'}</section>`;
+  h += `<section class="panel mb"><div class="ph"><h2>Kreditinstitute</h2><span class="aside">fiktive Banken</span></div><div class="tbl"><table><tbody>${BANKS.map(b => { const l = loans.find(x => x.bank === b.id), vol = r1000(b.vol * bankScale(P));
+    return `<tr><td class="title"><b>${b.name}</b><div class="muted">${b.profile}</div><div class="fine">${b.cond}</div></td><td class="num">${b.rate.toLocaleString("de-DE")} % p. a.</td><td class="num">${vol ? eur(vol) + ` · ${b.weeks} Wo.` : "Linie +50 %"}</td><td>${l ? `<span class="chip">läuft · Rest ${eur(l.rest)} · ${l.left} Wo.${l.missed ? ` · ${l.missed}× verpasst` : ""}</span>` : `<button class="btn hot small" data-act="loan" data-k="${b.id}" ${planLocked() || imageOf(P) < b.need ? "disabled" : ""}>${b.vol ? "Kredit beantragen" : "Unterzeichnen"}</button>`}</td></tr>`; }).join("")}</tbody></table></div></section>`;
+  h += `<section class="panel"><div class="ph"><h2>Spielstand-Datei</h2></div><div class="pad"><p class="fine">Der Spielstand wird automatisch auf diesem Gerät gespeichert. Zusätzlich können Sie ihn als Datei sichern und später wieder einlesen (in der Windows-App).</p>
+    <div class="row"><button class="btn" data-act="saveExport">Spielstand als Datei sichern</button> <label class="btn ghost">Spielstand laden<input type="file" accept=".json" data-upload="save" hidden></label></div></div></section>`;
+  return h;
+}
+// Spielstand als JSON-Datei
+function exportSave() {
+  const blob = new Blob([JSON.stringify({ app: "Medienmanager 2027", v: 1, saved: new Date().toISOString(), G })], { type: "application/json" });
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `medienmanager-2027-tag-${G.day}.json`; document.body.appendChild(a); a.click(); a.remove();
+}
+async function importSave(file) {
+  const d = JSON.parse(await file.text());
+  if (!d || d.app !== "Medienmanager 2027" || !d.G || !d.G.stations) throw new Error("Keine Spielstand-Datei");
+  G = d.G; G.mods = G.mods || {}; G.eventLog = G.eventLog || [];
+  G.people.forEach(p => ensurePerson(p)); applyEditorPeople(); PIDX_SRC = null;
+  if (G.phase !== "plan") startDay();
+  save(); go("overview", true);
+}
+
+// =====================================================================
+// Media-Analyse: Marktanteile je Zielgruppe Z1–Z4 für alle Sender, Quartalsbericht alle zwölf Wochen
+// =====================================================================
+function zAcc(st, r) {
+  if (!G.zd || G.zd.length !== G.stations.length) G.zd = G.stations.map(() => [0, 0, 0, 0]);
+  const m = r.p ? zMix(st, r.p) : [0.25, 0.25, 0.25, 0.25];
+  for (let k = 0; k < 4; k++) G.zd[st.i][k] += r.v * m[k];
+}
+function maDay() {
+  if (!G.zd) return;
+  const tot = [0, 1, 2, 3].map(k => G.zd.reduce((a, s) => a + s[k], 0) || 1);
+  G.zh = (G.zh || []).concat([{ day: G.day, s: G.zd.map(s => s.map((v, k) => +(v / tot[k] * 100 * 0.84).toFixed(2))) }]).slice(-120);
+  G.zd = null;
+}
+const ZNAMES = ["Z1 14–29", "Z2 30–49", "Z3 50–64", "Z4 65+"];
+function zAvg(days) { const h = (G.zh || []).slice(-days); if (!h.length) return null; return G.stations.map((_, i) => [0, 1, 2, 3].map(k => h.reduce((a, d) => a + (d.s[i] ? d.s[i][k] : 0), 0) / h.length)); }
+function quarterReport() {
+  const P = me(), C = ensureCareer(), avg = zAvg(84); if (!avg) return;
+  const mine = avg[P.i], lead = [0, 1, 2, 3].map(k => G.stations[avg.map(s => s[k]).indexOf(Math.max(...avg.map(s => s[k])))]);
+  const prev = G.maQ && G.maQ[P.id], ct = C.contract;
+  let verdict = "";
+  if (!C.out && prev) {
+    const youth = (mine[0] + mine[1]) / 2, old = (prev[0] + prev[1]) / 2;
+    if (ct && ct.id === "risk") { if (youth >= old * 1.05) { P.conf = clamp(P.conf + 15, 0, 100); C.malus = Math.max(0, C.malus - 10); verdict = "Vorstand: Verjüngungsziel auf Kurs – Ihr Ansehen steigt."; } else { P.conf = clamp(P.conf - 20, 0, 100); verdict = "Vorstand: Verjüngungsziel verfehlt – Ihre Position wackelt."; } }
+    else if (mine[1] >= prev[1]) { P.conf = clamp(P.conf + 5, 0, 100); verdict = "Vorstand: Kernzielgruppe Z2 gehalten."; }
+    else { P.conf = clamp(P.conf - 8, 0, 100); verdict = "Vorstand: Z2-Reichweite rückläufig – die Werbekunden werden nervös."; }
+  }
+  G.maQ = Object.fromEntries(G.stations.map((s, i) => [s.id, avg[i]]));
+  postArticle("Media-Analyse", "Quoten", `Quartalsbericht: ${P.name} mit ${mine.map((v, k) => `Z${k + 1} ${pct(v)}`).join(", ")}`, [`Marktführer: ${lead.map((s, k) => `Z${k + 1} ${s.name}`).join(" · ")}.`, verdict || "Die vollständige Tabelle steht unter Quoten → Media-Analyse.",
+    ...(!C.out && repStars() >= 4 ? [`Ihr Berater meldet: Bei ${G.stations.filter(s => !isMe(s) && s.conf < 40).map(s => s.name).slice(0, 2).join(" und ") || "mehreren Sendern"} wächst der Druck auf die Programmdirektion – Ihr Name fällt in den Gremien.`] : [])], true);
+}
+let maZ = 1;
+function zChart(P, k) {
+  const h = (G.zh || []).slice(-84); if (h.length < 2) return '<p class="fine pad">Die Kurven erscheinen nach den ersten Sendetagen.</p>';
+  const weeks = []; for (let i = 0; i < h.length; i += 7) { const w = h.slice(i, i + 7); weeks.push({ day: w[w.length - 1].day, s: G.stations.map((_, j) => w.reduce((a, d) => a + d.s[j][k], 0) / w.length) }); }
+  const show = [P.i, ...G.stations.map((s, j) => [j, weeks[weeks.length - 1].s[j]]).filter(([j]) => j !== P.i).sort((a, b) => b[1] - a[1]).slice(0, 3).map(x => x[0])];
+  const W = 640, H = 220, L = 34, R = 128, T = 12, B = 24, max = Math.ceil(Math.max(...weeks.flatMap(w => show.map(j => w.s[j]))) / 5) * 5 || 5;
+  const x = i => L + (weeks.length === 1 ? 0 : i * (W - L - R) / (weeks.length - 1)), y = v => T + (1 - v / max) * (H - T - B);
+  let s = `<svg viewBox="0 0 ${W} ${H}" class="machart" role="img" aria-label="Marktanteil ${ZNAMES[k]} je Woche">`;
+  for (let v = 0; v <= max; v += 5) s += `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" class="grid"/><text x="${L - 6}" y="${y(v) + 4}" text-anchor="end" font-size="11" fill="var(--muted)">${v} %</text>`;
+  weeks.forEach((w, i) => { if (i % 2 === 0 || i === weeks.length - 1) s += `<text x="${x(i)}" y="${H - 6}" text-anchor="middle" font-size="11" fill="var(--muted)">${dateShort(w.day).replace(/^\w+\.,\s*/, "")}</text>`; });
+  for (const j of show) {
+    const st = G.stations[j], col = st.color || "var(--accent)";
+    s += `<polyline fill="none" stroke="${col}" stroke-width="${j === P.i ? 3 : 2}" stroke-linejoin="round" points="${weeks.map((w, i) => `${x(i)},${y(w.s[j])}`).join(" ")}"/>`;
+    weeks.forEach((w, i) => { s += `<circle cx="${x(i)}" cy="${y(w.s[j])}" r="4" fill="${col}" stroke="var(--panel)" stroke-width="2"><title>${esc(st.name)} · ${dateShort(w.day)}: ${pct(w.s[j])}</title></circle>`; });
+    const last = weeks[weeks.length - 1].s[j];
+    s += `<text x="${W - R + 8}" y="${y(last) + 4}" font-size="11" fill="var(--text)">${esc(st.name)} ${pct(last)}</text>`;
+  }
+  return s + "</svg>";
+}
+function maPage(P) {
+  const avg = zAvg(84), cur = zAvg(7);
+  let h = title("Media-Analyse", '<span class="muted">Marktanteile nach Zielgruppe · letzte 12 Wochen</span>');
+  h += `<div class="pills mb">${ZNAMES.map((n, k) => `<button data-act="maZ" data-k="${k}" class="${maZ === k ? "on" : ""}">${n}</button>`).join("")}</div>`;
+  h += `<section class="panel mb"><div class="ph"><h2>Wochenverlauf ${ZNAMES[maZ]}</h2><span class="aside">Ihr Sender und die drei stärksten Rivalen</span></div><div class="pad">${zChart(P, maZ)}</div></section>`;
+  if (avg) h += `<section class="panel"><div class="ph"><h2>Quartals-Matrix</h2>${info("Nullsummenspiel: Zuschauer, die Sie gewinnen, fehlen der Konkurrenz. Marktanteile je Altersgruppe am linearen Fernsehen (Streaming und sonstige Sender ausgenommen).")}</div><div class="tbl"><table><thead><tr><th>Sender</th>${ZNAMES.map(n => `<th class="num">${n}</th>`).join("")}<th class="num">Trend Z2 (Woche)</th></tr></thead><tbody>${G.stations.map((s, i) => { const best = k => avg[i][k] === Math.max(...avg.map(x => x[k]));
+    return `<tr class="${i === P.i ? "sel" : ""}"><td class="title">${esc(s.name)}</td>${avg[i].map((v, k) => `<td class="num">${best(k) ? `<b>${pct(v)}</b> ★` : pct(v)}</td>`).join("")}<td class="num ${cur && cur[i][1] >= avg[i][1] ? "up" : "down"}">${cur ? pct(cur[i][1]) : "–"}</td></tr>`; }).join("")}</tbody></table></div></section>`;
+  return h;
+}
+// =====================================================================
 // Formatprofil: Quotenverlauf, Publikum, Analyse und Maßnahmen je Sendung
 // =====================================================================
 // Affinität zur Zielgruppe 14–49 (Spielwerte): Sender-Image × Genre
@@ -6120,7 +6286,7 @@ function airedOnce(st, p, i) {
   p.aired = (p.aired || 0) + 1;
   if (p.kind === "serie") { p.ep++; p.topic = Math.max(0.15, p.topic - (p.ep % p.eps === 0 ? 0.4 : 0.04)); }
   else if (p.kind === "show") p.topic = Math.max(0.4, p.topic * (p.wear || (p.genre === "Nachrichten" ? 0.98 : 0.92)));
-  else if (p.kind === "film") { p.runs++; p.topic = Math.max(0.1, p.topic * 0.6); }
+  else if (p.kind === "film") { p.runs++; p.topic = Math.max(0.1, p.topic * 0.6); amortRun(st, p); }
   if ((p.genre === "Kultur" || p.genre === "Doku") && i >= 20) st.favor = Math.min(100, st.favor + 0.3 + p.q / 100);
 }
 function recordHour(res, sorted, i) {
@@ -6894,6 +7060,7 @@ async function readUpload(input, kind) {
     catch (e) { edMsg = [`IMDb-Import fehlgeschlagen: ${e.message}`, "bad"]; }
     renderEditor(); return;
   }
+  if (kind === "save") { try { await importSave(f); toast("Spielstand geladen."); } catch (e) { toast(`Laden fehlgeschlagen: ${e.message}`); } return; }
   if (kind === "ads") {
     edMsg = [`Lese „${f.name}“ …`, "warn"]; renderEditor();
     try { const r = await importAdsFile(f); edMsg = [`Werbekunden-Import „${f.name}“: ${r.rows.toLocaleString("de-DE")} Verträge (${r.add} neu, ${r.upd} aktualisiert), ${r.brands} Marken. Gespeichert nur lokal auf diesem Gerät.`, "good"]; if (G) refreshAds(); }
