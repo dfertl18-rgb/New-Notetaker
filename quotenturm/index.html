@@ -1285,6 +1285,7 @@ const RIGHTS = [
   { id: "eis", name: "Eishockey-WM", sport: "Eishockey", holder: "", q: 64, wd: 2, h: 20, len: 2, every: 1, from: 1, fix: () => `Deutschland – ${pick(NATIONS)}`, tags: "privat" },
   { id: "elf", name: "European League of Football", sport: "American Football", holder: "", q: 46, wd: 0, h: 15, len: 2, every: 1, from: 1, fix: () => pick(["Rhein Fire", "Stuttgart Surge", "Hamburg Sea Devils", "Munich Ravens"]) + " – " + pick(["Vienna Vikings", "Berlin Thunder", "Frankfurt Galaxy", "Paris Musketeers"]), tags: "privat" },
   { id: "dtm", name: "DTM & Formel E", sport: "Motorsport", holder: "pro7", q: 50, wd: 6, h: 14, len: 2, every: 2, from: 1, fix: () => pick(["DTM, Hockenheimring", "Formel E, Berlin-Tempelhof", "DTM, Nürburgring", "Formel E, Mexiko-Stadt"]), tags: "privat" },
+  { id: "tennis", name: "Tennis – ATP- und WTA-Turniere in Deutschland", sport: "Tennis", holder: "", q: 54, wd: 0, h: 13, len: 3, every: 2, from: 1, fix: () => pick(["Finale Halle (Westf.)", "Finale Hamburg", "Finale München", "Finale Stuttgart", "Halbfinale Berlin", "Davis Cup – Deutschland"]), tags: "privat" },
   { id: "darts", name: "Darts – PDC-Turniere", sport: "Darts", holder: "", q: 58, wd: 5, h: 21, len: 2, every: 1, from: 1, fix: () => pick(["Grand Slam of Darts", "Players Championship Finals", "European Championship"]), tags: "privat" },
 ];
 const EXCLUSIVE = [
@@ -1646,6 +1647,7 @@ function fillHorizon(P) {
     for (let d = G.day; d < G.day + HORIZON; d++) {
       const sc = calDay(P, d);
       sc.forEach(c => { if (c.p && !progOf(P, c.p)) { c.p = null; c.cont = false; c.ad = null; } }); // abgelaufene Lizenzen
+      placeFixedDay(P, sc, d); // feste Sendeplätze eigener Formate zuerst
       if (sc.some(c => !c.p)) planDayFor(P, weekday(d), sc, { rem, keep: true, day: d });
       fillGaps(P, sc, weekday(d));
     }
@@ -1808,8 +1810,8 @@ function attrCell(st, i, c) {
     A = st.brand * Math.pow(p.q / 60, 1.5) * fit(p.genre, i) * topic * newsMult * rnd(0.9, 1.1);
     if (c.cont && p.kind !== "sport") A *= 0.96;
     if (p.pull) A *= 1 + p.pull * 0.12; // bekannte Titel ziehen mehr Publikum
-    A *= szAttr(p); // Staffelpause: nur Wiederholung
-    A *= demoFactor(st, p) * hostMalus(p) * hostF(st, p) * polF(st, p) * breakF(st, p) * pressF(st, p) * genreSeason(p); // passt die Sendung (und die Moderation) zum Publikum des Senders?
+    A *= szAttr(p) * guestF(p); // Staffelpause: nur Wiederholung; Gäste-Assistent
+    A *= demoFactor(st, p) * hostMalus(p) * hostF(st, p) * exclF(st, p) * polF(st, p) * breakF(st, p) * pressF(st, p) * genreSeason(p); // passt die Sendung (und die Moderation) zum Publikum des Senders?
     if (p.kind === "sport") A *= commF(p); // Kommentator*in
     if (blMagazine(p) && !matchday(G.day)) A *= 0.35; // ohne Spieltag keine Bilder
     if (p.boost && (!p.boost.day || p.boost.day === G.day)) A *= 1 + p.boost.v; // Gaststar, Event-Ausgabe, Relaunch
@@ -2284,7 +2286,7 @@ const stat = () => Math.round(10 + 90 * Math.pow(Math.random(), 1.35));
 const baseGage = (talent, cha) => r1000(20000 + Math.pow(talent * 0.6 + cha * 0.4, 2.2) * 40);
 const marketValue = p => p.gage * 1.5;
 // Ablöse: Marktwert, steigt mit der Restlaufzeit des Vertrags
-const abloese = p => r1000(marketValue(p) * (1 + Math.max(0, p.until - G.day) / 120) * (typeof avNeg === "function" ? avNeg() : 1));
+const abloese = p => r1000(marketValue(p) * (1 + Math.max(0, p.until - G.day) / 365) * (typeof avNeg === "function" ? avNeg() : 1) * ((p.sat ?? 70) < 40 ? 0.7 : 1)); // Unzufriedene lassen sich günstiger herauslösen
 function castingEngine(n = 4000) {
   const names = new Set(), out = [];
   while (out.length < n && names.size < FIRST_NAMES.length * LAST_NAMES.length) {
@@ -2574,7 +2576,7 @@ function startProduction() {
   book(P, "Eigenproduktion", -c.total);
   cast.forEach(p => { p.busy = G.day + c.days; });
   const fallback = d.kind === "bio" ? `Das Leben einer Legende (${d.opt})` : d.kind === "live" ? `${d.opt} ${dateOf(G.day).getFullYear()}` : `${FORMATS[d.kind].name}: ${optName(d.kind, d.opt)}`;
-  const prod = { house: d.house || "std", dna: dnaOf(d) ? { ...d.dna } : null, id: uid(), kind: d.kind, title: d.title.trim() || fallback, genre, bp: c.bp ? c.bp.id : null, opt: d.opt, cls: d.cls, cast: cast.map(p => p.id), writers: d.writers, trash: d.kind === "reality" && TRASH_BP.includes(d.opt), deals: d.deals || {}, script, star: Math.round(star), chem, R, days: c.days, left: c.days, cost: c.total };
+  const prod = { house: d.house || "std", dna: dnaOf(d) ? { ...d.dna } : null, id: uid(), kind: d.kind, title: d.title.trim() || fallback, genre, bp: c.bp ? c.bp.id : null, opt: d.opt, cls: d.cls, cast: cast.map(p => p.id), writers: d.writers, trash: d.kind === "reality" && TRASH_BP.includes(d.opt), deals: d.deals || {}, script, star: Math.round(star), chem, R, days: c.days, left: c.days, cost: c.total, rhCfg: { rh: d.rh, rhDay: d.rhDay, rhHour: d.rhHour, eps: d.eps, fix: d.fix ?? "1", gb: d.gb } };
   G.prods.push(prod);
   logMsg("Produktion", "Produktion", `Drehstart für „${prod.title}“ (${FORMATS[d.kind].name}, Klasse ${d.cls}). Fertigstellung in ${c.days} Tagen.`, true);
   draft = null;
@@ -2594,6 +2596,7 @@ function prodDay() {
       wear: bp ? bp.wear : undefined, streamF: bp ? bp.stream : pr.kind === "serie" ? 1.2 : pr.kind === "live" ? 0.6 : 1, live: bp ? bp.live : pr.kind === "live" ? 0.35 : 0, host: hosted ? pr.cast[0] : null, prod: pr.id };
     prog.epCost = prog.kind === "film" ? 0 : r1000(pr.cost * (prog.kind === "serie" ? 0.04 : 0.05)); // laufende Kosten je Folge
     applyDna(prog, pr);
+    fmtDevApply(P, prog, pr);
     if (pr.hype) { prog.hypeTv = Math.min(100, pr.hype); prog.hypeStream = Math.min(100, pr.hype); } // Interview-Buzz
     { const mk = castMarket(pr.cast); prog.adF = mk.ad; if (mk.hype > 0) { prog.hypeTv = Math.min(100, Math.max(prog.hypeTv || 0, mk.hype)); prog.hypeStream = Math.min(100, Math.max(prog.hypeStream || 0, mk.hype)); } prog.binge = (pr.cast || []).some(id => (person(id) || {}).trait === "Binge-Garant"); }
     P.progs.push(prog);
@@ -2621,7 +2624,7 @@ function peopleDay() {
   const P = me();
   for (const p of G.people) {
     // KI-Sender verlängern meist mit ihren Gesichtern; sonst verlässt die Person die Sendung
-    if (p.holder && p.holder !== P.id && p.until <= G.day && p.show && Math.random() < 0.8) p.until = G.day + ri(180, 700);
+    if (p.holder && p.holder !== P.id && p.until <= G.day && p.show && Math.random() < (pSat(p) >= 62 ? 0.9 : pSat(p) >= 40 ? 0.6 : 0.25)) p.until = G.day + ri(180, 700); // zufriedene Gesichter verlängern eher
     if (p.holder && p.until <= G.day) { unbind(p); if (p.holder === P.id) { logMsg("Casting", "Personal", `Der Exklusivvertrag mit ${p.name} ist ausgelaufen.`); if (G.newsroom.anchor === p.id) G.newsroom.anchor = null; } p.holder = null; p.ct = null; }
     if (p.pat !== undefined && p.pat < 100) p.pat = Math.min(100, p.pat + 4); // Geduld erholt sich langsam
     if (p.holder && p.holder !== P.id && p.busy <= G.day && Math.random() < 0.08) p.busy = G.day + ri(3, 12); // Konkurrenz dreht
@@ -2643,7 +2646,7 @@ const CLAUSES = {
   prime: { name: "Primetime-Garantie", desc: "Formate mit dieser Person laufen nicht nach 23 Uhr – sonst Vertragsstrafe." },
 };
 const TRASH_BP = ["dating", "island", "docusoap"];
-const NEGO_WEEKS = [4, 8, 12];
+const NEGO_WEEKS = [26, 52, 104]; // 6, 12 oder 24 Monate
 const BLOCK_DAYS = 28; // 4 Spielwochen Funkstille nach geplatzter Verhandlung
 let nego = null;
 // Sonderwunsch der Agentur, bei älteren Spielständen beim ersten Zugriff ausgewürfelt
@@ -2663,7 +2666,8 @@ const pClauses = (p, deals) => p.holder === me().id && p.ct ? p.ct.clauses : (de
 // Wunschgage: Projektgage oder Wochengage; erfüllte Sonderwünsche machen günstiger, verweigerte teurer
 function negoWish(n) {
   const p = person(n.id), dem = pClause(p);
-  let f = n.type === "excl" ? p.gage * 0.35 * (1 - (n.weeks - 4) / 4 * 0.04) : p.gage;
+  let f = n.type === "excl" ? p.gage * (n.weeks >= 104 ? 0.06 : n.weeks >= 52 ? 0.07 : 0.08) : p.gage; // Exklusivität: Wochengage, längere Bindung etwas günstiger
+  f *= 1 - (n.promises || []).reduce((a, k) => a + PROMISES_P[k].wish, 0); // Versprechen senken die Forderung – müssen aber gehalten werden
   if (dem) f *= dem === "exkl" ? (n.clauses.includes(dem) ? 1.35 : 1.45) : n.clauses.includes(dem) ? 0.85 : 1.2;
   else if (n.clauses.includes("exkl")) f *= 1.35;
   if (n.clauses.includes("stream") && dem !== "stream") f *= 0.92;
@@ -2678,7 +2682,7 @@ function openNego(id, ctx, slot) {
   const p = person(id); if (!p || planLocked()) return;
   if (p.ban > G.day) { toast(`${p.name} spricht bis ${dateShort(p.ban)} nicht mit Ihnen.`); return; }
   const dem = pClause(p);
-  nego = { id, ctx, slot, type: ctx === "slot" ? "proj" : "excl", weeks: 4, clauses: dem ? [dem] : [], pct: 100, msg: null, done: false };
+  nego = { id, ctx, slot, type: ctx === "slot" ? "proj" : "excl", weeks: 52, promises: [], clauses: dem ? [dem] : [], pct: 100, msg: null, done: false };
   renderNego();
 }
 function renderNego() {
@@ -2696,11 +2700,14 @@ function renderNego() {
   const types = n.ctx === "slot" ? [["proj", "Projektgage", "Einmalig für diese Produktion"], ["excl", "Exklusivvertrag", "Wochengage, Projekte ohne Gage"]] : [["excl", "Exklusivvertrag", "Wochengage, Projekte ohne Gage"]];
   openModal(`<header><h2>Vertragsverhandlung</h2><button class="btn" data-act="negoCancel">Abbrechen</button></header><div class="dbody nego">
     <div class="nego-person">${avatar(p, 56)}<div class="grow"><b>${esc(p.name)}</b><span class="muted">${SPEC_NAME[p.role]} · ${esc(p.trait)} · Talent ${p.talent} · Charisma ${p.buzz}</span></div>
-      <span class="chip ${moodC}">Agentur: ${mood}</span>${p.talk && p.talk.until >= G.day ? `<span class="chip">Vorgespräch: Interesse ${p.talk.int}</span>` : ""}</div>
+      <span class="chip ${moodC}">Agentur: ${mood}</span>${p.talk && p.talk.until >= G.day ? `<span class="chip">Vorgespräch: Interesse ${p.talk.int}</span>` : ""}${p.holder ? `<span class="chip ${wantsMove(p)[1]}">${wantsMove(p)[0]}</span>` : ""}</div>
     ${n.msg ? `<div class="nego-msg ${n.msg[1]}">${esc(n.msg[0])}</div>` : ""}
     ${n.done ? `<div class="actions"><button class="btn hot" data-act="negoCancel">Schließen</button></div></div>` : `
     <div class="card"><div class="card-h"><h3>Vertragsart</h3></div><div class="seg-big">${types.map(([v, l, s]) => `<button data-act="negoType" data-k="${v}" class="${n.type === v ? "on" : ""}"><b>${l}</b><span>${s}</span></button>`).join("")}</div>
-      ${n.type === "excl" ? `<div class="seg-big" style="margin-top:8px">${NEGO_WEEKS.map(w => `<button data-act="negoWeeks" data-k="${w}" class="${n.weeks === w ? "on" : ""}"><b>${w} Wochen</b><span>${w > 4 ? `−${(w - 4) / 4 * 4} % Wochengage` : "Mindestlaufzeit"}</span></button>`).join("")}</div>` : ""}</div>
+      ${n.type === "excl" ? `<div class="seg-big" style="margin-top:8px">${NEGO_WEEKS.map(w => `<button data-act="negoWeeks" data-k="${w}" class="${n.weeks === w ? "on" : ""}"><b>${Math.round(w / 4.33)} Monate</b><span>${w >= 104 ? "−25 % Wochengage" : w >= 52 ? "−12 % Wochengage" : "Mindestlaufzeit"}</span></button>`).join("")}</div>
+      <p class="fine" style="margin:8px 0 0">Exklusiv: Das Gesicht gehört nur Ihnen – Formate mit exklusiver Moderation ziehen mehr Aufmerksamkeit (+4 %), nicht exklusive verwässern (−3 %).</p>` : ""}</div>
+    <div class="card"><div class="card-h"><h3>Versprechen</h3>${info("Versprechen senken die Forderung. Werden sie nicht eingehalten, sinkt die Zufriedenheit deutlich – die Person wird wechselwillig.")}</div>
+      <div class="opts">${Object.entries(PROMISES_P).map(([k, c]) => `<button class="opt ${(n.promises || []).includes(k) ? "on" : ""}" data-act="negoProm" data-k="${k}"><b>${c.name}</b><span>${c.desc} Forderung −${Math.round(c.wish * 100)} %.</span></button>`).join("")}</div></div>
     <div class="card"><div class="card-h"><h3>Sonderklauseln</h3>${info("Erfüllt der Vertrag den Sonderwunsch der Agentur, sinkt die Forderung um 15 %. Wird er verweigert, steigt sie um 20 %. Gebrochene Klauseln führen während des Drehs zu Krisen.")}</div>
       <p class="fine" style="margin:0 0 8px">Forderung der Agentur: <b>${dem ? CLAUSES[dem].name : "keine Sonderwünsche"}</b></p>
       <div class="opts">${Object.entries(CLAUSES).map(([k, c]) => `<button class="opt ${n.clauses.includes(k) ? "on" : ""}" data-act="negoClause" data-k="${k}"><b>${c.name}${k === dem ? " ★" : ""}</b><span>${c.desc}</span></button>`).join("")}</div></div>
@@ -2717,6 +2724,7 @@ function negoSubmit() {
   if (offer >= floor) {
     if (n.type === "excl") {
       p.holder = P.id; p.until = G.day + n.weeks * 7; p.ct = { wk: offer, clauses: n.clauses.slice() };
+      p.promises = (n.promises || []).map(k => ({ k, made: G.day, due: G.day + 91 })); p.sat = clamp(68 + p.promises.length * 4 + Math.max(0, n.pct - 100) / 2, 0, 100); p.idle = 0;
       logMsg("Casting", "Personal", `${p.name} unterschreibt exklusiv bei ${P.name}: ${n.weeks} Wochen, ${eur(offer)} pro Woche${n.clauses.length ? ` · Klauseln: ${n.clauses.map(k => CLAUSES[k].name).join(", ")}` : ""}.`, true);
     }
     if (n.ctx === "slot" && draft) { draft.cast[n.slot] = p.id; draft.deals = draft.deals || {}; if (n.type === "proj") draft.deals[p.id] = { fee: offer, clauses: n.clauses.slice() }; }
@@ -2900,6 +2908,7 @@ function newProdPage(P) {
         ${seg("writers", Object.entries(WRITERS).map(([k, w]) => [k, w.name, `Qualität ${w.lo}–${w.hi}`]))}</div>
       <div class="card"><div class="card-h"><h3>Budgetklasse</h3>${info("Das Budget fließt mit 10 % in das Rating ein und verlängert bei AAA die Produktion um 2 Tage.")}</div>
         ${seg("cls", Object.keys(CLASSES).map(k => [k, k, `×${CLASSES[k].m.toLocaleString("de-DE")}`]))}</div>
+      ${rhythmCard(d)}
       ${houseCard(d)}
       ${dnaCard(d)}
       <div class="card"><div class="card-h"><h3>Besetzung</h3>${info("Gleiche Lieblingsgenres bringen Chemie. Zwei unzuverlässige Stars kosten Chemie und riskieren Drehverzug.")}</div>
@@ -3318,7 +3327,7 @@ function nextDay() {
   G.day++;
   for (const st of G.stations) st.fin = {};
   projectDay();
-  prodDay(); peopleDay(); newsroomDay(); trendDay(); awardsDay(); marketDay(); presaleDay(); rivalsDay(); formatDay(); postQuotenReport(); frameDay(); conflictCheck(); fmDay(); scoutDay(); rumorDay(); staffDay(); politicsDay(); agendaDay(); seasonTick(); cineDay(); inhouseDay(); socialDay(); hofDay(); pressDay(); financeDay(); maDay(); if (G.day % 7 === 1) { careerWeek(); financeWeek(); } if (G.day % 84 === 0) quarterReport(); if (G.career && (G.career.out || G.career.mode === "stream")) fillHorizon(me()); svDay(); primeCheck(); szDay();
+  prodDay(); peopleDay(); newsroomDay(); trendDay(); awardsDay(); marketDay(); presaleDay(); rivalsDay(); formatDay(); postQuotenReport(); frameDay(); conflictCheck(); fmDay(); scoutDay(); rumorDay(); staffDay(); politicsDay(); agendaDay(); seasonTick(); cineDay(); inhouseDay(); socialDay(); hofDay(); pressDay(); financeDay(); maDay(); if (G.day % 7 === 1) { careerWeek(); financeWeek(); contractWeek(); fmtTradeWeek(); } if (G.day % 84 === 0) quarterReport(); if (G.career && (G.career.out || G.career.mode === "stream")) fillHorizon(me()); svDay(); primeCheck(); szDay();
   if (dateOf(G.day).getDate() === 1 && !G.event) setInterview(); // Interview zum Monatsbeginn
   if (G.mods.coverup && G.day >= G.mods.coverup.day) {
     const c = G.mods.coverup; G.mods.coverup = null;
@@ -4092,6 +4101,7 @@ function act(b) {
     case "couple": { const p = P.progs.find(x => x.id === id); if (p) { const e = couple(P, p, +b.dataset.k); toast(e || "Sonderausgabe geplant."); renderProfile(); } return; }
     case "ideaAi": { const p = P.progs.find(x => x.id === id); if (p) ideaAi(P, p, +b.dataset.k); return; }
     case "guestBook": { const p = P.progs.find(x => x.id === id); if (p) { const e = guestBook(P, p, b.dataset.k, +(($("guestDay") || {}).value || G.day)); toast(e || "Gast eingeladen."); renderProfile(); } return; }
+    case "polBook": { const p = P.progs.find(x => x.id === id); if (p) { const e = polBook(P, p, b.dataset.k, +(($("guestDay") || {}).value || G.day)); toast(e || "Gast eingeladen."); renderProfile(); } return; }
     case "szRerun": { const p = P.progs.find(x => x.id === id); if (p && szInit(P, p)) { p.sz.rerun = !p.sz.rerun; renderProfile(); } break; }
     case "progCancel": { const p = P.progs.find(x => x.id === id); if (p && !planLocked()) progCancel(P, p); break; }
     case "switchSt": if (!planLocked()) { openBoardPoker(b.dataset.k); return; } break;
@@ -4156,6 +4166,7 @@ function act(b) {
     case "nego": { const v = b.dataset.v; openNego(b.dataset.k, v === "anchor" ? "anchor" : v === "cast" ? "cast" : "slot", +v); return; }
     case "negoType": nego.type = b.dataset.k; nego.msg = null; renderNego(); return;
     case "negoWeeks": nego.weeks = +b.dataset.k; renderNego(); return;
+    case "negoProm": { const k = b.dataset.k; nego.promises = (nego.promises || []).includes(k) ? nego.promises.filter(x => x !== k) : (nego.promises || []).concat(k); renderNego(); return; }
     case "negoClause": { const c = b.dataset.k; nego.clauses = nego.clauses.includes(c) ? nego.clauses.filter(x => x !== c) : nego.clauses.concat(c); renderNego(); return; }
     case "negoSubmit": negoSubmit(); return;
     case "negoCancel": nego = null; closeModal(); render(); return;
@@ -4636,6 +4647,10 @@ function progCost(P, p, f, dq) {
   toast(`„${p.title}“: ${eur(p.epCost)} pro Folge, Qualität ${p.q}.`);
 }
 function progCancel(P, p) {
+  if (cancelChoice(P, p)) return; // eigene Formate: verkaufen, einlagern oder einstellen
+  cancelHit(P, p); progCancel0(P, p);
+}
+function progCancel0(P, p) {
   allPlans(P).forEach(d => d.forEach(c => { if (c.p === p.id) { c.p = null; c.cont = false; c.ad = null; } }));
   P.progs = P.progs.filter(x => x !== p);
   if (G.stream) G.stream.catalog = G.stream.catalog.filter(c => c.id !== p.id);
@@ -7908,7 +7923,8 @@ function guestPanel(P, p) {
     ${dates.length ? `<div class="kv"><span>Ausgabe</span><select id="guestDay">${dates.map(([d, i]) => `<option value="${d}">${dateShort(d)}, ${hh(i)}</option>`).join("")}</select></div>
     <div class="kv"><span>Gast suchen</span><input type="search" id="guestSearch" style="flex:1;min-width:240px" value="${esc(guestQ)}" placeholder="Name (mind. 2 Zeichen) – sonst die bekanntesten freien Personen"></div>
     <div class="tbl"><table><tbody>${list.map(q => `<tr><td>${personLink(q)}<div class="fine">${esc(SPEC_NAME[q.role] || q.role)} · Bekanntheit ${matrix(q).bekannt}/20</div></td><td class="num">${eur(guestFee(q))}</td><td class="num">+${Math.round(guestBoost(q, p) * 100)} %</td><td class="num"><button class="btn small hot" data-act="guestBook" data-k="${q.id}" data-id="${p.id}">Einladen</button></td></tr>`).join("") || '<tr><td class="muted">Keine verfügbaren Personen gefunden.</td></tr>'}</tbody></table></div>
-    <p class="fine">Wirkung hängt von der Bekanntheit des Gastes und davon ab, wie gut ein Gastauftritt zum Format passt (Talk und Show am stärksten).</p>`
+    <p class="fine">Wirkung hängt von der Bekanntheit des Gastes und davon ab, wie gut ein Gastauftritt zum Format passt (Talk und Show am stärksten).</p>
+    ${["Talk", "Magazin", "Nachrichten"].includes(p.genre) ? `<h4 style="margin:12px 0 6px">Gäste aus der Politik</h4><div class="tbl"><table><tbody>${polList().filter(g => !ql || g.name.toLowerCase().includes(ql) || String(g.partei).toLowerCase().includes(ql) || String(g.res).toLowerCase().includes(ql)).slice(0, 8).map(g => `<tr><td><b>${esc(g.name)}</b><div class="fine">${esc([g.partei, g.lager, g.amt].filter(Boolean).join(" · "))}</div></td><td class="num">${eur(polFee(g))}</td><td class="num">+${Math.round(polBoost(g) * 100)} %</td><td class="num"><button class="btn small hot" data-act="polBook" data-k="${esc(g.id)}" data-id="${p.id}">Einladen</button></td></tr>`).join("")}</tbody></table></div><p class="fine">Politikgäste werden nur über Partei, Lager, Amt und Ressort beschrieben. Passt das Ressort zur aktuellen Themenlage, wirkt der Auftritt stärker.</p>` : ""}`
     : '<p class="fine">Das Format ist in den nächsten zwei Wochen nicht eingeplant.</p>'}</div></section>`;
 }
 function guestBook(P, p, qid, day) {
@@ -7918,6 +7934,16 @@ function guestBook(P, p, qid, day) {
   book(P, "Redaktion & Gagen", -fee); p.boost = { v: guestBoost(q, p), day, why: `Gast: ${q.name}` };
   fxNote(p, "guest", `Gastauftritt von ${q.name} am ${dateShort(day)} (${eur(fee)}, +${Math.round(p.boost.v * 100)} % erwartet)`);
   logMsg("Redaktion", "Programm", `„${p.title}“: ${q.name} ist am ${dateShort(day)} zu Gast.`);
+  return null;
+}
+const polFee = g => /kanzler|minister|präsident/i.test(g.amt || "") ? 8000 : 4000; // Aufwandsentschädigung/Reisekosten
+function polBoost(g) { const ag = ensureAgenda(), top = agTop(), rel = { wirt: /wirtschaft|finanz|arbeit/i, klima: /umwelt|klima|energie/i, kultur: /kultur|medien|bildung/i, ges: /inneres|soziales|gesundheit|familie|justiz/i, aussen: /außen|verteidigung|europa/i }[top];
+  return Math.round((0.06 + (/kanzler|minister|vorsitz|präsident/i.test(g.amt || "") ? 0.06 : 0.02) + (rel && rel.test(`${g.res} ${g.amt}`) ? 0.06 * ag[top] / 100 : 0)) * 100) / 100; }
+function polBook(P, p, gid, day) {
+  const g = polList().find(x => String(x.id) === String(gid)); if (!g) return "Gast nicht gefunden.";
+  if (p.boost && p.boost.day && p.boost.day >= G.day) return "Für diese Sendung ist bereits eine Sonderausgabe geplant.";
+  book(P, "Redaktion & Gagen", -polFee(g)); p.boost = { v: polBoost(g), day, why: `Gast: ${g.name}` };
+  fxNote(p, "guest", `Politikgast ${g.name} (${g.partei}) am ${dateShort(day)}`); logMsg("Redaktion", "Politik", `„${p.title}“: ${g.name} (${g.partei}, ${g.amt}) ist am ${dateShort(day)} zu Gast.`);
   return null;
 }
 function ideaPanel(P, p) {
@@ -7992,6 +8018,187 @@ function homeModal(kind) {
 }
 
 // =====================================================================
+// Verträge wie im echten Geschäft: Laufzeiten in Monaten, Exklusivität bündelt Aufmerksamkeit (kostet mehr),
+// Zufriedenheit 0–100 mit Wechselwunsch, Versprechen bei Vertragsabschluss, die eingehalten werden müssen.
+// Zufriedenheit ist ein Spielwert aus Spielereignissen (Einsatz, Erfolg, Absetzung, Versprechen) – keine Aussage über reale Personen.
+// =====================================================================
+const PROMISES_P = {
+  prime: { name: "Primetime-Einsatz", desc: "Binnen drei Monaten ein Format zwischen 19 und 22 Uhr.", wish: 0.05 },
+  show: { name: "Eigene Sendung", desc: "Binnen drei Monaten ein eigenes Format als Gesicht der Sendung.", wish: 0.07 },
+  stream: { name: "Streaming-Präsenz", desc: "Ein Format mit der Person im eigenen Streamer.", wish: 0.03 },
+  raise: { name: "Erfolgsprämie", desc: "Wochengage +10 %, sobald ein Format über dem Senderschnitt liegt.", wish: 0.04 },
+};
+const pSat = p => p.sat ?? (p.sat = 70);
+const wantsMove = p => { const s = pSat(p); return s < 40 ? ["will wechseln", "bad"] : s < 62 ? ["offen für Angebote", "warn"] : ["zufrieden, bleibt", "good"]; };
+// Wo ist die Person gerade im Einsatz?
+function pProgs(st, p) { return st.progs.filter(x => x.host === p.id || ((prodOf(x) || {}).cast || []).includes(p.id)); }
+function contractWeek() {
+  const P = me();
+  for (const p of G.people) {
+    if (!p.holder) { if (p.sat !== undefined && p.sat < 70) p.sat = Math.min(70, p.sat + 3); continue; }
+    const st = G.stations[SIDX[p.holder]]; if (!st) continue; // Streamer-Verträge laufen außerhalb
+    const progs = pProgs(st, p), avg = stationAvgMA(st);
+    let d = 0;
+    if (!progs.length) { p.idle = (p.idle || 0) + 1; if (p.idle >= 8) d -= 3; } else { p.idle = 0;
+      const best = Math.max(...progs.map(x => fmtStats(x).ma || 0)); d += best >= avg * 1.1 ? 2 : best && best < avg * 0.8 ? -2 : 0; }
+    // Versprechen prüfen
+    for (const pr of (p.promises || []).filter(x => !x.done)) {
+      const ok = pr.k === "prime" ? progs.some(x => (x.hist || []).some(h => h[0] >= pr.made && h[1] >= 19 && h[1] < 22))
+        : pr.k === "show" ? progs.some(x => x.host === p.id && x.aired)
+        : pr.k === "stream" ? !!(G.stream && G.stream.catalog.some(c => progs.some(x => x.id === c.id)))
+        : pr.k === "raise" ? progs.some(x => (fmtStats(x).ma || 0) > avg) : false;
+      if (ok) { pr.done = "kept"; d += 8; if (pr.k === "raise" && p.ct) p.ct.wk = r1000(p.ct.wk * 1.1); if (st === P) logMsg("Casting", "Vertrag", `Versprechen gehalten: ${PROMISES_P[pr.k].name} für ${p.name}. Die Zufriedenheit steigt.`); }
+      else if (G.day >= pr.due) { pr.done = "broken"; d -= 20; if (st === P) logMsg("Casting", "Vertrag", `Versprechen gebrochen: ${PROMISES_P[pr.k].name} für ${p.name} wurde nicht eingelöst. Die Agentur ist verärgert.`, true); }
+    }
+    const before = pSat(p); p.sat = clamp(before + d, 0, 100);
+    if (st === P && before >= 40 && p.sat < 40) logMsg("Casting", "Vertrag", `${p.name} ist unzufrieden und denkt über einen Wechsel nach. Ein Gespräch, eine neue Aufgabe oder eine Vertragsverbesserung könnten helfen.`, true);
+    // Unzufriedene Gesichter der Konkurrenz werden für Sie leichter erreichbar
+    if (st !== P && p.sat < 35 && Math.random() < 0.15 && p.fame >= 50) logMsg("Branchendienst", "Gerücht", `${p.name} gilt bei ${st.name} als wechselwillig.`);
+  }
+}
+// Absetzung trifft das Ensemble
+function cancelHit(st, prog) {
+  const ids = [prog.host].concat((prodOf(prog) || {}).cast || []).filter(Boolean);
+  for (const id of ids) { const q = person(id); if (!q || q.holder !== st.id) continue; q.sat = clamp(pSat(q) - 25, 0, 100);
+    if (isMe(st)) logMsg("Casting", "Vertrag", `${q.name} ist nach der Absetzung von „${prog.title}“ enttäuscht – die Wechselbereitschaft steigt.`); }
+}
+// Exklusive Gesichter bündeln Aufmerksamkeit, nicht exklusive verwässern die Marke des Formats
+function exclF(st, p) {
+  if (!p || p.kind === "sport" || p.kind === "film" || !p.host) return 1;
+  const q = person(p.host); if (!q) return 1;
+  return q.holder === st.id ? 1.04 : q.holder ? 0.97 : 0.99;
+}
+const satBar = p => { const s = pSat(p), [w, c] = wantsMove(p); return `<span class="sbar" style="width:90px;display:inline-block"><i style="width:${s}%;background:${s >= 62 ? "#22c55e" : s >= 40 ? "#eab308" : "#ef4444"}"></i></span> <em>${s}</em> <span class="chip ${c}">${w}</span>`; };
+function promisesHtml(p) {
+  const l = p.promises || []; if (!l.length) return '<span class="muted">keine</span>';
+  return l.map(x => `${PROMISES_P[x.k].name}${x.done === "kept" ? " ✓" : x.done === "broken" ? " ✗" : ` (bis ${dateShort(x.due)})`}`).join(" · ");
+}
+
+// =====================================================================
+// Formatentwicklung: Sende-Rhythmus (täglich, wöchentlich, monatlich, Filmreihe), Folgenzahl pro Staffel,
+// fester Sendeplatz (wird automatisch in die Planung übernommen) und Gäste-Assistent mit Budget pro Ausgabe.
+// =====================================================================
+const RHYTHMS = {
+  serie: [["weekly", "Wöchentlich", "Primetime-Serie, 8–13 Folgen"], ["daily", "Täglich", "Daily/Telenovela, 5× pro Woche, günstig je Folge"], ["monthly", "Monatlich", "Reihe mit langen Folgen"]],
+  film: [["once", "Einzelfilm", "Einmaliger Fernsehfilm"], ["monthly", "Filmreihe", "2–6 Filme pro Jahr, fester Sendeplatz"]],
+  show: [["weekly", "Wöchentlich", "Klassischer Showabend"], ["daily", "Täglich", "Daily Talk / Late Night, 4–5× pro Woche"], ["monthly", "Monatlich", "Große Eventshow"]],
+  reality: [["weekly", "Wöchentlich", "Staffel mit festen Abenden"], ["daily", "Täglich", "Daily-Format (z. B. Camp, Container)"]],
+  doku: [["weekly", "Wöchentlich", "Doku-Reihe"], ["monthly", "Monatlich", "Große Dokumentation"]],
+};
+const RH_EP = { daily: 0.35, weekly: 1, monthly: 1.6, once: 1 }; // Kosten je Folge im Verhältnis
+const RH_EPS = { daily: [40, 60, 120, 200], weekly: [6, 8, 10, 13], monthly: [3, 4, 6, 10], once: [1] };
+const GUEST_BUDGETS = [0, 10000, 30000, 80000, 150000];
+const WDN = ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"];
+function rhythmCard(d) {
+  const list = RHYTHMS[d.kind]; if (!list) return "";
+  if (!d.rh || !list.some(x => x[0] === d.rh)) d.rh = list[0][0];
+  const eps = RH_EPS[d.rh]; if (!eps.includes(+d.eps)) d.eps = eps[Math.min(1, eps.length - 1)];
+  if (d.rhHour == null) d.rhHour = d.rh === "daily" ? (d.kind === "show" ? 23 : 18) : 20;
+  if (d.rhDay == null) d.rhDay = 4;
+  const talky = (d.kind === "show" || d.kind === "reality") && (d.rh === "daily" || ["late", "talk"].includes(d.opt) || /talk/i.test(d.opt || ""));
+  const pill = (k, v, n) => `<button data-act="draftSet" data-k="${k}" data-v="${v}" class="${String(d[k]) === String(v) ? "on" : ""}">${n}</button>`;
+  return `<div class="card"><div class="card-h"><h3>Ausstrahlung & Rhythmus</h3>${info("Der Rhythmus bestimmt Folgenzahl und Kosten je Folge. Mit festem Sendeplatz übernimmt die Planung das Format automatisch – neue Folgen nur im gewählten Rhythmus, danach Staffelpause.")}</div>
+    <div class="seg-big">${list.map(([v, l, s]) => `<button data-act="draftSet" data-k="rh" data-v="${v}" class="${d.rh === v ? "on" : ""}"><b>${l}</b><span>${s}</span></button>`).join("")}</div>
+    ${d.rh !== "once" ? `<div class="kv"><span>${d.kind === "film" ? "Filme pro Jahr" : "Folgen pro Staffel"}</span><div class="pills">${eps.map(n => pill("eps", n, n)).join("")}</div></div>
+    ${d.rh !== "daily" ? `<div class="kv"><span>Sendetag</span><div class="pills">${[1, 2, 3, 4, 5, 6, 0].map(w => pill("rhDay", w, WDN[w])).join("")}</div></div>` : ""}
+    <div class="kv"><span>Sendezeit</span><div class="pills">${[12, 17, 18, 19, 20, 21, 22, 23].map(h => pill("rhHour", h, h + " Uhr")).join("")}</div></div>
+    <div class="kv"><span>Fest einplanen</span><div class="pills">${pill("fix", "1", "Ja, fester Sendeplatz")}${pill("fix", "0", "Nein, selbst planen")}</div></div>` : ""}
+    ${talky ? `<div class="kv"><span>Gäste-Assistent</span><div class="pills">${GUEST_BUDGETS.map(v => pill("gb", v, v ? eur(v) : "aus")).join("")}</div></div><p class="fine">Die Redaktion lädt pro Ausgabe passende Gäste im Rahmen des Budgets ein. Einzelne Wunschgäste buchen Sie zusätzlich im Formatprofil unter Maßnahmen.</p>` : ""}</div>`;
+}
+// Nach Fertigstellung: Rhythmus, Folgen, Kosten und feste Planung übernehmen
+function fmtDevApply(P, prog, pr) {
+  const c = pr.rhCfg; if (!c || !c.rh || c.rh === "once") return;
+  prog.rh = c.rh; prog.ownRh = c.rh; prog.rhDay = c.rh === "daily" ? null : +c.rhDay; prog.rhHour = +c.rhHour;
+  if (prog.epCost) prog.epCost = r1000(prog.epCost * RH_EP[c.rh]);
+  if (c.gb) prog.guestBudget = +c.gb;
+  if (prog.kind === "film") { prog.kind = "film"; prog.maxRuns = 99; }
+  prog.sz = undefined; szInit(P, prog);
+  if (!prog.sz) prog.sz = { n: 1, eps: 8, done: 0, on: true, mode: "aufz", rerun: false, hist: [], ready: null, ma: [], from: G.day }; // Filmreihe, Daily Talk
+  prog.sz.eps = +c.eps || prog.sz.eps; prog.sz.done = 0; prog.sz.on = true; prog.sz.n = 1;
+  if (prog.kind === "serie") prog.eps = +c.eps || prog.eps;
+  prog.rhHour = Math.min(prog.rhHour, 24 - (prog.len || 1)); // muss vor Mitternacht enden
+  if (c.fix === "1") { prog.fixSlot = { h: prog.rhHour, wd: prog.rhDay }; placeFixed(P, prog); }
+}
+const fixFits = (p, d) => { const wd = weekday(d); return p.rh === "daily" ? wd >= 1 && wd <= 5 : wd === p.fixSlot.wd && (p.rh !== "monthly" || dateOf(d).getDate() <= 7); };
+function placeFixed(P, p) {
+  let n = 0;
+  for (let d = G.day + 1; d < G.day + HORIZON; d++) { if (!fixFits(p, d)) continue; const sc = calDay(P, d), h = p.fixSlot.h;
+    if (sc[h].live || canPlace(P, sc, p, h)) continue; placeAt(P, sc, h, p); n++; }
+  if (n) logMsg("Programmplanung", "Programm", `„${p.title}“ ist fest eingeplant: ${p.rh === "daily" ? "werktags" : p.rh === "monthly" ? `einmal im Monat, ${WDN[p.fixSlot.wd]}` : `jeden ${WDN[p.fixSlot.wd]}`} um ${p.fixSlot.h} Uhr (${n} Termine im Planungszeitraum).`);
+}
+// Bei der Planung neuer Tage den festen Platz zuerst belegen (solange die Staffel läuft)
+function placeFixedDay(P, sc, d) {
+  for (const p of P.progs) { if (!p.fixSlot || (p.sz && !p.sz.on) || !fixFits(p, d)) continue; const h = p.fixSlot.h;
+    if (sc[h].p === p.id || sc[h].live || canPlace(P, sc, p, h)) continue; if (sc[h].p) { const q = progOf(P, sc[h].p); if (q && q.fixSlot) continue; } placeAt(P, sc, h, p); }
+}
+// Gäste-Assistent: Wirkung mit abnehmendem Grenznutzen, Kosten je Ausgabe, gelegentlich eine Meldung mit dem Gast
+const guestF = p => p && p.guestBudget ? 1 + Math.min(0.14, Math.sqrt(p.guestBudget / 150000) * 0.14) : 1;
+function guestAired(st, p) {
+  if (!p.guestBudget || !isMe(st)) return;
+  book(st, "Redaktion & Gagen", -p.guestBudget);
+  if (Math.random() < 0.3) { const q = pick(G.people.filter(x => pAvail(x) && speaksGerman(x) && guestFee(x) <= p.guestBudget && (x.fame || 0) >= 30).slice(0, 400));
+    if (q) logMsg("Redaktion", "Programm", `„${p.title}“: Der Gäste-Assistent hat ${q.name} eingeladen (Budget ${eur(p.guestBudget)} pro Ausgabe).`); }
+}
+
+// =====================================================================
+// Formathandel im Inland: Kaufangebote der Konkurrenz für Ihre Formate, Verkauf statt Absetzung,
+// Formate der Konkurrenz, die Ihnen angeboten werden. Bewertung aus Qualität, Quote und Senderprofil.
+// =====================================================================
+function fmtValue(p) {
+  const s = fmtStats(p), ma = s.n ? s.ma : 0;
+  return r1000(Math.max(150000, (p.q * p.q * 260 + ma * 380000) * (p.kind === "serie" ? 1.25 : 1) * (p.sz ? 1.1 : 1)));
+}
+const fmtBuyer = (p, not) => G.stations.filter(s => !isMe(s) && s.id !== not && STATIONS[s.i].profile.concat(["Show", "Magazin"]).includes(p.genre) && s.money > fmtValue(p) * 1.2).sort((a, b) => b.base - a.base)[0];
+function moveFormat(from, to, p) {
+  from.progs = from.progs.filter(x => x !== p);
+  if (isMe(from)) { allPlans(from).forEach(d => d.forEach(c => { if (c.p === p.id) { c.p = null; c.cont = false; c.ad = null; } })); if (G.stream) G.stream.catalog = G.stream.catalog.filter(c => c.id !== p.id); buildToday(from); }
+  p.own = isMe(to) ? true : false; p.home = isMe(to) ? null : to.id; p.fixSlot = null; p.movedAt = G.day; to.progs.push(p);
+}
+// Wöchentlich: Konkurrenz bietet für Ihre starken Formate oder bietet Ihnen eigene Formate an
+function fmtTradeWeek() {
+  const P = me(); if (G.event || (G.career && (G.career.out || G.career.mode === "stream"))) return;
+  const mine = P.progs.filter(p => p.own && p.kind !== "film" && fmtStats(p).n >= 3 && fmtStats(p).ma > stationAvgMA(P) * 1.15);
+  if (mine.length && Math.random() < 0.25) { const p = pick(mine), b = fmtBuyer(p); if (b) {
+    const price = r1000(fmtValue(p) * rnd(1.1, 1.5));
+    queueEvent({ id: "fmtBid", type: "Markt", title: `${b.name} will „${p.title}“ kaufen`, text: `${b.name} bietet ${eur(price)} für alle Rechte an Ihrem Format. Es läuft dann dort weiter – Ihr Sendeplatz wird frei.`, opts: [["Verkaufen", `${eur(price)} sofort, das Format wechselt zu ${b.name}.`], ["Nachverhandeln (+20 %)", "Riskant: Die Gegenseite kann abspringen."], ["Ablehnen", "Das Format bleibt bei Ihnen."]], data: { p: p.id, b: b.id, price } });
+    return; } }
+  if (Math.random() < 0.12) { const seller = pick(G.stations.filter(s => !isMe(s))), cand = seller.progs.filter(p => (p.home === seller.id || p.own) && p.kind !== "sport" && !p.filler && p.genre !== "Nachrichten" && (fmtStats(p).ma || 0) < stationAvgMA(seller));
+    const p = cand.length && pick(cand); if (!p) return; const price = r1000(fmtValue(p) * rnd(0.7, 1.0));
+    queueEvent({ id: "fmtOffer", type: "Markt", title: `${seller.name} bietet Ihnen „${p.title}“ an`, text: `Das Format passt bei ${seller.name} nicht mehr ins Programm. Kaufpreis ${eur(price)} – Qualität ${p.q}, Genre ${p.genre}.`, opts: [["Kaufen", `${eur(price)}, das Format kommt mit allen Rechten in Ihr Archiv.`], ["Ablehnen", "Kein Interesse."]], data: { p: p.id, s: seller.id, price } });
+  }
+}
+EVENTS.push({ id: "fmtBid", type: "Markt", when: () => false, make: () => ({}), fn: (k, d) => {
+  const P = me(), p = P.progs.find(x => x.id === d.p), b = G.stations[SIDX[d.b]]; if (!p || !b) return;
+  let price = d.price;
+  if (k === 1) { if (Math.random() < 0.55) price = r1000(price * 1.2); else { logMsg("Programmhandel", "Markt", `${b.name} zieht das Angebot für „${p.title}“ zurück.`, true); return; } }
+  if (k === 2) return;
+  book(P, "Lizenzerlöse", price); moveFormat(P, b, p);
+  postArticle("Branchendienst Medienplatz", "Markt", `„${p.title}“ wechselt zu ${b.name}`, [`${P.name} verkauft die Rechte für ${eur(price)}. Das Format läuft künftig bei ${b.name}.`]);
+} });
+EVENTS.push({ id: "fmtOffer", type: "Markt", when: () => false, make: () => ({}), fn: (k, d) => {
+  if (k !== 0) return; const P = me(), s = G.stations[SIDX[d.s]], p = s && s.progs.find(x => x.id === d.p); if (!p) return;
+  if (P.money < d.price) { toast("Dafür reicht das Geld nicht."); return; }
+  book(P, "Programmkäufe", -d.price); moveFormat(s, P, p); p.sz = undefined; szInit(P, p);
+  logMsg("Programmhandel", "Markt", `„${p.title}“ gehört jetzt Ihnen – im Archiv einplanbar.`, true);
+} });
+// Absetzen eines eigenen Formats: verkaufen, einlagern oder einstellen
+function cancelChoice(P, p) {
+  if (!p.own || p.kind === "film") return false;
+  const b = fmtBuyer(p), price = b ? r1000(fmtValue(p) * rnd(0.5, 0.8)) : 0;
+  queueEvent({ id: "fmtCancel", type: "Markt", title: `„${p.title}“ absetzen`, text: b ? `${b.name} würde das Format für ${eur(price)} übernehmen.` : "Derzeit gibt es keinen Interessenten für das Format.",
+    opts: (b ? [[`An ${b.name} verkaufen`, `${eur(price)}, das Format läuft dort weiter.`]] : []).concat([["Ins Archiv (pausieren)", "Sendeplätze werden frei, das Format bleibt Ihr Eigentum."], ["Endgültig einstellen", "Das Format verschwindet, das Ensemble ist enttäuscht."]]), data: { p: p.id, b: b && b.id, price } });
+  showEvent(); return true;
+}
+EVENTS.push({ id: "fmtCancel", type: "Markt", when: () => false, make: () => ({}), fn: (k, d) => {
+  const P = me(), p = P.progs.find(x => x.id === d.p); if (!p) return;
+  const opts = d.b ? ["sell", "pause", "kill"] : ["pause", "kill"], what = opts[k];
+  cancelHit(P, p);
+  if (what === "sell") { const b = G.stations[SIDX[d.b]]; book(P, "Lizenzerlöse", d.price); moveFormat(P, b, p); logMsg("Programmhandel", "Markt", `„${p.title}“ an ${b.name} verkauft (${eur(d.price)}).`, true); }
+  else if (what === "pause") { allPlans(P).forEach(dd => dd.forEach(c => { if (c.p === p.id) { c.p = null; c.cont = false; c.ad = null; } })); p.fixSlot = null; if (p.sz) { p.sz.on = false; p.sz.rerun = false; } buildToday(P); logMsg("Programmplanung", "Programm", `„${p.title}“ pausiert – im Archiv, Sendeplätze frei.`, true); }
+  else progCancel0(P, p);
+} });
+
+// =====================================================================
 // Formatprofil: Quotenverlauf, Publikum, Analyse und Maßnahmen je Sendung
 // =====================================================================
 // Affinität zur Zielgruppe 14–49 (Spielwerte): Sender-Image × Genre
@@ -8003,7 +8210,7 @@ function ageMix(st, p) { return zMix(st, p).map(x => x * 100); }
 // Eintrag je Ausstrahlung: [Tag, Stunde, Mio., MA %, MA 14–49 %, Platz, Stunden, (eigener Sender:) Gegner-Sender, Gegner-Titel, Folge]
 // Eine Ausstrahlung zählen: Folgen, Läufe, Abnutzung
 function airedOnce(st, p, i) {
-  p.aired = (p.aired || 0) + 1; szAired(st, p);
+  p.aired = (p.aired || 0) + 1; szAired(st, p); if (!p.wdh) guestAired(st, p);
   if (p.kind === "serie") { p.ep++; p.topic = Math.max(0.15, p.topic - (p.ep % p.eps === 0 ? 0.4 : 0.04)); }
   else if (p.kind === "show") p.topic = Math.max(0.4, p.topic * (p.wear || (p.genre === "Nachrichten" ? 0.98 : 0.92)));
   else if (p.kind === "film") { p.runs++; p.topic = Math.max(0.1, p.topic * 0.6); amortRun(st, p); }
@@ -9049,6 +9256,8 @@ function openPerson(id) {
       <div class="srow"><b>Gage</b><em>${meur(p.gage)}</em><span>pro Produktion · Exklusiv ca. ${eur(r1000(p.gage * 0.35))} / Woche</span></div>
       ${st.k === "rival" ? `<div class="srow"><b>Ablöse</b><em>${meur(abloese(p))}</em><span>steigt mit der Restlaufzeit</span></div>` : ""}
       ${p.ct ? `<div class="srow"><b>Ihr Vertrag</b><em>${eur(p.ct.wk)}</em><span>pro Woche${p.ct.clauses.length ? " · " + p.ct.clauses.map(k => CLAUSES[k].name).join(", ") : ""}</span></div>` : ""}
+      ${p.holder ? `<div class="srow"><b>Zufriedenheit</b><em style="font-size:15px">${satBar(p)}</em><span>${p.holder === P.id ? "bei Ihnen" : "beim aktuellen Arbeitgeber"}</span></div>` : ""}
+      ${(p.promises || []).length && p.holder === P.id ? `<div class="srow"><b>Versprechen</b><em style="font-size:14px">${promisesHtml(p)}</em><span>aus dem laufenden Vertrag</span></div>` : ""}
       <div class="srow"><b>Agentur</b><em style="font-size:15px">${moodText(pPat(p))[0]}</em><span>Stimmung bei Verhandlungen</span></div></div>`;
   openModal(`<header><h2>Personenprofil</h2><button class="btn" data-act="close">Schließen</button></header><div class="dbody">
     <div class="pp-head">
