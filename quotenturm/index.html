@@ -38,6 +38,8 @@
   --font-body: "Inter", "Helvetica Neue", Arial, sans-serif;
   color-scheme: dark;
 }
+:root[data-theme="light"] { --bg: #f4f5fa; --panel: #ffffff; --panel-2: #eef0f7; --row: #f7f8fc; --line: #dde1ec; --text: #161a2b; --muted: #5b6478; --top: #ffffff; --club-sub: #e9ecf6; color-scheme: light; }
+:root[data-theme="retro"] { --bg: #0d0f08; --panel: #151a0f; --panel-2: #1d2414; --row: #171d10; --line: #2f3a1f; --text: #e8f5c8; --muted: #9db27a; --top: #11160b; --hot: #f5b301; --hot-2: #ff7a00; --violet: #c27c00; --grad: linear-gradient(90deg, #c27c00, #ff7a00); }
 html, body { height: 100%; }
 [hidden] { display: none !important; }
 body {
@@ -562,6 +564,8 @@ td.cw { position: relative; } .cell-i { position: absolute; right: 8px; top: 8px
     <span id="topCrest"></span>
     <nav id="mainnav" aria-label="Hauptmenü"></nav>
     <div class="top-spacer"></div>
+    <button id="searchBtn" class="btn ghost small" data-act="search" title="Suche (Strg+K)" aria-label="Suche" style="margin-right:4px">🔍</button>
+    <button id="setBtn" class="btn ghost small" data-act="openSettings" title="Einstellungen" aria-label="Einstellungen" style="margin-right:8px">⚙️</button>
     <div class="datewrap"><div class="datebox"><b id="dateTxt">Do 22 Okt 2026</b><span id="dateSub">Sendeabend heute</span></div>
     <div class="timebox" id="clock">08:00</div></div>
     <button id="cont"><span id="contTxt">Weiter</span><svg viewBox="0 0 24 24"><path d="M5 6l6 6-6 6M13 6l6 6-6 6"/></svg></button>
@@ -1253,13 +1257,13 @@ const HEADLINES = [
 ];
 // Menüführung: Hauptpunkt → Aufklappmenü mit allen Unterseiten [Seite, Name, Erklärung]
 const MENU = [
-  { id: "portal", name: "Portal", subs: [["overview", "Übersicht", "Dashboard mit Nachrichten, Tabelle und Kennzahlen"], ["inbox", "Posteingang", "Alle Meldungen aus dem Haus"]] },
+  { id: "portal", name: "Portal", subs: [["overview", "Übersicht", "Dashboard mit Nachrichten, Tabelle und Kennzahlen"], ["inbox", "Posteingang", "Alle Meldungen aus dem Haus"], ["social", "Social Feed", "Reaktionen des Publikums"], ["settings", "Einstellungen", "Anzeige, Tempo, Speichern, lokale KI"]] },
   { id: "programm", name: "Programm", subs: [["wochenplan", "Wochenplan", "Wochenraster mit Ziehen & Ablegen und Prognose"], ["politik", "Politik & Talk", "Themenlage, Talkgäste, Redaktionslinie"], ["plan", "Sendekalender", "Programm 0–24 Uhr, 6 Wochen im Voraus"], ["archiv", "Archiv", "Eigene Filme, Serien und Formate"], ["filmmarket", "Filmrechte", "Pakete, Studios, Filmmärkte"], ["market", "Programmhandel", "Filme und Serienlizenzen kaufen"], ["formatmarkt", "Formatmarkt", "Formatrechte, Bieterfenster im März"], ["ticker", "Nachrichten", "Meldungen von Ticker24 einkaufen"]] },
   { id: "produktion", name: "Produktion", subs: [["studio", "Studio", "Eigene Filme, Serien, Shows und Dokus"], ["formatdev", "Formatentwicklung", "Messen, Scouting, Ideenschmiede"], ["casting", "Casting", "Stars, Moderation, Nachrichtengesichter"], ["newsroom", "Nachrichtenredaktion", "Blattlinie, Stil, Etat und Sprecher*in"], ["export", "Rechtemarkt international", "Formate und Produktionen ins Ausland verkaufen"]] },
   { id: "streaming", name: "Streaming", subs: [["stream", "Plattform", "Abos, Churn, ARPU und Preismodell"], ["catalog", "Katalog", "Titel und Verwertungsfenster"], ["smarket", "Wettbewerb", "Streamer im Vergleich und Top 10"]] },
   { id: "sport", name: "Sport", subs: [["rights", "Rechtemarkt", "Ausschreibungen und Gebote"], ["myrights", "Meine Rechte", "Pakete und Live-Termine"], ["spielplan", "Spielplan", "Rahmenterminkalender Fußball"]] },
   { id: "quoten", name: "Quoten", subs: [["table", "Quotentabelle", "Senderranking nach Marktanteil"], ["ratings", "Einschaltquoten", "Jede Stunde, jeder Sender"], ["rivals", "Konkurrenz", "Tagesplan der anderen Sender"], ["landscape", "Markt", "Sendergruppen und Streamer"], ["mediaana", "Media-Analyse", "Marktanteile Z1–Z4 je Sender, Quartal"]] },
-  { id: "sender", name: "Sender", subs: [["chiefs", "Rivalen", "Beziehungen zu den Senderchefs"], ["board", "Senderleitung", "Erwartungen, Vertrauen, Kredit"], ["finance", "Finanzen", "Erlöse, Kosten, EBITDA"], ["contracts", "Werbeverträge", "Laufende Werbeverträge"], ["adsales", "Vermarktung", "Erlöse, TKP, Kunden, Preisliste"], ["personal", "Personal", "Moderation, Kommentar, Produktion"], ["karriere", "Karriere", "Job-Sicherheit, Arbeitsmarkt, Vorstand"], ["bank", "Bank & Bilanz", "Kredite, Liquidität, Abschreibung, Spielstand"], ["agency", "Werbeagentur", "Neue Werbekunden gewinnen"], ["jury", "Fernsehpreise", "Grimme, Fernsehpreis, Bambi, Henne"]] },
+  { id: "sender", name: "Sender", subs: [["chiefs", "Rivalen", "Beziehungen zu den Senderchefs"], ["board", "Senderleitung", "Erwartungen, Vertrauen, Kredit"], ["finance", "Finanzen", "Erlöse, Kosten, EBITDA"], ["contracts", "Werbeverträge", "Laufende Werbeverträge"], ["adsales", "Vermarktung", "Erlöse, TKP, Kunden, Preisliste"], ["personal", "Personal", "Moderation, Kommentar, Produktion"], ["karriere", "Karriere", "Job-Sicherheit, Arbeitsmarkt, Vorstand"], ["bank", "Bank & Bilanz", "Kredite, Liquidität, Abschreibung, Spielstand"], ["hof", "Ruhmeshalle", "Jahresrückblick und Auszeichnungen"], ["agency", "Werbeagentur", "Neue Werbekunden gewinnen"], ["jury", "Fernsehpreise", "Grimme, Fernsehpreis, Bambi, Henne"]] },
 ];
 let openMenu = null;
 const PAGE_SECTION = Object.fromEntries(MENU.flatMap(m => m.subs.map(([k]) => [k, m.id])));
@@ -1747,7 +1751,7 @@ function attrCell(st, i, c) {
     A = st.brand * Math.pow(p.q / 60, 1.5) * fit(p.genre, i) * topic * newsMult * rnd(0.9, 1.1);
     if (c.cont && p.kind !== "sport") A *= 0.96;
     if (p.pull) A *= 1 + p.pull * 0.12; // bekannte Titel ziehen mehr Publikum
-    A *= demoFactor(st, p) * hostMalus(p) * hostF(st, p) * polF(st, p) * breakF(st, p); // passt die Sendung (und die Moderation) zum Publikum des Senders?
+    A *= demoFactor(st, p) * hostMalus(p) * hostF(st, p) * polF(st, p) * breakF(st, p) * pressF(st, p) * genreSeason(p); // passt die Sendung (und die Moderation) zum Publikum des Senders?
     if (p.kind === "sport") A *= commF(p); // Kommentator*in
     if (blMagazine(p) && !matchday(G.day)) A *= 0.35; // ohne Spieltag keine Bilder
     if (p.boost && (!p.boost.day || p.boost.day === G.day)) A *= 1 + p.boost.v; // Gaststar, Event-Ausgabe, Relaunch
@@ -1769,7 +1773,7 @@ function airHour(i) {
       if (st0[k] <= first - 5) { r.A *= 1.05; r.early = first - st0[k]; } else if (st0[k] >= first + 10) r.A *= 0.96; });
   }
   const sum = res.reduce((a, r) => a + r.A, 0);
-  const tv = BASE[i] * (1 - otherShare() - payDrain(G.day, i));
+  const tv = BASE[i] * (1 - otherShare() * streamSeason() - payDrain(G.day, i));
   for (const r of res) {
     const st = r.st;
     r.v = tv * r.A / sum;
@@ -3004,7 +3008,7 @@ function sellExport(pid, way) {
 }
 function exportPage(P) {
   const own = P.progs.filter(p => p.own);
-  return title("Rechtemarkt international", `<span class="muted">MIPCOM · Trend: ${G.trend ? esc(G.trend.genre) : "–"}</span>`) +
+  return syndPanel(P) + title("Rechtemarkt international", `<span class="muted">MIPCOM · Trend: ${G.trend ? esc(G.trend.genre) : "–"}</span>`) +
     `<p class="lead mb">Erfolgreiche Eigenproduktionen lassen sich ins Ausland verkaufen: Shows als <b>Format-Lizenz</b> (Vorauszahlung plus 20 Tage Tantiemen), Filme und Serien als <b>fertige Produktion</b> (einmalige Zahlung). Interesse = Rating × 0,5 + bester deutscher Marktanteil × 0,3 + Genre-Trend × 0,2. Ab 55 Punkten wird verhandelt, gesendet sein muss der Titel bereits.</p>
     <section class="panel mb"><div class="ph"><h2>Ihre Eigenproduktionen</h2></div>${own.length ? `<div class="tbl"><table><thead><tr><th>Titel</th><th>Genre</th><th class="num">Rating</th><th class="num">Bester MA</th><th class="num">Interesse</th><th>Angebot</th><th></th></tr></thead><tbody>
       ${own.map(p => { const i = exportInterest(p), way = p.kind === "show" ? "format" : "tape", o = exportOffer(p, way), done = (p.sold || []).includes(way);
@@ -3027,7 +3031,7 @@ function promoPanel(P) {
 // =====================================================================
 function startDay() {
   G.min = 6 * 60; G.phase = "plan"; G.adBreak = {};
-  G.today = HOURS.map(() => null); G.daySeg = [];
+  G.today = HOURS.map(() => null); G.daySeg = []; seasonBase();
   for (const st of G.stations) { st.fin = {}; st.moneyStart = st.money; st.news = []; }
   placeEvents();
   for (const st of G.stations) buildToday(st);
@@ -3213,7 +3217,7 @@ function nextDay() {
   G.day++;
   for (const st of G.stations) st.fin = {};
   projectDay();
-  prodDay(); peopleDay(); newsroomDay(); trendDay(); awardsDay(); marketDay(); presaleDay(); rivalsDay(); formatDay(); postQuotenReport(); frameDay(); conflictCheck(); fmDay(); scoutDay(); rumorDay(); staffDay(); politicsDay(); agendaDay(); financeDay(); maDay(); if (G.day % 7 === 1) { careerWeek(); financeWeek(); } if (G.day % 84 === 0) quarterReport(); if (G.career && G.career.out) fillHorizon(me());
+  prodDay(); peopleDay(); newsroomDay(); trendDay(); awardsDay(); marketDay(); presaleDay(); rivalsDay(); formatDay(); postQuotenReport(); frameDay(); conflictCheck(); fmDay(); scoutDay(); rumorDay(); staffDay(); politicsDay(); agendaDay(); seasonTick(); socialDay(); hofDay(); pressDay(); financeDay(); maDay(); if (G.day % 7 === 1) { careerWeek(); financeWeek(); } if (G.day % 84 === 0) quarterReport(); if (G.career && G.career.out) fillHorizon(me());
   if (dateOf(G.day).getDate() === 1 && !G.event) setInterview(); // Interview zum Monatsbeginn
   if (G.mods.coverup && G.day >= G.mods.coverup.day) {
     const c = G.mods.coverup; G.mods.coverup = null;
@@ -3269,7 +3273,8 @@ $("cont").addEventListener("click", () => {
 function renderTop() {
   if (!G) return;
   $("dateTxt").textContent = dateLabel(G.day);
-  $("dateSub").textContent = G.phase === "plan" ? `Planung · Saison ${G.season || 1} · Tag ${seasonDay()}/${SEASON}` : G.phase === "live" ? "Sendeabend läuft" : "Sendeschluss";
+  seasonBase();
+  $("dateSub").textContent = (G.phase === "plan" ? `Planung · Tag ${seasonDay()}/${SEASON}` : G.phase === "live" ? "Sendeabend läuft" : "Sendeschluss") + " · " + weatherChip();
   $("clock").textContent = G.phase === "plan" ? "08:00" : hhmm(G.min);
   $("contTxt").textContent = G.phase === "plan" ? "Weiter" : G.phase === "live" ? (liveRun ? "Pause" : "Fortsetzen") : "Tagesbericht";
   $("cont").classList.toggle("busy", G.phase === "live" && liveRun);
@@ -3339,6 +3344,7 @@ function renderDropdown() {
 }
 window.addEventListener("resize", () => { if (openMenu) renderDropdown(); });
 document.addEventListener("keydown", e => { if (e.key === "Escape" && openMenu) { openMenu = null; renderNav(); } });
+document.addEventListener("keydown", e => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k" && G) { e.preventDefault(); openSearch(); } });
 // Senderfarbe für Wappenblock und eigene Markierungen; die Kopfleiste bleibt dunkel
 function applyClubColors() {
   const c = STATIONS[G.me].color, rgb = [1, 3, 5].map(k => parseInt(c.substr(k, 2), 16));
@@ -3350,7 +3356,7 @@ function applyClubColors() {
 function render(top) {
   if (!G) return;
   renderNav(); renderTop();
-  const pages = { overview, inbox, plan: planPage, archiv, market, filmmarket: filmMarketPage, chiefs: rivalsPage, adsales: adsalesPage, spielplan: spielplanPage, formatmarkt: formatMarketPage, wochenplan: weekPlanPage, formatdev: formatDevPage, personal: staffPage, karriere: careerPage, bank: bankPage, mediaana: maPage, politik: politicsPage, stream: streamPage, catalog, smarket, rights: rightsPage, myrights, contracts, agency, ticker, table: tablePage, ratings, landscape, board, finance, jury, rivals, live: livePage, studio, newprod: newProdPage, casting, newsroom, export: exportPage };
+  const pages = { overview, inbox, plan: planPage, archiv, market, filmmarket: filmMarketPage, chiefs: rivalsPage, adsales: adsalesPage, spielplan: spielplanPage, formatmarkt: formatMarketPage, wochenplan: weekPlanPage, formatdev: formatDevPage, personal: staffPage, karriere: careerPage, social: socialPage, hof: hofPage, settings: settingsPage, bank: bankPage, mediaana: maPage, politik: politicsPage, stream: streamPage, catalog, smarket, rights: rightsPage, myrights, contracts, agency, ticker, table: tablePage, ratings, landscape, board, finance, jury, rivals, live: livePage, studio, newprod: newProdPage, casting, newsroom, export: exportPage };
   const sc = $("content").scrollTop;
   $("content").innerHTML = (pages[page] || overview)(me());
   if (!top) $("content").scrollTop = sc;
@@ -3819,7 +3825,7 @@ function livePage(P) {
     <section class="panel" style="grid-column:1/-1;overflow:hidden">
       <div class="live-head"><div style="display:flex;align-items:center;gap:10px">${crest(P.i, 46)}<div><b style="font-family:var(--font-head);font-size:22px">${esc(P.name)}</b><div class="muted">${r ? `Jetzt: ${pct(r[G.me].ma)} · Platz ${order.indexOf(G.me) + 1}` : "Gleich geht’s los"}</div></div></div>
         <div class="live-clock"><small>${G.phase === "live" ? (liveRun ? "LIVE" : "PAUSIERT") : "SENDESCHLUSS"}</small>${hhmm(G.min)}</div>
-        <div class="actions" style="justify-content:flex-end"><div class="pills">${[[1, "Regie"], [2, "Normal"], [3, "Schnell"]].map(([s, n]) => `<button data-act="lspeed" data-k="${s}" class="${liveSpeed === s ? "on" : ""}">${n}</button>`).join("")}</div><button class="btn" data-act="finish" ${G.phase !== "live" ? "disabled" : ""}>Bis Sendeschluss</button></div></div>
+        <div class="actions" style="justify-content:flex-end"><div class="pills">${[[1, "Regie"], [2, "Normal"], [3, "Schnell"], [4, "Sofort"]].map(([s, n]) => `<button data-act="lspeed" data-k="${s}" class="${liveSpeed === s ? "on" : ""}">${n}</button>`).join("")}</div><button class="btn" data-act="finish" ${G.phase !== "live" ? "disabled" : ""}>Bis Sendeschluss</button></div></div>
       <div class="wall">${order.map(k => { const s = G.stations[k]; const x = r && r[k]; return `<div class="mon ${k === G.me ? "me" : ""}" data-wob="${k}"><div class="mon-top">${crest(k, 20)}<b>${esc(s.name)}</b><span class="v">${x ? pct(x.ma) : "–"}</span></div><div class="mon-t">${x ? esc(x.title) : "–"}</div><div class="lbar"><i style="width:${x ? Math.min(100, x.ma * 3) : 0}%;background:${s.color}"></i></div></div>`; }).join("")}</div>
     </section>
     <section class="panel"><div class="ph"><h2>Regie-Eingriffe</h2><span class="aside">${next != null ? `für ${hh(next)}` : "Sendeschluss naht"}</span></div>
@@ -4055,6 +4061,16 @@ function act(b) {
     case "devSet": G.devDraft = G.devDraft || { genre: "Show", slot: "Primetime", target: 1, budget: 50000 }; G.devDraft[b.dataset.k] = b.dataset.k === "target" ? +b.dataset.v : b.dataset.v; break;
     case "staffTab": staffTab = b.dataset.k; break;
     case "loan": { const err = takeLoan(b.dataset.k); toast(err || "Vertrag unterzeichnet."); break; }
+    case "setOpt": { const S = settings(), k = b.dataset.k, v = b.dataset.v; S[k] = k === "ai" ? v === "true" : k === "theme" ? v : +v; saveSettings(); applySettings(); break; }
+    case "fullscreen": toggleFull().then(render); return;
+    case "aiDownload": AI_PROG = 0; refreshAiBox(); window.mmAI.download().then(r => { AI_PROG = null; toast(r && r.ok ? "Starke KI installiert." : `Download fehlgeschlagen${r && r.error ? ": " + r.error : ""}.`); aiStatus(); }); return;
+    case "aiTest": { const el = $("aiState"); if (el) el.textContent = "teste … (beim ersten Mal lädt das Modell)"; const was = settings().ai; settings().ai = true; llm("Antworte nur mit: OK", 15000).then(t => { settings().ai = was; const e2 = $("aiState"); if (e2) e2.textContent = t ? `verbunden – Antwort: ${t.slice(0, 40)}` : "keine Verbindung"; }); return; }
+    case "saveQuit": save(); toast("Spielstand gesichert."); setTimeout(() => window.close(), 400); return;
+    case "synd": { const err = syndicate(b.dataset.k); toast(err || "Lizenz verkauft."); break; }
+    case "pressFree": pressFree(b.dataset.k); return;
+    case "search": if (G) openSearch(); return;
+    case "openSettings": if (G) { go("settings"); return; } break;
+    case "feedF": feedFilter = b.dataset.k; break;
     case "maZ": maZ = +b.dataset.k; break;
     case "saveExport": exportSave(); toast("Spielstand-Datei wird gespeichert."); return;
     case "talkField": G.talkSel = { ...(G.talkSel || { ids: [] }), field: b.dataset.k }; break;
@@ -5628,6 +5644,7 @@ const artPlain = t => t.replace(/\{p:([A-Za-z0-9_-]+)\}/g, (_, id) => (person(id
 function postArticle(from, tag, head, paras, toastIt) {
   logMsg(from, tag, artPlain(head), toastIt);
   G.log[0].aid = uid(); G.log[0].art = { head, paras };
+  aiRewrite(G.log[0]);
 }
 function openArticle(aid) {
   const l = G.log.find(x => x.aid === aid); if (!l) return;
@@ -5951,7 +5968,7 @@ function talkResolve() {
     else postArticle("Medien-Insider", "Politik", `{t:${P.id}|${p.id}}: sachliche Runde zu „${g.topic}“`, [`Zu Gast waren ${names.join(", ")}. Die Diskussion blieb sachlich, die Positionen wurden klar herausgearbeitet.`]);
   }
   if (G.newsroom && G.newsroom.style === 0 && (!S.scoop || S.scoop < G.day - 10) && Math.random() < 0.02 + 0.04 * crisis()) {
-    S.scoop = G.day + 3; postArticle("Eigene Redaktion", "Politik", `Exklusiv-Recherche zu „${S.topic.t}“`, [`Ihre Nachrichtenredaktion hat interne Unterlagen zu „${S.topic.t}“ ausgewertet. Andere Medien zitieren Ihren Sender.`, `Die Nachrichten profitieren drei Tage lang von der Aufmerksamkeit.`], true);
+    S.scoop = G.day + 3; yearTrack().scoops++; postArticle("Eigene Redaktion", "Politik", `Exklusiv-Recherche zu „${S.topic.t}“`, [`Ihre Nachrichtenredaktion hat interne Unterlagen zu „${S.topic.t}“ ausgewertet. Andere Medien zitieren Ihren Sender.`, `Die Nachrichten profitieren drei Tage lang von der Aufmerksamkeit.`], true);
   }
 }
 function politicsPage(P) {
@@ -6300,6 +6317,397 @@ function maPage(P) {
     return `<tr class="${i === P.i ? "sel" : ""}"><td class="title">${esc(s.name)}</td>${avg[i].map((v, k) => `<td class="num">${best(k) ? `<b>${pct(v)}</b> ★` : pct(v)}</td>`).join("")}<td class="num ${cur && cur[i][1] >= avg[i][1] ? "up" : "down"}">${cur ? pct(cur[i][1]) : "–"}</td></tr>`; }).join("")}</tbody></table></div></section>`;
   return h;
 }
+// =====================================================================
+// Social Feed: Reaktionen des Publikums nach jedem Sendetag
+// Erfundene Nutzer posten; über echte Personen wird nur in der dritten Person gesprochen.
+// Ich-Posts mit Haken kommen nur von erfundenen Stars und von der eigenen Pressestelle.
+// =====================================================================
+const FEED_USERS = [
+  [0, ["Lena_streamt", "zocker_kev14", "nightowl_tv", "binge_mia", "couchkritik_jg", "gamer_pat", "studi_vibes", "memequeen_tv"]],
+  [1, ["MediaScout99", "papa_am_tv", "fernsehabend_k", "tvjunkie_76", "Feierabend_Fan", "Serienherz", "PendlerPeter", "SofaStrategin"]],
+  [2, ["Krimifreundin", "Quizonkel", "TVKritik_DE", "GartenUndTV", "Abendprogramm", "Sportsfreund59", "Nachrichtenleser", "Rotweinabend"]],
+  [3, ["OmaErika_65", "Opa_Heinz", "Rentnerrunde", "Traumschiff_Fan", "Volksmusikherz", "Heimatabend", "Zeitungsleser", "Tatortsonntag"]],
+];
+const ZTAG = ["Z1 14–29", "Z2 30–49", "Z3 50–64", "Z4 65+"];
+function feedUser(z, seed) { const list = FEED_USERS[z][1]; return "@" + list[Math.abs(seed) % list.length]; }
+function feedPost(txt, o = {}) {
+  G.feed = G.feed || [];
+  G.feed.unshift({ day: G.day, txt, z: o.z ?? null, h: o.h || feedUser(o.z ?? 1, hashStr(txt)), name: o.name || null, ver: !!o.ver, m: o.m || 0, tag: o.tag || "" });
+  if (G.feed.length > 160) G.feed.length = 160;
+}
+const hashtag = s => "#" + String(s).replace(/[^A-Za-zÄÖÜäöüß0-9]+/g, "").slice(0, 24);
+// Nach jedem Sendetag: Reaktionen auf die eigenen Sendungen, Eilmeldungen, Talkrunden, Sport und Programmhinweise
+function socialDay() {
+  const P = me(), segs = (G.daySeg || []).filter(d => d.st === P.i && d.min >= 25);
+  if (!segs.length) return;
+  const avg = stationAvgMA(P);
+  const rated = segs.map(d => ({ d, ma: d.vs / d.bs * 100, p: progOf(P, d.id) })).filter(x => x.p && !x.p.house);
+  const best = rated.slice().sort((a, b) => b.ma - a.ma)[0], worst = rated.slice().sort((a, b) => a.ma - b.ma)[0];
+  let mood = 0;
+  if (best && best.ma > avg * 1.15) {
+    const p = best.p, z = (p.zp || zProf(p)).indexOf(Math.max(...(p.zp || zProf(p)))), host = hostOf(p);
+    feedPost(pick([`${p.title} gestern war richtig stark 🔥 ${host ? `${host.name} trägt die Sendung.` : ""} Bitte mehr davon!`, `Endlich mal wieder Fernsehen, bei dem man dranbleibt. ${p.title} 👏`, `Wer hat ${p.title} gesehen? Mega Abend!`]) + ` ${hashtag(p.title)} ${hashtag(P.name)}`, { z, m: 2, tag: "Lob" });
+    mood += 2;
+  }
+  if (worst && worst !== best && worst.ma < avg * 0.75) {
+    const p = worst.p, z = ri(0, 3);
+    feedPost(pick([`${p.title} um ${hhmm(worst.d.start)}? Nach zehn Minuten umgeschaltet. 💤`, `Wer plant eigentlich bei ${P.name}? ${p.title} läuft komplett am Publikum vorbei.`, `${p.title} wirkt ziemlich lieblos. Schade um den Sendeplatz.`]) + ` ${hashtag(P.name)}`, { z, m: -2, tag: "Kritik" });
+    mood -= 2;
+  }
+  // FSK und Uhrzeit
+  const late = rated.find(x => x.p.fsk >= 16 && x.d.start >= 6 * 60 && x.d.start < 22 * 60);
+  if (late) { feedPost(`Viel zu hart für ${hhmm(late.d.start)} Uhr – ${late.p.title} ist nichts für den Vorabend. Musste wegschalten. 🤦 ${hashtag(P.name)}`, { z: 3, m: -1, tag: "Kritik" }); mood -= 1; }
+  // Eilmeldung
+  const b = G.pol && G.pol.breakDay;
+  if (b && b.day === G.day - 1) {
+    if (b.choice === 0) { feedPost(`Überall Krisenstimmung und bei ${P.name} läuft einfach weiter Programm? Bin zu den Nachrichten gewechselt. #ProgrammFlop`, { z: 2, m: -2, tag: "Eilmeldung" }); mood -= 2; }
+    else { feedPost(`Starkes Spezial gestern bei ${P.name}. Endlich Hintergründe statt Schlagzeilen. 👍 #Brennpunkt`, { z: 2, m: 2, tag: "Eilmeldung" }); mood += 2; }
+  }
+  // Talkrunde
+  for (const p of P.progs.filter(x => x.guests && x.guests.done && x.lastAired === G.day - 1 && !x.guests.posted)) {
+    const g = p.guests; g.posted = true;
+    if (g.esc || g.konf >= 50) feedPost(`Was war denn gestern bei ${p.title} los? Die Runde zu „${g.topic}“ war hitzig wie lange nicht. 🔥 ${hashtag(p.title)}`, { z: 1, m: 1, tag: "Talk" });
+    else if (g.konf < 20) feedPost(`Selten so eine ruhige Runde gesehen bei ${p.title}. Sachlich, aber ich bin eingeschlafen. 💤`, { z: 2, m: -1, tag: "Talk" });
+    else feedPost(`Gute Gäste gestern bei ${p.title}, endlich mal Leute vom Fach zu „${g.topic}“. ${hashtag(p.title)}`, { z: 2, m: 1, tag: "Talk" });
+  }
+  // Sport mit eigenen Rechten
+  for (const ev of (P.live || []).filter(e => e.kind === "sport").slice(0, 1)) {
+    const c = ev.comm && person(ev.comm);
+    feedPost(`${ev.title} – was für ein Spiel! ${c ? `${c.name} am Mikro wie immer voll dabei.` : ""} ⚽🔥 ${hashtag(ev.comp)}`, { z: 1, m: 1, tag: "Sport" }); mood += 1;
+  }
+  // Erfundene Stars des Hauses posten in eigener Sache
+  const star = G.people.filter(q => q.holder === P.id && !q.custom && q.fame >= 60).sort((a, b) => b.fame - a.fame)[G.day % 5];
+  if (star && best && Math.random() < 0.4) feedPost(`Danke an alle, die gestern eingeschaltet haben! Was für ein Abend im Studio. 🎬 ${hashtag(P.name)}`, { h: "@" + star.name.replace(/\s+/g, ""), name: star.name, ver: true, m: 1, tag: "Star" });
+  // Pressestelle des eigenen Senders
+  if (best && Math.random() < 0.5) feedPost(`${best.p.title} erreichte gestern ${pct(best.ma)} Marktanteil. Danke fürs Einschalten! 📺`, { h: `@${P.name.replace(/[^A-Za-z0-9]/g, "")}_Presse`, name: `${P.name} Pressestelle`, ver: true, tag: "Presse" });
+  // Stimmung wirkt leicht auf das Image
+  G.buzz = (G.buzz || []).concat([mood]).slice(-7);
+  const sum = G.buzz.reduce((a, x) => a + x, 0);
+  P.brand = clamp(P.brand * (1 + clamp(mood, -3, 3) * 0.002), 0.5, 30);
+  if (sum <= -8 && !(G.storm && G.day - G.storm < 14)) { G.storm = G.day; postArticle("Social-Media-Team", "Social", "Shitstorm-Warnung", [`Die Stimmung im Netz kippt: In den letzten sieben Tagen überwiegen kritische Posts deutlich (Saldo ${sum}).`, "Premium-Werbekunden beobachten das Umfeld genau. Prüfen Sie Sendeplätze, FSK-Lagen und Formate mit schwacher Quote."], true); P.conf = clamp(P.conf - 3, 0, 100); }
+}
+let feedFilter = "alle";
+function socialPage(P) {
+  const all = G.feed || [], sum = (G.buzz || []).reduce((a, x) => a + x, 0);
+  const list = all.filter(f => feedFilter === "alle" || (feedFilter === "z" ? f.z != null : f.tag === feedFilter)).slice(0, 60);
+  let h = title("Social Feed", `<span class="muted">Stimmung 7 Tage: <b class="${sum < 0 ? "down" : "up"}">${sum > 0 ? "+" : ""}${sum}</b></span>`);
+  h += `<p class="lead mb">Ungefilterte Reaktionen des Publikums nach jedem Sendetag. Die Stimmung wirkt leicht auf Ihr Image; kippt sie, warnt das Social-Media-Team vor einem Shitstorm.</p>`;
+  h += `<div class="pills mb">${[["alle", "Alle"], ["Lob", "Lob"], ["Kritik", "Kritik"], ["Talk", "Talk"], ["Sport", "Sport"], ["Eilmeldung", "Eilmeldung"], ["Presse", "Presse & Stars"]].map(([k, n]) => `<button data-act="feedF" data-k="${k}" class="${feedFilter === k ? "on" : ""}">${n}</button>`).join("")}</div>`;
+  h += `<section class="panel">${list.length ? list.map(f => `<div class="srow" style="grid-template-columns:1fr auto;align-items:start;padding:10px 14px;border-bottom:1px solid var(--line)"><div><b>${f.ver ? "☑️ " : "👤 "}${esc(f.h)}</b>${f.name ? ` <span class="muted">(${esc(f.name)})</span>` : ""}${f.z != null ? ` <span class="chip">${ZTAG[f.z]}</span>` : ""}<div style="margin-top:4px">${esc(f.txt)}</div></div><span class="muted ${f.m > 0 ? "up" : f.m < 0 ? "down" : ""}" style="font-size:12px">${dateShort(f.day)}</span></div>`).join("") : '<p class="fine pad">Noch keine Posts – der Feed füllt sich nach dem ersten Sendetag.</p>'}</section>`;
+  return h;
+}
+// =====================================================================
+// Einstellungen: Anzeige, Farbprofil, Tempo, Speichern & Beenden, optionale lokale KI (Ollama)
+// Gespeichert nur auf diesem Gerät. Die KI formuliert ausschließlich Texte – Quoten und Finanzen bleiben Formeln.
+// =====================================================================
+const SET_KEY = "medienmanager-einstellungen-v1";
+const SET_DEF = { scale: 100, theme: "dark", speed: 2, ai: null, aiUrl: "http://localhost:11434", aiModel: "llama3" };
+const BUILTIN_AI = () => typeof window !== "undefined" && !!window.mmAI;
+const aiOn = () => { const s = settings(); return s.ai === null ? BUILTIN_AI() : !!s.ai; }; // eingebaute KI ist ab Werk aktiv
+let SET = null;
+function settings() {
+  if (SET) return SET;
+  try { SET = { ...SET_DEF, ...(JSON.parse(localStorage.getItem(SET_KEY) || "{}") || {}) }; } catch (e) { SET = { ...SET_DEF }; }
+  return SET;
+}
+function saveSettings() { try { localStorage.setItem(SET_KEY, JSON.stringify(SET)); } catch (e) { /* nur Sitzung */ } }
+function applySettings() {
+  const s = settings();
+  document.documentElement.dataset.theme = s.theme;
+  document.body.style.zoom = s.scale === 100 ? "" : String(s.scale / 100);
+  if (typeof liveSpeed !== "undefined") liveSpeed = s.speed;
+}
+SPEEDS[4] = 250; // Sofort-Berechnung
+const isFull = () => !!document.fullscreenElement;
+async function toggleFull() { try { if (isFull()) await document.exitFullscreen(); else await document.documentElement.requestFullscreen(); } catch (e) { toast("Vollbild wird hier nicht unterstützt – in der Windows-App F11 drücken."); } }
+// Lokale KI: nur auf Wunsch, mit Zeitlimit und Rückfall auf die eingebauten Texte
+async function llm(prompt, maxMs = 25000) {
+  const s = settings(); if (!aiOn()) return null;
+  if (BUILTIN_AI()) { try { const r = await Promise.race([window.mmAI.generate(prompt, 220), new Promise(res => setTimeout(() => res(null), maxMs * 3))]); if (r) return String(r).trim(); } catch (e) { /* weiter mit Ollama */ } }
+  const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), maxMs);
+  try {
+    const r = await fetch(s.aiUrl.replace(/\/$/, "") + "/api/generate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ model: s.aiModel, prompt, stream: false, options: { temperature: 0.3, num_predict: 220 } }), signal: ctl.signal });
+    if (!r.ok) return null; const j = await r.json(); return String(j.response || "").trim() || null;
+  } catch (e) { return null; } finally { clearTimeout(t); }
+}
+const AI_RULES = "Regeln: Antworte auf Deutsch. Erfinde keine neuen Fakten und keine Zitate. Lege echten Personen keine Aussagen in den Mund und schreibe nichts über ihr Privatleben. Behalte alle Zahlen exakt bei.";
+// Die KI ergänzt Meldungen nur um einen kurzen Kommentarsatz – Fakten, Zahlen und Namen stammen immer aus dem Spiel.
+// Strenger Filter: keine Zahlen, keine Namen (Sender, Personen, Politik), keine Zitate, keine Beleidigungen.
+const AI_TAGS = ["Quoten", "Finanzen", "Politik", "Social", "Eilmeldung", "Karriere", "Presse"];
+const AI_BAD = /(kuh|schwein|idiot|dumm|arsch|verdammt|schei(ß|ss)|blöd|depp|trottel|hure|fick|nazi|missgeburt|hirn|vollpfosten|penner|lügner|betrüger|kriminell|versager|loser|mist|kacke|wichs|bastard|spast|behindert)/i;
+let AI_NAMES = null;
+function aiNames() {
+  if (AI_NAMES && AI_NAMES.n === G.people.length) return AI_NAMES.re;
+  const words = new Set();
+  const add = n => String(n || "").split(/[\s\-.]+/).filter(w => w.length >= 3).forEach(w => words.add(w.toLowerCase()));
+  G.stations.forEach(st => add(st.name)); polList().forEach(g => add(g.name));
+  G.people.filter(q => q.custom || (q.fame || 0) >= 40).forEach(q => add(q.name));
+  for (const st of G.stations) for (const p of st.progs) if (!p.house) add(p.title);
+  const list = [...words].filter(w => !["der", "die", "das", "und", "the", "für", "mit", "von", "bei", "show", "news"].includes(w)).map(w => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+  AI_NAMES = { n: G.people.length, re: list.length ? new RegExp(`(^|[^a-zäöüß])(${list.join("|")})($|[^a-zäöüß])`, "i") : /$^/ };
+  return AI_NAMES.re;
+}
+function aiClean(t) {
+  if (!t) return null;
+  t = String(t).replace(/^\s*(kommentar|branchenkenner\w*|schlagzeile)\s*:\s*/i, "").replace(/\s+/g, " ").trim();
+  if (t.length < 15 || t.length > 170 || /\d/.test(t) || /["„“»«:]/.test(t) || AI_BAD.test(t) || aiNames().test(t)) return null;
+  if (!/[.!?…]$/.test(t)) t += ".";
+  return t;
+}
+function aiRewrite(entry) {
+  if (!aiOn() || !entry || !entry.art || !AI_TAGS.includes(entry.tag)) return;
+  if (Math.random() > 0.35) return; // nicht jede Meldung kommentieren
+  llm(`Schreibe genau einen kurzen, sachlich-ironischen Kommentarsatz eines Branchenkenners zu dieser Schlagzeile aus einem Fernseh-Managerspiel. Keine Zahlen, keine Namen, keine Zitate, keine Beleidigungen, höchstens 20 Wörter. Antworte auf Deutsch.\nSchlagzeile: ${artPlain(entry.art.head)}`).then(txt => {
+    const c = aiClean(txt); if (!c) return;
+    entry.art.paras = entry.art.paras.concat([`Branchenstimme: ${c}`]); entry.art.ai = true;
+  });
+}
+// Pressekonferenz: zuerst Stichworte, die KI nur bei unklaren Antworten
+const PRESS_KEYS = [/garantier|versprech|rekord|sieg|überholen|angriff auf den markt|wir werden|dominieren|mega|größte/i, /stabil|ruhig|vorstand|gemeinsam|plan|vertrauen|konsolid|solide|besonnen|geduld/i, /regierung|politik|staat|gesellschaft|system|wut|skandal|steuer|kanzler|bürokrat|elite/i, /konkurren|rival|prosieben|sat\.?\s?1|rtl|ard|zdf|vox|kabel|überteuert|abkupfer|kopier/i];
+function pressClassify(txt) {
+  const sc = PRESS_KEYS.map(re => (txt.match(new RegExp(re.source, "gi")) || []).length), max = Math.max(...sc);
+  return max > 0 && sc.filter(x => x === max).length === 1 ? sc.indexOf(max) : null;
+}
+// Status der eingebauten KI (Windows-App)
+let AI_INFO = null, AI_PROG = null;
+function aiBoxHtml() {
+  const i = AI_INFO; if (!i) return "Status wird geprüft …";
+  if (AI_PROG != null) return `<b>Modell wird geladen: ${Math.round(AI_PROG * 100)} %</b><div class="track" style="height:8px;margin:6px 0"><i style="width:${Math.round(AI_PROG * 100)}%;background:var(--hot)"></i></div>Das Spiel bleibt währenddessen spielbar.`;
+  if (i.available) return `Installiert: <b>${esc(i.model)}</b>${i.loaded ? ` · läuft auf ${i.gpu && i.gpu !== "cpu" && i.gpu !== false ? "der Grafikkarte (" + esc(String(i.gpu)) + ")" : "dem Prozessor"}` : " · wird bei der ersten Anfrage geladen"}. Alles läuft offline auf diesem Rechner.`;
+  return `Das Programm enthält die KI-Technik. Das starke Sprachmodell <b>${esc(i.strong.name)}</b> (ca. 4,7 GB) wird einmalig heruntergeladen – danach läuft alles offline. Empfohlen: 16 GB Arbeitsspeicher; eine Grafikkarte beschleunigt die Texte deutlich.<div style="margin-top:8px"><button class="btn hot" data-act="aiDownload">Starke KI jetzt herunterladen</button></div>`;
+}
+function refreshAiBox() { const el = $("aiBox"); if (el) el.innerHTML = aiBoxHtml(); }
+function aiStatus() { if (!BUILTIN_AI()) return; window.mmAI.info().then(i => { AI_INFO = i; if (i.downloading != null) AI_PROG = i.downloading; refreshAiBox(); }); }
+if (BUILTIN_AI()) window.mmAI.onProgress(p => { AI_PROG = p; refreshAiBox(); });
+function settingsPage(P) {
+  setTimeout(aiStatus, 0);
+  const s = settings();
+  const seg = (k, opts) => `<div class="pills">${opts.map(([v, n]) => `<button data-act="setOpt" data-k="${k}" data-v="${v}" class="${String(s[k]) === String(v) ? "on" : ""}">${n}</button>`).join("")}</div>`;
+  let h = title("Einstellungen", '<span class="muted">gelten nur auf diesem Gerät</span>');
+  h += `<section class="panel mb"><div class="ph"><h2>Anzeige</h2></div><div class="pad">
+    <div class="kv"><span>UI-Skalierung</span>${seg("scale", [[90, "90 %"], [100, "100 %"], [115, "115 %"], [125, "125 %"], [150, "150 %"]])}</div>
+    <div class="kv"><span>Farbprofil</span>${seg("theme", [["dark", "Dunkel"], ["light", "Hell"], ["retro", "Retro-TV"]])}</div>
+    <div class="kv"><span>Vollbild</span><button class="btn small" data-act="fullscreen">${isFull() ? "Vollbild beenden" : "Vollbild"}</button></div>
+    <p class="fine">In der Windows-App schaltet F11 ebenfalls in den Vollbildmodus.</p></div></section>`;
+  h += `<section class="panel mb"><div class="ph"><h2>Spiel</h2></div><div class="pad">
+    <div class="kv"><span>Tempo am Sendeabend</span>${seg("speed", [[1, "Regie"], [2, "Normal"], [3, "Schnell"], [4, "Sofort"]])}</div>
+    <div class="kv"><span>Automatisches Speichern</span><b>nach jeder Aktion</b></div>
+    <div class="row" style="margin-top:8px"><button class="btn" data-act="saveExport">Spielstand als Datei sichern</button> <button class="btn hot" data-act="saveQuit">Speichern & beenden</button></div></div></section>`;
+  h += `<section class="panel"><div class="ph"><h2>${BUILTIN_AI() ? "Eingebaute KI" : "Lokale KI (optional)"}</h2>${info("Ein kleines Sprachmodell auf Ihrem eigenen Rechner (Ollama) formuliert Branchenmeldungen und wertet frei formulierte Antworten in Pressekonferenzen aus. Es werden keine Daten ins Internet geschickt. Quoten, Werbung und Finanzen rechnet weiterhin das Spiel. Echte Personen erhalten keine erfundenen Zitate.")}</div><div class="pad">
+    <div class="kv"><span>KI-Texte</span><div class="pills">${[[false, "Aus"], [true, "Ein"]].map(([v, n]) => `<button data-act="setOpt" data-k="ai" data-v="${v}" class="${aiOn() === v ? "on" : ""}">${n}</button>`).join("")}</div></div>
+    ${BUILTIN_AI() ? `<div id="aiBox" class="fine">Status wird geprüft …</div><details><summary class="fine">Alternativ: eigenes Ollama-Modell</summary>` : ""}
+    <label class="field"><span>Adresse</span><input type="text" data-set="aiUrl" value="${esc(s.aiUrl)}"></label>
+    <label class="field"><span>Modell</span><input type="text" data-set="aiModel" value="${esc(s.aiModel)}" placeholder="llama3, mistral, phi3 …"></label>
+    <div class="row"><button class="btn" data-act="aiTest">${BUILTIN_AI() ? "KI testen" : "Verbindung testen"}</button> <span id="aiState" class="muted"></span></div>
+    <p class="fine">Einrichtung: Ollama installieren (ollama.com), dann <code>ollama pull ${esc(s.aiModel)}</code>. Falls die Windows-App keine Verbindung bekommt, die Umgebungsvariable <code>OLLAMA_ORIGINS=*</code> setzen und Ollama neu starten.</p>${BUILTIN_AI() ? "</details>" : ""}</div></section>`;
+  return h;
+}
+// =====================================================================
+// Pressekonferenz (freitags), Ruhmeshalle zum Jahreswechsel, globale Suche, Zweitverwertung an Konkurrenzsender
+// Fachpresse mit fiktiven Titeln; echte Personen ohne Charakter-Etiketten.
+// =====================================================================
+const PRESS_MEDIA = ["Branchendienst Medienplatz", "Fachmagazin TV-Markt", "Wirtschaftsmagazin Kapital & Kanal", "Boulevardblatt Abendpost"];
+const PRESS_TACTICS = [
+  ["Offensive Ansage", "Hype bei Z1/Z2 für sieben Tage, Job-Sicherheit −5, die Konkurrenz wird aggressiver."],
+  ["Konzern-Diplomatie", "Job-Sicherheit +8, die Banken beruhigen sich, im Netz gilt es als langweilig."],
+  ["Krawall-Kritik", "Gesellschaftliche Stimmung heizt sich auf, Boulevard und Reality +12 %, Werbekunden distanzieren sich."],
+  ["Angriff auf die Konkurrenz", "Alle Rivalen reagieren gereizt, Ihr Image steigt leicht."],
+];
+function pressQuestion() {
+  const P = me(), avg = P.maDays ? P.maSum / P.maDays : 0, ag = ensureAgenda(), top = agTop();
+  if (P.money < 0) return `Ihr Senderkonto steht bei ${meur(P.money)}. Wie reagieren Sie auf Gerüchte, dass der Vorstand die Geduld verliert?`;
+  if (avg && avg < P.target * 0.92) return `Ihr Marktanteil liegt mit ${pct(avg)} unter dem Ziel von ${pct(P.target)}. Was ändern Sie am Programm?`;
+  if (ag[top] > 75) return `Das Thema ${AGENDA.find(x => x[0] === top)[1]} bewegt das Land (Dringlichkeit ${ag[top]}). Wird ${P.name} sein Programm danach ausrichten?`;
+  if (G.stream && G.stream.subs) return "Streaming wächst, das lineare Fernsehen verliert junge Zuschauer. Opfern Sie das Hauptprogramm für Ihre Plattform?";
+  return `Die Konkurrenz rüstet bei Filmrechten und Shows auf. Wie will ${P.name} in den nächsten Wochen dagegenhalten?`;
+}
+function pressDay() {
+  if (weekday(G.day) !== 5 || (G.career && G.career.out) || !G.rivals) return;
+  const medium = PRESS_MEDIA[Math.floor(G.day / 7) % PRESS_MEDIA.length];
+  const opts = PRESS_TACTICS.map(x => x.slice());
+  if (aiOn()) opts.push(["Frei antworten", "Eigene Antwort formulieren – die lokale KI ordnet sie einer Taktik zu."]);
+  queueEvent({ id: "press", type: "Pressekonferenz", title: `Pressekonferenz: ${medium}`, text: pressQuestion(), opts, data: { medium } });
+}
+function pressApply(k, medium, txt) {
+  const P = me(), until = G.day + 7;
+  G.pressFx = { until, y: k === 0 ? 0.06 : k === 1 ? -0.02 : 0, boul: k === 2 ? 0.12 : 0 };
+  if (k === 0) { P.conf = clamp(P.conf - 5, 0, 100); G.rivalAggro = G.day + 21; for (const p of P.progs.filter(x => !x.aired && !x.filler)) p.hypeTv = Math.min(100, (p.hypeTv || 0) + 8); }
+  if (k === 1) { P.conf = clamp(P.conf + 8, 0, 100); feedPost(`Pressekonferenz bei ${P.name}: viele Worte, wenig Aussage. 💤 #TVBusiness`, { z: 1, m: -1, tag: "Presse" }); }
+  if (k === 2) { const S = ensurePol(); S.ax.stim = clamp(S.ax.stim + 8, 10, 95); ensureAgenda().ges = clamp(ensureAgenda().ges + 8, 10, 100); P.favor = Math.max(0, P.favor - 2); const c = [...P.contracts].sort((a, b) => b.pay - a.pay)[0]; if (c && Math.random() < 0.3) { P.contracts = P.contracts.filter(x => x !== c); logMsg("Vermarktung", "Werbung", `${c.brand} distanziert sich nach Ihren Aussagen und zieht die Kampagne zurück.`, true); } }
+  if (k === 3) { for (const id of Object.keys(G.rivals || {})) rivalEvent(id, -12, "Angriff auf der Pressekonferenz"); P.brand = Math.min(30, P.brand * 1.01); G.rivalAggro = G.day + 21; }
+  postArticle(medium, "Presse", `${P.name}-Chef: ${["Kampfansage an den Markt", "Kurs der Stabilität", "Scharfe Medienkritik", "Frontalangriff auf die Konkurrenz"][k]}`, [txt ? `Auf die Frage antwortete die Programmdirektion: „${txt.slice(0, 240)}“` : `Die Programmdirektion setzt auf ${PRESS_TACTICS[k][0].toLowerCase()}.`, PRESS_TACTICS[k][1]]);
+}
+EVENTS.push({ id: "press", type: "Pressekonferenz", when: () => false, make: () => ({}), fn: (k, d) => {
+  if (k < 4) return pressApply(k, d.medium);
+  openModal(`<header><h2>Freie Antwort</h2><button class="btn" data-act="close">Schließen</button></header><div class="dbody"><p class="lead">${esc(pressQuestion())}</p>
+    <textarea id="pressTxt" rows="4" style="width:100%" maxlength="400" placeholder="Ihre Antwort an die Presse …"></textarea>
+    <div class="actions"><button class="btn hot" data-act="pressFree" data-k="${esc(d.medium)}">Antwort geben</button></div><p class="fine" id="pressState"></p></div>`, true);
+} });
+async function pressFree(medium) {
+  const txt = (($("pressTxt") || {}).value || "").trim(); if (!txt) return;
+  const st = $("pressState"); if (st) st.textContent = "Die KI bewertet Ihre Antwort …";
+  let k = pressClassify(txt);
+  const r = k != null ? String(k) : await llm(`Ordne diese Antwort eines TV-Managers in einer Pressekonferenz genau einer Kategorie zu und antworte nur mit der Zahl: 0 = offensive Ansage mit großen Versprechen, 1 = diplomatisch und beruhigend, 2 = polemische Kritik an Politik oder Gesellschaft, 3 = Angriff auf Konkurrenzsender.\nAntwort: "${txt.replace(/"/g, "'")}"`, 20000);
+  if (k == null) k = r && /^\s*[0-3]\s*$/.test(r) ? +r.trim() : 1;
+  closeModal(); pressApply(k, medium, txt); toast(`Eingeordnet als: ${PRESS_TACTICS[k][0]}`); render();
+}
+function pressF(st, p) {
+  const f = G.pressFx; if (!f || !isMe(st) || G.day > f.until || !p) return 1;
+  let m = 1; if (f.y) { const z = zMix(st, p); m *= 1 + f.y * (z[0] + z[1]) * 2; }
+  if (f.boul && (p.genre === "Reality" || p.genre === "Magazin")) m *= 1 + f.boul;
+  return m;
+}
+
+// ---------- Ruhmeshalle ----------
+function yearTrack(d = G.day) { if (!G.yr) G.yr = { y: dateOf(d).getFullYear(), best: null, scoops: 0, subs0: G.stream ? G.stream.subs : 0, st: me().id }; return G.yr; }
+function hofDay() {
+  const Y = yearTrack(G.day - 1), P = me();
+  for (const d of (G.daySeg || []).filter(x => x.st === P.i && x.min >= 45)) { const p = progOf(P, d.id), ma = d.vs / d.bs * 100; if (p && p.own && (!Y.best || ma > Y.best.ma)) Y.best = { ma: +ma.toFixed(1), title: p.title, day: G.day - 1 }; }
+  const dt = dateOf(G.day); if (dt.getMonth() !== 0 || dt.getDate() !== 1) return;
+  // Jahresabschluss für das abgelaufene Jahr
+  const prevY = Y.y, h = P.hist.filter(x => dateOf(x.day).getFullYear() === prevY), C = ensureCareer();
+  const sumK = k => h.reduce((a, x) => a + ((x.fin || {})[k] || 0), 0);
+  const ads = sumK("TV-Werbung") + sumK("TV-Werbung (Spotmarkt)"), fines = -sumK("Strafen"), ebitda = h.reduce((a, x) => a + (x.ebitda || 0), 0);
+  const subsGain = G.stream ? G.stream.subs - (Y.subs0 || 0) : 0, aw = [];
+  if (Y.best && Y.best.ma >= 20) { aw.push(["Quotenkönig des Jahres", `${Y.best.title} mit ${pct(Y.best.ma)} Marktanteil`]); C.malus = Math.max(0, C.malus - 15); }
+  if (Y.scoops >= 3) { aw.push(["Investigativpreis", `${Y.scoops} Exklusiv-Recherchen`]); P.brand = Math.min(30, P.brand * 1.05); }
+  if (!(P.loans || []).length && P.money > 5e6 && ebitda > 0) { aw.push(["Sanierungs-Medaille", `schuldenfrei, Kontostand ${meur(P.money)}`]); book(P, "Vorstandsbudget", r1000(P.base * 1e5 * 2.5)); }
+  if (subsGain >= 1) { aw.push(["Digital-Pionier", `+${subsGain.toFixed(1).replace(".", ",")} Mio. Abos`]); G.cultYear = prevY + 1; }
+  G.hof = (G.hof || []).concat([{ y: prevY, st: P.id, aw, best: Y.best, ads, fines, ebitda, money: P.money, stars: repStars(), subs: G.stream ? G.stream.subs : 0 }]);
+  G.yr = null;
+  postArticle("Branchendienst Medienplatz", "Karriere", `Jahresrückblick ${prevY}: ${aw.length ? aw.map(a => a[0]).join(", ") : "ein Jahr ohne Trophäe"}`, [`${P.name} schließt ${prevY} mit ${meur(ebitda)} EBITDA, ${meur(ads)} Werbeumsatz und ${meur(fines)} Vertragsstrafen ab.`, aw.length ? `Ausgezeichnet: ${aw.map(a => `${a[0]} (${a[1]})`).join("; ")}.` : "Die Konkurrenz war in diesem Jahr stärker.", "Alle Jahre stehen unter Sender → Ruhmeshalle."], true);
+}
+function hofPage(P) {
+  const Y = yearTrack(), list = (G.hof || []).slice().reverse();
+  let h = title("Ruhmeshalle", `<span class="muted">${list.length} abgeschlossene Jahre</span>`);
+  h += `<section class="panel mb"><div class="ph"><h2>Laufendes Jahr ${Y.y}</h2></div><div class="slist"><div class="srow"><b>Bester Eigenformat-Abend</b><em>${Y.best ? pct(Y.best.ma) : "–"}</em><span>${Y.best ? esc(Y.best.title) : "noch keiner"}</span></div><div class="srow"><b>Exklusiv-Recherchen</b><em>${Y.scoops}</em><span>ab 3: Investigativpreis</span></div><div class="srow"><b>Bankkredite</b><em>${(P.loans || []).length}</em><span>schuldenfrei + 5 Mio. €: Sanierungs-Medaille</span></div></div></section>`;
+  h += `<section class="panel"><div class="ph"><h2>Archiv</h2></div>${list.length ? `<div class="tbl"><table><thead><tr><th>Jahr</th><th>Sender</th><th>Auszeichnungen</th><th class="num">EBITDA</th><th class="num">Werbung</th><th class="num">Ansehen</th></tr></thead><tbody>${list.map(x => `<tr><td>${x.y}</td><td>${esc(holderName(x.st))}</td><td>${x.aw.length ? x.aw.map(a => `<span class="chip good">🏆 ${esc(a[0])}</span>`).join(" ") : '<span class="muted">–</span>'}${x.best ? `<div class="fine">Bester Abend: ${esc(x.best.title)} (${pct(x.best.ma)})</div>` : ""}</td><td class="num">${meur(x.ebitda)}</td><td class="num">${meur(x.ads)}</td><td class="num">${"★".repeat(x.stars)}</td></tr>`).join("")}</tbody></table></div>` : '<p class="fine pad">Der erste Jahresrückblick erscheint am 1. Januar.</p>'}</section>`;
+  return h;
+}
+
+// ---------- Globale Suche ----------
+function searchAll(q) {
+  q = q.trim().toLowerCase(); if (q.length < 2) return null;
+  const hit = s => String(s || "").toLowerCase().includes(q);
+  const people = G.people.filter(p => hit(p.name) || hit(p.code) || hit(p.origin) || hit(p.known)).sort((a, b) => (b.fame || 0) - (a.fame || 0)).slice(0, 30);
+  const titles = []; for (const st of G.stations) for (const p of st.progs) if (!p.house && hit(p.title)) titles.push([st, p]);
+  const pols = polList().filter(g => hit(g.name) || hit(g.partei) || hit(g.res) || hit(g.amt)).slice(0, 15);
+  const stations = G.stations.filter(s => hit(s.name) || hit(s.id));
+  const brands = [...new Set((G.adOffers || []).concat(...G.stations.map(s => s.contracts || [])).map(c => c.brand).filter(b => hit(b)))].slice(0, 15);
+  return { people, titles: titles.slice(0, 30), pols, stations, brands };
+}
+function openSearch(q = "") {
+  openModal(`<header><h2>Suche</h2><button class="btn" data-act="close">Schließen</button></header><div class="dbody"><input id="searchQ" type="search" placeholder="Name, Titel, Partei, Sender, Werbekunde …" value="${esc(q)}" style="width:100%;font-size:16px;padding:10px" autofocus><div id="searchRes" style="margin-top:12px"></div></div>`);
+  const inp = $("searchQ"); if (inp) { inp.focus(); inp.addEventListener("input", () => renderSearch(inp.value)); renderSearch(q); }
+}
+function renderSearch(q) {
+  const el = $("searchRes"), r = searchAll(q); if (!el) return;
+  if (!r) { el.innerHTML = '<p class="fine">Mindestens zwei Zeichen eingeben. Tastenkürzel: Strg+K.</p>'; return; }
+  const sec = (t, rows) => rows.length ? `<h3 style="margin:14px 0 6px">${t}</h3><div class="slist">${rows.join("")}</div>` : "";
+  el.innerHTML = sec("Personen", r.people.map(p => `<div class="srow"><b>${personLink(p)}</b><em>${esc(SPEC_NAME[p.role] || p.role)}</em><span>${esc([p.age ? p.age + " J." : "", p.origin, p.known ? String(p.known).split(";")[0] : "", p.holder ? holderName(p.holder) : "frei"].filter(Boolean).join(" · "))}</span></div>`))
+    + sec("Sendungen & Rechte", r.titles.map(([st, p]) => `<div class="srow"><b>${titleLink(`${st.id}|${p.id}`, p.title)}</b><em>${esc(p.genre)}</em><span>${esc(st.name)}</span></div>`))
+    + sec("Politik (Talkgäste)", r.pols.map(g => `<div class="srow"><b>${esc(g.name)}</b><em>${esc(g.partei)}</em><span>${esc([g.lager, g.amt, g.res].filter(Boolean).join(" · "))}</span></div>`))
+    + sec("Sender", r.stations.map(s => `<div class="srow"><b>${sname(s.i)}</b><em>${s.type === "oer" ? "öffentlich-rechtlich" : "privat"}</em><span>${pct(s.dayMA || s.base)}</span></div>`))
+    + sec("Werbekunden", r.brands.map(b => `<div class="srow"><b>${esc(b)}</b><em>Werbekunde</em><span></span></div>`)) || '<p class="fine">Keine Treffer.</p>';
+}
+
+// ---------- Zweitverwertung im Inland ----------
+function syndOffer(p) {
+  const fresh = clamp(p.topic || 0.5, 0.2, 1), eps = p.kind === "serie" ? Math.min(p.eps || 10, 13) : 1;
+  const base = (p.epCost || (p.kind === "film" ? 600000 : 150000)) * (p.kind === "film" ? 0.5 : 0.35) * eps;
+  const buyers = G.stations.filter(s => !isMe(s) && s.money > 0 && !s.progs.some(x => x.title === p.title)).sort((a, b) => Math.abs(a.base - 5) - Math.abs(b.base - 5));
+  const st = buyers[(Math.abs(hashStr(String(p.id))) + G.day) % Math.max(1, buyers.length)];
+  return st ? { st, price: r1000(base * fresh * (0.6 + p.q / 100) * (G.rivalAggro >= G.day ? 0.85 : 1)) } : null;
+}
+function syndicate(pid) {
+  const P = me(), p = P.progs.find(x => x.id === pid); if (!p || !p.own || !p.aired) return "Nur bereits gesendete Eigenproduktionen.";
+  if ((p.syndTo || []).length >= 2) return "Bereits an zwei Sender lizenziert.";
+  const o = syndOffer(p); if (!o) return "Kein Interessent.";
+  const copy = { ...JSON.parse(JSON.stringify(p)), id: uid(), own: false, home: false, until: G.day + 365, price: o.price, aired: 0, synd: P.id };
+  o.st.progs.push(copy); o.st.money -= o.price; book(P, "Lizenzverkauf", o.price);
+  p.syndTo = (p.syndTo || []).concat(o.st.id); p.topic = Math.max(0.2, (p.topic || 0.5) * 0.9);
+  postArticle("Branchendienst Medienplatz", "Programm", `${P.name} lizenziert „${p.title}“ an ${o.st.name}`, [`Für ${eur(o.price)} darf ${o.st.name} die Produktion ein Jahr lang ausstrahlen. Achtung: Läuft sie dort stark, fehlt Ihnen dieses Publikum.`]);
+  return null;
+}
+function syndPanel(P) {
+  const own = P.progs.filter(p => p.own && p.aired);
+  return `<section class="panel mb"><div class="ph"><h2>Zweitverwertung im Inland</h2>${info("Gesendete Eigenproduktionen lassen sich für ein Jahr an Konkurrenzsender lizenzieren. Der Preis hängt von Qualität und Frische ab. Der Käufer setzt die Sendung selbst ein – gegen Ihr eigenes Programm.")}</div>${own.length ? `<div class="tbl"><table><tbody>${own.map(p => { const o = syndOffer(p); return `<tr><td class="title">${esc(p.title)}<div class="muted">Qualität ${p.q} · Frische ${Math.round((p.topic || 0) * 100)} %${(p.syndTo || []).length ? ` · lizenziert an ${p.syndTo.map(holderName).join(", ")}` : ""}</div></td><td class="num">${o ? `${esc(o.st.name)} bietet ${eur(o.price)}` : "kein Interessent"}</td><td><button class="btn small" data-act="synd" data-k="${p.id}" ${!o || planLocked() || (p.syndTo || []).length >= 2 ? "disabled" : ""}>Lizenzieren</button></td></tr>`; }).join("")}</tbody></table></div>` : '<p class="fine pad">Noch keine gesendeten Eigenproduktionen.</p>'}</section>`;
+}
+// =====================================================================
+// Jahreszeiten & Alltag: Sehdauer nach Monat, Tageslicht, Wetter, Feiertage, Ferien, saisonale Genres, Streaming im Winter
+// Richtwerte orientiert am typischen Jahresverlauf der Fernsehnutzung in Deutschland (Winter hoch, Sommer niedrig).
+// =====================================================================
+const BASE0 = BASE.slice();
+const TV_MONTH = [1.1, 1.08, 1.02, 0.96, 0.91, 0.87, 0.84, 0.86, 0.94, 1.01, 1.06, 1.08];
+// Ostersonntag (Gauß)
+function easter(y) { const a = y % 19, b = Math.floor(y / 100), c = y % 100, d = Math.floor(b / 4), e = b % 4, f = Math.floor((b + 8) / 25), g = Math.floor((b - f + 1) / 3), h = (19 * a + b - d - g + 15) % 30, i = Math.floor(c / 4), k = c % 4, l = (32 + 2 * e + 2 * i - h - k) % 7, m = Math.floor((a + 11 * h + 22 * l) / 451), mo = Math.floor((h + l - 7 * m + 114) / 31), da = ((h + l - 7 * m + 114) % 31) + 1; return new Date(y, mo - 1, da); }
+function holidayOf(day) {
+  const d = dateOf(day), y = d.getFullYear(), k = (d.getMonth() + 1) * 100 + d.getDate();
+  const fix = { 101: "Neujahr", 214: "Valentinstag", 501: "Tag der Arbeit", 1003: "Tag der Deutschen Einheit", 1031: "Halloween", 1224: "Heiligabend", 1225: "1. Weihnachtstag", 1226: "2. Weihnachtstag", 1231: "Silvester" };
+  if (fix[k]) return fix[k];
+  const e = dayOf(easter(y)), off = { [-2]: "Karfreitag", 0: "Ostersonntag", 1: "Ostermontag", 39: "Christi Himmelfahrt", 49: "Pfingstsonntag", 50: "Pfingstmontag" };
+  return off[day - e] || null;
+}
+// Sommerferien grob gemittelt über die Länder (Mitte Juli bis Ende August), Weihnachtsferien
+const schoolBreak = day => { const d = dateOf(day), m = d.getMonth(), dd = d.getDate(); return (m === 6 && dd >= 10) || m === 7 || (m === 11 && dd >= 23) || (m === 0 && dd <= 6); };
+// Wetter je Tag: deterministisch aus dem Datum, Klima nach Monat
+const CLIMATE = [[1, 0.25], [2, 0.3], [6, 0.35], [11, 0.45], [15, 0.5], [19, 0.55], [21, 0.6], [21, 0.58], [17, 0.5], [11, 0.38], [6, 0.25], [2, 0.2]];
+function weatherOf(day) {
+  const d = dateOf(day), [t0, sun0] = CLIMATE[d.getMonth()], r = seeded(day * 7919 + 13);
+  const t = Math.round(t0 + (r() - 0.5) * 12 + (r() - 0.5) * 4), sunny = r() < sun0, rain = !sunny && r() < 0.55;
+  const snow = rain && t <= 1, storm = !sunny && r() < 0.05;
+  const icon = storm ? "🌪️" : snow ? "🌨️" : rain ? "🌧️" : sunny ? (t >= 24 ? "☀️" : "🌤️") : "☁️";
+  return { t, sunny, rain, snow, storm, icon, label: storm ? "Sturm" : snow ? "Schnee" : rain ? "Regen" : sunny ? (t >= 28 ? "Hitze" : "sonnig") : "bewölkt" };
+}
+// Faktor für die TV-Nutzung einer Stunde
+function tvSeason(day, h) {
+  const d = dateOf(day), m = d.getMonth(), wd = d.getDay(), w = weatherOf(day), hol = holidayOf(day);
+  let f = TV_MONTH[m];
+  if (h >= 16 && h <= 20) f *= [1.03, 1.02, 1.0, 0.98, 0.95, 0.92, 0.9, 0.92, 0.96, 1.0, 1.02, 1.03][m]; // Tageslicht am Vorabend
+  if (w.sunny && w.t >= 24 && h >= 12 && h <= 21) f *= 0.9; // Biergarten statt Bildschirm
+  if ((w.rain || w.snow) && h >= 12 && h <= 22) f *= 1.05;
+  if (w.storm) f *= 1.06;
+  if (wd === 0 && h >= 20 && h <= 22) f *= 1.05; // Sonntagabend ist Fernsehabend
+  if ((wd === 5 || wd === 6) && h >= 21) f *= 0.96; // Freitag/Samstag sind viele unterwegs
+  if (hol === "Heiligabend") f *= h >= 16 && h <= 19 ? 0.55 : h >= 20 ? 1.15 : 1;
+  else if (hol === "1. Weihnachtstag" || hol === "2. Weihnachtstag") f *= h >= 12 && h <= 22 ? 1.2 : 1.05;
+  else if (hol === "Silvester") f *= h >= 20 && h <= 23 ? 0.85 : h === 0 ? 1.25 : 1.05;
+  else if (hol === "Neujahr") f *= h >= 12 ? 1.18 : 0.8;
+  else if (hol && !["Valentinstag", "Halloween"].includes(hol)) f *= h >= 10 && h <= 18 ? 1.15 : 1.03;
+  if (schoolBreak(day) && h >= 9 && h <= 15) f *= m === 11 || m === 0 ? 1.12 : 0.95; // Ferien: Kinder vor dem Fernseher, im Sommer im Urlaub
+  return f;
+}
+function seasonBase() { for (let i = 0; i < BASE.length; i++) BASE[i] = BASE0[i] * tvSeason(G.day, i); }
+// Streaming wird im Winter stärker genutzt
+const streamSeason = (day = G.day) => [1.12, 1.1, 1.02, 0.96, 0.92, 0.88, 0.86, 0.88, 0.95, 1.02, 1.08, 1.12][dateOf(day).getMonth()];
+// Saisonale Genres und Titel
+const XMAS = /weihnacht|christmas|kevin – allein|aschenbr|santa|grinch|nikolaus|tatsächlich… liebe|der kleine lord|polarexpress|schöne bescherung|stille nacht/i;
+const HORROR = /halloween|horror|exorzist|scream|es – |shining|zombie/i;
+function genreSeason(p, day = G.day) {
+  if (!p || p.kind === "sport") return 1;
+  const d = dateOf(day), m = d.getMonth(), dd = d.getDate(), t = p.title || "";
+  let f = 1;
+  if (XMAS.test(t)) f *= m === 11 ? (dd >= 15 ? 1.6 : 1.3) : m === 10 && dd >= 20 ? 1.1 : 0.55;
+  if (HORROR.test(t) || p.genre === "Horror") f *= m === 9 && dd >= 20 ? 1.35 : 1;
+  if (p.genre === "Liebesfilm") f *= m === 1 && dd >= 10 && dd <= 14 ? 1.15 : m === 11 ? 1.08 : 1;
+  if (["Krimi", "Doku", "Show"].includes(p.genre)) f *= [1.05, 1.04, 1.02, 1, 0.98, 0.96, 0.95, 0.96, 1, 1.02, 1.04, 1.05][m];
+  if (p.genre === "Reality") f *= m >= 5 && m <= 7 ? 1.06 : 1; // Sommer-Reality
+  if (/silvester|jahresrückblick|dinner for one/i.test(t)) f *= m === 11 && dd >= 28 ? 1.8 : 0.5;
+  return f;
+}
+// Täglicher Rhythmus: Wetter-Meldungen, Feiertage, Bezug zur Ereignis-Matrix
+function seasonTick() {
+  seasonBase();
+  const w = weatherOf(G.day), hol = holidayOf(G.day), d = dateOf(G.day);
+  if (w.storm || (w.sunny && w.t >= 32) || (w.snow && w.t <= -5)) {
+    const ag = ensureAgenda(); ag.klima = clamp(ag.klima + 6, 10, 100);
+    logMsg("Wetterdienst", "Wetter", `${w.icon} ${w.storm ? "Sturmwarnung für weite Teile Deutschlands" : w.snow ? "Kältewelle mit Schnee" : `Hitze mit ${w.t} °C`} – ${w.storm || w.snow ? "viele bleiben zu Hause, die Fernsehnutzung steigt" : "Biergärten voll, die Fernsehnutzung am Vorabend sinkt"}.`);
+  }
+  if (hol && !["Valentinstag", "Halloween"].includes(hol)) logMsg("Planung", "Kalender", `Heute ist ${hol}: ${hol === "Heiligabend" ? "am Nachmittag wenig Publikum, ab 20 Uhr Familienprogramm" : hol === "Silvester" ? "die Primetime ist schwach, um Mitternacht sind alle dabei" : "mehr Publikum am Tag, Familien- und Filmprogramme laufen gut"}.`);
+  if (d.getMonth() === 11 && d.getDate() === 1) logMsg("Planung", "Kalender", "Dezember: Weihnachtsfilme ziehen jetzt kräftig – ab Mitte des Monats noch stärker. Außerhalb der Saison wirken sie deplatziert.", true);
+  if (d.getMonth() === 5 && d.getDate() === 15) logMsg("Planung", "Kalender", "Sommerloch: Die Sehdauer sinkt bis August deutlich, Werbekunden halten Budgets zurück. Gute Zeit für Wiederholungen und günstige Formate.", true);
+}
+const weatherChip = () => { if (!G) return ""; const w = weatherOf(G.day), hol = holidayOf(G.day); return `${w.icon} ${w.t} °C${hol ? " · " + hol : ""}`; };
 // =====================================================================
 // Formatprofil: Quotenverlauf, Publikum, Analyse und Maßnahmen je Sendung
 // =====================================================================
@@ -7211,6 +7619,7 @@ document.addEventListener("change", async e => {
 });
 document.addEventListener("change", e => {
   if (e.target.dataset && e.target.dataset.dna && draft && draft.dna) { const k = e.target.dataset.dna; draft.dna[k] = k === "pre" ? e.target.checked : k === "sr" ? e.target.value || null : +e.target.value; render(); return; }
+  if (e.target.dataset && e.target.dataset.set) { settings()[e.target.dataset.set] = e.target.value.trim(); saveSettings(); toast("Gespeichert."); return; }
   if (e.target.dataset && e.target.dataset.comm && G) { G.comm = G.comm || {}; if (e.target.value) G.comm[e.target.dataset.comm] = e.target.value; else delete G.comm[e.target.dataset.comm]; toast("Kommentar-Besetzung gespeichert."); render(); return; }
   if (e.target.dataset && e.target.dataset.tsel && G) { const [d, i] = e.target.dataset.tsel.split("|").map(Number), v = e.target.value; editPlan(d, sc => { if (v === "") delete sc[i].t; else sc[i].t = +v; }); render(); return; }
   if (e.target.dataset && e.target.dataset.adl && G) { const L = adLoad(me()), k = e.target.dataset.adl, v = +e.target.value; if (me().type === "oer") { const other = Object.entries(L).filter(([h]) => h !== k).reduce((a, [, x]) => a + x, 0); L[k] = Math.max(0, Math.min(v, 20 - other)); } else L[k] = clamp(v, 0, 12); render(); return; }
@@ -7605,6 +8014,7 @@ async function load() {
 function clearSave() { if (IDB.db) idbDel(KEY).catch(() => {}); try { localStorage.removeItem(KEY); localStorage.removeItem(KEY + "-has"); } catch (e) { /* egal */ } }
 
 async function start(data) {
+  applySettings();
   await initStorage();
   probeLogos();
   if (data && data.G && !data.G.over) { G = data.G; if (G.phase !== "plan") startDay(); go("overview", true); }

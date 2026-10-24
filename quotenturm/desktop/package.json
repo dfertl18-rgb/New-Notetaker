@@ -26,7 +26,14 @@
     "productName": "Medienmanager 2027",
     "files": [
       "main.js",
-      "app/**/*"
+      "preload.js",
+      "app/**/*",
+      "!node_modules/@node-llama-cpp/linux-*/**",
+      "!node_modules/@node-llama-cpp/mac-*/**",
+      "!node_modules/@node-llama-cpp/win-arm64/**",
+      "!node_modules/@node-llama-cpp/*cuda*/**",
+      "!node_modules/node-llama-cpp/llama/**/*.c",
+      "!node_modules/node-llama-cpp/llama/**/*.cpp"
     ],
     "directories": {
       "output": "dist"
@@ -59,7 +66,24 @@
       "runAfterFinish": true,
       "deleteAppDataOnUninstall": false
     },
-    "afterPack": "./afterpack.js"
+    "afterPack": "./afterpack.js",
+    "asarUnpack": [
+      "node_modules/node-llama-cpp/**",
+      "node_modules/@node-llama-cpp/**"
+    ],
+    "extraResources": [
+      {
+        "from": "models",
+        "to": "models",
+        "filter": [
+          "*.gguf",
+          "LICENSE*"
+        ]
+      }
+    ]
   },
-  "repository": "github:dfertl18-rgb/New-Notetaker"
+  "repository": "github:dfertl18-rgb/New-Notetaker",
+  "dependencies": {
+    "node-llama-cpp": "^3.22.1"
+  }
 }
