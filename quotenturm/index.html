@@ -3405,7 +3405,7 @@ function nextDay() {
   G.day++;
   for (const st of G.stations) st.fin = {};
   projectDay();
-  prodDay(); peopleDay(); newsroomDay(); trendDay(); awardsDay(); marketDay(); presaleDay(); rivalsDay(); formatDay(); postQuotenReport(); frameDay(); conflictCheck(); fmDay(); scoutDay(); rumorDay(); staffDay(); politicsDay(); agendaDay(); seasonTick(); cineDay(); inhouseDay(); socialDay(); moraleDay(me()); castDay(me()); hofDay(); pressDay(); financeDay(); maDay(); if (G.day % 7 === 1) { boWeek(me()); relWeek(); careerWeek(); financeWeek(); contractWeek(); fmtTradeWeek(); } if (G.day % 84 === 0) quarterReport(); if (G.career && (G.career.out || G.career.mode === "stream")) fillHorizon(me()); svDay(); primeCheck(); szDay();
+  prodDay(); peopleDay(); newsroomDay(); trendDay(); awardsDay(); marketDay(); presaleDay(); rivalsDay(); formatDay(); postQuotenReport(); frameDay(); conflictCheck(); fmDay(); scoutDay(); rumorDay(); staffDay(); politicsDay(); agendaDay(); seasonTick(); cineDay(); inhouseDay(); socialDay(); moraleDay(me()); castDay(me()); career2Day(); hofDay(); pressDay(); financeDay(); maDay(); if (G.day % 7 === 1) { boWeek(me()); relWeek(); careerWeek(); financeWeek(); contractWeek(); fmtTradeWeek(); } if (G.day % 84 === 0) quarterReport(); if (G.career && (G.career.out || G.career.mode === "stream")) fillHorizon(me()); svDay(); primeCheck(); szDay();
   if (dateOf(G.day).getDate() === 1 && !G.event) setInterview(); // Interview zum Monatsbeginn
   if (G.mods.coverup && G.day >= G.mods.coverup.day) {
     const c = G.mods.coverup; G.mods.coverup = null;
@@ -4306,7 +4306,8 @@ function act(b) {
     case "saveExport": exportSave(); toast("Spielstand-Datei wird gespeichert."); return;
     case "talkField": G.talkSel = { ...(G.talkSel || { ids: [] }), field: b.dataset.k }; break;
     case "boardPoker": openBoardPoker(b.dataset.k); return;
-    case "signJob": { const err = signContract(b.dataset.k, b.dataset.v); closeModal(); toast(err || "Willkommen an Bord!"); if (!err) { go("overview"); return; } break; }
+    case "signJob": { const err = signContract(b.dataset.k, b.dataset.v); closeModal(); toast(err || "Willkommen an Bord!"); if (!err) { afterSign(b.dataset.k); go("overview"); return; } break; }
+    case "jobApply": case "ivAns": case "offerYears": case "offerMore": case "offerAccept": case "pcAns": case "licStart": case "agentToggle": case "resign": c2Action(P, k, b); return;
     case "talkShow": G.talkSel = { pid: b.dataset.k, ids: [] }; break;
     case "talkGuest": { const sl = G.talkSel, g = b.dataset.k; if (sl) sl.ids = sl.ids.includes(g) ? sl.ids.filter(x => x !== g) : sl.ids.concat(g).slice(0, 4); break; }
     case "talkBook": { const sl = G.talkSel; const err = sl && bookTalk(sl.pid, sl.ids); toast(err || "Die Gäste haben zugesagt – sie sitzen in der nächsten Ausgabe."); if (!err) sl.ids = []; break; }
@@ -6351,6 +6352,7 @@ const repStars = () => clamp(Math.round(repScore() / 24), 1, 5);
 const needStars = st => clamp(Math.round((30 + st.base * 3.5) / 24), 1, 5);
 // Wöchentliche Vorstandsbewertung
 function careerWeek() {
+  career2Week();
   const C = ensureCareer(), P = me();
   C.malus = Math.max(0, C.malus - 1);
   // Freie Stellen: Sender mit schwacher Leistung trennen sich von ihrer Programmdirektion
@@ -6385,6 +6387,7 @@ function fireManager(why) {
   logMsg("Branchendienst", "Karriere", wasSv ? `Personalien: ${(STREAMERS.find(x => x.id === G.svPast[G.svPast.length - 1].id) || {}).name} trennt sich von der Leitung DACH. ${why}` : `Personalien: ${P.name} stellt die Programmdirektion mit sofortiger Wirkung frei. ${why}`, true);
   logMsg(wasSv ? "Konzernzentrale" : BOARD_NAME(P), "Vorstand", `Sie sind freigestellt. Ihr Büro wird geräumt. Bewerben Sie sich unter Sender → Karriere auf offene Posten.`, true);
   C.offers = G.stations.filter(st => !isMe(st) && (st.conf < 50 || Math.random() < 0.3)).map(st => st.id).concat(Object.keys(SV_JOBS).filter(() => Math.random() < 0.25));
+  if (!/Rücktritt/.test(why)) { const pay = severance(); if (pay) logMsg("Karriere", "Karriere", `Abfindung aus Ihrem Vertrag: ${eur(pay)} für die Restlaufzeit – auf Ihr Privatvermögen.`, true); }
 }
 // Neue Stelle mit Vorstands-Poker
 const SV_PROMISES = { risk: "„Ich steigere die Abonnenten in DACH um 15 % binnen einer Saison.“", std: "„Ich halte die Kündigungsrate unter 1 % pro Woche.“", save: "„Ich bleibe strikt im Content-Budget.“" };
@@ -6398,7 +6401,7 @@ function openStreamPoker(sid) {
 function signContract(sid, pid) {
   if (SV_JOBS[sid]) {
     const C = ensureCareer(), pr = PROMISES.find(x => x.id === pid); if (!pr) return "Ungültig.";
-    if (!G.quickStream && repStars() < SV_JOBS[sid]) return "Ihr Ansehen reicht für diesen Streamer nicht.";
+    if (!G.quickStream && repHalf() + 0.5 < SV_JOBS[sid]) return "Ihr Ansehen reicht für diesen Streamer nicht.";
     if (isStreamJob() && G.sv.id === sid) return "Sie leiten diesen Dienst bereits.";
     if (isStreamJob()) { const m0 = svM(); if (m0) m0.boss = false; }
     const h0 = C.hist[C.hist.length - 1]; if (h0 && !h0.to) { h0.to = G.day; h0.why = h0.why || "Wechsel"; }
@@ -6412,7 +6415,7 @@ function signContract(sid, pid) {
   }
   const C = ensureCareer(), st = G.stations[SIDX[sid]], pr = PROMISES.find(x => x.id === pid); if (!st || !pr) return "Ungültig.";
   if (isStreamJob()) { const m0 = svM(); if (m0) m0.boss = false; G.sv = null; C.mode = null; }
-  if (repStars() < needStars(st)) return "Ihr Ansehen reicht für diesen Sender nicht.";
+  if (repHalf() + 0.5 < needStars(st)) return "Ihr Ansehen reicht für diesen Sender nicht.";
   if (!isMe(st)) switchStation(sid);
   const P = me(), bonus = r1000(pr.bonus * clamp(st.base / 8, 0.4, 2));
   book(P, "Vorstandsbudget", bonus);
@@ -6433,13 +6436,13 @@ function openBoardPoker(sid) {
 }
 function careerPage(P) {
   const C = ensureCareer(), s = repStars();
-  let h = title("Karriere", `<span class="muted">Ansehen ${"★".repeat(s)}${"☆".repeat(5 - s)}</span>`);
+  let h = title("Karriere", `<span class="muted">Ansehen ${starsHtml(repHalf())}</span>`) + careerProfile(P);
   h += isStreamJob() ? `<section class="panel pad mb"><h2>Leitung DACH bei ${esc(svName())}</h2><p>Vertrauen der Konzernzentrale: <b>${G.sv.hq} %</b>. Führen Sie den Dienst unter Streaming → Streaming-Zentrale. Ihr früherer Sender läuft ohne Sie weiter.</p></section>` : C.out ? `<section class="panel pad mb"><h2>Ohne Anstellung</h2><p>Der Sender wird kommissarisch geführt, das Spiel läuft weiter. Mit „Weiter“ vergehen die Tage, jede Woche werden neue Posten frei.</p></section>`
     : `<section class="panel pad mb"><div class="goal"><div class="row"><b>Job-Sicherheit bei ${esc(P.name)}</b><span class="${P.conf < 25 ? "down" : "muted"}">${P.conf} %</span></div><div class="track"><i style="width:${P.conf}%;background:${P.conf < 25 ? "var(--bad)" : P.conf < 50 ? "var(--mid)" : "var(--good)"}"></i></div></div>
       <p class="fine">Unter 15 % werden Sie freigestellt. ${C.contract ? `Vereinbart: <b>${PROMISES.find(x => x.id === C.contract.id).name}</b> (Geduld ×${C.contract.factor}).` : "Kein Zielversprechen vereinbart."}</p></section>`;
   const open = G.stations.filter(st => !isMe(st) || C.out || isStreamJob()).map(st => ({ st, open: C.offers.includes(st.id), need: needStars(st) }))
     .concat(STREAMERS.filter(s => SV_JOBS[s.id] && !(isStreamJob() && G.sv.id === s.id)).map(s => ({ st: { id: s.id, name: s.name, type: "stream" }, open: C.offers.includes(s.id), need: SV_JOBS[s.id] })));
-  h += `<section class="panel mb"><div class="ph"><h2>Arbeitsmarkt</h2><span class="aside">${C.offers.length} offene Posten</span></div><div class="tbl"><table><tbody>${open.map(({ st, open, need }) => `<tr><td class="title">${esc(st.name)}<div class="muted">${st.type === "stream" ? "Streamingdienst · Leitung DACH · Abo-Wachstum, Kündigungen, Content-Budget" : `${st.type === "oer" ? "öffentlich-rechtlich" : "privat"} · ${esc(BOARD_FOCUS(st))}`}</div></td><td class="num">${"★".repeat(need)}</td><td>${open ? (s >= need ? `<button class="btn hot small" data-act="boardPoker" data-k="${st.id}">Bewerben</button>` : '<span class="muted">Ansehen zu gering</span>') : '<span class="muted">besetzt</span>'}</td></tr>`).join("")}</tbody></table></div></section>`;
+  h += `<section class="panel mb"><div class="ph"><h2>Arbeitsmarkt</h2><span class="aside">${C.offers.length} offene Posten</span></div><div class="tbl"><table><tbody>${open.map(({ st, open, need }) => `<tr><td class="title">${esc(st.name)}<div class="muted">${st.type === "stream" ? "Streamingdienst · Leitung DACH · Abo-Wachstum, Kündigungen, Content-Budget" : `${st.type === "oer" ? "öffentlich-rechtlich" : "privat"} · ${esc(BOARD_FOCUS(st))}`}</div></td><td class="num">${"★".repeat(need)}</td><td>${open ? (repHalf() + 0.5 >= need ? `<button class="btn hot small" data-act="jobApply" data-k="${st.id}">Bewerben${repHalf() < need ? " (knapp)" : ""}</button>` : '<span class="muted">Ansehen zu gering</span>') : '<span class="muted">besetzt</span>'}</td></tr>`).join("")}</tbody></table></div></section>`;
   h += `<section class="panel"><div class="ph"><h2>Laufbahn</h2></div><div class="tbl"><table><tbody>${C.hist.slice().reverse().map(x => `<tr><td>${esc(holderName(x.st))}</td><td class="muted">${dateShort(x.from)} – ${x.to ? dateShort(x.to) : "heute"}</td><td class="muted">${esc(x.why || "")}</td></tr>`).join("")}</tbody></table></div></section>`;
   return h;
 }
@@ -9235,6 +9238,166 @@ function networkPage(P) {
       <p class="fine">Wirkung: ${D.fx}</p><div class="actions" style="flex-wrap:wrap">${D.acts.map(([a, n, c]) => { const cd = (R.cd[k + "|" + a] || 0) > G.day; return `<button class="btn small" data-act="relAct" data-k="${k}" data-v="${a}" ${cd || P.money < c ? "disabled" : ""}>${n}${c ? ` · ${eur(c)}` : ""}${cd ? ` (ab ${dateShort(R.cd[k + "|" + a])})` : ""}</button>`; }).join("")}</div></div></section>`;
   }
   return h + "</div>";
+}
+// =====================================================================
+// Karriere nach FM-Systematik: Abschlüsse, Ruf (DACH/international), halbe Sterne,
+// Erwartung gegen Leistung, Job-Sicherheit, Sprunghaftigkeit, Rücktritt oder Freistellung,
+// Bewerbung mit Vorstellungsgespräch, Gehalt & Laufzeit, Berater, Tag-1-Berichte, Antritts-Pressekonferenz.
+// =====================================================================
+const MGR_LIC = [
+  { n: "Ohne Abschluss" },
+  { n: "Grundkurs Programmplanung", cost: 15000, days: 14, rep: 3, pts: 1 },
+  { n: "Zertifikat Medienrecht & Vermarktung", cost: 40000, days: 28, rep: 5, pts: 1 },
+  { n: "Executive-Programm Medienmanagement", cost: 90000, days: 42, rep: 8, pts: 2 },
+  { n: "Senderchef-Akademie", cost: 180000, days: 56, rep: 10, pts: 2 },
+];
+const needLic = st => st.type === "stream" ? 3 : st.base >= 9 ? 3 : st.base >= 6 ? 2 : st.base >= 3 ? 1 : 0;
+function c2() {
+  const C = ensureCareer();
+  if (C.lic == null) Object.assign(C, { lic: 1, licCourse: null, world: 20, wealth: 250000, salary: 12000, until: G.day + 2 * 365, agent: false, changes: [], cool: {}, offer: null });
+  return C;
+}
+const repHalf = () => clamp(Math.round(repScore() / 24 * 2) / 2 + c2().lic * 0.1 - hopMalus() / 20, 0.5, 5);
+const starsHtml = v => { const f = Math.floor(v), h = v - f >= 0.5; return `<span class="stars" title="${v.toLocaleString("de-DE")} Sterne">${"★".repeat(f)}${h ? '<span style="opacity:.45">★</span>' : ""}${"☆".repeat(5 - f - (h ? 1 : 0))}</span>`; };
+const hopMalus = () => { const n = (c2().changes || []).filter(d => G.day - d < 365).length; return Math.max(0, n - 1) * 10; };
+const SEC_SCALE = [[80, "Unantastbar", "up"], [60, "Sicher", "up"], [45, "Stabil", ""], [30, "Unter Beobachtung", "warn"], [15, "Wackelig", "down"], [0, "Akut gefährdet", "down"]];
+const secLabel = c => SEC_SCALE.find(([v]) => c >= v);
+function expDelta(P) { const avg = P.maDays ? P.maSum / P.maDays : 0; return { avg, target: P.target, d: P.maDays ? avg / P.target - 1 : 0 }; }
+// Weiterbildung des Managers
+function startLic(P) {
+  const C = c2(), nx = MGR_LIC[C.lic + 1]; if (!nx || C.licCourse) return;
+  if (C.wealth < nx.cost) { toast("Ihr Privatvermögen reicht für den Kurs nicht."); return; }
+  C.wealth -= nx.cost; C.licCourse = { lvl: C.lic + 1, until: G.day + nx.days };
+  logMsg("Karriere", "Karriere", `Sie beginnen „${nx.n}“ (${nx.days} Tage, ${eur(nx.cost)} aus Ihrem Privatvermögen).`, true);
+}
+function career2Day() {
+  const C = c2();
+  if (C.licCourse && G.day >= C.licCourse.until) {
+    const L = MGR_LIC[C.licCourse.lvl]; C.lic = C.licCourse.lvl; C.licCourse = null; C.malus = Math.max(0, C.malus - L.rep);
+    const keys = ["neg", "cre", "med"].sort((a, b) => (G.avatar[a] || 0) - (G.avatar[b] || 0));
+    for (let k = 0; k < L.pts; k++) G.avatar[keys[k % 3]] = (G.avatar[keys[k % 3]] || 0) + 1;
+    logMsg("Karriere", "Karriere", `Abschluss: ${L.n}. Ruf steigt, ${L.pts} Attributpunkt${L.pts > 1 ? "e" : ""} für Ihr Profil.`, true);
+  }
+}
+function career2Week() {
+  const C = c2(), P = me();
+  if (!C.out) C.wealth += C.salary; if (C.agent) C.wealth -= r1000(C.salary * 0.05);
+  // internationaler Ruf: Preise, Formatexporte, Streaming-Erfolg
+  const awards = (G.awards || []).flatMap(a => a.res).filter(r => r.st === P.id).length;
+  C.world = clamp(Math.round(C.world * 0.98 + awards * 0.5 + (G.stream && G.stream.subs > 1 ? 1 : 0) + ((G.exports || []).length ? 0.5 : 0)), 0, 100);
+  if (C.agent && Math.random() < 0.5) { const st = pick(G.stations.filter(s => !isMe(s) && !C.offers.includes(s.id))); if (st) { C.offers.push(st.id); logMsg("Berateragentur", "Karriere", `Ihre Agentur hat signalisiert: ${st.name} wäre an einem Gespräch interessiert.`); } }
+}
+// Rücktritt statt Freistellung: kein Abfindungsanspruch, aber weniger Imageschaden
+function resign() {
+  const C = c2(), P = me(); if (C.out) return;
+  fireManager("Rücktritt auf eigenen Wunsch.");
+  C.malus = Math.max(0, C.malus - 10); // fireManager rechnet 15 – Rücktritt kostet nur 5
+  logMsg("Branchendienst Medienplatz", "Karriere", `Personalien: Die Programmdirektion von ${P.name} tritt zurück.`, true);
+}
+// Abfindung bei Freistellung (Restlaufzeit × halbes Gehalt)
+function severance() { const C = c2(); const w = Math.max(0, Math.ceil(((C.until || G.day) - G.day) / 7)); const pay = r1000(w * C.salary * 0.5); C.wealth += pay; return pay; }
+// ---------------------------------------------------------------------
+// Bewerbung → Vorstellungsgespräch → Angebot → Vertrag (Vorstands-Poker)
+// ---------------------------------------------------------------------
+const IV_Q = [
+  { q: "Wie wollen Sie die Reichweite steigern?", a: [["Junge Zielgruppen mit Shows und Events", st => st.type !== "oer" || st.id === "zdfneo"], ["Information, Qualität und Verlässlichkeit", st => st.type === "oer"], ["Effizienz: bewährte Formate besser platzieren", st => st.money < 0 || st.conf < 50]] },
+  { q: "Wie gehen Sie mit dem Budget um?", a: [["Investieren – große Rechte, große Namen", st => st.money > 3e6], ["Ausgewogen – Schwerpunkte setzen", () => true], ["Sparen – erst die Bilanz in Ordnung bringen", st => st.money < 1e6]] },
+  { q: "Welche Rolle spielt Streaming für Sie?", a: [["Zentral – der Stream ist die Zukunft", st => st.type !== "oer" || st.base >= 8], ["Ergänzung zum linearen Programm", () => true], ["Erst das lineare Kerngeschäft stärken", st => st.base < 5]] },
+];
+function jobInfo(id) { if (SV_JOBS[id]) { const s = STREAMERS.find(x => x.id === id); return { id, name: s.name, type: "stream", base: 8, money: 5e6, conf: 50, need: SV_JOBS[id] }; } const st = G.stations[SIDX[id]]; return st ? { ...st, id: st.id, need: needStars(st) } : null; }
+function openInterview(id) {
+  const C = c2(), J = jobInfo(id); if (!J) return;
+  if ((C.cool[id] || 0) > G.day) { toast(`${J.name} hat erst kürzlich abgesagt – frühestens ab ${dateShort(C.cool[id])} wieder.`); return; }
+  C.iv = { id, ans: [] };
+  renderInterview();
+}
+function renderInterview() {
+  const C = c2(), J = jobInfo(C.iv.id), k = C.iv.ans.length;
+  if (k >= IV_Q.length) return finishInterview();
+  const Q = IV_Q[k];
+  openModal(`<header><h2>Vorstellungsgespräch · ${esc(J.name)}</h2><button class="btn" data-act="close">Abbrechen</button></header><div class="dbody">
+    <p class="fine">Frage ${k + 1} von ${IV_Q.length} · ${J.type === "stream" ? "Konzernzentrale" : esc(BOARD_NAME(J))}</p><h3>${esc(Q.q)}</h3>
+    <div class="picklist">${Q.a.map(([t], j) => `<button class="pick" data-act="ivAns" data-k="${j}"><b>${esc(t)}</b></button>`).join("")}</div></div>`);
+}
+function ivChance(J, ans) {
+  const C = c2(), fits = ans.filter((j, k) => IV_Q[k].a[j][1](J)).length;
+  const gap = repHalf() - J.need, licGap = Math.max(0, needLic(J) - C.lic);
+  return clamp(0.35 + fits * 0.13 + gap * 0.18 - licGap * 0.2 - hopMalus() / 100 + (C.agent ? 0.1 : 0) + (C.out ? 0 : 0.05), 0.03, 0.95);
+}
+function finishInterview() {
+  const C = c2(), J = jobInfo(C.iv.id), ch = ivChance(J, C.iv.ans), ok = Math.random() < ch;
+  if (!ok) { C.cool[J.id] = G.day + 14; C.iv = null; closeModal(); logMsg(J.type === "stream" ? "Konzernzentrale" : BOARD_NAME(J), "Karriere", `Absage von ${J.name}: Man hat sich für eine andere Lösung entschieden (Chance lag bei ${Math.round(ch * 100)} %).`, true); render(); return; }
+  const sal = r1000((8000 + J.base * 2600 + repScore() * 90) * (C.agent ? 1.1 : 1));
+  C.offer = { id: J.id, salary: sal, years: 2 }; C.iv = null;
+  openModal(`<header><h2>Angebot von ${esc(J.name)}</h2><button class="btn" data-act="close">Ablehnen</button></header><div class="dbody">
+    <p class="lead">Das Gespräch lief gut (Chance ${Math.round(ch * 100)} %). Der Vorstand bietet Ihnen den Posten an.</p>
+    <div class="kv"><span>Gehalt</span><b>${eur(sal)} pro Woche</b></div>
+    <h3>Laufzeit</h3><div class="pills">${[1, 2, 3].map(y => `<button data-act="offerYears" data-k="${y}" class="${C.offer.years === y ? "on" : ""}">${y} ${y === 1 ? "Jahr" : "Jahre"}</button>`).join("")}</div>
+    <p class="fine">Längere Laufzeit = höhere Abfindung bei Freistellung, aber der Wechsel wird teurer für Interessenten.</p>
+    <div class="actions"><button class="btn small" data-act="offerMore">Mehr Gehalt fordern (+10 %, Risiko)</button><button class="btn hot" data-act="offerAccept">Annehmen – weiter zu den Zielvereinbarungen</button></div></div>`);
+}
+function afterSign(sid) {
+  const C = c2(), J0 = jobInfo(sid); let o = C.offer;
+  if (!o || o.id !== sid) o = { id: sid, salary: r1000(8000 + (J0 ? J0.base : 5) * 2600 + repScore() * 90), years: 2 }; // Direktangebot ohne Gespräch
+  C.salary = o.salary; C.until = G.day + o.years * 365; C.changes = (C.changes || []).concat(G.day); C.offer = null;
+  if (SV_JOBS[sid]) return;
+  const P = me(), chk = planCheck(P), mine = G.people.filter(q => q.holder === P.id), bo = Object.values((G.bo || {}).staff || {});
+  const top = P.progs.filter(p => p.bestMA).sort((a, b) => b.bestMA - a.bestMA).slice(0, 3).map(p => `„${p.title}“`).join(", ");
+  logMsg(BOARD_NAME(P), "Vorstand", `Tag 1 – Erwartungen: Ø ${pct(P.target)} Marktanteil in der Saison. Fokus: ${BOARD_FOCUS(P)}.`, true);
+  logMsg("Finanz-Controlling", "Finanzen", `Tag 1 – Kassensturz: ${meur(P.money)} Liquidität, ${(P.loans || []).length} laufende Kredite, Kreditlinie ${meur(creditLimit(P))}.`, true);
+  logMsg("Personalabteilung", "Personal", `Tag 1 – Personal: ${mine.length} Personen unter Vertrag, Ø Zufriedenheit ${mine.length ? Math.round(mine.reduce((a, q) => a + pSat(q), 0) / mine.length) : "–"}.${bo.length ? ` Ihr Mitarbeiterstab kommt mit: ${bo.map(s => s.name).join(", ")}.` : ""}`, true);
+  logMsg("Programmplanung", "Programm", `Tag 1 – Programm: ${chk.holes ? `${chk.holes} offene Stunden im Planungszeitraum.` : "Der Kalender ist gefüllt."}${top ? ` Zugpferde: ${top}.` : ""}`, true);
+  setTimeout(() => openPresser(), 50);
+}
+// Antritts-Pressekonferenz – Fragen der fiktiven Fachpresse
+const PC_Q = [
+  { q: "Was ändert sich als Erstes im Programm?", a: [["Wir setzen auf Bewährtes und verbessern Details.", { presse: 2, conf: 3 }], ["Wir bauen die Primetime radikal um.", { presse: 5, conf: -2 }], ["Dazu sage ich heute noch nichts.", { presse: -3, conf: 1 }]] },
+  { q: "Wie sehen Sie die Konkurrenz?", a: [["Mit Respekt – wir konzentrieren uns auf uns.", { presse: 2, conf: 2 }], ["Wir greifen an – um jede Minute.", { presse: 4, conf: 0 }], ["Die Konkurrenz hat ihre beste Zeit hinter sich.", { presse: 1, conf: -3 }]] },
+];
+function openPresser() {
+  const C = c2(); C.pc = C.pc && C.pc.day === G.day ? C.pc : { day: G.day, k: 0 };
+  if (C.pc.k >= PC_Q.length) { closeModal(); toast("Pressekonferenz beendet."); render(); return; }
+  const Q = PC_Q[C.pc.k];
+  openModal(`<header><h2>Antritts-Pressekonferenz</h2><button class="btn" data-act="close">Beenden</button></header><div class="dbody">
+    <p class="fine">Frage vom Branchendienst Medienplatz (${C.pc.k + 1}/${PC_Q.length})</p><h3>${esc(Q.q)}</h3>
+    <div class="picklist">${Q.a.map(([t], j) => `<button class="pick" data-act="pcAns" data-k="${j}"><b>${esc(t)}</b></button>`).join("")}</div></div>`);
+}
+function c2Action(P, k, b) {
+  const C = c2(), v = +b.dataset.k;
+  switch (k) {
+    case "jobApply": openInterview(b.dataset.k); return;
+    case "ivAns": C.iv.ans.push(v); renderInterview(); return;
+    case "offerYears": C.offer.years = v; finishOfferView(); return;
+    case "offerMore": if (Math.random() < 0.6) { C.offer.salary = r1000(C.offer.salary * 1.1); toast("Der Vorstand legt 10 % drauf."); } else { toast("Der Vorstand bleibt beim Angebot – und ist leicht verstimmt."); C.malus += 2; } finishOfferView(); return;
+    case "offerAccept": closeModal(); openBoardPoker(C.offer.id); return;
+    case "pcAns": { const fx = PC_Q[C.pc.k].a[v][1]; ensureRel().presse = clamp(ensureRel().presse + fx.presse, 0, 100); me().conf = clamp(me().conf + fx.conf, 0, 100); C.pc.k++; openPresser(); return; }
+    case "licStart": startLic(P); break;
+    case "agentToggle": C.agent = !C.agent; toast(C.agent ? "Berateragentur beauftragt: 5 % Ihres Gehalts, dafür mehr Angebote und bessere Konditionen." : "Berateragentur gekündigt."); break;
+    case "resign": if (confirm("Wirklich zurücktreten? Sie verzichten auf die Abfindung.")) resign(); break;
+  }
+  render();
+}
+function finishOfferView() {
+  const C = c2(), o = C.offer, J = jobInfo(o.id);
+  openModal(`<header><h2>Angebot von ${esc(J.name)}</h2><button class="btn" data-act="close">Ablehnen</button></header><div class="dbody">
+    <div class="kv"><span>Gehalt</span><b>${eur(o.salary)} pro Woche</b></div>
+    <h3>Laufzeit</h3><div class="pills">${[1, 2, 3].map(y => `<button data-act="offerYears" data-k="${y}" class="${o.years === y ? "on" : ""}">${y} ${y === 1 ? "Jahr" : "Jahre"}</button>`).join("")}</div>
+    <div class="actions" style="margin-top:10px"><button class="btn small" data-act="offerMore">Mehr Gehalt fordern (+10 %, Risiko)</button><button class="btn hot" data-act="offerAccept">Annehmen – weiter zu den Zielvereinbarungen</button></div></div>`);
+}
+function careerProfile(P) {
+  const C = c2(), e = expDelta(P), sec = secLabel(P.conf), nx = MGR_LIC[C.lic + 1];
+  return `<section class="panel mb"><div class="ph"><h2>Ihr Profil</h2><span class="aside">${esc(G.avatar.name || "Programmdirektion")}</span></div>
+    <div class="tiles" style="padding:12px"><div class="tile"><small>Ruf DACH</small><b>${starsHtml(repHalf())}</b><span>${hopMalus() ? `Sprunghaft: −${hopMalus()} (zu viele Wechsel)` : "aus Leistung, Vertrauen, Preisen"}</span></div>
+      <div class="tile"><small>Ruf international</small><b>${C.world}</b><span>Preise, Exporte, Streaming</span></div>
+      <div class="tile"><small>Abschluss</small><b style="font-size:15px">${esc(MGR_LIC[C.lic].n)}</b><span>${C.licCourse ? `${MGR_LIC[C.licCourse.lvl].n} bis ${dateShort(C.licCourse.until)}` : nx ? "nächste Stufe möglich" : "höchste Stufe"}</span></div>
+      <div class="tile"><small>Erwartung vs. Leistung</small><b class="${e.d >= 0 ? "up" : "down"}">${P.maDays ? (e.d >= 0 ? "+" : "") + Math.round(e.d * 100) + " %" : "–"}</b><span>Ziel ${pct(e.target)} · Ist ${P.maDays ? pct(e.avg) : "–"}</span></div>
+      <div class="tile"><small>Job-Sicherheit</small><b class="${sec[2]}">${C.out ? "ohne Posten" : sec[1]}</b><span>${C.out ? "" : P.conf + " %"}</span></div>
+      <div class="tile"><small>Vertrag</small><b style="font-size:15px">${eur(C.salary)}/Woche</b><span>bis ${dateShort(C.until)} · Vermögen ${meur(C.wealth)}</span></div></div>
+    <div class="pad" style="padding-top:0"><div class="actions" style="flex-wrap:wrap">
+      ${nx && !C.licCourse ? `<button class="btn small" data-act="licStart" ${C.wealth < nx.cost ? "disabled" : ""}>Weiterbildung: ${esc(nx.n)} · ${nx.days} Tage · ${eur(nx.cost)}</button>` : ""}
+      <button class="btn small ${C.agent ? "hot" : ""}" data-act="agentToggle">${C.agent ? "Berateragentur aktiv (5 % Gehalt)" : "Berateragentur beauftragen"}</button>
+      ${C.out ? "" : '<button class="btn small red" data-act="resign">Zurücktreten</button>'}</div>
+    <p class="fine">Halbe Sterne zählen: Wer bis zu einen halben Stern unter der Anforderung liegt, bekommt ein Gespräch – mit geringerer Chance. Große Sender erwarten einen Abschluss (${MGR_LIC[1].n} ab mittleren, ${MGR_LIC[3].n} bei den größten). Mehr als ein Wechsel pro Jahr gilt als sprunghaft.</p></div></section>`;
 }
 // =====================================================================
 // Formatprofil: Quotenverlauf, Publikum, Analyse und Maßnahmen je Sendung
