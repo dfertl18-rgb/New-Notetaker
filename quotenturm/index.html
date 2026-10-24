@@ -1259,7 +1259,7 @@ const MENU = [
   { id: "streaming", name: "Streaming", subs: [["stream", "Plattform", "Abos, Churn, ARPU und Preismodell"], ["catalog", "Katalog", "Titel und Verwertungsfenster"], ["smarket", "Wettbewerb", "Streamer im Vergleich und Top 10"]] },
   { id: "sport", name: "Sport", subs: [["rights", "Rechtemarkt", "Ausschreibungen und Gebote"], ["myrights", "Meine Rechte", "Pakete und Live-Termine"], ["spielplan", "Spielplan", "Rahmenterminkalender Fußball"]] },
   { id: "quoten", name: "Quoten", subs: [["table", "Quotentabelle", "Senderranking nach Marktanteil"], ["ratings", "Einschaltquoten", "Jede Stunde, jeder Sender"], ["rivals", "Konkurrenz", "Tagesplan der anderen Sender"], ["landscape", "Markt", "Sendergruppen und Streamer"]] },
-  { id: "sender", name: "Sender", subs: [["chiefs", "Rivalen", "Beziehungen zu den Senderchefs"], ["board", "Senderleitung", "Erwartungen, Vertrauen, Kredit"], ["finance", "Finanzen", "Erlöse, Kosten, EBITDA"], ["contracts", "Werbeverträge", "Laufende Werbeverträge"], ["adsales", "Vermarktung", "Erlöse, TKP, Kunden, Preisliste"], ["agency", "Werbeagentur", "Neue Werbekunden gewinnen"], ["jury", "Fernsehpreise", "Grimme, Fernsehpreis, Bambi, Henne"]] },
+  { id: "sender", name: "Sender", subs: [["chiefs", "Rivalen", "Beziehungen zu den Senderchefs"], ["board", "Senderleitung", "Erwartungen, Vertrauen, Kredit"], ["finance", "Finanzen", "Erlöse, Kosten, EBITDA"], ["contracts", "Werbeverträge", "Laufende Werbeverträge"], ["adsales", "Vermarktung", "Erlöse, TKP, Kunden, Preisliste"], ["personal", "Personal", "Moderation, Kommentar, Produktion"], ["agency", "Werbeagentur", "Neue Werbekunden gewinnen"], ["jury", "Fernsehpreise", "Grimme, Fernsehpreis, Bambi, Henne"]] },
 ];
 let openMenu = null;
 const PAGE_SECTION = Object.fromEntries(MENU.flatMap(m => m.subs.map(([k]) => [k, m.id])));
@@ -1706,6 +1706,7 @@ function placeEvents() {
   for (const { r, d, m, o } of eventsOn(G.day)) {
     const st = G.stations[SIDX[o.owner || r.owner]]; if (!st) continue;
     const ev = { id: uid(), title: `${d.sport}: ${m ? m.fix : d.fix()}`, comp: d.name, genre: "Sport", kind: "sport", q: m ? Math.round(m.q * injuryF(m.fix)) : d.q, len: d.len, h: d.h, t: m ? m.t : d.h * 60, dur: m ? m.dur : d.len * 60, topic: 1, fsk: 0, real: true };
+    const cm = (G.comm || {})[r.id], cq = cm && person(cm); if (cq && cq.holder === st.id) ev.comm = cm;
     st.live.push(ev);
     if (isMe(st)) logMsg("Sportredaktion", "Sport", `Heute live um ${hhmm(ev.t)}: ${ev.title} (${d.name}).`);
   }
@@ -1746,7 +1747,8 @@ function attrCell(st, i, c) {
     A = st.brand * Math.pow(p.q / 60, 1.5) * fit(p.genre, i) * topic * newsMult * rnd(0.9, 1.1);
     if (c.cont && p.kind !== "sport") A *= 0.96;
     if (p.pull) A *= 1 + p.pull * 0.12; // bekannte Titel ziehen mehr Publikum
-    A *= demoFactor(st, p) * hostMalus(p); // passt die Sendung zum Publikum des Senders?
+    A *= demoFactor(st, p) * hostMalus(p) * hostF(st, p); // passt die Sendung (und die Moderation) zum Publikum des Senders?
+    if (p.kind === "sport") A *= commF(p); // Kommentator*in
     if (blMagazine(p) && !matchday(G.day)) A *= 0.35; // ohne Spieltag keine Bilder
     if (p.boost && (!p.boost.day || p.boost.day === G.day)) A *= 1 + p.boost.v; // Gaststar, Event-Ausgabe, Relaunch
     if (p.young) A *= 1 + p.young / 1000 * Math.min(1.5, ST_YOUNG[st.id] || 1);
@@ -2901,7 +2903,7 @@ function renderCastList() {
   $("castList").innerHTML = list.slice(0, castLimit).map(p => personRow(p, castAction)).join("") + moreBtn(Math.min(castLimit, list.length), list.length, "castMore");
 }
 function casting(P) {
-  const roles = [["alle", "Alle"], ["Schauspiel", "Schauspiel"], ["Moderation", "Entertainer"], ["Reality", "Reality"], ["Nachrichten", "News"], ["Journalismus", "Journalismus"]];
+  const roles = [["alle", "Alle"], ["Schauspiel", "Schauspiel"], ["Moderation", "Entertainer"], ["Reality", "Reality"], ["Nachrichten", "News"], ["Journalismus", "Journalismus"], ["Kommentar", "Kommentar"], ["Produktion", "Showrunner"]];
   const states = [["alle", "Alle"], ["free", "Frei"], ["rival", "Exklusiv Konkurrenz"], ["busy", "Im Dreh"], ["mine", "Bei Ihnen"]];
   const count = k => G.people.filter(p => k === "free" ? pAvail(p) : pState(p).k === k).length;
   setTimeout(renderCastList, 0);
@@ -3210,7 +3212,7 @@ function nextDay() {
   G.day++;
   for (const st of G.stations) st.fin = {};
   projectDay();
-  prodDay(); peopleDay(); newsroomDay(); trendDay(); awardsDay(); marketDay(); presaleDay(); rivalsDay(); formatDay(); postQuotenReport(); frameDay(); conflictCheck(); fmDay(); scoutDay(); rumorDay();
+  prodDay(); peopleDay(); newsroomDay(); trendDay(); awardsDay(); marketDay(); presaleDay(); rivalsDay(); formatDay(); postQuotenReport(); frameDay(); conflictCheck(); fmDay(); scoutDay(); rumorDay(); staffDay();
   if (dateOf(G.day).getDate() === 1 && !G.event) setInterview(); // Interview zum Monatsbeginn
   if (G.mods.coverup && G.day >= G.mods.coverup.day) {
     const c = G.mods.coverup; G.mods.coverup = null;
@@ -3347,7 +3349,7 @@ function applyClubColors() {
 function render(top) {
   if (!G) return;
   renderNav(); renderTop();
-  const pages = { overview, inbox, plan: planPage, archiv, market, filmmarket: filmMarketPage, chiefs: rivalsPage, adsales: adsalesPage, spielplan: spielplanPage, formatmarkt: formatMarketPage, wochenplan: weekPlanPage, formatdev: formatDevPage, stream: streamPage, catalog, smarket, rights: rightsPage, myrights, contracts, agency, ticker, table: tablePage, ratings, landscape, board, finance, jury, rivals, live: livePage, studio, newprod: newProdPage, casting, newsroom, export: exportPage };
+  const pages = { overview, inbox, plan: planPage, archiv, market, filmmarket: filmMarketPage, chiefs: rivalsPage, adsales: adsalesPage, spielplan: spielplanPage, formatmarkt: formatMarketPage, wochenplan: weekPlanPage, formatdev: formatDevPage, personal: staffPage, stream: streamPage, catalog, smarket, rights: rightsPage, myrights, contracts, agency, ticker, table: tablePage, ratings, landscape, board, finance, jury, rivals, live: livePage, studio, newprod: newProdPage, casting, newsroom, export: exportPage };
   const sc = $("content").scrollTop;
   $("content").innerHTML = (pages[page] || overview)(me());
   if (!top) $("content").scrollTop = sc;
@@ -4050,6 +4052,7 @@ function act(b) {
     case "wpDel": { const [dd, ii] = b.dataset.k.split("|").map(Number); if (!(dd === G.day && planLocked())) { editPlan(dd, sc => clearAt(P, sc, ii)); wpSel = null; } break; }
     case "scoutGo": { const err = sendScout(b.dataset.k, b.dataset.v); toast(err || `${SCOUT_TEAMS[b.dataset.v][0]} fliegt zur ${b.dataset.k}. Der Report kommt nach der Messe.`); break; }
     case "devSet": G.devDraft = G.devDraft || { genre: "Show", slot: "Primetime", target: 1, budget: 50000 }; G.devDraft[b.dataset.k] = b.dataset.k === "target" ? +b.dataset.v : b.dataset.v; break;
+    case "staffTab": staffTab = k; break;
     case "devGo": { const dd = G.devDraft || { genre: "Show", slot: "Primetime", target: 1, budget: 50000 }; const err = startDev(dd.genre, dd.slot, dd.target, +($("devBudget") || {}).value || dd.budget); toast(err || "Die Redaktion legt los – Pitch in vier Wochen."); break; }
     case "findBuy": { const err = buyFind(id); if (err) toast(err); break; }
     case "art": openArticle(+b.dataset.k); return;
@@ -4346,7 +4349,7 @@ function ensemblePanel(P) {
   const list = G.people.filter(p => p.holder === P.id).sort((a, b) => b.gage - a.gage);
   return `<section class="panel mb"><div class="ph"><h2>Ihr Ensemble</h2><span class="aside">${list.length} Stars unter Vertrag · ${eur(list.reduce((a, p) => a + (p.ct ? p.ct.wk : p.gage * 0.35), 0))} pro Woche</span></div>
     ${list.length ? `<div class="ens">${list.map(p => { const st = pState(p); return `<div class="ens-card">${avatar(p, 48)}<div class="grow"><b class="plink" data-person="${p.id}">${esc(p.name)}</b><span class="muted">${SPEC_NAME[p.role]} · ${esc(p.trait)}</span>
-      <span class="muted">Talent ${p.talent} · Charisma ${p.buzz} · bis ${dateShort(p.until)}</span>${p.ct && p.ct.clauses.length ? `<span class="chip real" style="justify-self:start">${p.ct.clauses.map(k => CLAUSES[k].name).join(" · ")}</span>` : ""}</div>
+      <span class="muted">Talent ${p.talent} · Charisma ${p.buzz} · bis ${dateShort(p.until)}</span>${p.ct && (p.ct.clauses || []).length ? `<span class="chip real" style="justify-self:start">${p.ct.clauses.map(k => CLAUSES[k].name).join(" · ")}</span>` : ""}</div>
       <div class="act2"><button class="btn hot small" data-act="planWith" data-k="${p.id}" ${planLocked() || st.k === "busy" ? "disabled" : ""}>${p.role === "Nachrichten" ? "Als Anchor" : st.k === "busy" ? "Im Dreh" : "Projekt planen"}</button><button class="btn small" data-act="nego" data-k="${p.id}" data-v="cast" ${planLocked() ? "disabled" : ""}>Verlängern</button></div></div>`; }).join("")}</div>`
       : '<p class="fine pad">Noch keine eigenen Stars. Verpflichten Sie Personen über die Casting-Kartei.</p>'}</section>`;
 }
@@ -5419,14 +5422,14 @@ function dnaCalc(d) {
   const genre = fmtGenre(d), host = d.cast[0] ? person(d.cast[0]) : null;
   const perMin = d.kind === "live" ? 3500 : PER_MIN[genre] || 1600;
   const mult = (x.live ? 2.5 : 1) * (x.net >= 240 ? 1.2 : 1) * x.budget / 100;
-  const ep = r1000(perMin * x.net * mult);
+  const sr = showrunnerFx(x.sr), ep = r1000(perMin * x.net * mult * sr.cost);
   const gross = Math.round(x.net * 60 / 48 / 5) * 5, len = Math.min(6, Math.ceil(gross / 60)), blocks = Math.max(1, Math.floor(x.net / 40));
   const risk = x.live ? Math.max(0, 15 - hostStr(host)) + (x.net >= 240 ? 3 : 0) : 0;
-  const qBonus = Math.round((x.budget - 100) / 10) + (x.live ? 3 : 0) - (x.net > 150 && !x.live ? Math.round((x.net - 150) / 30) : 0); // künstlich gestreckt wirkt zäh
+  const qBonus = sr.q + Math.round((x.budget - 100) / 10) + (x.live ? 3 : 0) - (x.net > 150 && !x.live ? Math.round((x.net - 150) / 30) : 0); // künstlich gestreckt wirkt zäh
   const bpz = d.kind !== "live" && BLUEPRINTS.find(b => b.id === d.opt);
   const base = (bpz && bpz.zp ? bpz.zp : zProf({ genre: d.kind === "reality" ? "Reality" : "Show" })).slice();
   const z = base.map((v, k) => clamp(v * (x.live && k < 2 ? 1.2 : 1) * (x.net >= 300 ? [1.3, 1, 0.8, 0.3][k] : 1), 0, 1));
-  return { ...x, ep, gross, len, blocks, risk, qBonus, z, host };
+  return { ...x, ep, gross, len, blocks, risk, qBonus, z, host, srq: sr };
 }
 function dnaCard(d) {
   const c = dnaCalc(d); if (!c) return "";
@@ -5435,6 +5438,7 @@ function dnaCard(d) {
     <label class="field"><span>Netto-Laufzeit: <b id="dnaNetTxt">${c.net} Min.${c.net >= 240 ? " · Event-Modus" : ""}</b></span><input type="range" data-dna="net" min="30" max="360" step="15" value="${c.net}"></label>
     <label class="field"><span>Produktionsbudget: <b id="dnaBudTxt">${c.budget} %</b></span><input type="range" data-dna="budget" min="50" max="150" step="10" value="${c.budget}"></label>
     <div class="seg-big">${[0, 6, 12, 16].map(f => `<button data-act="dnaSet" data-k="fsk" data-v="${f}" class="${c.fsk === f ? "on" : ""}"><b>FSK ${f}</b><span>${f >= 16 ? "ab 22 Uhr" : "jederzeit"}</span></button>`).join("")}</div>
+    <label class="field"><span>Showrunner</span><select data-dna="sr"><option value="">– Haus-Redaktion –</option>${G.people.filter(q => q.role === "Produktion" && q.holder === G.stations[G.me].id).map(q => { const a = staffAttrs(q); return `<option value="${q.id}" ${c.sr === q.id ? "selected" : ""}>${esc(q.name)} (Kreativ ${a.krea}, Budget ${a.bud}, Trend ${a.tre})</option>`; }).join("")}</select></label>
     <label class="muted" style="font-size:13px;display:flex;gap:6px;align-items:center;margin-top:8px"><input type="checkbox" data-dna="pre" ${c.pre ? "checked" : ""} ${c.live ? "disabled" : ""}> 7 Tage vorab exklusiv im eigenen Stream${c.live ? " (bei Live nicht möglich)" : ""}</label></div>`;
 }
 function dnaReport(d) {
@@ -5443,6 +5447,7 @@ function dnaReport(d) {
     <div class="kv"><span>Netto / im Raster</span><b>${c.net} / ${c.gross} Min.</b></div>
     <div class="kv"><span>Werbeblöcke</span><b>${c.blocks}</b></div>
     <div class="kv"><span>Kosten pro Folge</span><b class="${c.ep > 1e6 ? "down" : ""}">${meur(c.ep)}</b></div>
+    ${c.sr ? `<div class="kv"><span>Showrunner</span><b>${esc((person(c.sr) || {}).name || "–")} · Kosten ×${c.srq.cost.toFixed(2)}</b></div>` : ""}
     <div class="kv"><span>Qualität</span><b class="${c.qBonus < 0 ? "down" : c.qBonus > 0 ? "up" : ""}">${c.qBonus > 0 ? "+" : ""}${c.qBonus}</b></div>
     <div class="kv"><span>Sende-Risiko</span><b class="${c.risk > 6 ? "down" : ""}">${c.live ? (c.risk ? `${c.risk} % Panne` : "0 % (sicher)") : "–"}</b></div>
     <div class="kv"><span>Zielgruppen-Fit</span><b style="font-size:12px">${c.z.map((v, k) => `Z${k + 1} ${Math.round(v * 100)}`).join(" · ")}</b></div>`;
@@ -5684,6 +5689,110 @@ function rumorPanel() {
   const done = (G.rumors || []).filter(r => r.status !== "open"), hit = done.filter(r => r.status === "bestätigt").length;
   return `<section class="panel mb"><div class="ph"><h2>Gerüchteküche</h2><span class="aside">${done.length ? `${hit} von ${done.length} bewahrheitet` : "Beobachten lohnt sich"}</span></div><div class="tbl"><table><tbody>
     ${list.map(r => { const l = G.log.find(x => x.aid === r.aid); return `<tr><td class="muted">${l ? dateShort(l.day) : ""}</td><td class="title">${l ? `<span class="tlink" data-act="art" data-k="${r.aid}">${esc(l.msg)}</span>` : esc(r.kind)}</td><td><span class="chip ${r.status === "bestätigt" ? "good" : r.status === "dementiert" ? "" : "warn"}">${r.status === "open" ? `offen bis ${dateShort(r.due)}` : r.status}</span></td></tr>`; }).join("")}</tbody></table></div></section>`;
+}
+// =====================================================================
+// Personal: Moderation, Sport-Kommentar, Showrunner/Produktion – Attribute 1–20, Zufriedenheit, Einsatz
+// =====================================================================
+SPEC_NAME.Kommentar = "Sport-Kommentar"; SPEC_NAME.Produktion = "Showrunner & Produktion";
+AGE_RANGE.Kommentar = [26, 68]; AGE_RANGE.Produktion = [30, 70];
+const A20 = v => clamp(Math.round(v), 1, 20);
+// Attribute: aus Vorgaben (z. B. Daten-Import) oder abgeleitet aus Talent, Buzz, Zuverlässigkeit und Alter
+function staffAttrs(q) {
+  if (!q) return null;
+  if (q.at && q.at.v === 2) return q.at;
+  const r = seeded(hashStr(q.id + "attr")), age = q.age || 45, f = q.fame || 50;
+  const young = clamp((50 - age) / 25, -1, 1); // jung → Z1/Z2, älter → Z3/Z4
+  const base = q.preset || {};
+  q.at = {
+    v: 2,
+    cha: base.cha ?? A20((q.buzz || f) / 5 + (r() - 0.5) * 4),
+    str: base.str ?? A20((q.rel || 60) / 5 + (r() - 0.5) * 4),
+    loy: base.loy ?? A20(6 + (q.rel || 60) / 9 + (r() - 0.5) * 6),
+    gg: base.gg ?? A20(8 + f / 10 + (r() - 0.5) * 6),
+    z: base.z || [A20(10 + young * 8 + (r() - 0.5) * 4), A20(11 + young * 4 + (r() - 0.5) * 4), A20(11 - young * 4 + (r() - 0.5) * 4), A20(10 - young * 8 + (r() - 0.5) * 4)],
+    fach: base.fach ?? A20((q.talent || 50) / 5 + (r() - 0.5) * 6), emo: base.emo ?? A20((q.buzz || 50) / 5 + (r() - 0.5) * 6),
+    krea: base.krea ?? A20((q.talent || 50) / 5 + (r() - 0.5) * 6), bud: base.bud ?? A20(8 + (q.rel || 60) / 10 + (r() - 0.5) * 6),
+    inv: base.inv ?? A20(6 + r() * 12), tre: base.tre ?? A20(6 + r() * 12),
+  };
+  return q.at;
+}
+const sat = q => q.sat ?? (q.sat = 70);
+// Pool ergänzen: Kommentator*innen und Showrunner (frei erfundene Namen, falls keine Daten importiert sind)
+function ensureStaffPool() {
+  const have = r => G.people.filter(q => q.role === r).length;
+  const mk = (role, n) => { for (let k = 0; k < n; k++) { const talent = stat(), buzz = stat(), rel = 40 + ri(0, 60); G.people.push({ id: "c" + Math.random().toString(36).slice(2, 9), name: `${pick(FIRST_NAMES)} ${pick(LAST_NAMES)}`, role, talent, buzz, rel, gage: baseGage(talent, buzz) * (role === "Produktion" ? 0.6 : 0.4), genres: role === "Kommentar" ? ["Sport"] : ["Show", "Reality"], trait: pick(TRAITS), lean: 0, holder: null, until: 0, busy: 0, ban: 0 }); } };
+  if (have("Kommentar") < 30) mk("Kommentar", 40);
+  if (have("Produktion") < 20) mk("Produktion", 30);
+  PIDX_SRC = null;
+  // Die großen Sender haben ihre Stammkommentatoren und Produzenten
+  for (const st of G.stations) {
+    if (isMe(st) || st.base < 4) continue;
+    for (const role of ["Kommentar", "Produktion"]) if (!G.people.some(q => q.role === role && q.holder === st.id)) { const q = G.people.filter(x => x.role === role && !x.holder).sort((a, b) => b.talent - a.talent)[ri(0, 5)]; if (q) { q.holder = st.id; q.until = G.day + ri(200, 900); } }
+  }
+}
+// Moderation: Charisma und Zielgruppen-Fit der Moderation wirken auf die Sendung
+function hostF(st, p) {
+  if (!p || p.kind === "sport" || p.kind === "film" || p.house) return 1;
+  if (p._hf && p._hf[0] === G.day) return p._hf[1];
+  const q = p.host ? person(p.host) : hostOf(p);
+  let f = 1;
+  if (q && q.holder === st.id) { const a = staffAttrs(q), z = zMix(st, p); f = 1 + (a.cha - 10) / 120 + z.reduce((s, v, k) => s + v * (a.z[k] - 10) / 100, 0); }
+  p._hf = [G.day, clamp(f, 0.8, 1.2)];
+  return p._hf[1];
+}
+// Sport: Kommentator*in auf das Rechtepaket setzen
+function commF(ev) {
+  const q = ev && ev.comm && person(ev.comm); if (!q) return 1;
+  const a = staffAttrs(q); return clamp(1 + (a.cha + a.emo - 20) / 160 + (a.fach - 10) / 300, 0.9, 1.18);
+}
+// Showrunner: Qualität und Kostendisziplin in der Produktion
+function showrunnerFx(id) { const q = id && person(id); if (!q) return { q: 0, cost: 1 }; const a = staffAttrs(q); return { q: Math.round((a.krea - 8) / 2.5 + (a.tre - 10) / 5), cost: clamp(1 - (a.bud - 10) / 60, 0.8, 1.15), inv: a.inv }; }
+// Zufriedenheit, Quoten-Neid, Alterung
+function staffDay() {
+  if (!G.staffV) { ensureStaffPool(); G.staffV = 1; }
+  const P = me(), mine = G.people.filter(q => q.holder === P.id);
+  for (const q of mine) {
+    const a = staffAttrs(q); sat(q);
+    const show = P.progs.find(p => p.host === q.id || (p.home && hostOf(p) === q));
+    if (show && show.lastAired && G.day - show.lastAired > 14) q.sat = Math.max(0, q.sat - 1); // will auf Sendung
+    else if (show && show.lastAired === G.day - 1 && fmtStats(show).ma >= stationAvgMA(P)) q.sat = Math.min(100, q.sat + 1);
+    if (q.sat < 15 && q.until && q.until - G.day < 30 && !q.warned) { q.warned = true; postArticle("Branchen-Flüsterer", "Personal", `{p:${q.id}} denkt über einen Abschied von {s:${P.id}} nach`, [`Im Umfeld von {p:${q.id}} ist von großer Unzufriedenheit die Rede. Der Vertrag läuft in wenigen Wochen aus.`, `Ohne Gespräch dürfte die Person den Sender verlassen.`], true); }
+  }
+  // Quoten-Neid: einmal pro Woche vergleicht man sich mit den Bestverdienern der eigenen Abteilung
+  if (G.day % 7 === 3) for (const role of ["Moderation", "Kommentar", "Nachrichten"]) {
+    const team = mine.filter(q => q.role === role && q.ct && q.ct.wk); if (team.length < 2) continue;
+    const top = team.sort((a, b) => b.ct.wk - a.ct.wk)[0], low = team.find(q => q !== top && top.ct.wk > q.ct.wk * 2.2 && staffAttrs(q).gg >= 12 && !q.raiseAsked);
+    if (!low) continue;
+    low.raiseAsked = G.day;
+    queueEvent({ id: "raise", type: "Team", title: `${low.name} fordert eine Gehaltsanpassung`, text: `„${top.name} verdient mehr als das Doppelte – das ist im Haus nicht vermittelbar.“ ${low.name} droht, den Vertrag nicht zu verlängern.`,
+      opts: [["+20 % Gage", "Zufriedenheit steigt deutlich."], ["Gespräch führen", "50 % Chance, ohne Erhöhung zu beruhigen."], ["Ablehnen", "Zufriedenheit sinkt stark."]], data: { id: low.id } });
+  }
+  // Alterung zum Jahreswechsel: Zielgruppen-Fit wandert mit
+  const dt = dateOf(G.day);
+  if (dt.getMonth() === 0 && dt.getDate() === 1) for (const q of G.people) if (q.age) { q.age++; if (q.at && !q.preset) { q.at.z = [q.at.z[0] - 0.25, q.at.z[1] - 0.1, q.at.z[2] + 0.1, q.at.z[3] + 0.25].map(v => clamp(v, 1, 20)); } }
+}
+EVENTS.push({ id: "raise", type: "Team", when: () => false, make: () => ({}), fn: (k, d) => {
+  const q = person(d.id); if (!q || !q.ct) return;
+  if (k === 0) { q.ct.wk = r1000(q.ct.wk * 1.2); q.sat = Math.min(100, sat(q) + 30); }
+  if (k === 1) { if (Math.random() < 0.5) q.sat = Math.min(100, sat(q) + 10); else q.sat = Math.max(0, sat(q) - 15); }
+  if (k === 2) q.sat = Math.max(0, sat(q) - 30);
+} });
+const DEPTS = [["Moderation", "Moderation"], ["Kommentar", "Sport-Kommentar"], ["Produktion", "Showrunner & Produktion"], ["Nachrichten", "Nachrichten"], ["Schauspiel", "Schauspiel"]];
+let staffTab = "Moderation";
+function staffPage(P) {
+  ensureStaffPool();
+  const list = G.people.filter(q => q.holder === P.id && q.role === staffTab).map(q => ({ q, a: staffAttrs(q) }));
+  const special = staffTab === "Kommentar" ? [["fach", "Fach"], ["emo", "Emotion"]] : staffTab === "Produktion" ? [["krea", "Kreativ"], ["bud", "Budget"], ["inv", "Innov."], ["tre", "Trend"]] : [];
+  const rights = G.rights.filter(r => rActive(r) && (r.owner === P.id || r.alp === P.id));
+  let h = title("Personal", `<span class="muted">${G.people.filter(q => q.holder === P.id).length} Personen unter Vertrag</span>`) + lockNote();
+  h += `<div class="pills mb">${DEPTS.map(([k, n]) => `<button data-act="staffTab" data-k="${k}" class="${staffTab === k ? "on" : ""}">${n} (${G.people.filter(q => q.holder === P.id && q.role === k).length})</button>`).join("")}</div>`;
+  h += `<p class="lead mb">Attribute 1–20: CHA Charisma · STR Stressresistenz (Live, Sport) · LOY Loyalität (wie schwer abzuwerben) · GG Gehaltsgier · Z1–Z4 Beliebtheit in den Zielgruppen. Unzufriedene Leute verlängern nicht.</p>`;
+  h += `<section class="panel mb">${list.length ? `<div class="tbl"><table><thead><tr><th>Name</th><th class="num">CHA</th><th class="num">STR</th><th class="num">LOY</th><th class="num">GG</th><th class="num">Z1</th><th class="num">Z2</th><th class="num">Z3</th><th class="num">Z4</th>${special.map(([, n]) => `<th class="num">${n}</th>`).join("")}<th>Zufriedenheit</th><th class="num">Gage/Woche</th><th class="num">bis</th></tr></thead><tbody>
+    ${list.map(({ q, a }) => `<tr><td class="title">${personLink(q)}<div class="muted">${q.age ? q.age + " J." : ""}${q.custom ? " · echte Person" : ""}</div></td>${[a.cha, a.str, a.loy, a.gg, ...a.z.map(Math.round), ...special.map(([k]) => a[k])].map(v => `<td class="num">${attr(v * 5).replace(/>\d+</, `>${v}<`)}</td>`).join("")}
+      <td><div class="goal" style="padding:0;min-width:90px"><div class="track"><i style="width:${sat(q)}%;background:${q.sat >= 60 ? "var(--good)" : q.sat < 30 ? "var(--bad)" : "var(--mid)"}"></i></div></div></td><td class="num">${q.ct && q.ct.wk ? eur(q.ct.wk) : "–"}</td><td class="num muted">${q.until ? dateShort(q.until) : ""}</td></tr>`).join("")}</tbody></table></div>` : `<p class="fine pad">Niemand aus dieser Abteilung unter Vertrag. Verpflichten Sie Leute über Produktion → Casting.</p>`}</section>`;
+  if (staffTab === "Kommentar") h += `<section class="panel"><div class="ph"><h2>Einsatz bei Ihren Sportrechten</h2></div>${rights.length ? `<div class="tbl"><table><tbody>${rights.map(r => `<tr><td class="title">${esc(RDEF(r.id).name)}</td><td><select data-comm="${r.id}"><option value="">– Hauskommentar –</option>${list.map(({ q, a }) => `<option value="${q.id}" ${(G.comm || {})[r.id] === q.id ? "selected" : ""}>${esc(q.name)} (CHA ${a.cha}, Emotion ${a.emo})</option>`).join("")}</select></td></tr>`).join("")}</tbody></table></div>` : '<p class="fine pad">Sie halten derzeit keine Sportrechte.</p>'}</section>`;
+  if (staffTab === "Produktion") h += `<p class="fine">Showrunner wählen Sie im Studio bei der Produktion: Kreativität und Trend-Gespür heben die Qualität, Budgetdisziplin senkt die Kosten pro Folge.</p>`;
+  return h;
 }
 // =====================================================================
 // Formatprofil: Quotenverlauf, Publikum, Analyse und Maßnahmen je Sendung
@@ -6330,7 +6439,7 @@ function filmMarketPage(P) {
 // =====================================================================
 const DB_KEY = "quotenturm-db-v1", TITLE_KEY = "quotenturm-titles-v1", TITLE_MAX = 20000;
 const ROLE_ALIASES = { schauspiel: "Schauspiel", schauspieler: "Schauspiel", schauspielerin: "Schauspiel", actor: "Schauspiel", moderation: "Moderation", moderator: "Moderation", moderatorin: "Moderation", entertainer: "Moderation", host: "Moderation",
-  reality: "Reality", nachrichten: "Nachrichten", nachrichtensprecher: "Nachrichten", nachrichtensprecherin: "Nachrichten", news: "Nachrichten", journalismus: "Journalismus", journalist: "Journalismus", journalistin: "Journalismus" };
+  reality: "Reality", nachrichten: "Nachrichten", nachrichtensprecher: "Nachrichten", nachrichtensprecherin: "Nachrichten", news: "Nachrichten", journalismus: "Journalismus", journalist: "Journalismus", journalistin: "Journalismus", kommentar: "Kommentar", kommentator: "Kommentar", kommentatorin: "Kommentar", sportkommentator: "Kommentar", produktion: "Produktion", produzent: "Produktion", produzentin: "Produktion", showrunner: "Produktion" };
 const TMDB_GENRES = { crime: "Krimi", mystery: "Krimi", krimi: "Krimi", comedy: "Komödie", family: "Komödie", animation: "Komödie", komödie: "Komödie", drama: "Drama", history: "Drama", romance: "Liebesfilm", liebesfilm: "Liebesfilm",
   action: "Action", adventure: "Action", thriller: "Action", war: "Action", western: "Action", horror: "Action", "action & adventure": "Action", "war & politics": "Drama", "science fiction": "Science-Fiction", "sci-fi & fantasy": "Science-Fiction", fantasy: "Science-Fiction",
   documentary: "Doku", dokumentation: "Doku", reality: "Reality", talk: "Talk", news: "Nachrichten", soap: "Soap", kids: "Komödie", music: "Kultur" };
@@ -6492,7 +6601,7 @@ function showEditor() { loadDB(); loadTitles(); edSel = null; edMsg = null; rend
 function renderEditor() {
   const D = loadDB(), T = loadTitles(), ql = edQuery.trim().toLowerCase();
   const list = D.people.filter(e => (edRole === "alle" || e.rolle === edRole) && (!ql || e.name.toLowerCase().includes(ql) || e.eindeutige_id.toLowerCase().includes(ql)));
-  const roles = [["alle", "Alle"], ["Schauspiel", "Schauspiel"], ["Moderation", "Entertainer"], ["Reality", "Reality"], ["Nachrichten", "News"], ["Journalismus", "Journalismus"]];
+  const roles = [["alle", "Alle"], ["Schauspiel", "Schauspiel"], ["Moderation", "Entertainer"], ["Reality", "Reality"], ["Nachrichten", "News"], ["Journalismus", "Journalismus"], ["Kommentar", "Kommentar"], ["Produktion", "Showrunner"]];
   const d = $("dialog"); d.className = "dialog wide"; $("modal").hidden = false;
   d.innerHTML = `<header><h2>Editor & Datenimport</h2><button class="btn" data-act="edClose">Schließen</button></header><div class="dbody">
     <div class="ed-bar">
@@ -6572,7 +6681,8 @@ document.addEventListener("change", async e => {
   if (ph && e.target.files && e.target.files[0]) { if (await savePhoto(ph, e.target.files[0])) { toast("Foto gespeichert."); renderProfile(); render(); } return; }
 });
 document.addEventListener("change", e => {
-  if (e.target.dataset && e.target.dataset.dna && draft && draft.dna) { const k = e.target.dataset.dna; draft.dna[k] = k === "pre" ? e.target.checked : +e.target.value; render(); return; }
+  if (e.target.dataset && e.target.dataset.dna && draft && draft.dna) { const k = e.target.dataset.dna; draft.dna[k] = k === "pre" ? e.target.checked : k === "sr" ? e.target.value || null : +e.target.value; render(); return; }
+  if (e.target.dataset && e.target.dataset.comm && G) { G.comm = G.comm || {}; if (e.target.value) G.comm[e.target.dataset.comm] = e.target.value; else delete G.comm[e.target.dataset.comm]; toast("Kommentar-Besetzung gespeichert."); render(); return; }
   if (e.target.dataset && e.target.dataset.tsel && G) { const [d, i] = e.target.dataset.tsel.split("|").map(Number), v = e.target.value; editPlan(d, sc => { if (v === "") delete sc[i].t; else sc[i].t = +v; }); render(); return; }
   if (e.target.dataset && e.target.dataset.adl && G) { const L = adLoad(me()), k = e.target.dataset.adl, v = +e.target.value; if (me().type === "oer") { const other = Object.entries(L).filter(([h]) => h !== k).reduce((a, [, x]) => a + x, 0); L[k] = Math.max(0, Math.min(v, 20 - other)); } else L[k] = clamp(v, 0, 12); render(); return; }
   const u = e.target.dataset && e.target.dataset.upload; if (u) readUpload(e.target, u); else if (e.target.dataset && e.target.dataset.ed) edUpdateField(e.target); });
