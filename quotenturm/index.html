@@ -590,6 +590,8 @@ const HOURS = Array.from({ length: 24 }, (_, h) => h);
 // Mio. Menschen vor dem Fernseher je Stunde (grob am deutschen Tagesverlauf orientiert)
 const BASE = [3.5, 2, 1.2, 0.8, 0.7, 1, 2, 3, 3.5, 4, 4.5, 5, 6, 6, 6, 7, 8, 10, 13, 17, 28, 29, 21, 12];
 const LIVE_FROM = 18; // ab hier läuft der Abend in der Live-Regie
+const DAY_FROM = 8; // ab hier läuft der Sendetag sichtbar im Zeitraffer (wie ein Spieltag im Fußball-Manager)
+const DAY_SPEEDS = { 1: 4000, 2: 1500, 3: 600, 4: 120 }; // ms pro Sendestunde im Tagesprogramm
 const START_DATE = new Date(2026, 9, 22);
 const SEASON = 84; // Tage bis zur Bilanz der Senderleitung; danach beginnt eine neue Saison
 const seasonEnd = () => G.seasonEnd || SEASON;
@@ -3050,7 +3052,7 @@ function promoPanel(P) {
 // Tagesablauf
 // =====================================================================
 function startDay() {
-  G.min = 6 * 60; G.phase = "plan"; G.adBreak = {};
+  G.min = DAY_FROM * 60; G.phase = "plan"; G.adBreak = {}; G.dayFeed = [];
   G.today = HOURS.map(() => null); G.daySeg = []; seasonBase();
   for (const st of G.stations) { st.fin = {}; st.moneyStart = st.money; st.news = []; }
   placeEvents();
@@ -3078,11 +3080,10 @@ function aiTurn(st) {
 }
 function startBroadcast() {
   for (const st of G.stations) if (!isMe(st)) aiTurn(st);
-  // 0–18 Uhr wird sofort ausgewertet, der Abend läuft live
-  for (let i = 0; i < LIVE_FROM; i++) { G.min = i * 60; airHour(i); }
-  const mine = G.today.slice(0, LIVE_FROM).reduce((a, r) => a + r[G.me].v, 0), all = BASE.slice(0, LIVE_FROM).reduce((a, b) => a + b, 0);
-  logMsg("Medienforschung", "Quote", `Tagesprogramm 0–18 Uhr ausgewertet: ${pct(mine / all * 100)} Marktanteil.`);
-  G.phase = "live"; G.min = LIVE_FROM * 60 - 1;
+  // Nacht und früher Morgen (0–8 Uhr) werden sofort ausgewertet; ab 8 Uhr läuft der Tag im Zeitraffer, ab 18 Uhr live
+  for (let i = 0; i < DAY_FROM; i++) { G.min = i * 60; airHour(i); }
+  G.dayFeed = []; G.primeHold = false;
+  G.phase = "live"; G.min = DAY_FROM * 60 - 1;
   liveRun = true; lastT = performance.now();
   go("live", true);
   requestAnimationFrame(liveTick);
@@ -3093,13 +3094,37 @@ function liveTick(now) {
   const dt = Math.min(100, now - lastT); lastT = now;
   if (liveRun) {
     const prev = G.min;
-    G.min = Math.min(24 * 60, G.min + dt * 60 / SPEEDS[liveSpeed]);
-    if (Math.floor(G.min / 60) > Math.floor(prev / 60) && G.min < 24 * 60) { airHour(Math.floor(G.min / 60)); render(); }
+    const day = G.min < LIVE_FROM * 60 - 1;
+    G.min = Math.min(24 * 60, G.min + dt * 60 / (day ? DAY_SPEEDS[liveSpeed] || 1500 : SPEEDS[liveSpeed]));
+    if (day && G.min >= LIVE_FROM * 60 - 1 && !G.primeHold) { G.min = LIVE_FROM * 60 - 1; G.primeHold = true; liveRun = false; daySummary(); render(); renderTop(); }
+    if (Math.floor(G.min / 60) > Math.floor(prev / 60) && G.min < 24 * 60) { const h = Math.floor(G.min / 60); airHour(h); dayTicker(h); render(); }
     renderTop();
     if (G.min >= 24 * 60) { endDay(); return; }
   }
   if (page === "live" && now - wobT > 450) { wobT = now; wobble(); }
   requestAnimationFrame(liveTick);
+}
+// Tagesprogramm im Zeitraffer bis zur Primetime überspringen
+function skipToPrime() {
+  while (G.phase === "live" && G.min < LIVE_FROM * 60 - 1) { const h = Math.floor(G.min / 60) + 1; G.min = h * 60; airHour(h); dayTicker(h); }
+  G.min = LIVE_FROM * 60 - 1; if (!G.primeHold) { G.primeHold = true; daySummary(); } liveRun = false; render(); renderTop();
+}
+// Live-Ticker des Tages: Ihre Quote, Platz, auffällige Konkurrenz, Abweichung von der Erwartung
+function dayTicker(h) {
+  const r = G.today[h]; if (!r) return;
+  const P = me(), m = r[G.me], order = G.stations.map(s => s.i).sort((a, b) => r[b].v - r[a].v), rank = order.indexOf(G.me) + 1, top = G.stations[order[0]];
+  const exp = expected(P, h), dev = exp ? m.v / exp - 1 : 0, items = G.dayFeed || (G.dayFeed = []);
+  const add = (txt, cls) => items.unshift({ h, txt, cls });
+  add(`${hh(h)} „${m.title || "Programm"}“: ${pct(m.ma)} Marktanteil, Platz ${rank}`, rank === 1 ? "good" : rank > 5 ? "bad" : "");
+  if (dev > 0.15) add(`${hh(h)} Über Erwartung: ${Math.round(dev * 100)} % mehr Zuschauer als prognostiziert.`, "good");
+  else if (dev < -0.15) add(`${hh(h)} Unter Erwartung: ${Math.round(-dev * 100)} % weniger Zuschauer als prognostiziert.`, "bad");
+  if (top.i !== G.me && r[top.i].ma > m.ma * 1.6) add(`${hh(h)} ${top.name} dominiert mit „${r[top.i].title || "–"}“ (${pct(r[top.i].ma)}).`, "");
+  if (items.length > 60) items.length = 60;
+}
+function daySummary() {
+  const s = DAY_FROM, e = LIVE_FROM, mine = G.today.slice(s, e).reduce((a, r) => a + (r ? r[G.me].v : 0), 0), all = BASE.slice(s, e).reduce((a, b) => a + b, 0);
+  const best = G.today.slice(s, e).map((r, k) => [s + k, r && r[G.me]]).filter(x => x[1]).sort((a, b) => b[1].ma - a[1].ma)[0];
+  logMsg("Medienforschung", "Quote", `Tagesprogramm ${s}–${e} Uhr: ${pct(mine / all * 100)} Marktanteil${best ? `, stärkste Stunde ${hh(best[0])} mit ${pct(best[1].ma)}` : ""}. Die Primetime läuft jetzt live – weiter mit ▶.`, true);
 }
 function wobble() {
   const i = Math.floor(G.min / 60);
@@ -3115,7 +3140,8 @@ function wobble() {
 function finishEvening() {
   while (G.phase === "live" && G.min < 24 * 60) {
     const h = Math.floor(G.min / 60) + 1; G.min = h * 60;
-    if (h < 24) airHour(h);
+    if (h < 24) { airHour(h); if (h < LIVE_FROM) dayTicker(h); }
+    if (h === LIVE_FROM - 1 && !G.primeHold) { G.primeHold = true; daySummary(); }
   }
   if (G.phase === "live") endDay();
 }
@@ -3332,6 +3358,7 @@ document.addEventListener("input", e => {
   if (e.target.id === "dirSearch") { dirQuery = e.target.value; dirLimit = 40; renderDirectory(); return; }
   if (e.target.id === "avName") { AV.name = e.target.value.slice(0, 40); return; }
   if (e.target.id === "negoPct" && nego) { nego.pct = +e.target.value; const u = nego.type === "excl" ? " / Woche" : ""; $("negoPctTxt").textContent = nego.pct + " %"; $("negoAmt").textContent = eur(negoOffer(nego)) + u; if ($("negoTotal")) $("negoTotal").textContent = `Gesamt über ${nego.weeks} Wochen: ${eur(negoOffer(nego) * nego.weeks)}`; return; }
+  if (e.target.id === "guestSearch") { guestQ = e.target.value; const pos = e.target.selectionStart; renderProfile(); const s = $("guestSearch"); if (s) { s.focus(); s.setSelectionRange(pos, pos); } return; }
   if (e.target.id === "talkSearch") { talkQuery = e.target.value; const pos = e.target.selectionStart; render(); const s = $("talkSearch"); if (s) { s.focus(); s.setSelectionRange(pos, pos); } return; }
   if (e.target.id === "castSearch") { castQuery = e.target.value; castLimit = 40; renderCastList(); return; }
   if (e.target.dataset.draft === "title" && draft) draft.title = e.target.value.slice(0, 60);
@@ -3847,8 +3874,8 @@ function livePage(P) {
   return `<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(320px,1fr))">
     <section class="panel" style="grid-column:1/-1;overflow:hidden">
       <div class="live-head"><div style="display:flex;align-items:center;gap:10px">${crest(P.i, 46)}<div><b style="font-family:var(--font-head);font-size:22px">${esc(P.name)}</b><div class="muted">${r ? `Jetzt: ${pct(r[G.me].ma)} · Platz ${order.indexOf(G.me) + 1}` : "Gleich geht’s los"}</div></div></div>
-        <div class="live-clock"><small>${G.phase === "live" ? (liveRun ? "LIVE" : "PAUSIERT") : "SENDESCHLUSS"}</small>${hhmm(G.min)}</div>
-        <div class="actions" style="justify-content:flex-end"><div class="pills">${[[1, "Regie"], [2, "Normal"], [3, "Schnell"], [4, "Sofort"]].map(([s, n]) => `<button data-act="lspeed" data-k="${s}" class="${liveSpeed === s ? "on" : ""}">${n}</button>`).join("")}</div><button class="btn" data-act="finish" ${G.phase !== "live" ? "disabled" : ""}>Bis Sendeschluss</button></div></div>
+        <div class="live-clock"><small>${G.phase === "live" ? (G.min < LIVE_FROM * 60 - 1 ? (liveRun ? "TAGESPROGRAMM" : "PAUSIERT") : liveRun ? "LIVE · PRIMETIME" : G.primeHold && G.min < LIVE_FROM * 60 ? "GLEICH PRIMETIME" : "PAUSIERT") : "SENDESCHLUSS"}</small>${hhmm(G.min)}</div>
+        <div class="actions" style="justify-content:flex-end"><div class="pills">${[[1, "Regie"], [2, "Normal"], [3, "Schnell"], [4, "Sofort"]].map(([s, n]) => `<button data-act="lspeed" data-k="${s}" class="${liveSpeed === s ? "on" : ""}">${n}</button>`).join("")}</div>${G.phase === "live" && G.min < LIVE_FROM * 60 - 1 ? '<button class="btn" data-act="toPrime">Zur Primetime</button>' : ""}<button class="btn" data-act="finish" ${G.phase !== "live" ? "disabled" : ""}>Bis Sendeschluss</button></div></div>
       <div class="wall">${order.map(k => { const s = G.stations[k]; const x = r && r[k]; return `<div class="mon ${k === G.me ? "me" : ""}" data-wob="${k}"><div class="mon-top">${crest(k, 20)}<b>${esc(s.name)}</b><span class="v">${x ? pct(x.ma) : "–"}</span></div><div class="mon-t">${x ? esc(x.title) : "–"}</div><div class="lbar"><i style="width:${x ? Math.min(100, x.ma * 3) : 0}%;background:${s.color}"></i></div></div>`; }).join("")}</div>
     </section>
     <section class="panel"><div class="ph"><h2>Regie-Eingriffe</h2><span class="aside">${next != null ? `für ${hh(next)}` : "Sendeschluss naht"}</span></div>
@@ -3857,6 +3884,7 @@ function livePage(P) {
         <button class="btn hot" data-act="swap" data-i="${next}" ${canSwap ? "" : "disabled"}>Notfall-Wiederholung</button>
         <button class="btn ${G.adBreak[next] ? "violet" : ""}" data-act="adbreak" data-i="${next}" ${canBreak ? "" : "disabled"}>${G.adBreak[next] ? "Zusatz-Werbeblock geplant" : "Zusatz-Werbeblock"}</button></div>
       <p class="fine pad">Werbeblock: sofort Geld, aber rund 15 % weniger Zuschauer in dieser Stunde. Wiederholung: ein einstündiges Archivprogramm ersetzt die nächste Stunde.</p></section>
+    <section class="panel"><div class="ph"><h2>Live-Ticker</h2><span class="aside">${(G.dayFeed || []).length} Meldungen</span></div><div class="msgs" style="max-height:320px;overflow:auto">${(G.dayFeed || []).map(x => `<div class="msg"><span class="txt ${x.cls === "good" ? "up" : x.cls === "bad" ? "down" : ""}">${esc(x.txt)}</span></div>`).join("") || '<div class="msg"><span class="txt muted">Der Sendetag beginnt um 8 Uhr.</span></div>'}</div></section>
     <section class="panel"><div class="ph"><h2>Quotenkurve</h2><span class="aside">Marktanteil in %, 0–24 Uhr</span></div><div class="pad">${lineChart()}</div></section>
     <section class="panel"><div class="ph"><h2>Ereignisse</h2></div><div class="msgs">${feed.map(l => `<div class="msg new"><span class="from">${esc(l.from)}</span><span class="chip tag">${esc(l.tag)}</span><span class="txt">${msgLink(l)}</span><time>${l.t}</time></div>`).join("") || '<div class="msg"><span class="txt muted">Noch keine Ereignisse.</span></div>'}</div></section>
   </div>`;
@@ -4007,6 +4035,9 @@ function act(b) {
     case "fxGo": { const p = P.progs.find(x => x.id === id); if (p) startFx(P, p, b.dataset.k); render(); renderProfile(); return; }
     case "fxSponsor": { const p = P.progs.find(x => x.id === id); if (p && P.type === "privat" && !planLocked()) { p.sponsor = !p.sponsor; p.q = clamp(p.q + (p.sponsor ? -2 : 2), 5, 99); fxNote(p, "sponsor", p.sponsor ? "Sponsor gefunden – Zusatzerlös pro Ausstrahlung." : "Sponsoring beendet."); } render(); renderProfile(); return; }
     case "szOrder": { const p = P.progs.find(x => x.id === id); if (p) { const e = szOrder(P, p, +(($("szEps") || {}).value || 8), ($("szMode") || {}).value || (p.sz && p.sz.mode) || "aufz"); toast(e || "Neue Staffel bestellt."); if (!e) renderProfile(); } break; }
+    case "couple": { const p = P.progs.find(x => x.id === id); if (p) { const e = couple(P, p, +b.dataset.k); toast(e || "Sonderausgabe geplant."); renderProfile(); } return; }
+    case "ideaAi": { const p = P.progs.find(x => x.id === id); if (p) ideaAi(P, p, +b.dataset.k); return; }
+    case "guestBook": { const p = P.progs.find(x => x.id === id); if (p) { const e = guestBook(P, p, b.dataset.k, +(($("guestDay") || {}).value || G.day)); toast(e || "Gast eingeladen."); renderProfile(); } return; }
     case "szRerun": { const p = P.progs.find(x => x.id === id); if (p && szInit(P, p)) { p.sz.rerun = !p.sz.rerun; renderProfile(); } break; }
     case "progCancel": { const p = P.progs.find(x => x.id === id); if (p && !planLocked()) progCancel(P, p); break; }
     case "switchSt": if (!planLocked()) { openBoardPoker(b.dataset.k); return; } break;
@@ -4015,6 +4046,7 @@ function act(b) {
     case "forceStart": closeModal(); startBroadcast(); return;
     case "toPlan": closeModal(); planDay = null; go("plan"); return;
     case "lspeed": liveSpeed = +b.dataset.k; break;
+    case "toPrime": skipToPrime(); return;
     case "finish": finishEvening(); return;
     case "next": closeModal(); if (G.over) showEnd(); else { planDay = null; nextDay(); } return;
     case "planDay": planDay = wd; break;
@@ -5449,6 +5481,7 @@ function weekPlanPage(P) {
         <div class="pad" style="padding:8px 0">${ZN.map((n, k) => `<div class="agebar"><span>Z${k + 1}</span><div class="track"><i style="width:${f.z[k] * 100}%"></i></div><b>${pct(f.z[k] * 100)}</b></div>`).join("")}</div>
         <h4>Konkurrenz-Druck: ${pressure}</h4><div class="tbl"><table><tbody>${f.comp.map(c => `<tr><td>${sname(c.st.i)}</td><td class="title">${c.p ? esc(c.p.title) : "–"}</td></tr>`).join("")}</tbody></table></div>
         ${w.map(x => `<p class="warnline" style="margin:6px 0 0">⚠ ${esc(x)}</p>`).join("")}
+        ${it.p.kind !== "sport" ? `<div class="actions" style="margin-top:10px"><button class="btn hot small" data-title="${P.id}|${it.p.id}">Formatprofil & Maßnahmen</button></div>` : ""}
         ${!it.c.live && !it.extra && !(d === G.day && planLocked()) ? `<div class="actions" style="margin-top:10px"><select class="tsel2" data-tsel="${d}|${it.i}">${tOpts(it.i, it.c.t)}</select><button class="btn small red" data-act="wpDel" data-k="${d}|${it.i}">Entfernen</button></div>` : ""}</aside>`;
     }
   }
@@ -7758,6 +7791,103 @@ function szPanel(P, p) {
 }
 
 // =====================================================================
+// Formatprofil erweitert: Gesicht des Formats, Spezialausgabe mit Wunschgast, Kopplung an passende Ereignisse.
+// Vorschläge passen nur, wenn Genre und Anlass zusammenpassen (z. B. kein Weihnachts-Special in einer Nachrichtensendung).
+// =====================================================================
+// Anlässe der nächsten Wochen
+function upcomingEvents(days = 45) {
+  const out = [], y = dateOf(G.day).getFullYear();
+  for (let d = G.day; d < G.day + days; d++) {
+    const h = holidayOf(d), dt = dateOf(d), m = dt.getMonth(), dd = dt.getDate(), wd = dt.getDay();
+    if (h) out.push({ day: d, k: h, type: /Weihnacht|Heiligabend/.test(h) ? "xmas" : h === "Silvester" ? "nye" : h === "Halloween" ? "halloween" : h === "Valentinstag" ? "love" : /Oster|Karfreitag/.test(h) ? "easter" : "holiday" });
+    if (m === 11 && wd === 0 && dd <= 24 && dd >= 1) out.push({ day: d, k: `${Math.ceil((dd - 0) / 7)}. Advent`, type: "advent" });
+    if (m === 4 && wd === 0 && dd >= 8 && dd <= 14) out.push({ day: d, k: "Muttertag", type: "family" });
+    if (dayOf(easter(y)) - 48 === d) out.push({ day: d, k: "Rosenmontag", type: "carnival" });
+    if (m === 11 && dd === 20) out.push({ day: d, k: "Jahresrückblick-Saison", type: "review" });
+    if (m === 6 && dd === 15) out.push({ day: d, k: "Start der Sommerferien", type: "summer" });
+  }
+  const ag = ensureAgenda(), top = agTop();
+  if (ag[top] >= 70) out.push({ day: G.day + 2, k: `Themenlage: ${AGENDA.find(x => x[0] === top)[1]}`, type: "agenda", field: top });
+  return out;
+}
+// Wie gut passt ein Anlass zu einem Genre? 0 = gar nicht
+const EVENT_FIT = {
+  xmas: { Show: 1, Komödie: 0.9, Liebesfilm: 1, Soap: 0.8, Serie: 0.7, Krimi: 0.4, Talk: 0.6, Magazin: 0.6, Doku: 0.5, Reality: 0.5, Kultur: 0.8 },
+  nye: { Show: 1, Komödie: 0.8, Magazin: 0.6, Talk: 0.5, Reality: 0.4, Kultur: 0.7 },
+  halloween: { Action: 0.8, "Science-Fiction": 0.9, Komödie: 0.6, Show: 0.6, Reality: 0.5, Magazin: 0.4 },
+  love: { Liebesfilm: 1, Reality: 0.9, Soap: 0.8, Show: 0.6, Komödie: 0.7, Magazin: 0.5 },
+  easter: { Show: 0.7, Kultur: 0.7, Doku: 0.6, Liebesfilm: 0.6, Magazin: 0.5 }, holiday: { Show: 0.6, Doku: 0.6, Magazin: 0.5, Krimi: 0.4 },
+  advent: { Show: 0.9, Kultur: 0.9, Magazin: 0.7, Soap: 0.6, Talk: 0.5 }, family: { Show: 0.8, Magazin: 0.7, Reality: 0.6, Soap: 0.6 },
+  carnival: { Show: 1, Komödie: 0.9, Magazin: 0.5 }, review: { Talk: 1, Magazin: 1, Nachrichten: 0.8, Show: 0.9, Doku: 0.8 },
+  summer: { Reality: 0.8, Doku: 0.7, Magazin: 0.6, Show: 0.6 }, agenda: { Talk: 1, Nachrichten: 1, Magazin: 0.9, Doku: 0.8, Reality: 0.15, Show: 0.2 },
+};
+const fitOf = (ev, p) => (EVENT_FIT[ev.type] || {})[p.genre] || 0;
+function eventIdeas(P, p) {
+  const dates = fmtDates(P, p); if (!dates.length) return [];
+  return upcomingEvents().map(ev => {
+    const f = fitOf(ev, p); if (f < 0.4) return null;
+    const air = dates.filter(([d]) => d <= ev.day && ev.day - d <= 6).pop() || dates.find(([d]) => d >= ev.day && d - ev.day <= 2); if (!air) return null;
+    const v = Math.round((0.1 + 0.25 * f) * 100) / 100, cost = r1000(Math.max(60000, (p.epCost || p.q * 3000) * (0.4 + f * 0.6)));
+    return { ev, f, v, cost, air };
+  }).filter(Boolean).sort((a, b) => b.f - a.f).slice(0, 5);
+}
+function couple(P, p, idx) {
+  const it = eventIdeas(P, p)[idx]; if (!it) return "Kein passender Anlass.";
+  if (P.money < it.cost) return "Dafür reicht das Budget nicht.";
+  if (p.boost && p.boost.day && p.boost.day >= G.day) return "Für diese Sendung ist bereits eine Sonderausgabe geplant.";
+  book(P, "Eigenproduktion", -it.cost); p.boost = { v: it.v, day: it.air[0], why: it.ev.k };
+  fxNote(p, "event", `Sonderausgabe zum Anlass „${it.ev.k}“ am ${dateShort(it.air[0])} (+${Math.round(it.v * 100)} % erwartet, ${eur(it.cost)})`);
+  logMsg("Programmentwicklung", "Programm", `„${p.title}“ bekommt zum Anlass „${it.ev.k}“ eine Sonderausgabe am ${dateShort(it.air[0])}.`);
+  return null;
+}
+// Spezialausgabe mit Wunschgast aus dem Personenverzeichnis
+let guestQ = "", guestFor = null;
+const guestFit = (q, p) => ({ Talk: 1, Show: 1, Magazin: 0.8, Reality: 0.8, Komödie: 0.6, Soap: 0.6, Serie: 0.5, Krimi: 0.4, Doku: 0.5, Nachrichten: 0.3 })[p.genre] ?? 0.4;
+const guestFee = q => r1000(Math.max(15000, q.gage * 0.2));
+const guestBoost = (q, p) => Math.round((0.05 + (q.fame || 40) / 400) * guestFit(q, p) * 100) / 100;
+function guestPanel(P, p) {
+  const dates = fmtDates(P, p);
+  const ql = guestQ.trim().toLowerCase();
+  const list = (ql.length >= 2 ? G.people.filter(q => q.name.toLowerCase().includes(ql)) : G.people.filter(q => pAvail(q)).sort((a, b) => (b.fame || 0) - (a.fame || 0))).filter(q => pAvail(q)).slice(0, 8);
+  return `<section class="panel" style="margin-top:12px"><div class="ph"><h2>Spezialausgabe mit Wunschgast</h2><span class="aside">Gast aus dem Personenverzeichnis</span></div><div class="pad">
+    ${dates.length ? `<div class="kv"><span>Ausgabe</span><select id="guestDay">${dates.map(([d, i]) => `<option value="${d}">${dateShort(d)}, ${hh(i)}</option>`).join("")}</select></div>
+    <div class="kv"><span>Gast suchen</span><input type="search" id="guestSearch" style="flex:1;min-width:240px" value="${esc(guestQ)}" placeholder="Name (mind. 2 Zeichen) – sonst die bekanntesten freien Personen"></div>
+    <div class="tbl"><table><tbody>${list.map(q => `<tr><td>${personLink(q)}<div class="fine">${esc(SPEC_NAME[q.role] || q.role)} · Bekanntheit ${matrix(q).bekannt}/20</div></td><td class="num">${eur(guestFee(q))}</td><td class="num">+${Math.round(guestBoost(q, p) * 100)} %</td><td class="num"><button class="btn small hot" data-act="guestBook" data-k="${q.id}" data-id="${p.id}">Einladen</button></td></tr>`).join("") || '<tr><td class="muted">Keine verfügbaren Personen gefunden.</td></tr>'}</tbody></table></div>
+    <p class="fine">Wirkung hängt von der Bekanntheit des Gastes und davon ab, wie gut ein Gastauftritt zum Format passt (Talk und Show am stärksten).</p>`
+    : '<p class="fine">Das Format ist in den nächsten zwei Wochen nicht eingeplant.</p>'}</div></section>`;
+}
+function guestBook(P, p, qid, day) {
+  const q = person(qid); if (!q || !pAvail(q)) return "Diese Person ist nicht verfügbar.";
+  const fee = guestFee(q); if (P.money < fee) return "Dafür reicht das Budget nicht.";
+  if (p.boost && p.boost.day && p.boost.day >= G.day) return "Für diese Sendung ist bereits eine Sonderausgabe geplant.";
+  book(P, "Redaktion & Gagen", -fee); p.boost = { v: guestBoost(q, p), day, why: `Gast: ${q.name}` };
+  fxNote(p, "guest", `Gastauftritt von ${q.name} am ${dateShort(day)} (${eur(fee)}, +${Math.round(p.boost.v * 100)} % erwartet)`);
+  logMsg("Redaktion", "Programm", `„${p.title}“: ${q.name} ist am ${dateShort(day)} zu Gast.`);
+  return null;
+}
+function ideaPanel(P, p) {
+  const ideas = eventIdeas(P, p);
+  return `<section class="panel" style="margin-top:12px"><div class="ph"><h2>An ein Ereignis koppeln</h2><span class="aside">nur passende Anlässe</span></div>
+    ${ideas.length ? `<div class="tbl"><table><tbody>${ideas.map((x, k) => `<tr><td><b>${esc(x.ev.k)}</b><div class="fine">Ausgabe am ${dateShort(x.air[0])} · Passung ${Math.round(x.f * 100)} %</div><div class="fine" id="idea${k}"></div></td><td class="num">${eur(x.cost)}</td><td class="num">+${Math.round(x.v * 100)} %</td>
+      <td class="num" style="white-space:nowrap"><button class="btn small hot" data-act="couple" data-k="${k}" data-id="${p.id}">Koppeln</button>${aiOn() ? ` <button class="btn small" data-act="ideaAi" data-k="${k}" data-id="${p.id}">KI-Idee</button>` : ""}</td></tr>`).join("")}</tbody></table></div>`
+      : '<p class="fine pad">In den nächsten Wochen gibt es keinen Anlass, der zu diesem Format passt – oder es ist nicht eingeplant.</p>'}</section>`;
+}
+function ideaAi(P, p, k) {
+  const it = eventIdeas(P, p)[k], box = $(`idea${k}`); if (!it || !box) return;
+  box.textContent = "Die KI entwickelt eine Idee …";
+  llm(`Schlage in einem Satz eine konkrete, realistische Sonderausgabe für ein deutsches Fernsehformat vor. Genre: ${p.genre}. Anlass: ${it.ev.k}. Keine Namen von Personen oder Sendern, keine Zahlen, keine Zitate, höchstens 22 Wörter.`).then(t => {
+    const c = aiClean(t), b = $(`idea${k}`); if (b) b.textContent = c ? `Idee: ${c}` : "Keine verwertbare Idee – der Filter hat die Antwort verworfen.";
+  });
+}
+// Gesicht des Formats: Moderation/Hauptbesetzung mit Bekanntheit und Beliebtheit
+function facePanel(st, p) {
+  const ids = [p.host].concat(titleCast(p, p.title).map(c => c.id)).filter(Boolean), seen = new Set(), list = [];
+  for (const id of ids) if (!seen.has(id)) { seen.add(id); const q = person(id); if (q) list.push(q); }
+  if (!list.length) return "";
+  return `<section class="panel" style="margin-top:12px"><div class="ph"><h2>Gesicht des Formats</h2></div><div class="tbl"><table><tbody>${list.slice(0, 4).map(q => { const m = matrix(q); return `<tr><td>${avatar(q, 30)}</td><td class="title">${personLink(q)}<div class="fine">${esc(SPEC_NAME[q.role] || q.role)}</div></td><td class="num">Bekanntheit <b>${m.bekannt}</b></td><td class="num">Beliebtheit <b>${m.beliebt}</b></td><td class="num">Charisma <b>${m.charisma}</b></td></tr>`; }).join("")}</tbody></table></div></section>`;
+}
+
+// =====================================================================
 // Formatprofil: Quotenverlauf, Publikum, Analyse und Maßnahmen je Sendung
 // =====================================================================
 // Affinität zur Zielgruppe 14–49 (Spielwerte): Sender-Image × Genre
@@ -7991,6 +8121,7 @@ function fmtTabBody(t, tab) {
   if (tab === "fx" && mine) {
     const P = st, running = (p.fx || []);
     return `${p.own ? `<section class="panel"><div class="ph"><h2>Produktion & Besetzung</h2></div><div class="pad">${progManage(P, p)}</div></section>` : ""}
+      ${notFilm(p) ? guestPanel(P, p) + ideaPanel(P, p) : ""}
       ${running.length ? `<section class="panel" style="margin-top:12px"><div class="ph"><h2>Laufende Maßnahmen</h2></div><div class="pad">${running.map(f => { const m = FMEAS.find(x => x.k === f.k), end = f.until || f.ready, prog = clamp((G.day - f.start) / Math.max(1, end - f.start) * 100, 0, 100); return `<div class="goal"><div class="row"><span>${esc(m.n)}</span><b>${f.done ? "aktiv" : "in Vorbereitung"} · bis ${dateShort(end)}</b></div><div class="track"><i style="width:${prog}%"></i></div></div>`; }).join("")}</div></section>` : ""}
       <div class="fxgrid">${FMEAS.filter(m => m.ok(p) && !(m.k === "sponsor")).map(m => { const why = fxBlock(P, p, m), c = m.cost(p), rk = m.risk(p); return `<section class="fxcard"><h3>${esc(m.n)}</h3><p>${esc(m.d)}</p>
         <div class="fxmeta"><span>Kosten <b>${c ? eur(c) : "keine"}</b></span><span>Vorlauf <b>${m.prep ? m.prep + " Tage" : "sofort"}</b></span>${m.dur ? `<span>Dauer <b>${m.dur} Tage</b></span>` : ""}${rk ? `<span>Risiko <b class="${rk > 0.12 ? "down" : ""}">${Math.round(rk * 100)} %</b></span>` : ""}</div>
@@ -8751,7 +8882,7 @@ function openTitle(key) {
       ${p.epCost ? `<div class="tile"><small>Kosten</small><b style="font-size:18px">${eur(p.epCost)}</b><span>pro Folge</span></div>` : ""}
       ${p.fsk ? `<div class="tile"><small>Freigabe</small><b>FSK ${p.fsk}</b><span>${p.fsk >= 16 ? "ab 22 Uhr" : "jederzeit"}</span></div>` : ""}
     </div>` : ""}`;
-  const szp = p && t.st ? szPanel(t.st, p) : "";
+  const szp = p && t.st ? szPanel(t.st, p) + facePanel(t.st, p) : "";
   const body = !tabs.length ? facts + szp + castPanel : profTab === "overview" ? fmtTabBody(t, "overview") + `<div style="margin-top:12px">${facts}</div>` + szp + castPanel : fmtTabBody(t, profTab);
   openModal(`<header><h2>${esc(t.title)}</h2><button class="btn" data-act="close">Schließen</button></header><div class="dbody">
     <div class="ttl-head"><div class="grow"><span class="chip real">${kindName}</span>${p ? ` <span class="chip">${esc(p.genre)}</span>` : ""}${p && p.own ? ' <span class="chip good">Eigenproduktion</span>' : p && p.home ? ' <span class="chip real">Eigenformat</span>' : ""}${p && p.sponsor ? ' <span class="chip">gesponsert</span>' : ""}${p && (p.fx || []).length ? ` <span class="chip warn">${p.fx.length} Maßnahme${p.fx.length > 1 ? "n" : ""} läuft</span>` : ""}
