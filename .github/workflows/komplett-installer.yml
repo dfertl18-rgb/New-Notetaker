@@ -22,9 +22,14 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force out | Out-Null
-          Invoke-WebRequest "https://www.7-zip.org/a/7zr.exe" -OutFile out/7zr.exe
-          Invoke-WebRequest "https://www.7-zip.org/a/lzma2409.7z" -OutFile lzma.7z
+          $rel = Invoke-RestMethod "https://api.github.com/repos/ip7z/7zip/releases/latest" -Headers @{ "User-Agent" = "mm27" }
+          $zr = $rel.assets | Where-Object { $_.name -eq "7zr.exe" } | Select-Object -First 1
+          $lz = $rel.assets | Where-Object { $_.name -like "lzma*.7z" } | Select-Object -First 1
+          Write-Host "7-Zip-Release: $($rel.tag_name) – $($zr.name), $($lz.name)"
+          Invoke-WebRequest $zr.browser_download_url -OutFile out/7zr.exe
+          Invoke-WebRequest $lz.browser_download_url -OutFile lzma.7z
           & "C:\Program Files\7-Zip\7z.exe" e lzma.7z "bin/7zSD.sfx" -osfx -y
+          if (!(Test-Path sfx/7zSD.sfx)) { & "C:\Program Files\7-Zip\7z.exe" l lzma.7z; throw "7zSD.sfx fehlt" }
           curl.exe -L --fail --retry 3 -o out/Qwen2.5-7B-Instruct-Q4_K_M.gguf "https://huggingface.co/bartowski/Qwen2.5-7B-Instruct-GGUF/resolve/main/Qwen2.5-7B-Instruct-Q4_K_M.gguf"
           $h = (Get-FileHash out/Qwen2.5-7B-Instruct-Q4_K_M.gguf -Algorithm SHA256).Hash.ToLower()
           if ($h -ne "65b8fcd92af6b4fefa935c625d1ac27ea29dcb6ee14589c55a8f115ceaaa1423") { throw "Prüfsumme falsch: $h" }
