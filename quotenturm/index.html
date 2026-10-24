@@ -417,6 +417,7 @@ td.cw { position: relative; } .cell-i { position: absolute; right: 8px; top: 8px
 .moodbar { position: relative; height: 14px; border-radius: 7px; background: linear-gradient(90deg, hsl(350 70% 55%), hsl(0 0% 55%) 50%, hsl(215 70% 55%)); } .moodbar i { position: absolute; top: -4px; width: 6px; height: 22px; margin-left: -3px; border-radius: 3px; } .mood-now { border: 2px solid #fff; } .mood-you { background: var(--hot); width: 4px !important; outline: 2px dashed var(--hot); outline-offset: 2px; }
 .pick.on { border-color: var(--hot); background: color-mix(in srgb, var(--hot) 12%, var(--panel)); }
 textarea[data-draft] { font: inherit; color: inherit; background: transparent; border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; box-sizing: border-box; resize: vertical; } textarea[data-draft]:focus { outline: 2px solid var(--hot); }
+.cards2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 460px), 1fr)); gap: 12px; }
 .ctxmenu { position: fixed; z-index: 9999; min-width: 230px; max-width: 320px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 12px 32px rgba(0,0,0,.45); padding: 6px; display: grid; gap: 2px; }
 .ctxmenu button { text-align: left; background: none; border: 0; color: inherit; padding: 7px 10px; border-radius: 6px; cursor: pointer; font: inherit; display: grid; } .ctxmenu button:hover { background: color-mix(in srgb, var(--hot) 18%, transparent); } .ctxmenu small { color: var(--muted); font-size: 11px; }
 .ctx-t { font-weight: 700; padding: 6px 10px; border-bottom: 1px solid var(--line); margin-bottom: 4px; } .ctx-h { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); padding: 6px 10px 2px; }
@@ -1341,7 +1342,7 @@ const MENU = [
   { id: "streaming", name: "Streaming", subs: [["stream", "Plattform", "Abos, Churn, ARPU und Preismodell"], ["catalog", "Katalog", "Titel und Verwertungsfenster"], ["smarket", "Wettbewerb", "Streamer im Vergleich und Top 10"], ["svhq", "Streaming-Zentrale", "Leitung eines Streamers (Karriere)"]] },
   { id: "sport", name: "Sport", subs: [["rights", "Rechtemarkt", "Ausschreibungen und Gebote"], ["myrights", "Meine Rechte", "Pakete und Live-Termine"], ["spielplan", "Spielplan", "Rahmenterminkalender Fußball"]] },
   { id: "quoten", name: "Quoten", subs: [["table", "Quotentabelle", "Senderranking nach Marktanteil"], ["ratings", "Einschaltquoten", "Jede Stunde, jeder Sender"], ["rivals", "Konkurrenz", "Tagesplan der anderen Sender"], ["landscape", "Markt", "Sendergruppen und Streamer"], ["mediaana", "Media-Analyse", "Marktanteile Z1–Z4 je Sender, Quartal"]] },
-  { id: "sender", name: "Sender", subs: [["chiefs", "Rivalen", "Beziehungen zu den Senderchefs"], ["board", "Senderleitung", "Erwartungen, Vertrauen, Kredit"], ["finance", "Finanzen", "Erlöse, Kosten, EBITDA"], ["contracts", "Werbeverträge", "Laufende Werbeverträge"], ["adsales", "Vermarktung", "Erlöse, TKP, Kunden, Preisliste"], ["personal", "Personal", "Moderation, Kommentar, Produktion"], ["karriere", "Karriere", "Job-Sicherheit, Arbeitsmarkt, Vorstand"], ["bank", "Bank & Bilanz", "Kredite, Liquidität, Abschreibung, Spielstand"], ["hof", "Ruhmeshalle", "Jahresrückblick und Auszeichnungen"], ["agency", "Werbeagentur", "Neue Werbekunden gewinnen"], ["jury", "Fernsehpreise", "Grimme, Fernsehpreis, Bambi, Henne"]] },
+  { id: "sender", name: "Sender", subs: [["chiefs", "Rivalen", "Beziehungen zu den Senderchefs"], ["board", "Senderleitung", "Erwartungen, Vertrauen, Kredit"], ["finance", "Finanzen", "Erlöse, Kosten, EBITDA"], ["contracts", "Werbeverträge", "Laufende Werbeverträge"], ["adsales", "Vermarktung", "Erlöse, TKP, Kunden, Preisliste"], ["personal", "Personal", "Moderation, Kommentar, Produktion"], ["backroom", "Mitarbeiterstab", "Vermarktung, Disposition, Casting, Technik"], ["rentab", "Rentabilität", "Ergebnis je Sendung mit Tipps"], ["network", "Beziehungen", "Studios, Presse, Medienpolitik, Stars"], ["karriere", "Karriere", "Job-Sicherheit, Arbeitsmarkt, Vorstand"], ["bank", "Bank & Bilanz", "Kredite, Liquidität, Abschreibung, Spielstand"], ["hof", "Ruhmeshalle", "Jahresrückblick und Auszeichnungen"], ["agency", "Werbeagentur", "Neue Werbekunden gewinnen"], ["jury", "Fernsehpreise", "Grimme, Fernsehpreis, Bambi, Henne"]] },
 ];
 let openMenu = null;
 const PAGE_SECTION = Object.fromEntries(MENU.flatMap(m => m.subs.map(([k]) => [k, m.id])));
@@ -1424,7 +1425,7 @@ const isMe = st => st.i === G.me;
 
 function uid() { return ++G.idc; }
 // Lizenz: 1 Jahr (Filme 3, Serien 2 Durchläufe) oder 2 Jahre (5 bzw. 3 Durchläufe) zum 1,65-fachen Preis
-const licPrice = (p, yrs) => r1000(p.price * (yrs === 2 ? 1.65 : 1) * (G && G.avatar ? 1 - (G.avatar.neg || 0) * 0.012 : 1));
+const licPrice = (p, yrs) => r1000(p.price * (yrs === 2 ? 1.65 : 1) * (G && G.avatar ? 1 - (G.avatar.neg || 0) * 0.012 : 1) * (G ? 1 - 0.08 * relF("studios") : 1)); // Beziehung zu den Studios
 function applyLicense(p, yrs, from = G.day) {
   p.until = from + yrs * 365 - 1;
   if (p.kind === "film") p.maxRuns = yrs === 2 ? 5 : 3;
@@ -1598,7 +1599,7 @@ function logMsg(from, tag, msg, toastIt) {
   G.log.length = Math.min(G.log.length, 200);
   if (toastIt) toast(msg);
 }
-function book(st, key, v) { st.fin[key] = (st.fin[key] || 0) + v; st.money += v; }
+function book(st, key, v) { if (key === "Strafen" && v < 0 && G && G.rel && isMe(st)) v = r1000(v * clamp(1 - 0.25 * relF("politik"), 0.75, 1.25)); st.fin[key] = (st.fin[key] || 0) + v; st.money += v; }
 
 // =====================================================================
 // Programmplanung (Wochenplan je Wochentag, heute = Kopie mit Live-Events)
@@ -1870,10 +1871,11 @@ function attrCell(st, i, c) {
     if (p.boost && (!p.boost.day || p.boost.day === G.day)) A *= 1 + p.boost.v; // Gaststar, Event-Ausgabe, Relaunch
     if (p.young) A *= 1 + p.young / 1000 * Math.min(1.5, ST_YOUNG[st.id] || 1);
   }
+  if (isMe(st)) A *= 1 + 0.03 * boSkill("dispo") + (p && (p.own || p.home === st.id) ? 0.03 * relF("presse") : 0); // Disposition, Medienpresse
   if (isMe(st) && G.adBreak[i]) A *= 0.85;
   if (isMe(st) && p && p.hypeTv && (p.aired === 0 || (c.cont && p.aired === 1 && p.lastAired === G.day))) A *= 1 + p.hypeTv / 100;
   if (isMe(st) && p && p.kind === "sport" && G.mods.split) A *= 0.95;
-  if (isMe(st) && i >= LIVE_FROM && !G.mods.studioOk && G.mods.studioRisk >= G.day && Math.random() < 0.05) { A *= 0.3; G.blackout = i; }
+  if (isMe(st) && i >= LIVE_FROM && !G.mods.studioOk && G.mods.studioRisk >= G.day && Math.random() < 0.05 * (1 - 0.8 * boSkill("cto"))) { A *= 0.3; G.blackout = i; }
   return { p, c, A };
 }
 function airHour(i) {
@@ -2142,7 +2144,7 @@ function streamDay() {
   const shares = !sFree(S) ? tierShares(S) : null;
   const svod = shares ? S.subs * 1e6 * shares.reduce((a, sh, k) => a + sh * S.tiers[k], 0) / 30 * (campaign ? 0.85 : 1) * arpuFactor(S) * (o.annual ? 0.95 : 1) * (o.bundle ? 0.9 : 1) * (o.sharing ? 1.07 : 1) : 0;
   const avod = S.model === "free" ? 0 : views * (shares ? shares[0] * 0.05 : 0.05); // Werbung je Abruf (Abo: nur Basis-Paket)
-  const server = STAGES.slice(1, S.stage + 1).reduce((a, s) => a + s.server, 0) + (S.capacity - 1) * 20000;
+  const server = r1000((STAGES.slice(1, S.stage + 1).reduce((a, s) => a + s.server, 0) + (S.capacity - 1) * 20000) * (1 - 0.15 * boSkill("cto"))); // Technikleitung
   const cdn = views * 0.004;
   if (svod) book(P, "Streaming-Abos", r1000(svod));
   if (avod) book(P, "Streaming-Werbung", r1000(avod));
@@ -2745,7 +2747,7 @@ function negoWish(n) {
   return r1000(f * avNeg()); // Verhandlungsgeschick
 }
 // Verborgene Schmerzgrenze: wer kaum Geduld übrig hat, gibt weniger nach
-const negoFloor = n => { const p = person(n.id); return r1000(negoWish(n) * (0.88 + (100 - pPat(p)) / 100 * 0.12 + (p.rel < 50 ? 0.04 : 0))); };
+const negoFloor = n => { const p = person(n.id); return r1000(negoWish(n) * (0.88 + (100 - pPat(p)) / 100 * 0.12 + (p.rel < 50 ? 0.04 : 0)) * (1 - 0.08 * boSkill("casting"))); }; // Casting-Leitung verhandelt mit
 const negoOffer = n => r1000(negoWish(n) * n.pct / 100);
 const moodText = pat => pat >= 70 ? ["Gesprächsbereit", "good"] : pat >= 40 ? ["Wird ungeduldig", "warn"] : ["Kurz vor dem Abbruch", "fsk"];
 function openNego(id, ctx, slot) {
@@ -3403,7 +3405,7 @@ function nextDay() {
   G.day++;
   for (const st of G.stations) st.fin = {};
   projectDay();
-  prodDay(); peopleDay(); newsroomDay(); trendDay(); awardsDay(); marketDay(); presaleDay(); rivalsDay(); formatDay(); postQuotenReport(); frameDay(); conflictCheck(); fmDay(); scoutDay(); rumorDay(); staffDay(); politicsDay(); agendaDay(); seasonTick(); cineDay(); inhouseDay(); socialDay(); moraleDay(me()); castDay(me()); hofDay(); pressDay(); financeDay(); maDay(); if (G.day % 7 === 1) { careerWeek(); financeWeek(); contractWeek(); fmtTradeWeek(); } if (G.day % 84 === 0) quarterReport(); if (G.career && (G.career.out || G.career.mode === "stream")) fillHorizon(me()); svDay(); primeCheck(); szDay();
+  prodDay(); peopleDay(); newsroomDay(); trendDay(); awardsDay(); marketDay(); presaleDay(); rivalsDay(); formatDay(); postQuotenReport(); frameDay(); conflictCheck(); fmDay(); scoutDay(); rumorDay(); staffDay(); politicsDay(); agendaDay(); seasonTick(); cineDay(); inhouseDay(); socialDay(); moraleDay(me()); castDay(me()); hofDay(); pressDay(); financeDay(); maDay(); if (G.day % 7 === 1) { boWeek(me()); relWeek(); careerWeek(); financeWeek(); contractWeek(); fmtTradeWeek(); } if (G.day % 84 === 0) quarterReport(); if (G.career && (G.career.out || G.career.mode === "stream")) fillHorizon(me()); svDay(); primeCheck(); szDay();
   if (dateOf(G.day).getDate() === 1 && !G.event) setInterview(); // Interview zum Monatsbeginn
   if (G.mods.coverup && G.day >= G.mods.coverup.day) {
     const c = G.mods.coverup; G.mods.coverup = null;
@@ -3545,7 +3547,7 @@ function applyClubColors() {
 function render(top) {
   if (!G) return;
   renderNav(); renderTop();
-  const pages = { overview, inbox, plan: planPage, archiv, market, filmmarket: filmMarketPage, chiefs: rivalsPage, adsales: adsalesPage, spielplan: spielplanPage, formatmarkt: formatMarketPage, wochenplan: weekPlanPage, formatdev: formatDevPage, personal: staffPage, karriere: careerPage, social: socialPage, svhq: svPage, talent: talentPage, kino: cinePage, hof: hofPage, settings: settingsPage, bank: bankPage, mediaana: maPage, politik: politicsPage, stream: streamPage, catalog, smarket, rights: rightsPage, myrights, contracts, agency, ticker, table: tablePage, ratings, landscape, board, finance, jury, rivals, live: livePage, studio, newprod: newProdPage, casting, newsroom, export: exportPage };
+  const pages = { overview, inbox, plan: planPage, archiv, market, filmmarket: filmMarketPage, chiefs: rivalsPage, adsales: adsalesPage, spielplan: spielplanPage, formatmarkt: formatMarketPage, wochenplan: weekPlanPage, formatdev: formatDevPage, personal: staffPage, backroom: backroomPage, rentab: rentPage, network: networkPage, karriere: careerPage, social: socialPage, svhq: svPage, talent: talentPage, kino: cinePage, hof: hofPage, settings: settingsPage, bank: bankPage, mediaana: maPage, politik: politicsPage, stream: streamPage, catalog, smarket, rights: rightsPage, myrights, contracts, agency, ticker, table: tablePage, ratings, landscape, board, finance, jury, rivals, live: livePage, studio, newprod: newProdPage, casting, newsroom, export: exportPage };
   const sc = $("content").scrollTop;
   $("content").innerHTML = (pages[page] || overview)(me());
   if (!top) $("content").scrollTop = sc;
@@ -4185,6 +4187,10 @@ function act(b) {
     case "dvZoom": case "dvPick": case "dvResolve": case "dvOver": case "dvOpenK": case "dvCasc": case "dvTime": case "dvDel": case "dvSwap": case "dvIns": case "fixDlg": case "fixWd": case "fixQuick": case "fixTime": case "fixAdd": case "fixDel": dvAction(P, k, b, id); return;
     case "descAi": if (draft) descAi(draft, "descAiOut"); return;
     case "prodInfo": { const pr = G.prods.find(x => String(x.id) === b.dataset.k); if (pr) prodInfo(pr); return; }
+    case "boHire": if (!planLocked()) boHire(P, b.dataset.k); break;
+    case "boFire": if (confirm("Wirklich kündigen? Abfindung: vier Wochengehälter.")) boFire(P, b.dataset.k); break;
+    case "rentSort": rentSort = b.dataset.k; break;
+    case "relAct": relAct(P, b.dataset.k, b.dataset.v); break;
     case "swin": { const p = progOf(P, id); if (p) setWindow(P, p, b.dataset.k); break; }
     case "ctxPlan": { const p = progOf(P, id); if (!p) return; dvPick = p.id; planDay = planDay && planDay >= G.day ? planDay : G.day + 1; go("plan"); toast(`„${p.title}“ gewählt – jetzt die Uhrzeit im Kalender antippen.`); return; }
     case "autoWin": if (G.stream) G.stream.autoWin = b.dataset.k || null; break;
@@ -5083,7 +5089,7 @@ const TKP_BASE = 16, NET_F = 0.55;
 const TKP_DP = { nacht: 0.55, morgen: 0.75, tag: 0.85, vorabend: 1.1, prime: 1.35, spaet: 1.0 };
 const tkpBrutto = (st, i, p) => TKP_BASE * TKP_DP[dpOf(i)] * (p ? clamp(0.75 + 0.25 * youthIdx(st, p), 0.6, 1.6) : 1) * (0.85 + 0.15 * adSeason());
 // Auslastung des Werbeinventars: Saison und Preisliste
-const sellThrough = () => clamp(0.2 + 0.55 * adSeason(), 0.35, 0.95) * clamp(2 - adList(), 0.6, 1.2);
+const sellThrough = () => Math.min(0.98, clamp(0.2 + 0.55 * adSeason(), 0.35, 0.95) * clamp(2 - adList(), 0.6, 1.2) * (1 + 0.12 * boSkill("ads"))); // Vermarktungsleitung
 function adBlockRevenue(st, i, v, p, minutes = adMinH(st, i)) {
   if (!minutes || !v) return { pay: 0, k: 0 };
   const k = minutes * 2 * v * 1000 * sellThrough(); // verkaufte Kontakte in Tausend (zwei 30-s-Spots je Minute)
@@ -9108,6 +9114,127 @@ function prodInfo(pr) {
     ${pr.desc ? `<div class="kv"><span>Einschätzung Programmplanung</span><b>${pr.descScore ?? "–"} / 10</b></div>` : ""}
     ${pr.aiNote ? `<p class="fine">KI-Einschätzung: ${esc(pr.aiNote)}</p>` : ""}
     <h3>Besetzung</h3><p>${pr.cast.map(id => person(id)).filter(Boolean).map(q => personLink(q)).join(", ") || "–"}</p></div>`);
+}
+// =====================================================================
+// Mitarbeiterstab (Backroom): Werbevermarktung, Chef-Disposition, Casting-Leitung, Technikleitung.
+// Erfundene Fachleute mit Attributen 1–20; einstellbar und kündbar.
+// =====================================================================
+const BO_ROLES = {
+  ads: { name: "Leitung Werbevermarktung", short: "Vermarktung", attrs: [["Verkauf", "ver"], ["Netzwerk", "net"], ["Preisgefühl", "pre"]], fx: "Mehr verkaufte Werbezeit und bessere Preise" },
+  dispo: { name: "Chef-Disposition", short: "Disposition", attrs: [["Planung", "pla"], ["Publikumsgespür", "pub"], ["Konkurrenzanalyse", "kon"]], fx: "Bessere Programmabfolge und Audience Flow" },
+  casting: { name: "Casting-Leitung", short: "Casting", attrs: [["Verhandlung", "ver"], ["Talentblick", "tal"], ["Agenturkontakte", "net"]], fx: "Günstigere Verträge, zufriedenere Talente" },
+  cto: { name: "Technikleitung", short: "Technik", attrs: [["Betrieb", "bet"], ["Streaming", "str"], ["Innovation", "inn"]], fx: "Weniger Sendeausfälle, günstigerer Streaming-Betrieb" },
+};
+const BO_FIRST = ["Alex", "Sascha", "Kim", "Robin", "Jona", "Mika", "Toni", "Charlie", "Luca", "Noa", "Jule", "Sam", "Nico", "Andrea", "Fabi", "Eike", "Kai", "Lou", "Maxi", "Ronja", "Deniz", "Elia", "Janne", "Rike"];
+const BO_LAST = ["Brandt", "Kessler", "Hofer", "Lindner", "Seidel", "Graf", "Aydin", "Novak", "Wendt", "Pohl", "Reuter", "Busch", "Jansen", "Krämer", "Vogt", "Haas", "Engel", "Ritter", "Sommer", "Brückner", "Yilmaz", "Petrov", "Lehmann", "Franke"];
+function ensureBO() {
+  if (!G.bo) G.bo = { staff: {}, pool: [], poolWeek: -1 };
+  const wk = Math.floor(G.day / 7);
+  if (G.bo.poolWeek !== wk) {
+    G.bo.poolWeek = wk; G.bo.pool = [];
+    for (const r of Object.keys(BO_ROLES)) for (let k = 0; k < 3; k++) {
+      const lvl = ri(6, 18), at = {}; for (const [, key] of BO_ROLES[r].attrs) at[key] = clamp(lvl + ri(-3, 3), 1, 20);
+      const avg = Object.values(at).reduce((a, b) => a + b, 0) / 3;
+      G.bo.pool.push({ id: "bo" + uid(), role: r, name: `${pick(BO_FIRST)} ${pick(BO_LAST)}`, at, age: ri(29, 61), wk: r1000(4000 + avg * avg * 55), loy: ri(6, 18) });
+    }
+  }
+  return G.bo;
+}
+const boAvg = s => s ? Object.values(s.at).reduce((a, b) => a + b, 0) / Object.keys(s.at).length : 0;
+// Wirkung 0 … 1 je Bereich (unbesetzt: 0)
+const boSkill = r => { const s = G && G.bo && G.bo.staff[r]; return s ? clamp((boAvg(s) - 5) / 15, 0, 1) : 0; };
+function boHire(P, id) {
+  const B = ensureBO(), c = B.pool.find(x => x.id === id); if (!c) return;
+  const fee = c.wk * 2; if (P.money < fee) { toast("Die Antrittsprämie können Sie gerade nicht bezahlen."); return; }
+  if (B.staff[c.role]) boFire(P, c.role, true);
+  book(P, "Redaktion & Gagen", -fee); B.staff[c.role] = { ...c, since: G.day }; B.pool = B.pool.filter(x => x !== c);
+  logMsg("Personalabteilung", "Personal", `${c.name} übernimmt die ${BO_ROLES[c.role].name} (${eur(c.wk)} pro Woche, Antrittsprämie ${eur(fee)}).`, true);
+}
+function boFire(P, r, quiet) {
+  const B = ensureBO(), s = B.staff[r]; if (!s) return;
+  const fee = s.wk * 4; book(P, "Redaktion & Gagen", -fee); delete B.staff[r];
+  if (!quiet) logMsg("Personalabteilung", "Personal", `${s.name} verlässt die ${BO_ROLES[r].name} – Abfindung ${eur(fee)}.`, true);
+}
+function boWeek(P) { const B = ensureBO(); const sum = Object.values(B.staff).reduce((a, s) => a + s.wk, 0); if (sum) book(P, "Redaktion & Gagen", -sum); }
+function backroomPage(P) {
+  const B = ensureBO();
+  let h = title("Mitarbeiterstab", `<span class="muted">${Object.keys(B.staff).length} von 4 Schlüsselpositionen besetzt</span>`);
+  h += `<p class="lead mb">Die Leute hinter den Kulissen: Attribute 1–20. Je besser besetzt, desto stärker die Wirkung. Der Bewerberpool erneuert sich jede Woche; eine Kündigung kostet vier Wochengehälter.</p><div class="cards2">`;
+  for (const [r, R] of Object.entries(BO_ROLES)) {
+    const s = B.staff[r], cands = B.pool.filter(x => x.role === r);
+    h += `<section class="panel mb"><div class="ph"><h2>${R.name}</h2><span class="aside">${R.fx}</span></div><div class="pad">
+      ${s ? `<div class="slot-card filled"><span class="avatar" style="--h:${hashStr(s.name) % 360}">${esc(s.name.split(" ").map(w => w[0]).join(""))}</span><div class="grow"><b>${esc(s.name)}</b><span class="muted">${s.age} J. · ${eur(s.wk)}/Woche · seit ${dateShort(s.since)}</span>
+        <span class="muted">${R.attrs.map(([n, k]) => `${n} ${attr(s.at[k] * 5).replace(/>\d+</, `>${s.at[k]}<`)}`).join(" · ")}</span><span class="fine">Wirkung: ${Math.round(boSkill(r) * 100)} %</span></div><button class="btn small red" data-act="boFire" data-k="${r}">Kündigen</button></div>` : '<p class="down">Unbesetzt – keine Wirkung.</p>'}
+      <h3 style="margin-top:10px">Bewerbungen diese Woche</h3><div class="tbl"><table><tbody>${cands.map(c => `<tr><td class="title">${esc(c.name)}<div class="muted">${c.age} J.</div></td>${R.attrs.map(([n, k]) => `<td class="num" title="${n}">${attr(c.at[k] * 5).replace(/>\d+</, `>${c.at[k]}<`)}</td>`).join("")}<td class="num">${eur(c.wk)}/W.</td><td class="r"><button class="btn small hot" data-act="boHire" data-k="${c.id}" ${P.money < c.wk * 2 ? "disabled" : ""}>Einstellen</button></td></tr>`).join("")}</tbody></table></div></div></section>`;
+  }
+  return h + "</div>";
+}
+// =====================================================================
+// Rentabilität je Format: Erlöse gegen Kosten pro Ausstrahlung, mit Tipps
+// =====================================================================
+function rentRows(P) {
+  const avgMA = stationAvgMA(P);
+  return P.progs.filter(p => (p.finLog || []).length && !p.house).map(p => {
+    const log = p.finLog.slice(-10), n = log.length, sum = k => log.reduce((a, e) => a + (e[k] || 0), 0) / n;
+    const rev = sum("blk") + sum("spot") + sum("camp") + sum("spons"), cost = sum("prod") + sum("lic") + sum("gage"), res = rev - cost, st = fmtStats(p);
+    const tips = [];
+    if (res < 0 && st.ma < avgMA * 0.8) tips.push("Verliert Geld und Quote – absetzen, verkaufen oder Budget kürzen.");
+    else if (res < 0 && st.ma >= avgMA) tips.push(p.own || p.home === P.id ? "Quote stimmt, Kosten zu hoch – Budget kürzen oder günstiger besetzen." : "Lizenzkosten zu hoch für diesen Sendeplatz – auf einen reichweitenstärkeren Platz legen oder mehr Werbung verkaufen.");
+    else if (res < 0) tips.push(p.own || p.home === P.id ? "Kosten über den Erlösen – Budget kürzen oder neu besetzen." : "Rechnet sich hier nicht – Wiederholung in eine günstigere Randzeit verschieben.");
+    if (rev && sum("blk") < rev * 0.5 && st.ma >= avgMA) tips.push("Starke Quote, wenig Werbegeld – Werbelast im Sendeplatz erhöhen oder Sponsoring suchen.");
+    if (st.y >= 12 && p.kind !== "film") tips.push("Junges Publikum – ideal für Premium-Kampagnen und den Stream.");
+    if ((p.topic ?? 1) < 0.6) tips.push("Abgenutzt – eine Pause hebt die Aktualität wieder.");
+    if (st.trend < -1.5) tips.push("Quote sinkt – Sendeplatz prüfen oder neu besetzen.");
+    if (p.until && p.until - G.day < 30) tips.push(`Lizenz endet am ${dateShort(p.until)} – Verlängerung prüfen.`);
+    if (res > 0 && st.ma >= avgMA * 1.2) tips.push("Zugpferd – feste Sendetermine sichern, Hauptdarsteller langfristig binden.");
+    return { p, n, rev, cost, res, margin: rev ? res / rev : -1, ma: st.ma, tips };
+  }).sort((a, b) => a.res - b.res);
+}
+let rentSort = "res";
+function rentPage(P) {
+  const rows = rentRows(P);
+  if (rentSort === "margin") rows.sort((a, b) => a.margin - b.margin); else if (rentSort === "best") rows.sort((a, b) => b.res - a.res);
+  const tot = rows.reduce((a, r) => a + r.res * r.n, 0);
+  let h = title("Rentabilität", `<span class="muted">${rows.length} Sendungen mit Abrechnung · letzte 10 Ausstrahlungen</span>`);
+  h += `<div class="pills mb">${[["res", "Größte Verlierer zuerst"], ["best", "Größte Gewinner zuerst"], ["margin", "Nach Marge"]].map(([k, l]) => `<button data-act="rentSort" data-k="${k}" class="${rentSort === k ? "on" : ""}">${l}</button>`).join("")}</div>`;
+  h += `<section class="panel"><div class="tbl"><table><thead><tr><th>Sendung</th><th class="num">Ø MA</th><th class="num">Erlös / Ausstr.</th><th class="num">Kosten / Ausstr.</th><th class="num">Ergebnis</th><th class="num">Marge</th><th>Tipps der Programmdirektion</th></tr></thead><tbody>
+    ${rows.map(r => `<tr data-ctx="p|${r.p.id}"><td class="title">${titleLink(`${P.id}|${r.p.id}`, r.p.title)}<div class="muted">${esc(r.p.genre)} · ${r.n}× abgerechnet</div></td><td class="num">${pct(r.ma)}</td><td class="num up">${meur(r.rev)}</td><td class="num down">${meur(r.cost)}</td><td class="num ${r.res < 0 ? "down" : "up"}"><b>${meur(r.res)}</b></td><td class="num">${r.margin > -1 ? Math.round(r.margin * 100) + " %" : "–"}</td><td class="fine" style="white-space:normal;min-width:260px">${r.tips.map(esc).join("<br>") || "Läuft solide."}</td></tr>`).join("") || '<tr><td colspan="7" class="muted">Abrechnungen erscheinen nach den ersten Sendetagen.</td></tr>'}
+    </tbody></table></div><p class="pad fine">Summe der letzten Ausstrahlungen: <b class="${tot < 0 ? "down" : "up"}">${meur(tot)}</b>. Rechtsklick auf eine Sendung für Besetzung, feste Termine und Verwertung.</p></section>`;
+  return h;
+}
+// =====================================================================
+// Beziehungsnetzwerk: Institutionen statt Einzelpersonen – keine erfundenen Aussagen.
+// =====================================================================
+const REL_DEF = {
+  studios: { name: "Studioleitungen", desc: "Hollywood-Majors und deutsche Produzenten", fx: "Lizenzpreise bis −8 % bzw. +8 %", acts: [["premiere", "Premierenkarten & Screening", 60000, 6], ["deal", "Gespräch über ein Output-Paket", 0, 3]] },
+  presse: { name: "Medienpresse", desc: "Fachpresse, Feuilleton und Boulevard als Institutionen", fx: "Bessere Kritiken, bis ±3 % Quote auf Eigenes", acts: [["hintergrund", "Hintergrundgespräch", 0, 4], ["empfang", "Presseempfang", 120000, 8]] },
+  politik: { name: "Medienpolitik", desc: "Landesmedienanstalten und medienpolitische Gremien", fx: "Mildere Bußgelder (bis −25 %)", acts: [["anhoerung", "Stellungnahme in einer Anhörung", 0, 4], ["jugend", "Jugendschutz-Initiative", 200000, 9]] },
+  stars: { name: "Eigene Stars", desc: "Alle Gesichter unter Vertrag bei Ihnen", fx: "Zufriedenheit und Bindung", acts: [["abend", "Teamabend", 80000, 0], ["preis", "Hauspreis verleihen", 150000, 0]] },
+};
+function ensureRel() { if (!G.rel) G.rel = { studios: 50, presse: 50, politik: 50, cd: {} }; return G.rel; }
+function relWeek() { const R = ensureRel(); for (const k of ["studios", "presse", "politik"]) R[k] = Math.round(50 + (R[k] - 50) * 0.94); }
+const relF = k => (ensureRel()[k] - 50) / 50; // −1 … +1
+function relAct(P, k, a) {
+  const R = ensureRel(), def = REL_DEF[k].acts.find(x => x[0] === a); if (!def) return;
+  const key = k + "|" + a; if ((R.cd[key] || 0) > G.day) { toast("Das war erst kürzlich – bitte etwas Zeit lassen."); return; }
+  if (P.money < def[2]) { toast("Dafür reicht das Budget nicht."); return; }
+  if (def[2]) book(P, "Marketing", -def[2]);
+  R.cd[key] = G.day + (def[2] ? 14 : 7);
+  if (k === "stars") { const qs = G.people.filter(q => q.holder === P.id); qs.forEach(q => { q.sat = clamp(pSat(q) + (a === "preis" ? 6 : 4), 0, 100); }); logMsg("Personalabteilung", "Personal", `${def[1]}: ${qs.length} Personen unter Vertrag sind zufriedener.`, true); return; }
+  const gain = def[3] + ri(-2, 3); R[k] = clamp(R[k] + gain, 0, 100);
+  logMsg("Kommunikation", "Netzwerk", `${def[1]} mit der Institution „${REL_DEF[k].name}“: Beziehung ${gain >= 0 ? "+" : ""}${gain} (jetzt ${R[k]}).`, true);
+}
+function networkPage(P) {
+  const R = ensureRel(), mine = G.people.filter(q => q.holder === P.id), satAvg = mine.length ? Math.round(mine.reduce((a, q) => a + pSat(q), 0) / mine.length) : 0;
+  let h = title("Beziehungen", `<span class="muted">Ihr Netzwerk in der Branche</span>`);
+  h += `<p class="lead mb">Beziehungen pflegen Sie zu Institutionen, nicht zu einzelnen echten Personen. Werte unter 50 schaden, über 50 helfen; ohne Pflege driften sie zur Mitte zurück.</p><div class="cards2">`;
+  for (const [k, D] of Object.entries(REL_DEF)) {
+    const v = k === "stars" ? satAvg : R[k];
+    h += `<section class="panel mb"><div class="ph"><h2>${D.name}</h2><span class="aside">${D.desc}</span></div><div class="pad">
+      <div class="goal"><div class="row"><b>${k === "stars" ? `Ø Zufriedenheit (${mine.length} Personen)` : "Beziehung"}</b><span class="${v >= 60 ? "up" : v < 40 ? "down" : ""}">${v} / 100</span></div><div class="track"><i style="width:${v}%;background:${v >= 60 ? "#22c55e" : v < 40 ? "#ef4444" : "#eab308"}"></i></div></div>
+      <p class="fine">Wirkung: ${D.fx}</p><div class="actions" style="flex-wrap:wrap">${D.acts.map(([a, n, c]) => { const cd = (R.cd[k + "|" + a] || 0) > G.day; return `<button class="btn small" data-act="relAct" data-k="${k}" data-v="${a}" ${cd || P.money < c ? "disabled" : ""}>${n}${c ? ` · ${eur(c)}` : ""}${cd ? ` (ab ${dateShort(R.cd[k + "|" + a])})` : ""}</button>`; }).join("")}</div></div></section>`;
+  }
+  return h + "</div>";
 }
 // =====================================================================
 // Formatprofil: Quotenverlauf, Publikum, Analyse und Maßnahmen je Sendung
