@@ -8278,7 +8278,7 @@ function airChip(p, earlier) {
   if (earlier != null) return `<span class="chip warn">Wiederholung von ${hhmm(earlier)}</span>`;
   if (p.kind === "serie") return (p.ep || 0) < (p.eps || 0) ? `<span class="chip good">Neue Folge ${(p.ep || 0) + 1}/${p.eps}</span>` : `<span class="chip">Wiederholung</span>`;
   if (p.kind === "film") return (p.runs || 0) === 0 ? '<span class="chip good">Free-TV-Premiere</span>' : `<span class="chip">Wiederholung · ${p.runs + 1}. Lauf</span>`;
-  return !p.aired ? '<span class="chip good">Erstausstrahlung</span>' : '<span class="chip good">Neue Ausgabe</span>';
+  return !p.aired && !["Nachrichten", "Magazin", "Talk"].includes(p.genre) ? '<span class="chip good">Erstausstrahlung</span>' : '<span class="chip good">Neue Ausgabe</span>';
 }
 function seqTimeline(P, d, lock) {
   const wd = weekday(d), sc = schedFor(P, d), isToday = d === G.day;
