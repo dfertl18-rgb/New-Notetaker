@@ -1329,7 +1329,7 @@ function crest(i, size = 34) {
 }
 function sbadge(id, size = 18) {
   const s = STREAMERS.find(x => x.id === id);
-  if (LOGOS[id]) return `<img src="${LOGOS[id]}" alt="" class="logo" style="height:${size}px;max-width:${size * 4}px">`;
+  if (LOGOS[id]) return `<img src="${LOGOS[id]}" alt="${esc(s.name)}" title="${esc(s.name)}" class="logo sbadge" data-streamer="${s.id}" style="height:${size}px;max-width:${size * 4}px;cursor:pointer">`;
   return `<span class="sbadge" data-streamer="${s.id}" style="--c:${s.color}">${esc(s.name.split(" ")[0])}</span>`;
 }
 const sname = i => `<span class="sn" data-station="${STATIONS[i].id}">${crest(i, 16)}${esc(STATIONS[i].name)}</span>`;
@@ -1442,6 +1442,7 @@ function newGame(stationId) {
     if (st.type === "privat") st.progs.push(makeFiller("Teleshopping", st));
     else st.progs.push(makeFiller("Doku", st));
     while (st.progs.length < 22) st.progs.push(makeFiller(pick(STATIONS[st.i].profile.concat(["Magazin", "Reality", "Doku"])), st));
+    dbArchive(st);
   }
   // Startbestand: eingekaufte Lizenzen laufen unterschiedlich lange
   for (const st of G.stations) for (const p of st.progs) if (p.real && !p.home && (p.kind === "film" || p.kind === "serie")) { applyLicense(p, 2); p.until = G.day + ri(90, 700); }
@@ -1482,7 +1483,8 @@ function refreshOffers(first) {
   const fpool = shuffle(FILM_DB.concat(shuffle(importedFilms()).slice(0, 60)).filter(r => !owned.has(r[0])));
   while (G.market.filter(p => p.kind === "serie").length < 6 && spool.length) G.market.push(fromDB(spool.pop()));
   const filmMax = G.mods && G.mods.filmShortage >= G.day ? 9 : 14;
-  while (G.market.length < filmMax && fpool.length) G.market.push(realFilm(fpool.pop()));
+  while (G.market.length < filmMax && fpool.length) G.market.push(Math.random() < 0.5 && dbPick("film", owned) || realFilm(fpool.pop()));
+  { const s2 = dbPick("serie", owned); if (s2 && G.market.filter(p => p.kind === "serie").length < 9) G.market.push(s2); }
   refreshAds();
   G.newsOffers = [];
   for (let k = 0; k < 5; k++) G.newsOffers.push(makeNews());
@@ -1649,6 +1651,10 @@ function planDayFor(st, wd, sc = st.week[wd], opts = {}) {
     let best = null, bestS = 0;
     for (const p of st.progs) {
       if (canPlace(st, sc, p, i) || !youthOk(p, i) || (rem && rem.get(p) <= 0) || (opts.day && p.until && opts.day > p.until) || offSeason(p, opts.day ?? G.day)) continue;
+      if (p.sz === undefined && (STAFFEL_DEF[p.title] || p.own || p.home)) szInit(st, p);
+      if (p.sz && (!p.sz.on && !p.sz.rerun || !rhFits(p, wd, opts.day ?? G.day))) continue; // Staffelpause bzw. fester Sendetag
+      if (STAFFEL_DEF[p.title] && STAFFEL_DEF[p.title].rh !== "daily" && (i < 19 || i > 22)) continue; // große Shows laufen am Abend
+      if (p.sz && sc.some(c => c.p === p.id && !c.cont)) continue; // höchstens einmal am Tag
       let blocked = false; for (let k = 1; k < p.len; k++) if (sc[i + k].p) blocked = true;
       if (blocked) continue;
       let s = p.q * fit(p.genre, i) * (0.35 + 0.65 * p.topic);
@@ -1751,6 +1757,7 @@ function attrCell(st, i, c) {
     A = st.brand * Math.pow(p.q / 60, 1.5) * fit(p.genre, i) * topic * newsMult * rnd(0.9, 1.1);
     if (c.cont && p.kind !== "sport") A *= 0.96;
     if (p.pull) A *= 1 + p.pull * 0.12; // bekannte Titel ziehen mehr Publikum
+    A *= szAttr(p); // Staffelpause: nur Wiederholung
     A *= demoFactor(st, p) * hostMalus(p) * hostF(st, p) * polF(st, p) * breakF(st, p) * pressF(st, p) * genreSeason(p); // passt die Sendung (und die Moderation) zum Publikum des Senders?
     if (p.kind === "sport") A *= commF(p); // Kommentator*in
     if (blMagazine(p) && !matchday(G.day)) A *= 0.35; // ohne Spieltag keine Bilder
@@ -3230,7 +3237,7 @@ function nextDay() {
   G.day++;
   for (const st of G.stations) st.fin = {};
   projectDay();
-  prodDay(); peopleDay(); newsroomDay(); trendDay(); awardsDay(); marketDay(); presaleDay(); rivalsDay(); formatDay(); postQuotenReport(); frameDay(); conflictCheck(); fmDay(); scoutDay(); rumorDay(); staffDay(); politicsDay(); agendaDay(); seasonTick(); cineDay(); inhouseDay(); socialDay(); hofDay(); pressDay(); financeDay(); maDay(); if (G.day % 7 === 1) { careerWeek(); financeWeek(); } if (G.day % 84 === 0) quarterReport(); if (G.career && (G.career.out || G.career.mode === "stream")) fillHorizon(me()); svDay(); primeCheck();
+  prodDay(); peopleDay(); newsroomDay(); trendDay(); awardsDay(); marketDay(); presaleDay(); rivalsDay(); formatDay(); postQuotenReport(); frameDay(); conflictCheck(); fmDay(); scoutDay(); rumorDay(); staffDay(); politicsDay(); agendaDay(); seasonTick(); cineDay(); inhouseDay(); socialDay(); hofDay(); pressDay(); financeDay(); maDay(); if (G.day % 7 === 1) { careerWeek(); financeWeek(); } if (G.day % 84 === 0) quarterReport(); if (G.career && (G.career.out || G.career.mode === "stream")) fillHorizon(me()); svDay(); primeCheck(); szDay();
   if (dateOf(G.day).getDate() === 1 && !G.event) setInterview(); // Interview zum Monatsbeginn
   if (G.mods.coverup && G.day >= G.mods.coverup.day) {
     const c = G.mods.coverup; G.mods.coverup = null;
@@ -3528,6 +3535,8 @@ function inbox() { return title("Posteingang", `<span class="muted">${G.log.leng
 // Seiten: Programm
 // =====================================================================
 function umfang(p) {
+  if (G && p.sz === undefined && (STAFFEL_DEF[p.title] || p.own || p.home)) szInit(me(), p);
+  if (p.sz) return szLabel(p);
   if (p.own) return p.kind === "serie" ? `Eigenproduktion · Folge ${(p.ep % p.eps) + 1}/${p.eps}` : p.kind === "film" ? `Eigenproduktion · ${p.len} Std.` : "Eigenproduktion";
   const bis = p.until ? ` · bis ${dateShort(p.until)}` : "";
   if (p.kind === "serie") return `${Math.min(p.ep, p.maxEp || p.eps * 2)}/${p.maxEp || p.eps * 2} Ausstr.${bis}`;
@@ -3997,6 +4006,8 @@ function act(b) {
     case "swapPick": { const p = P.progs.find(x => x.id === dirCtx.pid); if (p) swapCast(P, p, b.dataset.k); closeModal(); break; }
     case "fxGo": { const p = P.progs.find(x => x.id === id); if (p) startFx(P, p, b.dataset.k); render(); renderProfile(); return; }
     case "fxSponsor": { const p = P.progs.find(x => x.id === id); if (p && P.type === "privat" && !planLocked()) { p.sponsor = !p.sponsor; p.q = clamp(p.q + (p.sponsor ? -2 : 2), 5, 99); fxNote(p, "sponsor", p.sponsor ? "Sponsor gefunden – Zusatzerlös pro Ausstrahlung." : "Sponsoring beendet."); } render(); renderProfile(); return; }
+    case "szOrder": { const p = P.progs.find(x => x.id === id); if (p) { const e = szOrder(P, p, +(($("szEps") || {}).value || 8), ($("szMode") || {}).value || (p.sz && p.sz.mode) || "aufz"); toast(e || "Neue Staffel bestellt."); if (!e) renderProfile(); } break; }
+    case "szRerun": { const p = P.progs.find(x => x.id === id); if (p && szInit(P, p)) { p.sz.rerun = !p.sz.rerun; renderProfile(); } break; }
     case "progCancel": { const p = P.progs.find(x => x.id === id); if (p && !planLocked()) progCancel(P, p); break; }
     case "switchSt": if (!planLocked()) { openBoardPoker(b.dataset.k); return; } break;
     case "spyH": spyH = +b.dataset.k; break;
@@ -4095,6 +4106,7 @@ function act(b) {
     case "talkRole": talkRole = b.dataset.k; break;
     case "talkGenre": talkGenre = b.dataset.k; break;
     case "talkCast": openNego(b.dataset.k, "cast"); return;
+    case "dbRequest": { closeModal(); const e = dbRequest(b.dataset.k); if (e) toast(e); return; }
     case "logoCreator": openLogoCreator(b.dataset.k); return;
     case "lcSet": if (LC) { LC[b.dataset.k] = b.dataset.v; renderLogoCreator(); } return;
     case "lcSave": lcSave(); return;
@@ -4313,7 +4325,7 @@ function openStreamer(id) {
   const s = STREAMERS.find(x => x.id === id), m = G.streamers.find(x => x.id === id);
   if (!s || !m) return;
   sState(m);
-  const S = G.stream, mine = m.player && S, tabs = [["overview", "Übersicht"], ["tiers", "Preise & Pakete"], ["prog", "Programm & Rechte"], ["news", "Strategie & Meldungen"]];
+  const S = G.stream, mine = m.player && S, tabs = [["overview", "Übersicht"], ["hist", "Historie"], ["cat", "Katalog"], ["tiers", "Preise & Pakete"], ["prog", "Programm & Rechte"], ["news", "Strategie & Meldungen"]];
   if (!tabs.some(([k]) => k === profTab)) profTab = "overview";
   const owners = STATIONS.filter(x => x.streamer === id).map(x => x.name);
   const all = G.streamers.filter(x => x.id !== "mediathek").reduce((a, x) => a + (x.player && G.stream && sFree(G.stream) ? 0 : x.subs), 0) || 1;
@@ -4335,6 +4347,10 @@ function openStreamer(id) {
       <div class="srow"><b>Modell</b><em></em><span>${esc(mine ? (sFree(S) ? "Mediathek" : "Abo mit drei Paketen") : s.model)}</span></div>
       <div class="srow"><b>Aktuelle Offensive</b><em></em><span>${m.launch >= G.day ? `„${esc(m.lastLaunch)}“ bis ${dateShort(m.launch)}` : "keine"}</span></div>
       <div class="srow"><b>Account-Sharing</b><em></em><span>${m.sharing ? "Zusatzmitglieder kostenpflichtig" : "geduldet"}</span></div></div></section>`;
+  if (profTab === "hist") { const H = S_HIST[id];
+    body = `<section class="panel"><div class="ph"><h2>Historie</h2><span class="aside">Marktstart und Meilensteine (Stand ${H ? H.stand : "–"})</span></div>${H ? `<div class="tbl"><table><tbody>${H.steps.map(([y, t]) => `<tr><td class="num" style="width:90px"><b>${esc(y)}</b></td><td>${esc(t)}</td></tr>`).join("")}</tbody></table></div><p class="fine pad">Eigentümer: ${esc(H.owner)}</p>` : '<p class="fine pad">Keine Daten.</p>'}</section>
+      <section class="panel" style="margin-top:12px"><div class="ph"><h2>Verlauf im Spiel</h2></div>${m.news.length ? `<div class="tbl"><table><tbody>${m.news.slice(0, 30).map(n => `<tr><td class="muted">${dateShort(n.day)}</td><td>${esc(n.text)}</td></tr>`).join("")}</tbody></table></div>` : '<p class="fine pad">Noch keine Ereignisse in dieser Partie.</p>'}</section>`; }
+  if (profTab === "cat") body = streamerCatalog(id, s);
   if (profTab === "tiers") body = `<section class="panel"><div class="ph"><h2>Pakete</h2><span class="aside">pro Monat</span></div><div class="tbl"><table><tbody>${tierNames.map((n, k) => `<tr><td>${esc(n)}</td><td class="num"><b>${(prices[k] || 0).toFixed(2).replace(".", ",")} €</b></td></tr>`).join("")}</tbody></table></div></section>
     ${!mine && G.stream && G.stream.tiers ? `<section class="panel" style="margin-top:12px"><div class="ph"><h2>Vergleich mit ${esc(G.stream.name)}</h2></div><div class="pad"><p style="margin:0">Ihr Durchschnittspreis: <b>${avgPrice(G.stream).toFixed(2).replace(".", ",")} €</b> · ${esc(s.name)} Standard: <b>${stdPrice(id) ? m.tiers[Math.min(1, m.tiers.length - 1)].toFixed(2).replace(".", ",") : "0,00"} €</b>. ${avgPrice(G.stream) < m.tiers[Math.min(1, m.tiers.length - 1)] ? "Sie sind günstiger – das zieht Wechselkunden an." : "Sie sind teurer – achten Sie auf den Churn."}</p></div></section>` : ""}
     ${m.hike ? `<p class="fine pad">Letzte Preiserhöhung am ${dateShort(m.hike)}.</p>` : ""}`;
@@ -4346,6 +4362,30 @@ function openStreamer(id) {
     <section class="panel" style="margin-top:12px"><div class="ph"><h2>Aktuelle Meldungen</h2></div>${newsList(stationNews(s.name.split(" ")[0]))}</section>`;
   openModal(`<header>${sbadge(id, 22)}<h2>${esc(mine ? S.name : s.name)}</h2><button class="btn" data-act="close">Schließen</button></header><div class="dbody">
     <div class="ptabs">${tabs.map(([k, n]) => `<button data-act="profTab" data-k="${k}" class="${profTab === k ? "on" : ""}">${n}</button>`).join("")}</div><div style="margin-top:12px">${body}</div></div>`);
+}
+// Streamer-Historie: Marktstart in Deutschland und wichtige Schritte (öffentlich bekannte Eckdaten)
+const S_HIST = {
+  netflix: { owner: "Netflix, Inc. (USA)", stand: "2025", steps: [["1997", "Gründung in den USA als DVD-Versand"], ["2007", "Start des Streaming-Angebots in den USA"], ["2014", "Marktstart in Deutschland, Österreich und der Schweiz (September)"], ["2016", "Weltweite Verfügbarkeit"], ["2022", "Basis-Abo mit Werbung, Start in Deutschland im November"], ["2023", "Bezahlpflicht für das Teilen von Konten außerhalb des Haushalts"]] },
+  prime: { owner: "Amazon.com, Inc. (USA)", stand: "2025", steps: [["2014", "Amazon Instant Video wird Teil von Prime in Deutschland"], ["2016", "Marke Prime Video, weltweiter Start"], ["2024", "Werbung im Standard-Abo, werbefrei gegen Aufpreis"]] },
+  disney: { owner: "The Walt Disney Company (USA)", stand: "2025", steps: [["2019", "Start in den USA (November)"], ["2020", "Marktstart in Deutschland (24. März)"], ["2021", "Star als zusätzliche Marke im Angebot"], ["2023", "Werbefinanzierter Tarif in Deutschland (November)"]] },
+  rtlplus: { owner: "RTL Deutschland (Bertelsmann)", stand: "2025", steps: [["2016", "Start als TVNOW (vorher RTL NOW u. a.)"], ["2021", "Umbenennung in RTL+ (November)"], ["2022", "Ausbau mit Musik, Hörbüchern und Magazinen"]] },
+  wow: { owner: "Sky Deutschland (Comcast)", stand: "2025", steps: [["2016", "Start als Sky Ticket"], ["2022", "Umbenennung in WOW"]] },
+  dazn: { owner: "DAZN Group (Großbritannien)", stand: "2025", steps: [["2016", "Marktstart in Deutschland, Österreich und der Schweiz (August)"], ["2019", "Mehr Fußball-Rechte, u. a. Champions League"], ["2021", "Bundesliga-Pakete"]] },
+  joyn: { owner: "ProSiebenSat.1 Media", stand: "2025", steps: [["2019", "Start als Plattform von ProSiebenSat.1 und Discovery (Juni)"], ["2020", "Bezahlstufe Joyn PLUS+"], ["2024", "Neuausrichtung als Streaming-Hauptmarke der Gruppe"]] },
+  paramount: { owner: "Paramount Global (USA)", stand: "2025", steps: [["2021", "Start in den USA als Nachfolger von CBS All Access"], ["2022", "Marktstart in Deutschland (Dezember)"]] },
+  mediathek: { owner: "ARD und ZDF (öffentlich-rechtlich)", stand: "2025", steps: [["2000er", "Erste Online-Mediatheken der Sender"], ["2016", "Funk als gemeinsames Jugendangebot"], ["2020er", "Ausbau zu gemeinsamem Streaming-Netzwerk"]] },
+};
+// Katalog: Titel aus der privaten Titeldatenbank (Erstausstrahlung bei diesem Dienst), sonst Aushängeschilder und Pay-Fenster
+function streamerCatalog(id, s) {
+  const db = titleDB(), own = db ? db.byNet(id) : [];
+  const held = (G.payHeld || []).filter(x => x.owner === id && x.until >= G.day);
+  const groups = [["Serien", t => t.k === "serie" || t.k === "mini"], ["Filme", t => t.k === "film" || t.k === "tvfilm"], ["Dokus & Reportagen", t => t.doku], ["Shows & Formate", t => t.k === "show"]];
+  let h = "";
+  if (own.length) for (const [n, f] of groups) { const l = own.filter(f).sort((a, b) => (b.v || 0) - (a.v || 0)); if (!l.length) continue;
+    h += `<section class="panel" style="margin-top:12px"><div class="ph"><h2>${n}</h2><span class="aside">${l.length} Titel</span></div><div class="tbl"><table><tbody>${l.slice(0, 60).map(t => `<tr><td class="title">${titleLink("db|" + t.key, t.n)}${t.y ? ` <span class="muted">(${t.y}${t.y1 && t.y1 !== t.y ? "–" + t.y1 : ""})</span>` : ""}</td><td>${t.s ? `${t.s} Staffeln` : ""}${t.e ? ` · ${t.e} Folgen` : ""}</td><td class="num">${t.r ? `IMDb ${t.r.toLocaleString("de-DE")}` : ""}</td></tr>`).join("")}</tbody></table></div></section>`; }
+  else h += `<section class="panel"><div class="ph"><h2>Aushängeschilder</h2></div><div class="pad fm-titles">${s.hits.map((t, k) => `<span class="fm-t">${titleLink(`@${s.id}|${k}`, t)}${imdbChip(t)}</span>`).join("")}</div><p class="fine pad">Der vollständige Katalog erscheint, sobald die private Titeldatenbank geladen ist.</p></section>`;
+  if (held.length) h += `<section class="panel" style="margin-top:12px"><div class="ph"><h2>Filme im Pay-Fenster</h2><span class="aside">${held.length} Titel</span></div><div class="tbl"><table><tbody>${held.slice(0, 40).map(x => `<tr><td class="title">${esc(x.title)}</td><td class="num muted">bis ${dateShort(x.until)}</td></tr>`).join("")}</tbody></table></div></section>`;
+  return h;
 }
 // Eigener Dienst: Abo-Optionen, Kündigungsgründe, Preisvergleich
 function streamDeepPanels(S) {
@@ -4894,7 +4934,7 @@ const isHouse = p => p && p.house;
 function gapPick(st, len, h, wd, used, prevId) {
   let best = null, bs = 0;
   if (len >= 15) for (const p of st.progs) {
-    if (p.house || p.kind === "sport" || p.exclusive || (p.genre === "Teleshopping" && h >= 6) || used.has(p.id) || offSeason(p, G.day)) continue;
+    if (p.house || p.kind === "sport" || p.exclusive || (p.genre === "Teleshopping" && h >= 6) || used.has(p.id) || offSeason(p, G.day) || p.sz || STAFFEL_DEF[p.title]) continue; // Staffelformate sind keine Lückenfüller
     if (p.kind === "film" && p.runs >= p.maxRuns) continue;
     if (p.kind === "serie" && !p.own && p.ep >= (p.maxEp || p.eps * 2)) continue;
     if (!youthOk(p, h)) continue;
@@ -5122,7 +5162,7 @@ const SCHED = {
     [[0], 19, "heute", 1140, null, [["Terra X", 1170]]], [[0], 20, "Das Traumschiff", 1215, { hol: true }], [[0], 22, "heute journal", 1305],
     [[0, 1, 2, 3, 4, 5, 6], 20, "Das Traumschiff", 1215, { hol: true }]],
   rtl: [[MF, 12, "Punkt 12", 720], [MF, 17, "Unter uns", 1050, null, [["Explosiv", 1080]]], [MF, 18, "RTL Aktuell", 1125], [MF, 19, "Alles was zählt", 1145, null, [["Gute Zeiten, schlechte Zeiten", 1180]]],
-    [[1], 20, "Wer wird Millionär?", 1215], [[5], 20, "Let's Dance", 1215, { m: [1, 2, 3, 4] }], [[3], 22, "stern TV", 1355], [MF.concat([6, 0]), 22, "Ich bin ein Star – Holt mich hier raus!", 1335, { m: [0] }],
+    [[1], 20, "Wer wird Millionär?", 1215], [[5], 20, "Let's Dance", 1215, { m: [1, 2, 3, 4] }], [[6], 20, "Das Supertalent", 1215, { m: [8, 9, 10, 11] }], [[3], 22, "stern TV", 1355], [MF.concat([6, 0]), 22, "Ich bin ein Star – Holt mich hier raus!", 1335, { m: [0] }],
     [[6, 0], 18, "RTL Aktuell", 1125]],
   pro7: [[MF, 17, "taff", 1020], [MF, 18, "ProSieben Newstime", 1080], [MF, 19, "Galileo", 1145], [[2], 20, "Joko & Klaas gegen ProSieben", 1215], [[6], 20, "The Masked Singer", 1215, { m: [8, 9, 10, 1, 2, 3] }],
     [[6, 0], 18, "ProSieben Newstime", 1080], [[6, 0], 19, "Galileo", 1145]],
@@ -5165,7 +5205,7 @@ const NEW_FORMATS = [["Weltspiegel", "Magazin", 66, 0, "ard"], ["Immer wieder so
   ["Das Traumschiff", "Liebesfilm", 78, 0, "zdf"], ["Die Giovanni Zarrella Show", "Show", 68, 0, "zdf"], ["stern TV", "Magazin", 62, 0, "rtl"], ["Ich bin ein Star – Holt mich hier raus!", "Reality", 86, 0, "rtl"],
   ["ProSieben Newstime", "Nachrichten", 48, 0, "pro7"], ["The Masked Singer", "Show", 78, 0, "pro7"], ["Promi Big Brother", "Reality", 64, 0, "sat1"]];
 { const have = new Set(SERIES_DB.map(r => r[0])); for (const r of NEW_FORMATS) if (!have.has(r[0])) SERIES_DB.push(r); }
-const LEN_OVR = { "Tatort": 2, "Polizeiruf 110": 2, "Das Traumschiff": 2, "Immer wieder sonntags": 2, "Wer wird Millionär?": 2, "Let's Dance": 3, "The Masked Singer": 3, "Die Giovanni Zarrella Show": 3,
+const LEN_OVR = { "Das Supertalent": 3, "The Voice of Germany": 2, "Germany's Next Topmodel": 2, "Die Höhle der Löwen": 2, "Tatort": 2, "Polizeiruf 110": 2, "Das Traumschiff": 2, "Immer wieder sonntags": 2, "Wer wird Millionär?": 2, "Let's Dance": 3, "The Masked Singer": 3, "Die Giovanni Zarrella Show": 3,
   "Joko & Klaas gegen ProSieben": 3, "The Voice of Germany": 2, "Promi Big Brother": 2, "Sportschau": 2, "stern TV": 2, "Ich bin ein Star – Holt mich hier raus!": 2,
   "Sat.1-Frühstücksfernsehen": 5, "Morgenmagazin": 4, "Punkt 12": 2, "Die Höhle der Löwen": 2 };
 Object.assign(NET_DUR, { "Weltspiegel": 30, "Immer wieder sonntags": 110, "wiso": 45, "das aktuelle sportstudio": 80, "Das Traumschiff": 90, "Die Giovanni Zarrella Show": 165, "stern TV": 85,
@@ -6662,11 +6702,12 @@ function searchAll(q) {
   const people = G.people.filter(p => hit(p.name) || hit(p.code) || hit(p.origin) || hit(p.known)).sort((a, b) => (b.fame || 0) - (a.fame || 0)).slice(0, 30);
   const titles = []; for (const st of G.stations) for (const p of st.progs) if (hit(p.title) || hit(p.genre)) titles.push([st, p]);
   for (const p of G.market || []) if (hit(p.title) || hit(p.genre)) titles.push([{ id: "m", name: "Programmhandel" }, p]);
+  const dbt = []; { const db = titleDB(); if (db) for (const t of db.all) { if (hit(t.n)) { dbt.push(t); if (dbt.length >= 60) break; } } }
   const streams = []; for (const s of STREAMERS) (s.hits || []).forEach((t, k) => { if (hit(t)) streams.push([s, t, k]); });
   const pols = polList().filter(g => hit(g.name) || hit(g.partei) || hit(g.res) || hit(g.amt)).slice(0, 15);
   const stations = G.stations.filter(s => hit(s.name) || hit(s.id));
   const brands = [...new Set((G.adOffers || []).concat(...G.stations.map(s => s.contracts || [])).map(c => c.brand).filter(b => hit(b)))].slice(0, 15);
-  return { people, titles: titles.slice(0, 80), streams: streams.slice(0, 20), pols, stations, brands };
+  return { people, titles: titles.slice(0, 80), dbt: dbt.sort((a, b) => (b.v || 0) - (a.v || 0)), streams: streams.slice(0, 20), pols, stations, brands };
 }
 function openSearch(q = "") {
   openModal(`<header><h2>Suche</h2><button class="btn" data-act="close">Schließen</button></header><div class="dbody"><input id="searchQ" type="search" placeholder="Person, Film, Serie, Doku, Format, Genre, Sender, Partei, Werbekunde …" value="${esc(q)}" style="width:100%;font-size:16px;padding:10px" autofocus><div id="searchRes" style="margin-top:12px"></div></div>`);
@@ -6679,6 +6720,7 @@ function renderSearch(q) {
   el.innerHTML = sec("Personen", r.people.map(p => `<div class="srow"><b>${personLink(p)}</b><em>${esc(SPEC_NAME[p.role] || p.role)}</em><span>${esc([p.age ? p.age + " J." : "", p.origin, p.known ? String(p.known).split(";")[0] : "", p.holder ? holderName(p.holder) : "frei"].filter(Boolean).join(" · "))}</span></div>`))
     + [["Filme", p => p.kind === "film" && !/doku/i.test(p.genre)], ["Serien", p => p.kind === "serie"], ["Dokus & Reportagen", p => /doku|reportage|magazin/i.test(p.genre)], ["Shows & TV-Formate", p => p.kind === "show" && !/doku|reportage|magazin|nachrichten/i.test(p.genre)], ["Nachrichten", p => p.genre === "Nachrichten"], ["Sport", p => p.kind === "sport"]]
       .map(([t, f]) => sec(t, r.titles.filter(([, p]) => f(p)).slice(0, 25).map(([st, p]) => `<div class="srow"><b>${titleLink(`${st.id}|${p.id}`, p.title)}</b><em>${esc(p.genre)}${imdbOf(p.title) ? ` · IMDb ${imdbOf(p.title)[0].toLocaleString("de-DE")}` : ""}</em><span>${esc(st.name)}</span></div>`))).join("")
+    + sec("Titeldatenbank (Filme, Serien, Dokus, Formate)", (r.dbt || []).filter(t => !r.titles.some(([, p]) => normT(p.title) === normT(t.n))).slice(0, 40).map(t => `<div class="srow"><b>${titleLink("db|" + t.key, t.n)}</b><em>${esc(t.doku ? "Doku" : { film: "Film", tvfilm: "TV-Film", serie: "Serie", mini: "Miniserie", show: "Format" }[t.k] || "")}${t.y ? " · " + t.y : ""}${t.r ? ` · IMDb ${t.r.toLocaleString("de-DE")}` : ""}</em><span>${esc(t.net.map(NET_NAME).join(", "))}</span></div>`))
     + sec("Bei Streamern", r.streams.map(([s, t, k]) => `<div class="srow"><b>${titleLink(`@${s.id}|${k}`, t)}</b><em>Streaming</em><span>${esc(s.name)}</span></div>`))
     + sec("Politik (Talkgäste)", r.pols.map(g => `<div class="srow"><b>${esc(g.name)}</b><em>${esc(g.partei)}</em><span>${esc([g.lager, g.amt, g.res].filter(Boolean).join(" · "))}</span></div>`))
     + sec("Sender", r.stations.map(s => `<div class="srow"><b>${sname(s.i)}</b><em>${s.type === "oer" ? "öffentlich-rechtlich" : "privat"}</em><span>${pct(s.dayMA || s.base)}</span></div>`))
@@ -7518,6 +7560,204 @@ function openNewsOffer(id) {
 }
 
 // =====================================================================
+// Private Titeldatenbank (nur in der privaten Version eingebettet): Wikidata (Erstausstrahlung, Staffeln, Folgen)
+// und IMDb (Bewertung, Stimmen, Laufzeit, Genres). Jeder Titel lässt sich öffnen und – wenn frei – lizenzieren.
+// =====================================================================
+const NET_NAME = id => SIDX[id] !== undefined ? STATIONS[SIDX[id]].name : (STREAMERS.find(s => s.id === id) || { name: { kika: "KiKA", "3sat": "3sat" }[id] || id }).name;
+const ORIGINAL_ONLY = ["netflix", "prime", "disney", "paramount", "wow", "joyn", "rtlplus"]; // Eigenproduktionen der Streamer bleiben exklusiv
+let TDB = null;
+function titleDB() {
+  if (TDB) return TDB;
+  const M = typeof window !== "undefined" && window.MM_TITLES; if (!M) return null;
+  const im = new Map((M.imdb || []).map(x => [x.i, x])), used = new Set(), all = [];
+  const gde = gs => [...new Set((gs || []).map(g => IMDB_GENRE[String(g).toLowerCase()]).filter(Boolean))];
+  const kindWd = ty => { const t = (ty || []).join(" ").toLowerCase(); return /film/.test(t) && !/serie/.test(t) ? "film" : /miniserie/.test(t) ? "mini" : /serie|soap|sitcom|telenovela|series/.test(t) ? "serie" : /dokument|reportage/.test(t) ? "doku" : "show"; };
+  for (const w of M.wd || []) {
+    const i = w.imdb && im.get(w.imdb); if (i) used.add(i.i);
+    const g = i ? gde(i.g) : [], k = i ? i.k : kindWd(w.ty);
+    all.push({ key: w.q, orig0: 1, n: (i && i.de) || w.n || (i && i.n), k: k === "doku" ? "show" : k, doku: k === "doku" || g.includes("Doku") || /dokument|reportage/i.test((w.ty || []).concat(w.g || []).join(" ")),
+      y: w.y0 || (i && i.y), y1: w.y1 || (i && i.y1), s: w.s || (i && i.se), e: w.e || (i && i.ep), r: i && i.r, v: i ? i.v : 0, rt: i && i.rt, g: g.length ? g : (w.g || []).slice(0, 2), net: w.net || [], imdb: w.imdb, orig: w.o || [], de: true });
+  }
+  for (const i of M.imdb || []) if (!used.has(i.i)) { const g = gde(i.g); all.push({ key: i.i, n: i.de || i.n, k: i.k, doku: g.includes("Doku"), y: i.y, y1: i.y1, s: i.se, e: i.ep, r: i.r, v: i.v, rt: i.rt, g, net: [], imdb: i.i, de: !!i.de }); }
+  const byKey = new Map(all.map(t => [t.key, t])), byNet = new Map();
+  const DACH = /deutschland|österreich|schweiz|germany|austria|switzerland|bundesrepublik/i;
+  for (const t of all) { const dach = (t.orig || []).length ? t.orig.some(o => DACH.test(o)) : true;
+    t.net = t.net.filter(n => SIDX[n] === undefined || dach); // z. B. „RTL“ in Ungarn ist nicht RTL Deutschland
+    for (const n of t.net) (byNet.get(n) || byNet.set(n, []).get(n)).push(t); }
+  // Bewertungen spielweit nutzbar machen (Qualität, Lizenzpreise, Abrufe)
+  for (const t of all) if (t.r && t.v && !IMDB_SCORES.has(normT(t.n))) IMDB_SCORES.set(normT(t.n), [t.r, t.v]);
+  TDB = { all, byKey, byNet: id => byNet.get(id) || [], made: M.made };
+  return TDB;
+}
+// Senderarchiv aus der Datenbank: Eigen- und Auftragsproduktionen, die der Sender erstausgestrahlt hat (Rechte im Haus)
+const ARCH_MAX = { ard: 140, zdf: 140, dritte: 80, rtl: 100, sat1: 80, pro7: 80, vox: 50, rtl2: 45, kabel1: 25, zdfneo: 50, arte: 60, nitro: 20 };
+function dbArchive(st) {
+  const db = titleDB(); if (!db) return 0;
+  const have = new Set(st.progs.map(p => normT(p.title))), base = [...have].filter(x => x.length >= 5), dup = n => have.has(n) || base.some(x => n.startsWith(x + " "));
+  const list = db.byNet(st.id).filter(t => !dup(normT(t.n)) && (t.y || 0) >= 1990 && t.k !== "film")
+    .sort((a, b) => ((b.v || 0) + (b.y || 0) * 10) - ((a.v || 0) + (a.y || 0) * 10));
+  let n = 0;
+  for (const t of list.slice(0, ARCH_MAX[st.id] || 30)) {
+    const o = dbOffer(t); o.home = st.id; o.price = 0; o.arch = true; o.topic = 0.6;
+    if (o.kind === "film") o.maxRuns = 99; else if (o.kind === "show") { o.kind = "serie"; o.eps = Math.max(4, Math.min(t.e || 12, 300)); }
+    else o.eps = Math.max(4, Math.min(t.e || o.eps, 300));
+    o.maxEp = 9999; st.progs.push(o); have.add(normT(t.n)); n++;
+  }
+  return n;
+}
+// Handelsware aus der Datenbank: internationale Filme/Serien ohne deutsche Erstausstrahlung bei Streamern
+function dbPick(kind, owned) {
+  const db = titleDB(); if (!db) return null;
+  const pool = db.all.filter(t => t.de && (kind === "film" ? t.k === "film" && (t.v || 0) >= 25000 : (t.k === "serie" || t.k === "mini") && (t.v || 0) >= 4000) && !t.net.some(n => ORIGINAL_ONLY.includes(n)) && !owned.has(t.n));
+  for (let k = 0; k < 20 && pool.length; k++) { const t = pick(pool); if (!titleHolder(t.n)) { owned.add(t.n); return dbOffer(t); } }
+  return null;
+}
+// Wer besitzt den Titel in der laufenden Partie?
+function titleHolder(name) {
+  const k = normT(name);
+  for (const st of G.stations) { const p = st.progs.find(x => normT(x.title) === k); if (p) return { st, p }; }
+  const m = (G.market || []).find(x => normT(x.title) === k); if (m) return { market: m };
+  return null;
+}
+const dbGenre = t => t.doku ? "Doku" : (t.g || []).find(g => ["Krimi", "Komödie", "Drama", "Liebesfilm", "Action", "Science-Fiction", "Reality", "Show", "Talk", "Nachrichten"].includes(g)) || (t.k === "show" ? "Show" : "Drama");
+const dbQuality = t => Math.round(clamp(t.r ? (t.r - 4) * 15 + Math.log10(Math.max(10, t.v)) * 3 : 55, 25, 96));
+// Lizenzangebot aus der Datenbank erzeugen (Preis aus Qualität, Bekanntheit und Umfang)
+function dbOffer(t) {
+  const q = dbQuality(t), genre = dbGenre(t);
+  if (t.k === "film" || t.k === "tvfilm") return applyImdb({ id: uid(), title: t.n, genre, kind: "film", q, len: t.rt && t.rt > 140 ? 3 : 2, topic: 1, fsk: /Action|Krimi/.test(genre) ? 12 : 6, real: true, runs: 0, maxRuns: 3, aired: 0,
+    price: r1000((q * q * 110 + 40000) * rnd(0.9, 1.15)), db: t.key });
+  const eps = Math.max(6, Math.min(t.e || 10, 60));
+  return applyImdb({ id: uid(), title: t.n, genre, kind: t.k === "show" ? "show" : "serie", q, len: t.rt && t.rt > 70 ? 2 : 1, eps: t.k === "show" ? 0 : eps, ep: 0, topic: 1, fsk: 0, real: true, aired: 0,
+    price: r1000((q * q * 45 + 15000) * Math.max(1, eps / 10) * rnd(0.9, 1.15)), db: t.key });
+}
+function dbRequest(key) {
+  const db = titleDB(), t = db && db.byKey.get(key); if (!t) return "Titel nicht gefunden.";
+  const h = titleHolder(t.n); if (h && h.st) return `Die Rechte liegen bei ${h.st.name}.`; if (h && h.market) { go("market"); return null; }
+  if (t.net.some(n => ORIGINAL_ONLY.includes(n)) && t.net.every(n => !SIDX[n] && SIDX[n] !== 0)) return "Eigenproduktion eines Streamers – derzeit nicht für das Fernsehen lizenzierbar.";
+  const o = dbOffer(t); G.market.push(o);
+  logMsg("Programmhandel", "Programm", `Lizenzanfrage für „${t.n}“: Der Rechteinhaber bietet ${o.kind === "serie" ? `${o.eps} Folgen` : "die Free-TV-Rechte"} für ${eur(o.price)} an. Das Angebot liegt im Programmhandel.`, true);
+  go("market"); return null;
+}
+function dbTitleModal(t) {
+  const h = titleHolder(t.n), isStream = t.net.length && t.net.every(n => SIDX[n] === undefined);
+  const status = h && h.st ? `${isMe(h.st) ? "In Ihrem Archiv" : `Rechte bei ${esc(h.st.name)}`}${h.p.until ? ` bis ${dateShort(h.p.until)}` : ""}` : h && h.market ? "Im Programmhandel verfügbar" : isStream && t.net.some(n => ORIGINAL_ONLY.includes(n)) ? "Exklusiv beim Streamer" : "Rechte frei – Anfrage möglich";
+  const kindName = t.doku ? "Doku/Reportage" : { film: "Spielfilm", tvfilm: "Fernsehfilm", serie: "Serie", mini: "Miniserie", show: "TV-Format", special: "Special" }[t.k] || "Titel";
+  openModal(`<header><h2>${esc(t.n)}</h2><button class="btn" data-act="close">Schließen</button></header><div class="dbody">
+    <div class="ttl-head"><div class="grow"><span class="chip real">${kindName}</span>${(t.g || []).map(g => ` <span class="chip">${esc(g)}</span>`).join("")}${t.r ? ` <span class="chip imdb">IMDb ${t.r.toLocaleString("de-DE", { minimumFractionDigits: 1 })}</span>` : ""}</div>
+      <div class="ttl-side"><small>Erstausstrahlung</small><b>${t.net.length ? t.net.map(n => SIDX[n] !== undefined ? sname(SIDX[n]) : STREAMERS.some(s => s.id === n) ? sbadge(n, 18) : esc(NET_NAME(n))).join(" ") : "–"}</b></div></div>
+    <div class="tiles" style="margin-top:10px">
+      <div class="tile"><small>Zeitraum</small><b style="font-size:18px">${t.y || "–"}${t.y1 && t.y1 !== t.y ? "–" + t.y1 : t.k === "serie" && !t.y1 ? "–heute" : ""}</b><span>${t.orig && t.orig.length ? esc(t.orig.join(", ")) : ""}</span></div>
+      ${t.s || t.e ? `<div class="tile"><small>Umfang</small><b style="font-size:18px">${t.s ? `${t.s} Staffeln` : ""}${t.e ? ` · ${t.e} Folgen` : ""}</b><span>laut Datenbank</span></div>` : ""}
+      ${t.rt ? `<div class="tile"><small>Laufzeit</small><b>${t.rt} Min.</b><span>${t.k === "serie" ? "pro Folge" : ""}</span></div>` : ""}
+      ${t.r ? `<div class="tile"><small>IMDb</small><b>${t.r.toLocaleString("de-DE", { minimumFractionDigits: 1 })}</b><span>${fmtVotes(t.v)} Stimmen</span></div>` : ""}
+      <div class="tile"><small>Qualität im Spiel</small><b>${dbQuality(t)}</b><span>${stars5(dbQuality(t))}</span></div></div>
+    <section class="panel" style="margin-top:12px"><div class="ph"><h2>Rechte in dieser Partie</h2></div><div class="pad"><p style="margin:0 0 8px"><b>${status}</b></p>
+      ${h && h.st && !isMe(h.st) ? '<p class="fine">Laufende Lizenzen lassen sich nicht übernehmen. Nach Ablauf kommt der Titel wieder in den Handel.</p>' : ""}
+      ${!h && !(isStream && t.net.some(n => ORIGINAL_ONLY.includes(n))) ? `<button class="btn hot" data-act="dbRequest" data-k="${esc(t.key)}" ${planLocked() ? "disabled" : ""}>Lizenz anfragen</button>` : h && h.market ? '<button class="btn hot" data-act="msgGo" data-k="market">Zum Programmhandel</button>' : ""}
+      <p class="fine">Quelle: Wikidata (Ausstrahlung, Umfang) und IMDb-Datensätze (Bewertung) – nur für die private Nutzung, Stand ${esc(titleDB().made || "")}.</p></div></section></div>`);
+}
+
+// =====================================================================
+// Staffeln & Folgen: Staffelformate (z. B. Let's Dance) haben eine feste Zahl neuer Ausgaben – live oder aufgezeichnet.
+// Danach ist Staffelpause: Das Format fällt aus dem Plan (außer Sie zeigen bewusst Wiederholungen). Eine neue Staffel
+// wird bestellt (Folgenzahl, Live/Aufzeichnung) und braucht Vorlauf. Dauerformate (Nachrichten, Magazine, Daily Soaps,
+// tägliche Talks) laufen weiter. Richtwerte zu Folgenzahl und Ausstrahlungsmonaten sind an den realen Formaten orientiert.
+// =====================================================================
+const STAFFEL_DEF = {
+  "Let's Dance": { eps: 13, mode: "live", m: [1, 2, 3, 4] }, "Das Supertalent": { eps: 14, mode: "aufz", m: [8, 9, 10, 11], wd: 6 },
+  "Ich bin ein Star – Holt mich hier raus!": { eps: 17, mode: "live", m: [0], rh: "daily" }, "The Voice of Germany": { eps: 13, mode: "aufz", m: [8, 9, 10, 11] },
+  "Promi Big Brother": { eps: 16, mode: "live", m: [7], rh: "daily" }, "The Masked Singer": { eps: 6, mode: "live", m: [2, 3, 9, 10] },
+  "Germany's Next Topmodel": { eps: 17, mode: "aufz", m: [1, 2, 3, 4, 5], wd: 4 }, "Joko & Klaas gegen ProSieben": { eps: 6, mode: "live", m: [2, 3, 9, 10] },
+  "Die Höhle der Löwen": { eps: 10, mode: "aufz", m: [3, 4, 8, 9, 10] }, "Die Giovanni Zarrella Show": { eps: 6, mode: "live", m: [0, 2, 4, 8, 10] },
+  "Immer wieder sonntags": { eps: 12, mode: "live", m: [5, 6, 7, 8] }, "Der Bergdoktor": { eps: 8, mode: "aufz", m: [0, 1, 2, 3] },
+  "Die Bergretter": { eps: 6, mode: "aufz", m: [10, 11], wd: 4 }, "Der Lehrer": { eps: 12, mode: "aufz", m: [2, 3, 4] }, "Babylon Berlin": { eps: 10, mode: "aufz", m: [9, 10] },
+  "Wilsberg": { eps: 4, mode: "aufz", m: [0, 1, 2, 9, 10] }, "Der Kommissar und das Meer": { eps: 2, mode: "aufz", m: [0, 1] },
+  "Nord bei Nordwest": { eps: 4, mode: "aufz", m: [0, 1, 2, 3] }, "Mord mit Aussicht": { eps: 8, mode: "aufz", m: [3, 4, 5] },
+  "Hubert ohne Staller": { eps: 16, mode: "aufz", m: [0, 1, 2, 3] }, "Alarm für Cobra 11": { eps: 10, mode: "aufz", m: [8, 9, 10], wd: 4 },
+  "Das Traumschiff": { eps: 3, mode: "aufz", m: [0, 3, 11] }, "Der Quiz-Champion": { eps: 6, mode: "aufz", m: [0, 1, 2, 8, 9] },
+};
+const DAILY_GENRES = ["Nachrichten", "Magazin", "Soap", "Talk", "Teleshopping"];
+// Welche Programme haben Staffeln? Feste Liste, eigene Shows/Serien, Serien der Sender (Heimformate mit Folgenzahl)
+function szInit(st, p) {
+  if (p.sz !== undefined) return p.sz;
+  if (p.arch) return (p.sz = null); // Archivware läuft als Wiederholung
+  const def = STAFFEL_DEF[p.title];
+  if (!def && !(p.own && (p.kind === "serie" || (p.kind === "show" && !DAILY_GENRES.includes(p.genre)))) && !(p.home && p.kind === "serie" && p.eps > 0)) return (p.sz = null);
+  const eps = def ? def.eps : p.kind === "serie" ? p.eps || 10 : 8, m = dateOf(G.day).getMonth();
+  const on = def ? def.m.includes(m) : true;
+  // Zum Spielstart läuft eine Staffel ggf. schon: Fortschritt aus dem Monat innerhalb der Saison
+  const done = on && def ? Math.min(eps - 1, Math.floor(eps * def.m.indexOf(m) / def.m.length)) : 0;
+  szRhythm(st, p, def);
+  return (p.sz = { n: p.own ? 1 : ri(3, 18), eps, done, on, mode: def ? def.mode : p.kind === "serie" ? "aufz" : "aufz", rerun: false, hist: [], ready: null, ma: [], from: G.day });
+}
+// Sende-Rhythmus: täglich, wöchentlich (fester Wochentag) oder monatlich
+function szRhythm(st, p, def) {
+  if (p.rh) return;
+  p.rh = (def && def.rh) || (p.own && p.ownRh) || "weekly";
+  const e = (SCHED[st.id] || []).find(x => x[2] === p.title);
+  if (p.rhDay == null && e && e[0].length === 1) p.rhDay = e[0][0];
+  if (p.rhDay == null && def && def.wd != null) p.rhDay = def.wd;
+}
+const rhFits = (p, wd, day) => !p.sz || !p.rh || p.rh === "daily" || (p.rhDay == null ? true : wd === p.rhDay) && (p.rh !== "monthly" || dateOf(day).getDate() <= 7);
+const szLabel = p => { const z = p.sz; if (!z) return null; return z.ready && z.ready > G.day ? `Staffel ${z.n + 1} in Produktion · ab ${dateShort(z.ready)}` : z.on ? `Staffel ${z.n} · Folge ${z.done}/${z.eps}${z.mode === "live" ? " · live" : ""}` : `Staffelpause nach Staffel ${z.n}${z.rerun ? " · Wiederholungen" : ""}`; };
+// Bei jeder Ausstrahlung: neue Folge oder Wiederholung
+function szAired(st, p, ma) {
+  const z = szInit(st, p); if (!z) return;
+  if (!z.on) { p.wdh = true; return; }
+  if (p.rh !== "daily" && z.lastNew && G.day - z.lastNew < (p.rh === "monthly" ? 25 : 6)) { p.wdh = true; return; } // nur eine neue Ausgabe pro Woche bzw. Monat
+  if (p.rhDay == null && p.rh !== "daily") p.rhDay = weekday(G.day);
+  p.wdh = false; z.done++; z.lastNew = G.day; if (ma != null) z.ma.push(ma);
+  if (z.done >= z.eps) szEnd(st, p);
+}
+function szEnd(st, p) {
+  const z = p.sz, hs = (p.hist || []).filter(h => h[0] >= (z.from || 0)), avg = hs.length ? hs.reduce((a, h) => a + h[3], 0) / hs.length : null;
+  z.hist.push({ n: z.n, eps: z.eps, mode: z.mode, ma: avg, end: G.day }); z.on = false; z.ma = [];
+  if (isMe(st)) {
+    if (!z.rerun) allPlans(st).forEach(d => d.forEach(c => { if (c.p === p.id) { c.p = null; c.cont = false; c.ad = null; } }));
+    if (!z.rerun) buildToday(st);
+    logMsg("Programmplanung", "Programm", `Staffelfinale: „${p.title}“ – Staffel ${z.n} ist mit ${z.eps} Ausgaben beendet${avg != null ? ` (Ø ${pct(avg)} Marktanteil)` : ""}. ${z.rerun ? "Wiederholungen bleiben im Plan." : "Die Sendeplätze sind frei."} Neue Staffel im Archiv bestellen.`, true);
+  } else { z.next = G.day + ri(STAFFEL_DEF[p.title] ? 150 : 90, 260); } // Konkurrenz bestellt nach Pause selbst nach
+}
+// Neue Staffel bestellen: Vorlauf (Aufzeichnung länger als Live-Vorbereitung), einmalige Vorbereitungskosten
+const szPrepCost = (p, eps, mode) => r1000(Math.max(100000, (p.epCost || p.q * 4000) * eps * (mode === "live" ? 0.35 : 0.25)));
+function szOrder(P, p, eps, mode) {
+  const z = szInit(P, p); if (!z) return "Dieses Format läuft fortlaufend und braucht keine Staffeln.";
+  if (z.on) return "Die aktuelle Staffel läuft noch.";
+  if (z.ready && z.ready > G.day) return "Die nächste Staffel ist bereits in Produktion.";
+  eps = clamp(Math.round(eps), p.kind === "serie" ? 4 : 3, p.kind === "serie" ? 26 : 30);
+  const cost = szPrepCost(p, eps, mode); if (P.money < cost) return `Für die Vorbereitung fehlen ${eur(cost - P.money)}.`;
+  book(P, "Eigenproduktion", -cost);
+  z.ready = G.day + (p.kind === "serie" ? 84 : mode === "live" ? 35 : 56); z.nextEps = eps; z.nextMode = mode;
+  logMsg("Produktion", "Produktion", `„${p.title}“: Staffel ${z.n + 1} bestellt – ${eps} ${mode === "live" ? "Live-Ausgaben" : "Folgen (Aufzeichnung)"}, Start frühestens ${dateShort(z.ready)}. Vorbereitung ${eur(cost)}.`, true);
+  return null;
+}
+// Täglich: bestellte Staffeln starten, Konkurrenz-Staffeln nach der Pause wieder aufnehmen
+function szDay() {
+  for (const st of G.stations) for (const p of st.progs) {
+    const z = p.sz; if (!z || z.on) continue;
+    if (z.ready && z.ready <= G.day) { z.on = true; z.n++; z.done = 0; z.from = G.day; z.eps = z.nextEps || z.eps; z.mode = z.nextMode || z.mode; z.ready = null; p.topic = 1; p.q = clamp(p.q + ri(-4, 5), 15, 99); p.wdh = false;
+      if (isMe(st)) logMsg("Programmplanung", "Programm", `„${p.title}“: Staffel ${z.n} ist bereit (${z.eps} Ausgaben). Jetzt im Wochenplan einplanen.`, true); }
+    else if (!isMe(st) && z.next && z.next <= G.day) { const def = STAFFEL_DEF[p.title], m = dateOf(G.day).getMonth(); if (!def || def.m.includes(m)) { z.on = true; z.n++; z.done = 0; z.from = G.day; z.next = null; p.topic = 1; p.wdh = false; } }
+  }
+}
+// Wiederholungen ziehen deutlich weniger; Live-Shows als Konserve noch weniger
+const szAttr = p => p && p.sz && p.wdh && p.sz.on ? 0.7 : p && p.sz && !p.sz.on ? (p.sz.mode === "live" ? 0.4 : 0.6) : 1;
+function szPanel(P, p) {
+  const z = szInit(P, p); if (!z) return "";
+  const rows = z.hist.slice(-8).reverse().map(h => `<tr><td>Staffel ${h.n}</td><td>${h.eps} ${h.mode === "live" ? "Live-Ausgaben" : "Folgen"}</td><td class="num">${h.ma != null ? pct(h.ma) : "–"}</td><td class="muted">${dateShort(h.end)}</td></tr>`).join("");
+  const mine = isMe(P), sugEps = z.eps, cost = szPrepCost(p, sugEps, z.mode);
+  return `<section class="panel" style="margin-top:12px"><div class="ph"><h2>Staffeln & Folgen</h2><span class="aside">${esc(szLabel(p))}</span></div><div class="pad">
+    ${z.on ? `<div class="kv"><span>Aktuelle Staffel</span><b>${z.n} · ${z.done} von ${z.eps} Ausgaben gesendet</b></div><span class="sbar big"><i style="width:${Math.round(z.done / z.eps * 100)}%;background:var(--hot)"></i></span>` : ""}
+    ${mine && !z.on && !(z.ready && z.ready > G.day) ? `<div class="kv"><span>Neue Staffel bestellen</span><span style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+        <input type="number" id="szEps" value="${sugEps}" min="3" max="30" style="width:70px"> Ausgaben
+        ${p.kind === "serie" ? "" : `<select id="szMode"><option value="aufz" ${z.mode !== "live" ? "selected" : ""}>Aufzeichnung</option><option value="live" ${z.mode === "live" ? "selected" : ""}>Live</option></select>`}
+        <button class="btn hot small" data-act="szOrder" data-id="${p.id}">Bestellen · ca. ${meur(cost)}</button></span></div>
+      <p class="fine">Vorlauf: ${p.kind === "serie" ? "12 Wochen Dreh" : "5 Wochen (live) bzw. 8 Wochen (Aufzeichnung)"}. Laufende Kosten je Folge wie bisher.</p>` : ""}
+    ${mine ? `<div class="kv"><span>In der Pause</span><button class="btn small ${z.rerun ? "hot" : ""}" data-act="szRerun" data-id="${p.id}">${z.rerun ? "Wiederholungen erlaubt" : "Keine Wiederholungen"}</button></div>` : ""}
+    ${rows ? `<div class="tbl"><table><thead><tr><th>Staffel</th><th>Umfang</th><th class="num">Ø MA</th><th>Ende</th></tr></thead><tbody>${rows}</tbody></table></div>` : '<p class="fine">Noch keine abgeschlossene Staffel in dieser Partie.</p>'}</div></section>`;
+}
+
+// =====================================================================
 // Formatprofil: Quotenverlauf, Publikum, Analyse und Maßnahmen je Sendung
 // =====================================================================
 // Affinität zur Zielgruppe 14–49 (Spielwerte): Sender-Image × Genre
@@ -7529,7 +7769,7 @@ function ageMix(st, p) { return zMix(st, p).map(x => x * 100); }
 // Eintrag je Ausstrahlung: [Tag, Stunde, Mio., MA %, MA 14–49 %, Platz, Stunden, (eigener Sender:) Gegner-Sender, Gegner-Titel, Folge]
 // Eine Ausstrahlung zählen: Folgen, Läufe, Abnutzung
 function airedOnce(st, p, i) {
-  p.aired = (p.aired || 0) + 1;
+  p.aired = (p.aired || 0) + 1; szAired(st, p);
   if (p.kind === "serie") { p.ep++; p.topic = Math.max(0.15, p.topic - (p.ep % p.eps === 0 ? 0.4 : 0.04)); }
   else if (p.kind === "show") p.topic = Math.max(0.4, p.topic * (p.wear || (p.genre === "Nachrichten" ? 0.98 : 0.92)));
   else if (p.kind === "film") { p.runs++; p.topic = Math.max(0.1, p.topic * 0.6); amortRun(st, p); }
@@ -8493,6 +8733,7 @@ function resolveTitle(key) {
   return p ? { title: p.title, ownerName: st.name, owner, prog: p, st } : null;
 }
 function openTitle(key) {
+  if (String(key).startsWith("db|")) { const db = titleDB(), t = db && db.byKey.get(String(key).slice(3)); if (t) return dbTitleModal(t); }
   const t = resolveTitle(key);
   if (!t) { toast("Dieser Titel ist nicht mehr im Programm."); profStack.pop(); renderProfile(); return; }
   const p = t.prog, cast = titleCast(p, t.title), mine = t.st && isMe(t.st);
@@ -8510,7 +8751,8 @@ function openTitle(key) {
       ${p.epCost ? `<div class="tile"><small>Kosten</small><b style="font-size:18px">${eur(p.epCost)}</b><span>pro Folge</span></div>` : ""}
       ${p.fsk ? `<div class="tile"><small>Freigabe</small><b>FSK ${p.fsk}</b><span>${p.fsk >= 16 ? "ab 22 Uhr" : "jederzeit"}</span></div>` : ""}
     </div>` : ""}`;
-  const body = !tabs.length ? facts + castPanel : profTab === "overview" ? fmtTabBody(t, "overview") + `<div style="margin-top:12px">${facts}</div>` + castPanel : fmtTabBody(t, profTab);
+  const szp = p && t.st ? szPanel(t.st, p) : "";
+  const body = !tabs.length ? facts + szp + castPanel : profTab === "overview" ? fmtTabBody(t, "overview") + `<div style="margin-top:12px">${facts}</div>` + szp + castPanel : fmtTabBody(t, profTab);
   openModal(`<header><h2>${esc(t.title)}</h2><button class="btn" data-act="close">Schließen</button></header><div class="dbody">
     <div class="ttl-head"><div class="grow"><span class="chip real">${kindName}</span>${p ? ` <span class="chip">${esc(p.genre)}</span>` : ""}${p && p.own ? ' <span class="chip good">Eigenproduktion</span>' : p && p.home ? ' <span class="chip real">Eigenformat</span>' : ""}${p && p.sponsor ? ' <span class="chip">gesponsert</span>' : ""}${p && (p.fx || []).length ? ` <span class="chip warn">${p.fx.length} Maßnahme${p.fx.length > 1 ? "n" : ""} läuft</span>` : ""}
       <p class="lead" style="margin-top:8px">${esc(DESC[t.title] || (p && p.own ? "Eigenproduktion des Senders." : "Keine Beschreibung vorhanden."))}</p></div>
@@ -8845,7 +9087,7 @@ function clearSave() { if (IDB.db) idbDel(KEY).catch(() => {}); try { localStora
 async function start(data) {
   applySettings();
   await initStorage();
-  probeLogos(); applyLogos();
+  probeLogos(); applyLogos(); TDB = null; titleDB();
   if (data && data.G && !data.G.over) { G = data.G; if (G.phase !== "plan") startDay(); go("overview", true); }
   else showStart();
 }

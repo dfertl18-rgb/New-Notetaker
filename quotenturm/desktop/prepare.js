@@ -26,6 +26,8 @@ const priv = path.join(src, "privat", "realdata.js");
 const share = process.argv.includes("--share"); // Weitergabe-Version: ohne private Daten
 if (!share && fs.existsSync(priv)) { html = html.replace("<script>", () => "<script>\n" + fs.readFileSync(priv, "utf8") + "</script>\n<script>"); console.log("Private Daten eingebettet."); }
 // Echte Senderlogos (Markenrechte) ebenfalls nur in der privaten Version
+// Titeldatenbank (Wikidata + IMDb-Datensätze, nur private Nutzung) ebenfalls nur privat
+for (const extra of ["titles.js"]) { const fp = path.join(src, "privat", extra); if (!share && fs.existsSync(fp)) { html = html.replace("<script>", () => "<script>\n" + fs.readFileSync(fp, "utf8") + "</script>\n<script>"); console.log("Private Datei eingebettet:", extra); } }
 const privLogos = path.join(src, "privat", "logos.js");
 if (!share && fs.existsSync(privLogos)) { html = html.replace("<script>", () => "<script>\n" + fs.readFileSync(privLogos, "utf8") + "</script>\n<script>"); console.log("Private Logos eingebettet."); }
 fs.writeFileSync(path.join(out, "index.html"), html);
