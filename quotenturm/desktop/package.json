@@ -9,13 +9,16 @@
     "prepare-app": "node prepare.js",
     "start": "npm run prepare-app && electron .",
     "dist": "npm run prepare-app && electron-builder --win portable nsis --publish never",
-    "dist:portable": "npm run prepare-app && electron-builder --win portable --publish never"
+    "dist:portable": "npm run prepare-app && electron-builder --win portable --publish never",
+    "dist:share": "npm run prepare-app:share && electron-builder --win portable nsis --publish never -c.portable.artifactName='Medienmanager-2027-${version}-Weitergabe-portable.exe' -c.nsis.artifactName='Medienmanager-2027-${version}-Weitergabe-Setup.exe'",
+    "prepare-app:share": "node prepare.js --share"
   },
   "devDependencies": {
     "@fontsource/barlow-condensed": "^5.1.0",
     "@fontsource/inter": "^5.1.0",
     "electron": "33.2.1",
     "electron-builder": "25.1.8",
+    "resedit": "^2.0.3",
     "xlsx": "^0.18.5"
   },
   "build": {
@@ -33,7 +36,8 @@
         "portable",
         "nsis"
       ],
-      "signAndEditExecutable": false
+      "signAndEditExecutable": false,
+      "icon": "build/icon.ico"
     },
     "portable": {
       "artifactName": "Medienmanager-2027-${version}-portable.exe"
@@ -42,8 +46,20 @@
       "artifactName": "Medienmanager-2027-${version}-Setup.exe",
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
-      "shortcutName": "Medienmanager 2027"
-    }
+      "shortcutName": "Medienmanager 2027",
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "installerHeaderIcon": "build/icon.ico",
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "language": "1031",
+      "installerLanguages": [
+        "de_DE"
+      ],
+      "runAfterFinish": true,
+      "deleteAppDataOnUninstall": false
+    },
+    "afterPack": "./afterpack.js"
   },
   "repository": "github:dfertl18-rgb/New-Notetaker"
 }

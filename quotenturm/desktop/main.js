@@ -9,6 +9,7 @@ function createWindow() {
   const win = new BrowserWindow({
     width: 1440, height: 900, minWidth: 1024, minHeight: 700,
     title: "Medienmanager 2027", backgroundColor: "#0b0e1c", autoHideMenuBar: true,
+    icon: path.join(__dirname, "app", "icon.png"),
     webPreferences: { contextIsolation: true, sandbox: true },
   });
   win.removeMenu();
