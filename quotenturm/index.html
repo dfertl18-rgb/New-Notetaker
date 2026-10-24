@@ -2609,6 +2609,9 @@ function startProduction() {
   const cast = c.cast, genre = fmtGenre(d);
   const hosted = ["show", "reality", "live"].includes(d.kind);
   let star = starPower(cast, genre, hosted); // universelle Attribut-Matrix, Gewichtung nach Format
+  star = Math.round(star * castFitAvg(cast, FORMATS[d.kind].roles)); // fachfremde Besetzung mit Eignungsabschlag
+  const bioP = d.kind === "bio" && d.bioOf ? person(d.bioOf) : null;
+  if (bioP) script = clamp(script + Math.round((bioP.fame || 40) / 12), 1, 100); // bekannte Lebensgeschichte zieht
   // Format-Match: Spezialität passt zur Vorlage, zum Thema oder zum Lieblingsgenre
   script = clamp(script + Math.round(c.house.q * houseFit(c.house, d.kind)), 1, 100); // Produktionspartner
   if (c.bp && c.bp.bonus) script = clamp(script + c.bp.bonus, 1, 100); // Lizenz- oder Eigenformat bringt seine Qualität mit
@@ -2624,7 +2627,7 @@ function startProduction() {
   const R = Math.round(clamp(script * 0.4 + star * 0.4 + chem * 0.1 + CLASSES[d.cls].bonus * 0.1 + av("cre") * 0.6, 1, 99)); // Kreatives Gespür
   book(P, "Eigenproduktion", -c.total);
   cast.forEach(p => { p.busy = G.day + c.days; });
-  const fallback = d.kind === "bio" ? `Das Leben einer Legende (${d.opt})` : d.kind === "live" ? `${d.opt} ${dateOf(G.day).getFullYear()}` : `${FORMATS[d.kind].name}: ${optName(d.kind, d.opt)}`;
+  const fallback = d.kind === "bio" ? (bioP ? `${bioP.name} – Ein Leben` : `Das Leben einer Legende (${d.opt})`) : d.kind === "live" ? `${d.opt} ${dateOf(G.day).getFullYear()}` : `${FORMATS[d.kind].name}: ${optName(d.kind, d.opt)}`;
   const prod = { house: d.house || "std", dna: dnaOf(d) ? { ...d.dna } : null, id: uid(), kind: d.kind, title: d.title.trim() || fallback, genre, bp: c.bp ? c.bp.id : null, opt: d.opt, cls: d.cls, cast: cast.map(p => p.id), writers: d.writers, trash: d.kind === "reality" && TRASH_BP.includes(d.opt), deals: d.deals || {}, script, star: Math.round(star), chem, R, days: c.days, left: c.days, cost: c.total, rhCfg: { rh: d.rh, rhDay: d.rhDay, rhHour: d.rhHour, eps: d.eps, fix: d.fix ?? "1", gb: d.gb } };
   G.prods.push(prod);
   logMsg("Produktion", "Produktion", `Drehstart für „${prod.title}“ (${FORMATS[d.kind].name}, Klasse ${d.cls}). Fertigstellung in ${c.days} Tagen.`, true);
@@ -2772,6 +2775,7 @@ function negoSubmit() {
   if (n.type === "proj" && P.money < offer) { n.msg = ["Dafür reicht Ihr Kontostand nicht.", "bad"]; renderNego(); return; }
   if (offer >= floor) {
     if (n.type === "excl") {
+      { const from = p.holder && p.holder !== P.id && G.stations[SIDX[p.holder]]; if (from) personLeaves(from, p); }
       p.holder = P.id; p.until = G.day + n.weeks * 7; p.ct = { wk: offer, clauses: n.clauses.slice() };
       p.promises = (n.promises || []).map(k => ({ k, made: G.day, due: G.day + 91 })); p.sat = clamp(68 + p.promises.length * 4 + Math.max(0, n.pct - 100) / 2, 0, 100); p.idle = 0;
       logMsg("Casting", "Personal", `${p.name} unterschreibt exklusiv bei ${P.name}: ${n.weeks} Wochen, ${eur(offer)} pro Woche${n.clauses.length ? ` · Klauseln: ${n.clauses.map(k => CLAUSES[k].name).join(", ")}` : ""}.`, true);
@@ -2952,7 +2956,8 @@ function newProdPage(P) {
       <div class="card"><div class="card-h"><h3>${F.optLabel}</h3>${c.bp ? info(`Passende Spezialitäten: ${c.bp.fit.join(", ")}. Passt die Moderation, steigt die Drehbuchqualität um 15.`) : info("Passt das Lieblingsgenre oder die Spezialität der Besetzung, steigt die Qualität.")}</div><div class="opts">${optCards}</div></div>
       <div class="card"><div class="card-h"><h3>Projekt</h3></div>
         <label class="field"><span>Arbeitstitel</span><input type="text" data-draft="title" maxlength="60" value="${esc(d.title)}" placeholder="${d.kind === "bio" ? "z. B. Die Kaiserin vom Platz" : d.kind === "live" ? "z. B. Die große Benefiz-Nacht" : "z. B. Mord am Isarufer"}"></label>
-        <div class="kv"><span>Zielgruppe</span><b>${audience(d)}</b></div></div>
+        <div class="kv"><span>Zielgruppe</span><b>${audience(d)}</b></div>
+        ${d.kind === "bio" ? (() => { const q = d.bioOf && person(d.bioOf); return `<div class="slot-card ${q ? "filled" : ""}" style="margin-top:8px">${q ? avatar(q, 40) : '<span class="avatar empty">?</span>'}<div class="grow"><small>Biografie über</small><b>${q ? esc(q.name) : "Person wählen – jede Person ist möglich"}</b>${q && q.custom ? '<span class="fine">Echte Person: Das Spiel erfindet keine Lebensereignisse – nur Titel und Lebensbereich.</span>' : ""}</div><button class="btn ${q ? "" : "hot"}" data-act="dirOpen" data-k="alle" data-v="bio">${q ? "Ändern" : "Auswählen"}</button></div>`; })() : ""}</div>
       <div class="card"><div class="card-h"><h3>${["show", "reality", "live"].includes(d.kind) ? "Konzept-Team" : "Autoren"}</h3>${info("Nachwuchs ist günstig und riskant, kann aber Überraschungshits liefern. Die echte Drehbuchqualität sehen Sie erst bei Fertigstellung.")}</div>
         ${seg("writers", Object.entries(WRITERS).map(([k, w]) => [k, w.name, `Qualität ${w.lo}–${w.hi}`]))}</div>
       <div class="card"><div class="card-h"><h3>Budgetklasse</h3>${info("Das Budget fließt mit 10 % in das Rating ein und verlängert bei AAA die Produktion um 2 Tage.")}</div>
@@ -2982,7 +2987,7 @@ function newProdPage(P) {
 }
 // Darsteller-, Moderatoren- und Journalisten-Verzeichnis
 const DIR_SORTS = [["buzz", "Charisma"], ["talent", "Talent"], ["gage", "Gage"], ["scandal", "Skandalfaktor"]];
-const DIR_TITLES = { Schauspiel: "Darsteller-Verzeichnis", Moderation: "Moderatoren-Verzeichnis", Reality: "Reality-Verzeichnis", Journalismus: "Journalisten-Verzeichnis", Nachrichten: "Nachrichtengesichter" };
+const DIR_TITLES = { alle: "Personen-Verzeichnis", Schauspiel: "Darsteller-Verzeichnis", Moderation: "Moderatoren-Verzeichnis", Reality: "Reality-Verzeichnis", Journalismus: "Journalisten-Verzeichnis", Nachrichten: "Nachrichtengesichter" };
 let dirQuery = "", dirLimit = 40, castQuery = "", castLimit = 40, castStatus = "alle";
 function sortedPeople(role, q = "", status = "alle") {
   const ql = q.trim().toLowerCase();
@@ -3001,10 +3006,10 @@ function personRow(p, action) {
 }
 const moreBtn = (shown, total, act) => shown < total ? `<button class="btn more" data-act="${act}">Weitere ${Math.min(40, total - shown)} anzeigen · ${shown} von ${total}</button>` : `<p class="fine center">${total} Personen</p>`;
 function openDirectory(role, slot) {
-  dirCtx = { role, slot }; dirQuery = ""; dirLimit = 40;
-  openModal(`<header><h2>${DIR_TITLES[role]}</h2><button class="btn" data-act="close">Schließen</button></header><div class="dbody">
+  dirCtx = { role, slot, all: role === "alle" }; dirQuery = ""; dirLimit = 40;
+  openModal(`<header><h2>${DIR_TITLES[role] || "Personen-Verzeichnis"}</h2><button class="btn" data-act="close">Schließen</button></header><div class="dbody">
     <div class="toolbar"><input type="search" id="dirSearch" class="search" placeholder="Name suchen" value="" aria-label="Name suchen">
-      <div class="pills" id="dirSorts"></div></div>
+      <div class="pills" id="dirSorts"></div>${role !== "alle" ? `<button class="btn small" id="dirAllBtn" data-act="dirAll">Alle Berufsgruppen</button>` : ""}</div>
     <div class="plist" id="dirList"></div></div>`);
   renderDirectory();
 }
@@ -3017,6 +3022,7 @@ function dirAction(p, st) {
     if (st.k === "rival") return `<div class="act2"><button class="btn red" disabled>Nicht frei</button><button class="btn small" data-act="nego" data-k="${p.id}" data-v="anchor" ${P.money < abloese(p) ? "disabled" : ""}>Abwerben</button></div>`;
     return '<button class="btn red" disabled>Gesperrt</button>';
   }
+  if (dirCtx.slot === "bio") return draft && draft.bioOf === p.id ? '<span class="chip good">Gewählt</span>' : `<button class="btn hot" data-act="dirPick" data-k="${p.id}">Auswählen</button>`;
   if (dirCtx.slot === "swap") return pAvail(p) ? `<button class="btn hot" data-act="swapPick" data-k="${p.id}">Einsetzen${p.holder === P.id ? "" : ` · ${meur(r1000(p.gage * 0.5))}`}</button>` : `<button class="btn red" disabled>${st.k === "rival" ? "Nicht frei" : st.k === "busy" ? "Im Dreh" : "Gesperrt"}</button>`;
   if (draft && draft.cast.includes(p.id)) return '<span class="chip good">Besetzt</span>';
   if (pAvail(p) && (st.k === "mine" || (draft && draft.deals && draft.deals[p.id]))) return `<button class="btn hot" data-act="dirPick" data-k="${p.id}">Besetzen</button>`;
@@ -3026,9 +3032,10 @@ function dirAction(p, st) {
 }
 function renderDirectory() {
   if ($("modal").hidden || !$("dirList")) return;
-  const list = sortedPeople(dirCtx.role, dirQuery);
+  const list = sortedPeople(dirCtx.all ? "alle" : dirCtx.role, dirQuery);
+  if ($("dirAllBtn")) { $("dirAllBtn").classList.toggle("hot", !!dirCtx.all); $("dirAllBtn").textContent = dirCtx.all ? "Nur " + (SPEC_NAME[dirCtx.role] || dirCtx.role) : "Alle Berufsgruppen (mit Eignungsabschlag)"; }
   $("dirSorts").innerHTML = DIR_SORTS.map(([k, n]) => `<button data-act="dirSort" data-k="${k}" class="${dirSort === k ? "on" : ""}">${n}</button>`).join("");
-  $("dirList").innerHTML = list.slice(0, dirLimit).map(p => personRow(p, dirAction)).join("") + moreBtn(Math.min(dirLimit, list.length), list.length, "dirMore");
+  $("dirList").innerHTML = list.slice(0, dirLimit).map(p => personRow(p, (q, st) => (dirCtx.role !== "alle" ? fitChip(q, dirCtx.role) : "") + dirAction(q, st))).join("") + moreBtn(Math.min(dirLimit, list.length), list.length, "dirMore");
 }
 function castAction(p, st) {
   const P = me();
@@ -3377,7 +3384,7 @@ function nextDay() {
   G.day++;
   for (const st of G.stations) st.fin = {};
   projectDay();
-  prodDay(); peopleDay(); newsroomDay(); trendDay(); awardsDay(); marketDay(); presaleDay(); rivalsDay(); formatDay(); postQuotenReport(); frameDay(); conflictCheck(); fmDay(); scoutDay(); rumorDay(); staffDay(); politicsDay(); agendaDay(); seasonTick(); cineDay(); inhouseDay(); socialDay(); moraleDay(me()); hofDay(); pressDay(); financeDay(); maDay(); if (G.day % 7 === 1) { careerWeek(); financeWeek(); contractWeek(); fmtTradeWeek(); } if (G.day % 84 === 0) quarterReport(); if (G.career && (G.career.out || G.career.mode === "stream")) fillHorizon(me()); svDay(); primeCheck(); szDay();
+  prodDay(); peopleDay(); newsroomDay(); trendDay(); awardsDay(); marketDay(); presaleDay(); rivalsDay(); formatDay(); postQuotenReport(); frameDay(); conflictCheck(); fmDay(); scoutDay(); rumorDay(); staffDay(); politicsDay(); agendaDay(); seasonTick(); cineDay(); inhouseDay(); socialDay(); moraleDay(me()); castDay(me()); hofDay(); pressDay(); financeDay(); maDay(); if (G.day % 7 === 1) { careerWeek(); financeWeek(); contractWeek(); fmtTradeWeek(); } if (G.day % 84 === 0) quarterReport(); if (G.career && (G.career.out || G.career.mode === "stream")) fillHorizon(me()); svDay(); primeCheck(); szDay();
   if (dateOf(G.day).getDate() === 1 && !G.event) setInterview(); // Interview zum Monatsbeginn
   if (G.mods.coverup && G.day >= G.mods.coverup.day) {
     const c = G.mods.coverup; G.mods.coverup = null;
@@ -3741,7 +3748,7 @@ function planPage(P) {
 }
 function archiv(P) {
   return title("Archiv", `<span class="muted">${P.progs.length} Programme</span>`) + `<p class="lead mb">Lizenzen lassen sich für 40 % des Einkaufspreises weiterverkaufen – nicht, solange sie im Kalender stehen. Eigene Shows und Serien kosten pro Folge: Budget kürzen spart Geld und kostet Qualität, eine neue Besetzung ändert Qualität und Kosten, Absetzen räumt die Sendeplätze.</p>
-    <section class="panel">${progTable(P.progs, p => { const inPlan = allPlans(P).some(d => d.some(c => c.p === p.id)); const can = p.price > 0 && !p.home && !inPlan; return p.own ? progManage(P, p) : p.price ? `<span class="muted">${eur(p.price * 0.4)}</span> <button class="btn" data-act="sell" data-id="${p.id}" ${!can || planLocked() ? "disabled" : ""}>${inPlan ? "Im Plan" : "Verkaufen"}</button>` : '<span class="muted">Eigenformat</span>'; }, "Verkauf")}</section>`;
+    <section class="panel">${progTable(P.progs, p => { const inPlan = allPlans(P).some(d => d.some(c => c.p === p.id)); const can = p.price > 0 && !p.home && !inPlan; return p.own ? progManage(P, p) : (canManageCast(P, p) ? progManage(P, p) : "") + (p.price ? `<span class="muted">${eur(p.price * 0.4)}</span> <button class="btn" data-act="sell" data-id="${p.id}" ${!can || planLocked() ? "disabled" : ""}>${inPlan ? "Im Plan" : "Verkaufen"}</button>` : '<span class="muted">Eigenformat</span>'); }, "Verkauf")}</section>`;
 }
 function market(P) {
   return title("Programmhandel", `<span class="muted">${G.market.length} Angebote · Konto ${meur(P.money)}</span>`) + lockNote() + `<p class="lead mb">Sie haben jeden Morgen den ersten Zugriff, zum Sendestart greift die Konkurrenz zu. Lizenzen laufen 1 Jahr (Filme 3, Serien 2 Durchläufe) oder 2 Jahre (5 bzw. 3 Durchläufe, 1,65-facher Preis). Abgelaufene Titel kommen später wieder auf den Markt.</p>
@@ -4129,8 +4136,8 @@ function act(b) {
     case "copyCode": try { navigator.clipboard.writeText(b.dataset.k); toast(`Code ${b.dataset.k} kopiert – Foto als ${b.dataset.k}.jpg speichern.`); } catch (e) { toast(b.dataset.k); } return;
     case "planWith": if (!planLocked()) planWith(b.dataset.k); return;
     case "progCut": case "progBoost": { const p = P.progs.find(x => x.id === id); if (p && p.epCost && !planLocked()) progCost(P, p, k === "progCut" ? 0.7 : 1.3, k === "progCut" ? -6 : 4); break; }
-    case "progSwap": { if (planLocked()) return; openDirectory(b.dataset.k, "swap"); dirCtx.pid = id; return; }
-    case "swapPick": { const p = P.progs.find(x => x.id === dirCtx.pid); if (p) swapCast(P, p, b.dataset.k); closeModal(); break; }
+    case "progSwap": { if (planLocked()) return; openDirectory(b.dataset.k, "swap"); dirCtx.pid = id; dirCtx.swapSlot = +(b.dataset.v || 0); return; }
+    case "swapPick": { const p = P.progs.find(x => x.id === dirCtx.pid); if (p) swapCast(P, p, b.dataset.k, dirCtx.swapSlot || 0); closeModal(); break; }
     case "fxGo": { const p = P.progs.find(x => x.id === id); if (p) startFx(P, p, b.dataset.k); render(); renderProfile(); return; }
     case "fxSponsor": { const p = P.progs.find(x => x.id === id); if (p && P.type === "privat" && !planLocked()) { p.sponsor = !p.sponsor; p.q = clamp(p.q + (p.sponsor ? -2 : 2), 5, 99); fxNote(p, "sponsor", p.sponsor ? "Sponsor gefunden – Zusatzerlös pro Ausstrahlung." : "Sponsoring beendet."); } render(); renderProfile(); return; }
     case "szOrder": { const p = P.progs.find(x => x.id === id); if (p) { const e = szOrder(P, p, +(($("szEps") || {}).value || 8), ($("szMode") || {}).value || (p.sz && p.sz.mode) || "aufz"); toast(e || "Neue Staffel bestellt."); if (!e) renderProfile(); } break; }
@@ -4178,7 +4185,13 @@ function act(b) {
     case "draftSet": draft[b.dataset.k] = b.dataset.v; break;
     case "dnaSet": if (draft && dnaOf(draft)) { draft.dna[b.dataset.k] = b.dataset.k === "live" ? b.dataset.v === "1" : +b.dataset.v; if (draft.dna.live) draft.dna.pre = false; } break;
     case "slotClear": draft.cast[+b.dataset.k] = null; break;
-    case "dirOpen": openDirectory(b.dataset.k, b.dataset.v === "anchor" ? "anchor" : +b.dataset.v); return;
+    case "dirOpen": openDirectory(b.dataset.k, b.dataset.v === "anchor" || b.dataset.v === "bio" ? b.dataset.v : +b.dataset.v); return;
+    case "dirAll": dirCtx.all = !dirCtx.all; dirLimit = 40; renderDirectory(); return;
+    case "castMgr": { const p = progOf(P, id); if (p) openCastMgr(P, p); return; }
+    case "course": { const q = person(b.dataset.id); if (q) startCourse(P, q, b.dataset.k); closeModal(); break; }
+    case "fire": { const q = person(b.dataset.id); if (q && confirm(`${q.name} entlassen? Abfindung ${eur(fireCost(q))}.`)) { firePerson(P, q); closeModal(); } break; }
+    case "orderEps": { const p = progOf(P, id); if (p) { orderEps(P, p, +b.dataset.k); openCastMgr(P, p); } return; }
+    case "dailyToggle": { const p = progOf(P, id); if (p) { p.daily = !p.daily; toast(p.daily ? `„${p.title}“ wird fortlaufend produziert.` : `„${p.title}“: fortlaufende Produktion gestoppt.`); openCastMgr(P, p); } return; }
     case "dirSort": dirSort = b.dataset.k; renderDirectory(); return;
     case "dirMore": dirLimit += 40; renderDirectory(); return;
     case "castMore": castLimit += 40; renderCastList(); return;
@@ -4186,8 +4199,9 @@ function act(b) {
     case "dirSortPage": dirSort = b.dataset.k; break;
     case "dirPick": {
       const p = person(b.dataset.k);
+      if (dirCtx.slot === "bio") { if (draft) draft.bioOf = p.id; closeModal(); break; }
       if (dirCtx.slot === "anchor") {
-        if (p.holder && p.holder !== P.id) { const fee = abloese(p); if (P.money < fee) return; book(P, "Redaktion & Gagen", -fee); logMsg("Branchendienst", "Konkurrenz", `Coup: ${P.name} wirbt ${p.name} von ${holderName(p.holder)} ab (Ablöse ${meur(fee)}).`, true); }
+        if (p.holder && p.holder !== P.id) { const fee = abloese(p); { const from = G.stations[SIDX[p.holder]]; if (from) personLeaves(from, p); } if (P.money < fee) return; book(P, "Redaktion & Gagen", -fee); logMsg("Branchendienst", "Konkurrenz", `Coup: ${P.name} wirbt ${p.name} von ${holderName(p.holder)} ab (Ablöse ${meur(fee)}).`, true); }
         if (p.holder !== P.id) { p.holder = P.id; p.until = G.day + 28; }
         G.newsroom.anchor = p.id; toast(`${p.name} präsentiert jetzt Ihre Nachrichten.`);
       } else if (draft && pAvail(p)) { draft.cast[dirCtx.slot] = p.id; }
@@ -4673,12 +4687,12 @@ function jury() {
 // =====================================================================
 const prodOf = p => p.prod && G.prods.find(x => x.id === p.prod);
 function progManage(P, p) {
-  if (!p.own) return "";
+  if (!p.own) return canManageCast(P, p) ? `<div class="pm"><button class="btn small" data-act="castMgr" data-id="${p.id}">Besetzung</button></div>` : "";
   const pr = prodOf(p), role = pr && FORMATS[pr.kind] ? FORMATS[pr.kind].roles[0][0].replace("?", "") : null;
   return `<div class="pm">${p.epCost ? `<span class="muted">${eur(p.epCost)} / Folge</span>
     <button class="btn small" data-act="progCut" data-id="${p.id}" ${(p.cut || 0) >= 2 || planLocked() ? "disabled" : ""} title="Folgenkosten −30 %, Qualität −6">Budget −30 %</button>
     <button class="btn small" data-act="progBoost" data-id="${p.id}" ${(p.cut || 0) <= -2 || planLocked() ? "disabled" : ""} title="Folgenkosten +30 %, Qualität +4">Budget +30 %</button>` : ""}
-    ${role ? `<button class="btn small" data-act="progSwap" data-id="${p.id}" data-k="${role}" ${planLocked() ? "disabled" : ""}>${role === "Moderation" ? "Moderation" : "Hauptrolle"} tauschen</button>` : ""}
+    ${role ? `<button class="btn small" data-act="castMgr" data-id="${p.id}" ${planLocked() ? "disabled" : ""}>Besetzung${p.kind === "serie" ? " & Folgen" : ""}</button>` : ""}
     <button class="btn small red" data-act="progCancel" data-id="${p.id}" ${planLocked() ? "disabled" : ""}>Absetzen</button></div>`;
 }
 function progCost(P, p, f, dq) {
@@ -4695,20 +4709,6 @@ function progCancel0(P, p) {
   if (G.stream) G.stream.catalog = G.stream.catalog.filter(c => c.id !== p.id);
   buildToday(P);
   logMsg("Programmplanung", "Programm", `„${p.title}“ wird abgesetzt. Die Sendeplätze sind frei – bitte neu belegen.`, true);
-}
-function swapCast(P, p, nid) {
-  const pr = prodOf(p), np = person(nid);
-  if (!pr || !np || !pAvail(np)) return;
-  const old = person(pr.cast[0]);
-  const score = q => q ? q.talent * 0.6 + q.buzz * 0.4 : 50;
-  const fee = np.holder === P.id ? 0 : r1000(np.gage * 0.5);
-  if (P.money < fee) { toast("Dafür reicht Ihr Kontostand nicht."); return; }
-  if (fee) book(P, "Redaktion & Gagen", -fee);
-  const dq = Math.round((score(np) - score(old)) * 0.3);
-  p.q = clamp(p.q + dq, 5, 99);
-  if (p.epCost) p.epCost = Math.max(10000, r1000(p.epCost + ((np.gage - (old ? old.gage : 0)) / 40)));
-  pr.cast[0] = np.id; if (p.host) p.host = np.id;
-  logMsg("Produktion", "Produktion", `Umbesetzung bei „${p.title}“: ${np.name} übernimmt${old ? ` von ${old.name}` : ""}. Qualität ${dq >= 0 ? "+" : ""}${dq}${fee ? `, Einstiegsgage ${eur(fee)}` : ""}.`, true);
 }
 
 // =====================================================================
@@ -5505,7 +5505,7 @@ function fmResolve(y) {
   G.fmBids = [];
 }
 // Format ohne sein Gesicht verliert Publikum, bis eine neue Moderation gebunden ist
-const hostMalus = p => p && p.hostLost && G.day - (p.movedAt || 0) < 180 ? 0.65 : 1; // nach einem halben Jahr hat sich das Publikum gewöhnt
+const hostMalus = p => (p && p.hostLost && G.day - (p.movedAt || 0) < 180 ? 0.65 : 1) * hostChangeF(p) * (p && p.hostFit ? 0.8 + 0.2 * p.hostFit : 1); // nach einem halben Jahr hat sich das Publikum gewöhnt
 function formatMarketPage(P) {
   const y = nextWindowYear(), list = expiringFormats(y), open = fmWindow(), bids = G.fmBids || [];
   let h = title("Formatmarkt", `<span class="muted">${open ? `Bieterfenster offen bis ${dateShort(marchEnd(y))}` : `Nächstes Bieterfenster: 1.–31. März ${y}`}</span>`) + lockNote();
@@ -8849,6 +8849,137 @@ function moraleF(p) {
   return 1 + clamp((qs.reduce((a, q) => a + pSat(q), 0) / qs.length - 55) / 900, -0.05, 0.05);
 }
 // =====================================================================
+// Mitwirkende: Rollen flexibel (mit Eignung), Umbesetzen in eigenen und hauseigenen Formaten,
+// Weiterbildung, Entlassen, Folgen nachbestellen, Biografie über jede Person, Abwerben mit Folgen
+// =====================================================================
+const ROLE_FIT = {
+  Moderation: { Moderation: 1, Kommentar: 0.85, Nachrichten: 0.8, Journalismus: 0.75, Reality: 0.65, Schauspiel: 0.6, Produktion: 0.4 },
+  Schauspiel: { Schauspiel: 1, Moderation: 0.6, Reality: 0.6, Kommentar: 0.45, Nachrichten: 0.45, Journalismus: 0.45, Produktion: 0.35 },
+  Nachrichten: { Nachrichten: 1, Journalismus: 0.9, Moderation: 0.7, Kommentar: 0.65, Schauspiel: 0.45, Reality: 0.35, Produktion: 0.4 },
+  Journalismus: { Journalismus: 1, Nachrichten: 0.9, Moderation: 0.65, Kommentar: 0.7, Schauspiel: 0.4, Reality: 0.35, Produktion: 0.5 },
+  Reality: { Reality: 1, Moderation: 0.8, Schauspiel: 0.75, Kommentar: 0.6, Nachrichten: 0.5, Journalismus: 0.5, Produktion: 0.5 },
+  Kommentar: { Kommentar: 1, Moderation: 0.75, Journalismus: 0.7, Nachrichten: 0.7, Schauspiel: 0.4, Reality: 0.45, Produktion: 0.4 },
+};
+const fitFor = (q, role) => { role = String(role || "").replace("?", ""); if (!q || !ROLE_FIT[role]) return 1; return Math.max(ROLE_FIT[role][q.role] ?? 0.5, (q.skills || {})[role] || 0); };
+const fitChip = (q, role) => { const f = fitFor(q, role); return f >= 0.95 ? "" : `<span class="chip ${f >= 0.75 ? "warn" : "fsk"}" title="Fachfremd: Wirkung auf die Sendung ${Math.round(f * 100)} %">Eignung ${Math.round(f * 100)} %</span>`; };
+const castFitAvg = (cast, roles) => cast.length ? cast.reduce((a, q, k) => a + fitFor(q, roles[k] ? roles[k][0] : ""), 0) / cast.length : 1;
+// Umbesetzung wirkt eine Weile nach, dann hat sich das Publikum gewöhnt
+const hostChangeF = p => p && p.hostChange ? 1 - (1 - p.hostChange.f) * Math.max(0, 1 - (G.day - p.hostChange.day) / 120) : 1;
+const castRole = (p, slot) => { const pr = prodOf(p); return pr && FORMATS[pr.kind] && FORMATS[pr.kind].roles[slot] ? FORMATS[pr.kind].roles[slot][0].replace("?", "") : slot === 0 && p.kind !== "serie" ? "Moderation" : "Schauspiel"; };
+function castSlots(p) {
+  const pr = prodOf(p);
+  if (pr && FORMATS[pr.kind]) return FORMATS[pr.kind].roles.map(([r, l], k) => ({ k, role: r.replace("?", ""), label: l, id: pr.cast[k] || null }));
+  if (p.kind === "show" && p.genre !== "Nachrichten") { const h = p.host ? person(p.host) : hostOf(p); return [{ k: 0, role: "Moderation", label: "Moderation", id: h ? h.id : null }]; }
+  return [];
+}
+const canManageCast = (P, p) => (p.own || p.home === P.id) && castSlots(p).length > 0 && p.kind !== "film";
+function swapCast(P, p, nid, slot = 0) {
+  const pr = prodOf(p), np = person(nid);
+  if (!np || !pAvail(np)) return;
+  const role = castRole(p, slot), oldId = pr ? pr.cast[slot] : (p.host || (hostOf(p) || {}).id), old = oldId && person(oldId);
+  const score = q => q ? (q.talent * 0.6 + q.buzz * 0.4) * fitFor(q, role) : 50;
+  const fee = np.holder === P.id ? 0 : r1000(np.gage * 0.5);
+  if (P.money < fee) { toast("Dafür reicht Ihr Kontostand nicht."); return; }
+  if (fee) book(P, "Redaktion & Gagen", -fee);
+  const dq = Math.round((score(np) - score(old)) * 0.3);
+  p.q = clamp(p.q + dq, 5, 99);
+  if (p.epCost) p.epCost = Math.max(10000, r1000(p.epCost + ((np.gage - (old ? old.gage : 0)) / 40)));
+  if (pr) pr.cast[slot] = np.id;
+  if (slot === 0 && (p.host || !pr || ["show", "reality", "live"].includes(pr.kind))) { p.host = np.id; p.hostLost = null; p.hostChange = { day: G.day, f: 0.92 }; }
+  if (!np.holder) { np.holder = P.id; np.until = G.day + 180; }
+  np.show = p.id; p.hostFit = slot === 0 ? fitFor(np, role) : p.hostFit;
+  logMsg("Produktion", "Produktion", `Umbesetzung bei „${p.title}“: ${np.name} übernimmt ${slot === 0 && role === "Moderation" ? "die Moderation" : "die Rolle"}${old ? ` von ${old.name}` : ""}. Qualität ${dq >= 0 ? "+" : ""}${dq}${fitFor(np, role) < 0.95 ? ` (fachfremd, Eignung ${Math.round(fitFor(np, role) * 100)} %)` : ""}${fee ? `, Einstiegsgage ${eur(fee)}` : ""}.`, true);
+}
+// ---------------------------------------------------------------------
+// Weiterbildung
+// ---------------------------------------------------------------------
+const COURSES = { Moderation: { name: "Moderationskurs", cost: 25000, days: 14, plus: 0.15 }, Schauspiel: { name: "Schauspielkurs", cost: 30000, days: 21, plus: 0.15 }, Nachrichten: { name: "Sprechertraining", cost: 20000, days: 10, plus: 0.12 }, Kommentar: { name: "Kommentatoren-Workshop", cost: 18000, days: 10, plus: 0.12 } };
+function startCourse(P, q, k) {
+  const c = COURSES[k]; if (!c || q.holder !== P.id || q.course) return;
+  if (P.money < c.cost) { toast("Dafür reicht Ihr Kontostand nicht."); return; }
+  book(P, "Redaktion & Gagen", -c.cost); q.course = { k, until: G.day + c.days };
+  logMsg("Casting", "Personal", `${q.name} beginnt den ${c.name} (${c.days} Tage, ${eur(c.cost)}).`);
+}
+function coursePanel(P, q) {
+  if (q.holder !== P.id) return "";
+  const list = Object.entries(COURSES).filter(([k]) => q.role !== k && fitFor(q, k) < 0.95);
+  return `<div class="card" style="margin-top:12px"><div class="card-h"><h3>Weiterbildung</h3></div>${q.course ? `<p class="lead">${COURSES[q.course.k].name} läuft bis ${dateShort(q.course.until)}.</p>` : `<div class="picklist">${list.map(([k, c]) => `<button class="pick" data-act="course" data-k="${k}" data-id="${q.id}" ${P.money < c.cost ? "disabled" : ""}><b>${c.name}</b><span class="meta"><span>${c.days} Tage · ${eur(c.cost)}</span><span>Eignung ${Math.round(fitFor(q, k) * 100)} % → ${Math.round(Math.min(0.95, fitFor(q, k) + c.plus) * 100)} %</span></span></button>`).join("")}</div>`}
+    <div class="actions" style="margin-top:8px"><button class="btn small red" data-act="fire" data-id="${q.id}">Vertrag auflösen · Abfindung ${eur(fireCost(q))}</button></div></div>`;
+}
+// ---------------------------------------------------------------------
+// Entlassen
+// ---------------------------------------------------------------------
+function fireCost(q) { const wk = (q.ct && q.ct.wk) || r1000((q.gage || 50000) / 20 * 7); const weeks = Math.max(1, Math.ceil(((q.until || G.day) - G.day) / 7)); return r1000(wk * weeks * 0.5); }
+function firePerson(P, q) {
+  if (q.holder !== P.id) return;
+  const fee = fireCost(q); if (P.money < fee) { toast("Die Abfindung können Sie gerade nicht bezahlen."); return; }
+  book(P, "Redaktion & Gagen", -fee);
+  const shows = P.progs.filter(p => p.host === q.id || ((prodOf(p) || {}).cast || []).includes(q.id));
+  for (const p of shows) { if (p.host === q.id) { p.host = null; p.hostLost = q.id; p.movedAt = G.day; } p.hostChange = { day: G.day, f: 0.85 }; }
+  if (G.newsroom && G.newsroom.anchor === q.id) G.newsroom.anchor = null;
+  for (const [r, id] of Object.entries(G.comm || {})) if (id === q.id) delete G.comm[r];
+  q.holder = null; q.ct = null; q.until = null; q.promises = []; q.sat = 15; q.course = null; q.show = null;
+  logMsg("Casting", "Personal", `Vertrag mit ${q.name} aufgelöst – Abfindung ${eur(fee)}.${shows.length ? ` ${shows.map(p => `„${p.title}“`).join(", ")} ${shows.length > 1 ? "brauchen" : "braucht"} eine neue Besetzung.` : ""}`, true);
+}
+// ---------------------------------------------------------------------
+// Besetzung verwalten (eigene und hauseigene Formate)
+// ---------------------------------------------------------------------
+function openCastMgr(P, p) {
+  const sl = castSlots(p);
+  openModal(`<header><h2>Besetzung · ${esc(p.title)}</h2><button class="btn" data-act="close">Schließen</button></header><div class="dbody">
+    <p class="lead">Jede Person kann jede Rolle übernehmen – fachfremd mit Eignungsabschlag. Eine Umbesetzung kostet anfangs etwas Publikum, bis es sich gewöhnt hat.</p>
+    <div class="slots">${sl.map(s => { const q = s.id && person(s.id); return `<div class="slot-card ${q ? "filled" : ""}">${q ? avatar(q, 44) : '<span class="avatar empty">+</span>'}<div class="grow"><small>${esc(s.label)}</small><b>${q ? personLink(q) : "Nicht besetzt"}</b>${q ? `<span class="muted">${SPEC_NAME[q.role] || q.role} · Talent ${q.talent} · Charisma ${q.buzz} · Zufriedenheit ${pSat(q)}</span>${fitChip(q, s.role)}` : ""}</div>
+      <button class="btn hot small" data-act="progSwap" data-id="${p.id}" data-k="${s.role}" data-v="${s.k}">${q ? "Tauschen" : "Besetzen"}</button>${q && q.holder === P.id ? `<button class="btn small red" data-act="fire" data-id="${q.id}" title="Abfindung ${eur(fireCost(q))}">Entlassen</button>` : ""}</div>`; }).join("")}</div>
+    ${p.own && p.kind === "serie" ? `<div class="card" style="margin-top:12px"><div class="card-h"><h3>Folgen</h3></div><p class="lead">${p.eps} Folgen produziert · ${p.ep || 0} gesendet${p.order ? ` · ${p.order.n} weitere fertig am ${dateShort(p.order.ready)}` : ""}${p.daily ? " · läuft fortlaufend (Daily)" : ""}</p>
+      <div class="actions">${[8, 10, 13, 26].map(n => `<button class="btn small" data-act="orderEps" data-id="${p.id}" data-k="${n}" ${p.order || P.money < orderCost(p, n) ? "disabled" : ""}>${n} Folgen nachbestellen · ${meur(orderCost(p, n))}</button>`).join("")}
+      <button class="btn small ${p.daily ? "hot" : ""}" data-act="dailyToggle" data-id="${p.id}">${p.daily ? "Fortlaufende Produktion stoppen" : "Fortlaufend produzieren (Daily)"}</button></div>
+      <p class="fine">Fortlaufend: Das Studio dreht laufend neue Folgen nach, bezahlt wird je Ausstrahlung (${eur(p.epCost || 0)} pro Folge).</p></div>` : ""}</div>`);
+}
+const orderCost = (p, n) => r1000((p.epCost || 100000) * n * 0.6);
+function orderEps(P, p, n) {
+  if (!p.own || p.kind !== "serie" || p.order) return;
+  const c = orderCost(p, n); if (P.money < c) return;
+  book(P, "Eigenproduktion", -c); p.order = { n, ready: G.day + Math.max(7, n * 2) };
+  logMsg("Produktion", "Produktion", `„${p.title}“: ${n} neue Folgen bestellt (${meur(c)}), fertig am ${dateShort(p.order.ready)}.`, true);
+}
+function castDay(P) {
+  for (const q of G.people) if (q.course && G.day >= q.course.until) {
+    const k = q.course.k, c = COURSES[k]; q.skills = { ...(q.skills || {}), [k]: Math.min(0.95, fitFor(q, k) + c.plus) }; q.course = null; q.sat = clamp(pSat(q) + 5, 0, 100);
+    if (q.holder === P.id) logMsg("Casting", "Personal", `${q.name} hat den ${c.name} abgeschlossen: Eignung jetzt ${Math.round(q.skills[k] * 100)} %.`, true);
+  }
+  for (const p of P.progs) {
+    if (p.order && G.day >= p.order.ready) { p.eps += p.order.n; logMsg("Produktion", "Produktion", `„${p.title}“: ${p.order.n} neue Folgen sind fertig – jetzt ${p.eps} Folgen.`, true); p.order = null; }
+    if (p.daily && (p.ep || 0) >= (p.eps || 0) - 3) p.eps = (p.eps || 0) + 5;
+  }
+}
+// ---------------------------------------------------------------------
+// Abwerben: verliert ein Sender sein Gesicht, endet ein Namensformat – sonst übernimmt Ersatz
+// ---------------------------------------------------------------------
+function namedAfter(p, q) {
+  const t = normName(p.title), n = normName(q.name), last = n.split(" ").pop();
+  return t.includes(n) || (last.length >= 4 && t.split(/[^a-z0-9äöüß]+/).includes(last));
+}
+function personLeaves(st, q) {
+  const progs = st.progs.filter(p => p.kind !== "film" && (p.host === q.id || (hostOf(p) || {}).id === q.id));
+  for (const p of progs) {
+    if (namedAfter(p, q) && !isMe(st)) {
+      st.progs = st.progs.filter(x => x !== p);
+      [...(st.week || []), st.sched || []].forEach(d => d.forEach(c => { if (c.p === p.id) { c.p = null; c.cont = false; } }));
+      if (typeof planDayFor === "function") { (st.week || []).forEach((d, wd) => planDayFor(st, wd, d, { keep: true })); }
+      logMsg("Branchendienst Medienplatz", "Konkurrenz", `„${p.title}“ wird eingestellt: Ohne ${q.name} gibt es die Sendung nicht – ${st.name} muss den Sendeplatz neu füllen.`, true);
+      continue;
+    }
+    if (namedAfter(p, q)) { p.host = null; p.hostLost = q.id; p.movedAt = G.day; logMsg("Casting", "Personal", `„${p.title}“ trägt den Namen von ${q.name} – ohne das Gesicht bricht das Publikum ein. Neu besetzen, umbenennen oder absetzen?`, true); continue; }
+    const sub = G.people.filter(x => !x.holder && x.role === "Moderation" && x.id !== q.id && pAvail(x)).sort((a, b) => Math.abs((a.fame || 0) - (q.fame || 0) * 0.8) - Math.abs((b.fame || 0) - (q.fame || 0) * 0.8))[0];
+    const dq = sub ? Math.max(3, Math.round(((q.fame || 50) - (sub.fame || 40)) / 6)) : 10;
+    p.q = clamp(p.q - dq, 10, 99); p.hostChange = { day: G.day, f: 0.85 };
+    if (sub) { p.host = sub.id; sub.holder = st.id; sub.until = G.day + ri(180, 700); sub.show = p.id; if (p.cast) p.cast = p.cast.filter(c => c.id !== q.id).concat({ id: sub.id, role: "Moderation" }); }
+    else p.host = null;
+    if (isMe(st)) logMsg("Casting", "Personal", `„${p.title}“ verliert ${q.name}${sub ? ` – ${sub.name} übernimmt` : ""}. Qualität −${dq}, das Publikum muss sich erst gewöhnen.`, true);
+    else logMsg("Branchendienst Medienplatz", "Konkurrenz", `${st.name} besetzt „${p.title}“ neu${sub ? `: ${sub.name} übernimmt` : ""}. Beobachter erwarten zunächst schwächere Quoten.`);
+  }
+}
+// =====================================================================
 // Formatprofil: Quotenverlauf, Publikum, Analyse und Maßnahmen je Sendung
 // =====================================================================
 // Affinität zur Zielgruppe 14–49 (Spielwerte): Sender-Image × Genre
@@ -9182,7 +9313,7 @@ function setPoachAttempt(id, star) {
 }
 EVENTS.push({ id: "rival_poach", type: "Konkurrenz", when: () => false, make: () => ({}), fn: (k, d) => {
   const P = me(), p = person(d.star), r = rivalOf(d.id); if (!p || p.holder !== P.id) return;
-  const leave = () => { const fee = r1000(abloese(p) * 0.5); book(P, "Lizenzerlöse", fee); unbind(p); p.holder = d.id; p.until = G.day + ri(180, 700); p.ct = null; logMsg("Branchendienst", "Konkurrenz", `${p.name} wechselt zu ${holderName(d.id)}. Sie erhalten ${meur(fee)} Ablöse.`, true); };
+  const leave = () => { const fee = r1000(abloese(p) * 0.5); book(P, "Lizenzerlöse", fee); personLeaves(P, p); unbind(p); p.holder = d.id; p.until = G.day + ri(180, 700); p.ct = null; logMsg("Branchendienst", "Konkurrenz", `${p.name} wechselt zu ${holderName(d.id)}. Sie erhalten ${meur(fee)} Ablöse.`, true); };
   if (k === 0) { if (p.ct) p.ct.wk = r1000(p.ct.wk * 1.3); rivalEvent(d.id, -5, "Abwerbeversuch abgewehrt"); }
   if (k === 1) { leave(); rivalEvent(d.id, 8, "Star ziehen lassen"); }
   if (k === 2) { P.brand = Math.max(0.5, P.brand - 0.05); rivalEvent(d.id, -15, "öffentlich angeprangert"); if (Math.random() > 0.6) leave(); }
@@ -9874,7 +10005,7 @@ function openTitle(key) {
   const body = !tabs.length ? facts + szp + castPanel : profTab === "overview" ? fmtTabBody(t, "overview") + `<div style="margin-top:12px">${facts}</div>` + szp + castPanel : fmtTabBody(t, profTab);
   openModal(`<header><h2>${esc(t.title)}</h2><button class="btn" data-act="close">Schließen</button></header><div class="dbody">
     <div class="ttl-head"><div class="grow"><span class="chip real">${kindName}</span>${p ? ` <span class="chip">${esc(p.genre)}</span>` : ""}${p && p.own ? ' <span class="chip good">Eigenproduktion</span>' : p && p.home ? ' <span class="chip real">Eigenformat</span>' : ""}${p && p.sponsor ? ' <span class="chip">gesponsert</span>' : ""}${p && (p.fx || []).length ? ` <span class="chip warn">${p.fx.length} Maßnahme${p.fx.length > 1 ? "n" : ""} läuft</span>` : ""}
-      ${mine && p && !["film", "sport"].includes(p.kind) && !p.house ? `<div class="actions" style="margin-top:8px"><button class="btn small hot" data-act="fixDlg" data-id="${p.id}">Feste Sendetermine${slotsOf(p).length ? ` (${slotsOf(p).map(x => wdsName(x.wds) + " " + hhmm(x.t)).join(" · ")})` : " festlegen"}</button></div>` : ""}
+      ${mine && p && !["film", "sport"].includes(p.kind) && !p.house ? `<div class="actions" style="margin-top:8px">${canManageCast(me(), p) ? `<button class="btn small" data-act="castMgr" data-id="${p.id}">Besetzung verwalten</button>` : ""}<button class="btn small hot" data-act="fixDlg" data-id="${p.id}">Feste Sendetermine${slotsOf(p).length ? ` (${slotsOf(p).map(x => wdsName(x.wds) + " " + hhmm(x.t)).join(" · ")})` : " festlegen"}</button></div>` : ""}
       <p class="lead" style="margin-top:8px">${esc(DESC[t.title] || (p && p.own ? "Eigenproduktion des Senders." : "Keine Beschreibung vorhanden."))}</p></div>
       <div class="ttl-side"><small>Läuft bei</small><b>${t.owner && SIDX[t.owner] !== undefined ? sname(SIDX[t.owner]) : t.streamer ? sbadge(t.owner, 18) : esc(t.ownerName)}</b></div></div>
     ${tabs.length ? `<div class="ptabs">${tabs.map(([k, n]) => `<button data-act="profTab" data-k="${k}" class="${profTab === k ? "on" : ""}">${n}</button>`).join("")}</div>` : ""}
@@ -9912,6 +10043,7 @@ function openPerson(id) {
       ${p.holder ? `<div class="srow"><b>Zufriedenheit</b><em style="font-size:15px">${satBar(p)}</em><span>${p.holder === P.id ? "bei Ihnen" : "beim aktuellen Arbeitgeber"}</span></div>` : ""}
       ${(p.promises || []).length && p.holder === P.id ? `<div class="srow"><b>Versprechen</b><em style="font-size:14px">${promisesHtml(p)}</em><span>aus dem laufenden Vertrag</span></div>` : ""}
       <div class="srow"><b>Agentur</b><em style="font-size:15px">${moodText(pPat(p))[0]}</em><span>Stimmung bei Verhandlungen</span></div></div>`;
+  if (profTab === "contract") body += coursePanel(P, p);
   openModal(`<header><h2>Personenprofil</h2><button class="btn" data-act="close">Schließen</button></header><div class="dbody">
     <div class="pp-head">
       <div class="pp-photo">${photo ? `<img src="${photo}" alt="">` : avatar(p, 92)}</div>
