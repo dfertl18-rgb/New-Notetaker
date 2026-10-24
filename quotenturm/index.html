@@ -1254,7 +1254,7 @@ const HEADLINES = [
 const MENU = [
   { id: "portal", name: "Portal", subs: [["overview", "Übersicht", "Dashboard mit Nachrichten, Tabelle und Kennzahlen"], ["inbox", "Posteingang", "Alle Meldungen aus dem Haus"]] },
   { id: "programm", name: "Programm", subs: [["wochenplan", "Wochenplan", "Wochenraster mit Ziehen & Ablegen und Prognose"], ["plan", "Sendekalender", "Programm 0–24 Uhr, 6 Wochen im Voraus"], ["archiv", "Archiv", "Eigene Filme, Serien und Formate"], ["filmmarket", "Filmrechte", "Pakete, Studios, Filmmärkte"], ["market", "Programmhandel", "Filme und Serienlizenzen kaufen"], ["formatmarkt", "Formatmarkt", "Formatrechte, Bieterfenster im März"], ["ticker", "Nachrichten", "Meldungen von Ticker24 einkaufen"]] },
-  { id: "produktion", name: "Produktion", subs: [["studio", "Studio", "Eigene Filme, Serien, Shows und Dokus"], ["casting", "Casting", "Stars, Moderation, Nachrichtengesichter"], ["newsroom", "Nachrichtenredaktion", "Blattlinie, Stil, Etat und Sprecher*in"], ["export", "Rechtemarkt international", "Formate und Produktionen ins Ausland verkaufen"]] },
+  { id: "produktion", name: "Produktion", subs: [["studio", "Studio", "Eigene Filme, Serien, Shows und Dokus"], ["formatdev", "Formatentwicklung", "Messen, Scouting, Ideenschmiede"], ["casting", "Casting", "Stars, Moderation, Nachrichtengesichter"], ["newsroom", "Nachrichtenredaktion", "Blattlinie, Stil, Etat und Sprecher*in"], ["export", "Rechtemarkt international", "Formate und Produktionen ins Ausland verkaufen"]] },
   { id: "streaming", name: "Streaming", subs: [["stream", "Plattform", "Abos, Churn, ARPU und Preismodell"], ["catalog", "Katalog", "Titel und Verwertungsfenster"], ["smarket", "Wettbewerb", "Streamer im Vergleich und Top 10"]] },
   { id: "sport", name: "Sport", subs: [["rights", "Rechtemarkt", "Ausschreibungen und Gebote"], ["myrights", "Meine Rechte", "Pakete und Live-Termine"], ["spielplan", "Spielplan", "Rahmenterminkalender Fußball"]] },
   { id: "quoten", name: "Quoten", subs: [["table", "Quotentabelle", "Senderranking nach Marktanteil"], ["ratings", "Einschaltquoten", "Jede Stunde, jeder Sender"], ["rivals", "Konkurrenz", "Tagesplan der anderen Sender"], ["landscape", "Markt", "Sendergruppen und Streamer"]] },
@@ -1770,6 +1770,7 @@ function airHour(i) {
   for (const r of res) {
     const st = r.st;
     r.v = tv * r.A / sum;
+    r.exp = st.last[i];
     st.last[i] = r.v;
     r.title = r.p ? r.p.title + (r.p.kind === "serie" ? ` (Folge ${(r.p.ep % r.p.eps) + 1})` : "") : "Testbild";
     if (!G.record || r.v > G.record.v) G.record = { v: r.v, title: r.title, st: st.i, day: G.day, h: i };
@@ -1791,7 +1792,7 @@ function airHour(i) {
     if (ad && ad.done < ad.spots && adAllowed(st, i)) {
       const reach = r.v * tgFrac(st, r.p, ad.tg || "all");
       if (reach >= ad.min && adTimeOk(ad, i)) {
-        ad.done++; const paid = adPaid(st, ad, r.p, i, reach); book(st, "TV-Werbung", paid);
+        ad.done++; const paid = adPaid(st, ad, r.p, i, reach); book(st, "TV-Werbung", paid); r.camp = (r.camp || 0) + paid;
         if (i >= LIVE_FROM) logMsg("Werbezeitenvermarktung", "Werbung", `${hh(i)} – Spot „${ad.brand}“ gesendet: +${eur(paid)}`);
         if (ad.done >= ad.spots) {
           st.contracts = st.contracts.filter(x => x !== ad);
@@ -1801,7 +1802,8 @@ function airHour(i) {
         }
       } else logMsg("Werbezeitenvermarktung", "Werbung", `${hh(i)} – Spot „${ad.brand}“ verfehlt: ${mio(reach)} statt ${mio(ad.min)} Mio.${ad.tg && ad.tg !== "all" ? ` (Zielgruppe ${AD_TG[ad.tg][0]})` : ""}${ad.prime && (i < 20 || i > 22) ? " – Premium-Spot nur 20–23 Uhr" : ""}${ad.alc && i >= 6 && i < 20 ? " – Alkohol/Erotik erst ab 20 Uhr" : ""}`, i >= LIVE_FROM);
     }
-    { const blk = adBlockRevenue(st, i, r.v, r.p); if (blk.pay) { book(st, "TV-Werbung", blk.pay); (G.adLog = G.adLog || []).push([G.day, i, blk.pay, Math.round(blk.k)]); if (G.adLog.length > 600) G.adLog.shift(); } }
+    { const sp = spotMarket(st, i, r.v, r.exp, r.p); r.spot = sp.pay; if (sp.pay) book(st, "TV-Werbung (Spotmarkt)", sp.pay); }
+    { const blk = adBlockRevenue(st, i, r.v, r.p); r.blk = blk.pay; if (blk.pay) { book(st, "TV-Werbung", blk.pay); (G.adLog = G.adLog || []).push([G.day, i, blk.pay, Math.round(blk.k)]); if (G.adLog.length > 600) G.adLog.shift(); } }
     if (G.adBreak[i]) { const add = Math.max(0, Math.min(3, 12 - adMinH(st, i))), extra = add ? adBlockRevenue(st, i, r.v, r.p, add).pay : 0; book(st, "TV-Werbung", extra); logMsg("Live-Regie", "Werbung", `${hh(i)} – Zusatz-Werbeblock: +${eur(extra)}, dafür weniger Zuschauer.`); }
     if (!r.p) logMsg("Sendetechnik", "Warnung", `${hh(i)} – Sendeloch! Testbild auf Sendung.`, i >= LIVE_FROM);
   }
@@ -2483,6 +2485,7 @@ function startProduction() {
   const hosted = ["show", "reality", "live"].includes(d.kind);
   let star = cast.reduce((a, p) => a + (hosted ? p.talent * 0.5 + p.buzz * 0.5 : p.talent * 0.75 + p.buzz * 0.25), 0) / cast.length;
   // Format-Match: Spezialität passt zur Vorlage, zum Thema oder zum Lieblingsgenre
+  if (c.bp && c.bp.bonus) script = clamp(script + c.bp.bonus, 1, 100); // Lizenz- oder Eigenformat bringt seine Qualität mit
   if (c.bp && cast.some(p => c.bp.fit.includes(p.trait))) script = Math.min(100, script + 15);
   if (d.kind === "doku" && cast.some(p => p.trait === DOKU_FIT[d.opt])) script = Math.min(100, script + 15);
   if (d.kind === "live" && cast.some(p => p.trait === "Live-Sicherheit")) script = Math.min(100, script + 15);
@@ -2496,7 +2499,7 @@ function startProduction() {
   book(P, "Eigenproduktion", -c.total);
   cast.forEach(p => { p.busy = G.day + c.days; });
   const fallback = d.kind === "bio" ? `Das Leben einer Legende (${d.opt})` : d.kind === "live" ? `${d.opt} ${dateOf(G.day).getFullYear()}` : `${FORMATS[d.kind].name}: ${optName(d.kind, d.opt)}`;
-  const prod = { id: uid(), kind: d.kind, title: d.title.trim() || fallback, genre, bp: c.bp ? c.bp.id : null, opt: d.opt, cls: d.cls, cast: cast.map(p => p.id), writers: d.writers, trash: d.kind === "reality" && TRASH_BP.includes(d.opt), deals: d.deals || {}, script, star: Math.round(star), chem, R, days: c.days, left: c.days, cost: c.total };
+  const prod = { dna: dnaOf(d) ? { ...d.dna } : null, id: uid(), kind: d.kind, title: d.title.trim() || fallback, genre, bp: c.bp ? c.bp.id : null, opt: d.opt, cls: d.cls, cast: cast.map(p => p.id), writers: d.writers, trash: d.kind === "reality" && TRASH_BP.includes(d.opt), deals: d.deals || {}, script, star: Math.round(star), chem, R, days: c.days, left: c.days, cost: c.total };
   G.prods.push(prod);
   logMsg("Produktion", "Produktion", `Drehstart für „${prod.title}“ (${FORMATS[d.kind].name}, Klasse ${d.cls}). Fertigstellung in ${c.days} Tagen.`, true);
   draft = null;
@@ -2515,6 +2518,7 @@ function prodDay() {
       kind: kindMap[pr.kind] || "show", eps: pr.kind === "serie" ? 10 : 0, ep: 0, runs: 0, maxRuns: pr.kind === "live" ? 1 : 99,
       wear: bp ? bp.wear : undefined, streamF: bp ? bp.stream : pr.kind === "serie" ? 1.2 : pr.kind === "live" ? 0.6 : 1, live: bp ? bp.live : pr.kind === "live" ? 0.35 : 0, host: hosted ? pr.cast[0] : null, prod: pr.id };
     prog.epCost = prog.kind === "film" ? 0 : r1000(pr.cost * (prog.kind === "serie" ? 0.04 : 0.05)); // laufende Kosten je Folge
+    applyDna(prog, pr);
     if (pr.hype) { prog.hypeTv = Math.min(100, pr.hype); prog.hypeStream = Math.min(100, pr.hype); } // Interview-Buzz
     P.progs.push(prog);
     pr.prog = prog.id;
@@ -2781,6 +2785,7 @@ const info = tip => `<button class="info" data-act="tip" data-tip="${esc(tip)}" 
 const ICON = path => `<svg class="ico" viewBox="0 0 24 24" aria-hidden="true">${path}</svg>`;
 
 function newProdPage(P) {
+  ensureLicensedBlueprints();
   if (!draft) draft = { kind: "film", opt: "Krimi", cls: "B", writers: "profi", cast: [null, null], title: "" };
   const d = draft, F = FORMATS[d.kind], c = draftCalc(d);
   const seg = (key, items) => `<div class="seg-big">${items.map(([v, l, s]) => `<button data-act="draftSet" data-k="${key}" data-v="${v}" class="${d[key] === v ? "on" : ""}"><b>${l}</b>${s ? `<span>${s}</span>` : ""}</button>`).join("")}</div>`;
@@ -2811,6 +2816,7 @@ function newProdPage(P) {
         ${seg("writers", Object.entries(WRITERS).map(([k, w]) => [k, w.name, `Qualität ${w.lo}–${w.hi}`]))}</div>
       <div class="card"><div class="card-h"><h3>Budgetklasse</h3>${info("Das Budget fließt mit 10 % in das Rating ein und verlängert bei AAA die Produktion um 2 Tage.")}</div>
         ${seg("cls", Object.keys(CLASSES).map(k => [k, k, `×${CLASSES[k].m.toLocaleString("de-DE")}`]))}</div>
+      ${dnaCard(d)}
       <div class="card"><div class="card-h"><h3>Besetzung</h3>${info("Gleiche Lieblingsgenres bringen Chemie. Zwei unzuverlässige Stars kosten Chemie und riskieren Drehverzug.")}</div>
         <div class="slots">${F.roles.map(slot).join("")}</div>
         <div class="dir-btns">${roleKinds.map(r => `<button class="bigbtn" data-act="dirOpen" data-k="${r}" data-v="${firstSlot(F, d, r)}">${ICON('<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c1-3.5 3.6-5.5 6.5-5.5s5.5 2 6.5 5.5"/><path d="M16 4.5a3.5 3.5 0 010 7M18.5 14.5c1.6.8 2.6 2.6 3 5.5"/>')}<span><b>${dirName[r]}</b><small>${G.people.filter(p => p.role === r && pAvail(p)).length} verfügbar</small></span></button>`).join("")}</div></div>
@@ -2820,10 +2826,11 @@ function newProdPage(P) {
         <div class="kv"><span>Produktion</span><b>${meur(c.prod)}</b></div>
         <div class="kv"><span>${["show", "reality", "live"].includes(d.kind) ? "Konzept-Team" : "Drehbuch"}</span><b>${meur(c.writers)}</b></div>
         <div class="kv"><span>Gagen</span><b>${meur(c.gages)}</b></div>
+        ${dnaReport(d)}
         <div class="kv total"><span>Gesamt</span><b class="${c.total > P.money ? "down" : ""}">${meur(c.total)}</b></div>
         <div class="kv"><span>Produktionszeit</span><b>${c.days} Tage</b></div>
         <div class="kv"><span>Kontostand</span><b>${meur(P.money)}</b></div>
-        ${c.bp && c.bp.live ? `<div class="kv"><span>Live-Risiko</span><b>${Math.round(c.bp.live * 100)} %</b></div>` : d.kind === "live" ? `<div class="kv"><span>Live-Risiko</span><b>35 %</b></div>` : ""}
+        ${dnaOf(d) ? "" : c.bp && c.bp.live ? `<div class="kv"><span>Live-Risiko</span><b>${Math.round(c.bp.live * 100)} %</b></div>` : d.kind === "live" ? `<div class="kv"><span>Live-Risiko</span><b>35 %</b></div>` : ""}
         <button class="btn hot start" data-act="startProd" ${c.missing || c.total > P.money || planLocked() ? "disabled" : ""}>Projekt starten</button>
         ${c.missing ? '<p class="fine center">Besetzung unvollständig</p>' : c.total > P.money ? '<p class="fine center down">Budget reicht nicht</p>' : ""}
         <button class="btn ghost" data-page="studio">Abbrechen</button>
@@ -3202,7 +3209,7 @@ function nextDay() {
   G.day++;
   for (const st of G.stations) st.fin = {};
   projectDay();
-  prodDay(); peopleDay(); newsroomDay(); trendDay(); awardsDay(); marketDay(); presaleDay(); rivalsDay(); formatDay(); postQuotenReport(); frameDay(); conflictCheck(); fmDay();
+  prodDay(); peopleDay(); newsroomDay(); trendDay(); awardsDay(); marketDay(); presaleDay(); rivalsDay(); formatDay(); postQuotenReport(); frameDay(); conflictCheck(); fmDay(); scoutDay();
   if (dateOf(G.day).getDate() === 1 && !G.event) setInterview(); // Interview zum Monatsbeginn
   if (G.mods.coverup && G.day >= G.mods.coverup.day) {
     const c = G.mods.coverup; G.mods.coverup = null;
@@ -3290,6 +3297,8 @@ document.addEventListener("click", e => {
   }
 });
 document.addEventListener("input", e => {
+  if (e.target.dataset && e.target.dataset.dna && e.target.type === "range" && draft && draft.dna) { const k = e.target.dataset.dna, v = +e.target.value; const t = $(k === "net" ? "dnaNetTxt" : "dnaBudTxt"); if (t) t.textContent = k === "net" ? `${v} Min.${v >= 240 ? " · Event-Modus" : ""}` : `${v} %`; return; }
+  if (e.target.id === "devBudget") { G.devDraft = G.devDraft || { genre: "Show", slot: "Primetime", target: 1 }; G.devDraft.budget = +e.target.value; const t = $("devBudTxt"); if (t) t.textContent = eur(+e.target.value); return; }
   if (e.target.id === "wpSearch") { wpQuery = e.target.value; const pos = e.target.selectionStart; render(); const s2 = $("wpSearch"); if (s2) { s2.focus(); s2.setSelectionRange(pos, pos); } return; }
   if (e.target.id === "dirSearch") { dirQuery = e.target.value; dirLimit = 40; renderDirectory(); return; }
   if (e.target.id === "avName") { AV.name = e.target.value.slice(0, 40); return; }
@@ -3337,7 +3346,7 @@ function applyClubColors() {
 function render(top) {
   if (!G) return;
   renderNav(); renderTop();
-  const pages = { overview, inbox, plan: planPage, archiv, market, filmmarket: filmMarketPage, chiefs: rivalsPage, adsales: adsalesPage, spielplan: spielplanPage, formatmarkt: formatMarketPage, wochenplan: weekPlanPage, stream: streamPage, catalog, smarket, rights: rightsPage, myrights, contracts, agency, ticker, table: tablePage, ratings, landscape, board, finance, jury, rivals, live: livePage, studio, newprod: newProdPage, casting, newsroom, export: exportPage };
+  const pages = { overview, inbox, plan: planPage, archiv, market, filmmarket: filmMarketPage, chiefs: rivalsPage, adsales: adsalesPage, spielplan: spielplanPage, formatmarkt: formatMarketPage, wochenplan: weekPlanPage, formatdev: formatDevPage, stream: streamPage, catalog, smarket, rights: rightsPage, myrights, contracts, agency, ticker, table: tablePage, ratings, landscape, board, finance, jury, rivals, live: livePage, studio, newprod: newProdPage, casting, newsroom, export: exportPage };
   const sc = $("content").scrollTop;
   $("content").innerHTML = (pages[page] || overview)(me());
   if (!top) $("content").scrollTop = sc;
@@ -3744,11 +3753,13 @@ function board(P) {
         <div class="pad actions" style="padding-top:12px"><button class="btn hot" data-act="credit" ${P.credit >= 15e6 ? "disabled" : ""}>2,5 Mio. € leihen</button><button class="btn" data-act="repay" ${P.credit <= 0 || P.money < 2.5e6 ? "disabled" : ""}>2,5 Mio. € tilgen</button></div></section>
     </div>` + jobPanel(P);
 }
-function finance(P) {
+const finance = P => finance0(P) + finRanking(P);
+function finance0(P) {
   const hist = P.hist.slice(-14);
   const keys = ["TV-Werbung", "Teleshopping", "Distribution (HD/Kabel)", "Rundfunkbeitrag", "Streaming-Abos", "Streaming-Werbung", "Programmkäufe", "Sportrechte", "Personal & Verwaltung", "Sendetechnik & Verbreitung", "Lizenzerlöse", "Eigenproduktion", "Redaktion & Gagen", "Marketing", "Streaming-Technik", "Streaming-Aufbau", "PR & Krisen", "Strafen", "Zinsen"];
   const sum = {}; for (const d of P.hist) for (const [k, v] of Object.entries(d.fin)) sum[k] = (sum[k] || 0) + v;
-  const rev = keys.filter(k => (sum[k] || 0) > 0), cost = keys.filter(k => (sum[k] || 0) < 0);
+  const keys2 = keys.concat(Object.keys(sum).filter(k => !keys.includes(k)));
+  const rev = keys2.filter(k => (sum[k] || 0) > 0), cost = keys2.filter(k => (sum[k] || 0) < 0);
   const tot = arr => arr.reduce((a, k) => a + (sum[k] || 0), 0);
   const ebitdaSeason = P.hist.reduce((a, d) => a + d.ebitda, 0);
   return title("Finanzen", `<span class="muted">Saison bisher · ${P.hist.length} Tage</span>`) +
@@ -3995,6 +4006,7 @@ function act(b) {
     case "newProd": draft = null; go("newprod"); return;
     case "fmt": { const F = FORMATS[b.dataset.k]; draft.kind = b.dataset.k; draft.opt = F.opts[0]; draft.cast = F.roles.map(() => null); break; }
     case "draftSet": draft[b.dataset.k] = b.dataset.v; break;
+    case "dnaSet": if (draft && dnaOf(draft)) { draft.dna[b.dataset.k] = b.dataset.k === "live" ? b.dataset.v === "1" : +b.dataset.v; if (draft.dna.live) draft.dna.pre = false; } break;
     case "slotClear": draft.cast[+b.dataset.k] = null; break;
     case "dirOpen": openDirectory(b.dataset.k, b.dataset.v === "anchor" ? "anchor" : +b.dataset.v); return;
     case "dirSort": dirSort = b.dataset.k; renderDirectory(); return;
@@ -4035,6 +4047,10 @@ function act(b) {
     case "wpPick": wpPick = wpPick === id ? null : id; if (wpPick != null) toast("Jetzt die Startzeit im Raster antippen – oder die Sendung hineinziehen."); break;
     case "wpSel": { const [dd, ss] = b.dataset.k.split("|").map(Number); wpSel = [dd, ss]; break; }
     case "wpDel": { const [dd, ii] = b.dataset.k.split("|").map(Number); if (!(dd === G.day && planLocked())) { editPlan(dd, sc => clearAt(P, sc, ii)); wpSel = null; } break; }
+    case "scoutGo": { const err = sendScout(b.dataset.k, b.dataset.v); toast(err || `${SCOUT_TEAMS[b.dataset.v][0]} fliegt zur ${b.dataset.k}. Der Report kommt nach der Messe.`); break; }
+    case "devSet": G.devDraft = G.devDraft || { genre: "Show", slot: "Primetime", target: 1, budget: 50000 }; G.devDraft[b.dataset.k] = b.dataset.k === "target" ? +b.dataset.v : b.dataset.v; break;
+    case "devGo": { const dd = G.devDraft || { genre: "Show", slot: "Primetime", target: 1, budget: 50000 }; const err = startDev(dd.genre, dd.slot, dd.target, +($("devBudget") || {}).value || dd.budget); toast(err || "Die Redaktion legt los – Pitch in vier Wochen."); break; }
+    case "findBuy": { const err = buyFind(id); if (err) toast(err); break; }
     case "fmBid2": { const v = +($("fmb-" + id) || {}).value || 0, wh = !!($("fmh-" + id) || {}).checked, err = fmBid(id, v, wh); toast(err || `Gebot über ${eur(r1000(v))} pro Folge abgegeben – Entscheidung am 31. März.`); break; }
     case "adAuto": G.adAuto = G.adAuto === false; toast(`Disposition ${G.adAuto ? "automatisch" : "manuell"}.`); break;
     case "adBook": if (!planLocked()) toast(`${adAutoBook(P)} Spots eingebucht.`); break;
@@ -5049,8 +5065,8 @@ const NEW_FORMATS = [["Weltspiegel", "Magazin", 66, 0, "ard"], ["Immer wieder so
   ["ProSieben Newstime", "Nachrichten", 48, 0, "pro7"], ["The Masked Singer", "Show", 78, 0, "pro7"], ["Promi Big Brother", "Reality", 64, 0, "sat1"]];
 { const have = new Set(SERIES_DB.map(r => r[0])); for (const r of NEW_FORMATS) if (!have.has(r[0])) SERIES_DB.push(r); }
 const LEN_OVR = { "Tatort": 2, "Polizeiruf 110": 2, "Das Traumschiff": 2, "Immer wieder sonntags": 2, "Wer wird Millionär?": 2, "Let's Dance": 3, "The Masked Singer": 3, "Die Giovanni Zarrella Show": 3,
-  "Joko & Klaas gegen ProSieben": 3, "The Voice of Germany": 2, "Promi Big Brother": 2, "Sportschau": 2, "das aktuelle sportstudio": 2, "stern TV": 2, "Ich bin ein Star – Holt mich hier raus!": 2,
-  "Sat.1-Frühstücksfernsehen": 5, "Morgenmagazin": 4, "Punkt 12": 2, "Markus Lanz": 2, "maischberger": 2, "Die Höhle der Löwen": 2 };
+  "Joko & Klaas gegen ProSieben": 3, "The Voice of Germany": 2, "Promi Big Brother": 2, "Sportschau": 2, "stern TV": 2, "Ich bin ein Star – Holt mich hier raus!": 2,
+  "Sat.1-Frühstücksfernsehen": 5, "Morgenmagazin": 4, "Punkt 12": 2, "Die Höhle der Löwen": 2 };
 Object.assign(NET_DUR, { "Weltspiegel": 30, "Immer wieder sonntags": 110, "wiso": 45, "das aktuelle sportstudio": 80, "Das Traumschiff": 90, "Die Giovanni Zarrella Show": 165, "stern TV": 85,
   "Ich bin ein Star – Holt mich hier raus!": 95, "ProSieben Newstime": 10, "The Masked Singer": 150, "Promi Big Brother": 90, "Sat.1-Frühstücksfernsehen": 270, "Morgenmagazin": 210, "Punkt 12": 120,
   "Joko & Klaas gegen ProSieben": 150, "The Voice of Germany": 100, "Let's Dance": 150, "Wer wird Millionär?": 95, "Sportschau": 90, "In aller Freundschaft": 45, "Polizeiruf 110": 90, "Der Alte": 60, "Explosiv": 25, "Galileo": 55, "taff": 55 });
@@ -5331,6 +5347,224 @@ document.addEventListener("click", e => {
   const pid = wpPick; wpPick = null; wpDrop(+c.dataset.drop, e.clientY - c.getBoundingClientRect().top, pid);
 });
 // =====================================================================
+// Finanzreport pro Sendung: Kosten gegen Werbeblöcke, Spotmarkt, Kampagnen, Sponsoring
+// =====================================================================
+// Spotmarkt: Restinventar wird am Sendetag verkauft – läuft eine Sendung besser als erwartet, steigen Nachfrage und Preis
+function spotMarket(st, i, v, exp, p) {
+  const m = adMinH(st, i); if (!m || !v) return { pay: 0, k: 0, ratio: 1 };
+  const ratio = exp ? v / exp : 1, unsold = 1 - sellThrough();
+  const fill = clamp((ratio - 0.85) * 1.4, 0, 0.75), k = m * 2 * v * 1000 * unsold * fill;
+  const price = tkpBrutto(st, i, p) * NET_F * clamp(0.6 + (ratio - 1) * 1.2, 0.5, 1.6);
+  return { pay: r1000(k * price), k, ratio };
+}
+// Kosten einer Ausstrahlung: Produktion/Lizenzgebühr, Lizenz-Abschreibung, anteilige Gagen
+function airCost(st, p) {
+  const prod = p.epCost || (p.home && !p.house ? fmtFee(p) : 0); // Hausformate: Kosten stecken im Programmetat und werden hier zugeordnet
+  const lic = p.epCost ? 0 : p.kind === "film" && p.price ? p.price / Math.max(1, p.maxRuns || 3) : p.kind === "serie" && p.price && !p.own ? p.price / Math.max(1, p.maxEp || (p.eps || 10) * 2) : 0;
+  const perWeek = Math.max(1, (st.week || []).reduce((n, d) => n + d.filter(c => c.p === p.id && !c.cont).length, 0));
+  const gage = titleCast(p, p.title).map(c => person(c.id)).filter(q => q && q.holder === st.id && q.ct && q.ct.wk).reduce((a, q) => a + q.ct.wk, 0) / perWeek;
+  return { prod: r1000(prod), lic: r1000(lic), gage: r1000(gage) };
+}
+// Je Ausstrahlung ein Eintrag; Erlöse kommen stundenweise hinzu
+function finAdd(p, day, start, part) {
+  p.finLog = p.finLog || [];
+  let e = p.finLog.find(x => x.day === day && x.start === start);
+  if (!e) { e = { day, start, min: 0, v: 0, blk: 0, spot: 0, camp: 0, spons: 0, prod: 0, lic: 0, gage: 0, blocks: [] }; p.finLog.push(e); if (p.finLog.length > 30) p.finLog.shift(); }
+  for (const [k, v] of Object.entries(part)) if (k === "block") e.blocks.push(v); else e[k] = (e[k] || 0) + v;
+  return e;
+}
+const finResult = e => e.blk + e.spot + e.camp + e.spons - e.prod - e.lic - e.gage;
+function finTab(t) {
+  const p = t.prog, log = (p.finLog || []).slice().reverse();
+  if (!log.length) return '<p class="fine pad">Noch keine Abrechnung – sobald die Sendung bei Ihnen läuft, erscheint hier jede Ausstrahlung.</p>';
+  const avg = log.reduce((a, e) => a + finResult(e), 0) / log.length, last = log[0];
+  const note = avg < 0 ? `Chef, die Sendung verliert im Schnitt ${meur(-avg)} pro Ausstrahlung. Entweder sinken die Kosten (Budget kürzen, günstigere Besetzung), oder die Reichweite muss steigen – ${p.genre === "Nachrichten" ? "bei Nachrichten zählt vor allem das Image" : "ein besserer Sendeplatz oder mehr Werbeminuten helfen"}.` : `Die Sendung trägt sich: im Schnitt ${meur(avg)} Überschuss pro Ausstrahlung.`;
+  return `<section class="panel"><div class="ph"><h2>Abrechnung ${dateShort(last.day)}, ${hhmm(last.start)}</h2><span class="aside">${last.min} Min. · Ø ${mio(last.v)} Mio.</span></div><div class="slist">
+      <div class="srow"><b>Produktion / Lizenzgebühr</b><em class="down">${last.prod ? "−" + eur(last.prod) : "–"}</em><span>${p.epCost ? "pro Folge" : p.home ? "Hausformat – zugeordneter Anteil am Programmetat" : "pro Folge"}</span></div>
+      <div class="srow"><b>Lizenz-Abschreibung</b><em class="down">${last.lic ? "−" + eur(last.lic) : "–"}</em><span>Kaufpreis verteilt auf die erlaubten Ausstrahlungen</span></div>
+      <div class="srow"><b>Gagen (anteilig)</b><em class="down">${last.gage ? "−" + eur(last.gage) : "–"}</em><span>Wochengagen der Mitwirkenden</span></div>
+      ${last.blocks.map((b, k) => `<div class="srow"><b>Block ${k + 1} · ${hh(b.h)}</b><em class="up">+${eur(b.pay)}</em><span>${mio(b.v)} Mio. · ${b.min} Werbemin.</span></div>`).join("")}
+      <div class="srow"><b>Spotmarkt</b><em class="up">${last.spot ? "+" + eur(last.spot) : "–"}</em><span>Restinventar, Preis abhängig von der Performance</span></div>
+      <div class="srow"><b>Kampagnen & Sponsoring</b><em class="up">${last.camp + last.spons ? "+" + eur(last.camp + last.spons) : "–"}</em><span>Garantie-Kampagnen und Präsentation</span></div>
+      <div class="srow"><b>Ergebnis dieser Folge</b><em class="${finResult(last) < 0 ? "down" : "up"}">${meur(finResult(last))}</em><span></span></div></div>
+      <p class="pad ${avg < 0 ? "down" : ""}" style="margin:0"><b>Notiz der Programmdirektion:</b> ${esc(note)}</p></section>
+    <section class="panel" style="margin-top:12px"><div class="ph"><h2>Alle Ausstrahlungen</h2></div><div class="tbl"><table><thead><tr><th>Datum</th><th>Zeit</th><th class="num">Zuschauer</th><th class="num">Werbung</th><th class="num">Spotmarkt</th><th class="num">Kosten</th><th class="num">Ergebnis</th></tr></thead><tbody>
+      ${log.map(e => `<tr><td>${dateShort(e.day)}</td><td>${hhmm(e.start)}</td><td class="num">${mio(e.v)} Mio.</td><td class="num">${eur(e.blk + e.camp + e.spons)}</td><td class="num">${eur(e.spot)}</td><td class="num">${eur(e.prod + e.lic + e.gage)}</td><td class="num ${finResult(e) < 0 ? "down" : "up"}">${meur(finResult(e))}</td></tr>`).join("")}</tbody></table></div></section>`;
+}
+// Rentabilität aller eigenen Sendungen (Finanzen)
+function finRanking(P) {
+  const rows = P.progs.filter(p => (p.finLog || []).some(e => e.day >= G.day - 14)).map(p => { const l = p.finLog.filter(e => e.day >= G.day - 14); return { p, n: l.length, sum: l.reduce((a, e) => a + finResult(e), 0) }; }).sort((a, b) => b.sum - a.sum);
+  if (!rows.length) return "";
+  const show = rows.length > 12 ? rows.slice(0, 6).concat(rows.slice(-6)) : rows;
+  return `<section class="panel" style="margin-top:14px"><div class="ph"><h2>Sendungen: Ergebnis der letzten 14 Tage</h2><span class="aside">Werbung + Spotmarkt − Kosten</span></div><div class="tbl"><table><tbody>
+    ${show.map(r => `<tr><td class="title">${titleLink(`${P.id}|${r.p.id}`, r.p.title)}</td><td class="num muted">${r.n}× gesendet</td><td class="num ${r.sum < 0 ? "down" : "up"}">${meur(r.sum)}</td><td class="num muted">${meur(r.sum / r.n)} / Folge</td></tr>`).join("")}</tbody></table></div></section>`;
+}
+// =====================================================================
+// Show-Konfigurator: Produktions-DNA für Shows, Reality und Live-Events
+// Live oder Aufzeichnung, Netto-Laufzeit 30–360 Minuten, Budgetregler, FSK, Streaming-Vorabpremiere
+// =====================================================================
+const DNA_KINDS = ["show", "reality", "live"];
+const PER_MIN = { Show: 2000, Reality: 1200 }; // Produktionskosten pro Sendeminute (Spielwerte)
+function dnaOf(d) {
+  if (!DNA_KINDS.includes(d.kind)) return null;
+  const bp = d.kind === "live" ? null : BLUEPRINTS.find(b => b.id === d.opt);
+  return (d.dna = d.dna || { live: d.kind === "live" || !!(bp && bp.live), net: d.kind === "live" ? 180 : 60, budget: 100, fsk: 0, pre: false });
+}
+const hostStr = q => q ? (q.str != null ? q.str : clamp(Math.round((q.rel || 50) / 5), 1, 20)) : 10;
+function dnaCalc(d) {
+  const x = dnaOf(d); if (!x) return null;
+  const genre = fmtGenre(d), host = d.cast[0] ? person(d.cast[0]) : null;
+  const perMin = d.kind === "live" ? 3500 : PER_MIN[genre] || 1600;
+  const mult = (x.live ? 2.5 : 1) * (x.net >= 240 ? 1.2 : 1) * x.budget / 100;
+  const ep = r1000(perMin * x.net * mult);
+  const gross = Math.round(x.net * 60 / 48 / 5) * 5, len = Math.min(6, Math.ceil(gross / 60)), blocks = Math.max(1, Math.floor(x.net / 40));
+  const risk = x.live ? Math.max(0, 15 - hostStr(host)) + (x.net >= 240 ? 3 : 0) : 0;
+  const qBonus = Math.round((x.budget - 100) / 10) + (x.live ? 3 : 0) - (x.net > 150 && !x.live ? Math.round((x.net - 150) / 30) : 0); // künstlich gestreckt wirkt zäh
+  const bpz = d.kind !== "live" && BLUEPRINTS.find(b => b.id === d.opt);
+  const base = (bpz && bpz.zp ? bpz.zp : zProf({ genre: d.kind === "reality" ? "Reality" : "Show" })).slice();
+  const z = base.map((v, k) => clamp(v * (x.live && k < 2 ? 1.2 : 1) * (x.net >= 300 ? [1.3, 1, 0.8, 0.3][k] : 1), 0, 1));
+  return { ...x, ep, gross, len, blocks, risk, qBonus, z, host };
+}
+function dnaCard(d) {
+  const c = dnaCalc(d); if (!c) return "";
+  return `<div class="card"><div class="card-h"><h3>Produktions-DNA</h3>${info("Live-Shows kosten das 2,5-Fache, bringen aber Hype bei Z1/Z2 – und ein Pannenrisiko, das von der Stressresistenz der Moderation abhängt. Ab 4 Stunden kommt ein Infrastruktur-Zuschlag hinzu. Wer eine Show über 2,5 Stunden streckt, verliert Akzeptanz.")}</div>
+    <div class="seg-big"><button data-act="dnaSet" data-k="live" data-v="1" class="${c.live ? "on" : ""}"><b>Live ⚡</b><span>Hype +20 % bei Z1/Z2</span></button><button data-act="dnaSet" data-k="live" data-v="0" class="${!c.live ? "on" : ""}" ${d.kind === "live" ? "disabled" : ""}><b>Aufzeichnung</b><span>sicher, wiederholbar</span></button></div>
+    <label class="field"><span>Netto-Laufzeit: <b id="dnaNetTxt">${c.net} Min.${c.net >= 240 ? " · Event-Modus" : ""}</b></span><input type="range" data-dna="net" min="30" max="360" step="15" value="${c.net}"></label>
+    <label class="field"><span>Produktionsbudget: <b id="dnaBudTxt">${c.budget} %</b></span><input type="range" data-dna="budget" min="50" max="150" step="10" value="${c.budget}"></label>
+    <div class="seg-big">${[0, 6, 12, 16].map(f => `<button data-act="dnaSet" data-k="fsk" data-v="${f}" class="${c.fsk === f ? "on" : ""}"><b>FSK ${f}</b><span>${f >= 16 ? "ab 22 Uhr" : "jederzeit"}</span></button>`).join("")}</div>
+    <label class="muted" style="font-size:13px;display:flex;gap:6px;align-items:center;margin-top:8px"><input type="checkbox" data-dna="pre" ${c.pre ? "checked" : ""} ${c.live ? "disabled" : ""}> 7 Tage vorab exklusiv im eigenen Stream${c.live ? " (bei Live nicht möglich)" : ""}</label></div>`;
+}
+function dnaReport(d) {
+  const c = dnaCalc(d); if (!c) return "";
+  return `<div class="kv"><span>Produktions-Typ</span><b>${c.live ? "Live ⚡" : "Aufzeichnung"}</b></div>
+    <div class="kv"><span>Netto / im Raster</span><b>${c.net} / ${c.gross} Min.</b></div>
+    <div class="kv"><span>Werbeblöcke</span><b>${c.blocks}</b></div>
+    <div class="kv"><span>Kosten pro Folge</span><b class="${c.ep > 1e6 ? "down" : ""}">${meur(c.ep)}</b></div>
+    <div class="kv"><span>Qualität</span><b class="${c.qBonus < 0 ? "down" : c.qBonus > 0 ? "up" : ""}">${c.qBonus > 0 ? "+" : ""}${c.qBonus}</b></div>
+    <div class="kv"><span>Sende-Risiko</span><b class="${c.risk > 6 ? "down" : ""}">${c.live ? (c.risk ? `${c.risk} % Panne` : "0 % (sicher)") : "–"}</b></div>
+    <div class="kv"><span>Zielgruppen-Fit</span><b style="font-size:12px">${c.z.map((v, k) => `Z${k + 1} ${Math.round(v * 100)}`).join(" · ")}</b></div>`;
+}
+// Fertige Produktion übernimmt die DNA
+function applyDna(prog, pr) {
+  const x = pr.dna; if (!x) return;
+  const c = dnaCalc({ kind: pr.kind, opt: pr.opt, cast: pr.cast, dna: x });
+  prog.dur = x.net; prog.len = c.len; prog.fsk = x.fsk; prog.epCost = c.ep; prog.q = clamp(prog.q + c.qBonus, 5, 99);
+  prog.live = x.live ? Math.max(0.03, c.risk / 100) : 0; prog.young = (prog.young || 0) + (x.live ? 20 : 0);
+  prog.wear = x.budget <= 70 ? 0.88 : x.budget >= 130 ? 0.97 : prog.wear; prog.zp = c.z; prog.dna = x;
+  if (x.pre && G.stream && G.stream.stage >= 2) { prog.preRelease = true; addToStream(prog.id, "stream"); }
+}
+// =====================================================================
+// Format-Scouting auf internationalen Messen und Eigenentwicklung (Ideenschmiede)
+// Formate und Rechteinhaber sind real; Qualität, Gebühren und Kosten sind Spielwerte.
+// =====================================================================
+const FORMAT_FAIRS = [["NATPE (Miami)", 0, 20], ["MIPTV (Cannes)", 3, 14], ["BCWW (Seoul)", 7, 26], ["MIPCOM (Cannes)", 9, 19]];
+const INTL_FORMATS = [
+  ["The Traitors", "Reality", "Niederlande", "All3Media / IDTV", 1.3, [0.75, 0.8, 0.5, 0.25], 82], ["The 1% Club", "Show", "Großbritannien", "BBC Studios", 0.7, [0.5, 0.65, 0.7, 0.6], 74],
+  ["Taskmaster", "Show", "Großbritannien", "Avalon", 0.6, [0.85, 0.65, 0.3, 0.1], 76], ["Gogglebox", "Reality", "Großbritannien", "Studio Lambert", 0.4, [0.55, 0.6, 0.55, 0.45], 70],
+  ["I Can See Your Voice", "Show", "Südkorea", "CJ ENM", 1.0, [0.7, 0.7, 0.5, 0.35], 72], ["The Genius Game", "Show", "Südkorea", "CJ ENM", 0.8, [0.8, 0.6, 0.3, 0.1], 68],
+  ["Running Man", "Show", "Südkorea", "SBS", 1.1, [0.9, 0.55, 0.2, 0.05], 66], ["Physical: 100", "Reality", "Südkorea", "MBC", 1.4, [0.9, 0.7, 0.3, 0.1], 74],
+  ["Lego Masters", "Show", "Großbritannien", "Endemol Shine (Banijay)", 1.0, [0.65, 0.7, 0.5, 0.35], 72], ["The Wall", "Show", "USA", "Glassman Media / NBC", 1.6, [0.55, 0.65, 0.65, 0.6], 70],
+  ["Hell's Kitchen", "Reality", "Großbritannien", "ITV Studios", 0.9, [0.7, 0.7, 0.45, 0.3], 70], ["Survivor", "Reality", "Schweden", "Banijay", 2.0, [0.75, 0.75, 0.45, 0.25], 74],
+  ["Dancing on Ice", "Show", "Großbritannien", "ITV Studios", 2.2, [0.45, 0.6, 0.65, 0.65], 72], ["The Floor", "Show", "Niederlande", "Talpa Media", 1.0, [0.55, 0.65, 0.6, 0.5], 76],
+  ["Beat the Chasers", "Show", "Großbritannien", "ITV Studios", 0.8, [0.45, 0.6, 0.7, 0.7], 72], ["Who Wants to Be a Millionaire?", "Show", "Großbritannien", "Sony Pictures Television", 1.2, [0.35, 0.6, 0.8, 0.85], 80],
+  ["Undercover Boss", "Reality", "Großbritannien", "Studio Lambert", 0.6, [0.4, 0.65, 0.7, 0.6], 66], ["Married at First Sight", "Reality", "Dänemark", "Red Arrow", 0.7, [0.8, 0.7, 0.35, 0.2], 68],
+  ["Squid Game: The Challenge", "Reality", "Großbritannien", "Studio Lambert", 3.0, [0.95, 0.75, 0.3, 0.1], 78], ["Rate the Rich", "Show", "Japan", "Nippon TV", 0.5, [0.6, 0.55, 0.45, 0.35], 62],
+];
+const nextFair = (day = G.day) => FORMAT_FAIRS.map(([n, m, d]) => { for (let k = day; k < day + 370; k++) { const dt = dateOf(k); if (dt.getMonth() === m && dt.getDate() === d) return { n, day: k }; } return null; }).filter(Boolean).sort((a, b) => a.day - b.day);
+const SCOUT_TEAMS = { klein: ["Ein Redakteur", 60000, 2, 12], gross: ["Scouting-Team", 180000, 4, 5] }; // Kosten, Funde, Schätzfehler
+function sendScout(fairName, team) {
+  const P = me(), f = nextFair().find(x => x.n === fairName), T = SCOUT_TEAMS[team];
+  if (!f || f.day - G.day > 30) return "Diese Messe ist noch zu weit entfernt (Anmeldung 30 Tage vorher).";
+  if ((G.scouts || []).some(s => s.day === f.day)) return "Für diese Messe ist bereits jemand gebucht.";
+  if (P.money < T[1]) return "Budget reicht nicht.";
+  book(P, "Programmentwicklung", -T[1]);
+  (G.scouts = G.scouts || []).push({ fair: f.n, day: f.day, team });
+  return "";
+}
+function scoutDay() {
+  const P = me(), inGame = new Set(G.stations.flatMap(s => s.progs.map(p => p.title)).concat((G.licenses || []).map(l => l.name), (G.finds || []).map(x => x.name)));
+  for (const s of (G.scouts || []).filter(x => x.day <= G.day)) {
+    const T = SCOUT_TEAMS[s.team], pool = shuffle(INTL_FORMATS.filter(r => !inGame.has(r[0]))).slice(0, T[2]);
+    const finds = pool.map(([name, genre, origin, holder, cost, z, q]) => ({ id: uid(), name, genre, origin, holder, cost: cost * 1e6, z, q: clamp(q + ri(-8, 8), 40, 95), est: 0, fee: r1000((q * q * 40) * rnd(0.8, 1.2)), rival: Math.random() < 0.45 ? pick(G.stations.filter(x => !isMe(x) && x.type === "privat")).id : null, until: G.day + 10, fair: s.fair }));
+    finds.forEach(x => { x.est = clamp(x.q + ri(-T[3], T[3]), 30, 99); });
+    G.finds = (G.finds || []).concat(finds);
+    logMsg("Formatscouting", "Programm", `Scouting-Report ${s.fair}: ${finds.length} interessante Formate – ${finds.map(x => `„${x.name}“ (${x.origin})`).join(", ")}. ${finds.some(x => x.rival) ? "Die Konkurrenz ist ebenfalls interessiert." : ""}`, true);
+    queueEvent({ id: "scoutRep", type: "Markt", title: `Scouting-Report: ${s.fair}`, text: `${SCOUT_TEAMS[s.team][0]} ist zurück und hat ${finds.length} Formate gesichtet. Details und Gebote unter Produktion → Formatentwicklung.`, opts: [["Zum Report", "Formate prüfen und bieten."], ["Später", "Die Angebote gelten 10 Tage."]], data: {} });
+  }
+  G.scouts = (G.scouts || []).filter(x => x.day > G.day);
+  // Nicht gekaufte Funde: die Konkurrenz schlägt zu oder das Angebot verfällt
+  for (const x of (G.finds || []).filter(f => f.until <= G.day)) if (x.rival) logMsg("Branchendienst", "Konkurrenz", `${holderName(x.rival)} sichert sich die deutschen Rechte an „${x.name}“ (${x.holder}).`);
+  G.finds = (G.finds || []).filter(f => f.until > G.day);
+  // Ideenschmiede: nach vier Wochen Pitch
+  for (const dv of (G.devs || []).filter(d => d.ready <= G.day && !d.pitched)) {
+    dv.pitched = true;
+    queueEvent({ id: "pitch", type: "Team", title: `Pitch-Meeting: „${dv.name}“`, text: `Die Redaktion präsentiert ihr Konzept: ${dv.genre} für ${dv.slot}, Zielgruppe ${ZN[dv.target]}. Eigene Einschätzung der Qualität: ${dv.est}/100${dv.viral ? " – das Team hält es für einen möglichen Hit" : ""}.`,
+      opts: [["Pilot produzieren", "Das Konzept steht danach im Studio als Vorlage bereit."], ["Nachbessern", "+14 Tage und +50 % Budget, Qualität steigt."], ["Verwerfen", "Das Geld ist weg."]], data: { id: dv.id } });
+  }
+}
+EVENTS.push({ id: "scoutRep", type: "Markt", when: () => false, make: () => ({}), fn: k => { if (k === 0) setTimeout(() => go("formatdev"), 0); } });
+EVENTS.push({ id: "pitch", type: "Team", when: () => false, make: () => ({}), fn: (k, data) => {
+  const dv = (G.devs || []).find(x => x.id === data.id); if (!dv) return;
+  if (k === 0) { addLicense({ id: "dev" + dv.id, name: dv.name, genre: dv.genre === "Reality" ? "Reality" : "Show", cost: dv.cost, z: dv.z, q: dv.q, own: true }); G.devs = G.devs.filter(x => x !== dv); logMsg("Programmentwicklung", "Programm", `„${dv.name}“ geht in die Pilotphase – Vorlage im Studio verfügbar.`, true); }
+  if (k === 1) { const add = r1000(dv.budget * 0.5); book(me(), "Programmentwicklung", -add); dv.budget += add; dv.q = clamp(dv.q + ri(5, 10), 1, 99); dv.est = clamp(dv.q + ri(-6, 6), 1, 99); dv.ready = G.day + 14; dv.pitched = false; }
+  if (k === 2) G.devs = G.devs.filter(x => x !== dv);
+} });
+// Lizenz kaufen: wird zur Konzept-Vorlage im Studio
+function addLicense(l) {
+  G.licenses = G.licenses || [];
+  if (!G.licenses.some(x => x.id === l.id)) G.licenses.push(l);
+  ensureLicensedBlueprints();
+}
+function ensureLicensedBlueprints() {
+  for (const l of G.licenses || []) {
+    if (BLUEPRINTS.some(b => b.id === l.id)) continue;
+    const kind = l.genre === "Reality" ? "reality" : "show";
+    BLUEPRINTS.push({ id: l.id, name: l.name, genre: l.genre, cost: l.cost, live: 0, wear: 0.94, stream: 1.1, fit: ["Publikumsnähe", "Improvisation"], aud: ZN[l.z.indexOf(Math.max(...l.z))], bonus: Math.round((l.q - 60) / 2), zp: l.z, licensed: !l.own });
+    FORMATS[kind].opts.push(l.id);
+  }
+}
+function buyFind(id) {
+  const P = me(), x = (G.finds || []).find(f => f.id === id); if (!x) return "Angebot nicht mehr verfügbar.";
+  const price = r1000(x.fee * (x.rival ? 1.3 : 1));
+  if (P.money < price) return "Budget reicht nicht.";
+  book(P, "Programmentwicklung", -price);
+  addLicense({ id: "lic" + x.id, name: x.name, genre: x.genre, cost: x.cost, z: x.z, q: x.q });
+  if (x.rival) rivalEvent(x.rival, -8, `Format „${x.name}“ weggeschnappt`);
+  G.finds = G.finds.filter(f => f !== x);
+  logMsg("Programmentwicklung", "Programm", `Deutsche Rechte an „${x.name}“ (${x.holder}) gesichert – ${eur(price)} pro Staffel. Im Studio als Vorlage verfügbar.`, true);
+  return "";
+}
+const DEV_NAMES = { Show: ["Die große {X}-Show", "{X} – Das Duell", "Wer {X} schlägt, gewinnt", "Das {X}-Experiment", "{X} gegen Deutschland"], Reality: ["{X} – Allein im Camp", "Mission {X}", "Das {X}-Haus", "{X} unter Verdacht", "Zurück zu {X}"] };
+const DEV_X = ["Gedächtnis", "Bauch", "Nerven", "Mut", "Heimat", "Zukunft", "Geld", "Wahrheit", "Tempo", "Rätsel", "Familie", "Insel"];
+function startDev(genre, slot, target, budget) {
+  const P = me(); budget = clamp(budget, 25000, 250000);
+  if (P.money < budget) return "Budget reicht nicht.";
+  book(P, "Programmentwicklung", -budget);
+  const q = clamp(Math.round(42 + budget / 6000 + ri(-12, 12) + av("cre") * 0.8), 20, 95), viral = Math.random() < 0.06 + budget / 2.5e6;
+  const z = [0.4, 0.5, 0.5, 0.4].map((v, k) => clamp(v + (k === target ? 0.4 : 0) + (Math.abs(k - target) === 1 ? 0.1 : -0.1), 0.05, 0.95));
+  const name = pick(DEV_NAMES[genre]).replace("{X}", pick(DEV_X));
+  (G.devs = G.devs || []).push({ id: uid(), name, genre, slot, target, budget, q: viral ? Math.min(98, q + 20) : q, est: clamp(q + ri(-10, 10), 1, 99), viral, z, cost: genre === "Reality" ? 0.6e6 : 0.9e6, ready: G.day + 28 });
+  return "";
+}
+function formatDevPage(P) {
+  ensureLicensedBlueprints();
+  const fairs = nextFair(), booked = new Set((G.scouts || []).map(s => s.day));
+  let h = title("Formatentwicklung", `<span class="muted">Scouting auf Messen · Ideenschmiede</span>`) + lockNote();
+  h += `<div class="grid two mb"><section class="panel"><div class="ph"><h2>Messekalender</h2><span class="aside">Anmeldung bis 30 Tage vorher</span></div><div class="tbl"><table><tbody>${fairs.map(f => `<tr><td class="title"><b>${esc(f.n)}</b><div class="muted">${dateShort(f.day)} · in ${f.day - G.day} Tagen</div></td><td class="num">${booked.has(f.day) ? '<span class="chip good">gebucht</span>' : Object.entries(SCOUT_TEAMS).map(([k, t]) => `<button class="btn small" data-act="scoutGo" data-k="${esc(f.n)}" data-v="${k}" ${f.day - G.day > 30 || planLocked() ? "disabled" : ""}>${t[0]} · ${eur(t[1])}</button>`).join(" ")}</td></tr>`).join("")}</tbody></table></div></section>
+    <section class="panel"><div class="ph"><h2>Ideenschmiede</h2><span class="aside">Pitch nach 4 Wochen</span></div><div class="pad" style="display:grid;gap:8px">
+      <div class="pills">${["Show", "Reality"].map(g => `<button data-act="devSet" data-k="genre" data-v="${g}" class="${(G.devDraft || {}).genre === g ? "on" : ""}">${g}</button>`).join("")}</div>
+      <div class="pills">${["Vorabend", "Primetime", "Late Night"].map(g => `<button data-act="devSet" data-k="slot" data-v="${g}" class="${(G.devDraft || {}).slot === g ? "on" : ""}">${g}</button>`).join("")}</div>
+      <div class="pills">${ZN.map((n, k) => `<button data-act="devSet" data-k="target" data-v="${k}" class="${(G.devDraft || {}).target === k ? "on" : ""}">${n}</button>`).join("")}</div>
+      <label class="field"><span>Entwicklungsbudget: <b id="devBudTxt">${eur((G.devDraft || {}).budget || 50000)}</b></span><input type="range" id="devBudget" min="25000" max="250000" step="25000" value="${(G.devDraft || {}).budget || 50000}"></label>
+      <button class="btn hot" data-act="devGo" ${planLocked() ? "disabled" : ""}>Auftrag an die Redaktion</button>
+      ${(G.devs || []).length ? `<div class="tbl"><table><tbody>${G.devs.map(d => `<tr><td class="title">„${esc(d.name)}“<div class="muted">${esc(d.genre)} · ${esc(d.slot)} · ${ZN[d.target]}</div></td><td class="num muted">${d.ready > G.day ? `Pitch am ${dateShort(d.ready)}` : "Pitch steht an"}</td></tr>`).join("")}</tbody></table></div>` : ""}</div></section></div>`;
+  const finds = G.finds || [];
+  h += `<section class="panel mb"><div class="ph"><h2>Scouting-Reports</h2><span class="aside">Angebote gelten 10 Tage</span></div>${finds.length ? `<div class="tbl"><table><thead><tr><th>Format</th><th>Rechteinhaber</th><th>Zielgruppen</th><th class="num">Potenzial</th><th class="num">Lizenz / Staffel</th><th></th></tr></thead><tbody>
+    ${finds.map(x => `<tr><td class="title"><b>${esc(x.name)}</b><div class="muted">${esc(x.genre)} · ${esc(x.origin)} · ${esc(x.fair)}</div></td><td>${esc(x.holder)}</td><td class="muted">${x.z.map((v, k) => `Z${k + 1} ${Math.round(v * 100)}`).join(" · ")}</td><td class="num">${stars5(x.est)}</td><td class="num">${eur(r1000(x.fee * (x.rival ? 1.3 : 1)))}${x.rival ? `<div class="down" style="font-size:12px">${esc(holderName(x.rival))} bietet mit</div>` : ""}</td><td class="num"><button class="btn small hot" data-act="findBuy" data-id="${x.id}" ${planLocked() ? "disabled" : ""}>Rechte sichern</button></td></tr>`).join("")}</tbody></table></div>` : '<p class="fine pad">Noch keine Reports – schicken Sie jemanden auf die nächste Messe.</p>'}</section>`;
+  h += `<section class="panel"><div class="ph"><h2>Ihre Formatlizenzen & Konzepte</h2></div>${(G.licenses || []).length ? `<div class="tbl"><table><tbody>${G.licenses.map(l => `<tr><td class="title"><b>${esc(l.name)}</b><div class="muted">${l.own ? "Eigenentwicklung" : "Lizenz"} · ${esc(l.genre)}</div></td><td class="muted">${l.z.map((v, k) => `Z${k + 1} ${Math.round(v * 100)}`).join(" · ")}</td><td class="num"><button class="btn small" data-page="newprod">Im Studio produzieren</button></td></tr>`).join("")}</tbody></table></div>` : '<p class="fine pad">Noch keine.</p>'}</section>`;
+  return h;
+}
+// =====================================================================
 // Formatprofil: Quotenverlauf, Publikum, Analyse und Maßnahmen je Sendung
 // =====================================================================
 // Affinität zur Zielgruppe 14–49 (Spielwerte): Sender-Image × Genre
@@ -5357,6 +5591,12 @@ function recordHour(res, sorted, i) {
       if (x.sg.gap) continue;
       const p = x.sg.p, v = r.v * x.a * 60 / tot, ma = v / BASE[i] * 100, min = x.sg.min, start = x.sg.start;
       if (x.sg.extra && x.sg.startsHere) { airedOnce(r.st, p, i); p.lastAired = G.day; p.bestMA = Math.max(p.bestMA || 0, ma); }
+      if (isMe(r.st) && p.kind !== "sport") {
+        const share = x.a * min / tot, part = { min, vm: v * min, blk: (r.blk || 0) * share, spot: (r.spot || 0) * share, camp: (r.camp || 0) * share };
+        if (r.blk && share > 0.25) part.block = { h: i, pay: r1000(r.blk * share), v, min: Math.round(adMinH(r.st, i) * share) };
+        if (x.sg.startsHere) { const c = airCost(r.st, p); part.prod = c.prod; part.lic = c.lic; part.gage = c.gage; if (p.sponsor && r.st.type === "privat") part.spons = r1000(5000 + v * 3000); if (x.sg.extra && p.epCost) book(r.st, "Eigenproduktion", -p.epCost); }
+        const e = finAdd(p, G.day, start, part); e.v = e.vm / e.min;
+      }
       // Tagesbilanz je Ausstrahlung (für die Quoten-News)
       const ds = G.daySeg.find(d => d.st === r.st.i && d.id === p.id && d.start === start);
       if (ds) { ds.vs += v * min; ds.bs += BASE[i] * min; ds.min += min; } else G.daySeg.push({ st: r.st.i, id: p.id, start, title: p.title, vs: v * min, bs: BASE[i] * min, min });
@@ -5554,6 +5794,7 @@ function fmtTabBody(t, tab) {
         ${mine ? (comp.length ? `<div class="tbl"><table><tbody>${comp.map(c => `<tr><td class="title">${esc(c.t)}</td><td>${sname(c.st)}</td><td class="num muted">${c.n}× stärkste Konkurrenz</td></tr>`).join("")}</tbody></table></div>` : '<p class="fine pad">Noch keine Daten.</p>')
           : `<p class="pad" style="margin:0">${(() => { const v = fmtStats(p); return v.n && v.ma > stationAvgMA(me()) ? `Starkes Format der Konkurrenz (Ø ${pct(v.ma)}). Gegenprogramm mit einer anderen Zielgruppe planen statt frontal dagegenzuhalten.` : "Angreifbar: Mit einem starken Format im selben Genre lässt sich hier Publikum abwerben."; })()}</p>`}</section></div>`;
   }
+  if (tab === "fin" && mine) return finTab(t);
   if (tab === "fx" && mine) {
     const P = st, running = (p.fx || []);
     return `${p.own ? `<section class="panel"><div class="ph"><h2>Produktion & Besetzung</h2></div><div class="pad">${progManage(P, p)}</div></section>` : ""}
@@ -6210,6 +6451,7 @@ document.addEventListener("change", async e => {
   if (ph && e.target.files && e.target.files[0]) { if (await savePhoto(ph, e.target.files[0])) { toast("Foto gespeichert."); renderProfile(); render(); } return; }
 });
 document.addEventListener("change", e => {
+  if (e.target.dataset && e.target.dataset.dna && draft && draft.dna) { const k = e.target.dataset.dna; draft.dna[k] = k === "pre" ? e.target.checked : +e.target.value; render(); return; }
   if (e.target.dataset && e.target.dataset.tsel && G) { const [d, i] = e.target.dataset.tsel.split("|").map(Number), v = e.target.value; editPlan(d, sc => { if (v === "") delete sc[i].t; else sc[i].t = +v; }); render(); return; }
   if (e.target.dataset && e.target.dataset.adl && G) { const L = adLoad(me()), k = e.target.dataset.adl, v = +e.target.value; if (me().type === "oer") { const other = Object.entries(L).filter(([h]) => h !== k).reduce((a, [, x]) => a + x, 0); L[k] = Math.max(0, Math.min(v, 20 - other)); } else L[k] = clamp(v, 0, 12); render(); return; }
   const u = e.target.dataset && e.target.dataset.upload; if (u) readUpload(e.target, u); else if (e.target.dataset && e.target.dataset.ed) edUpdateField(e.target); });
@@ -6256,7 +6498,7 @@ function openTitle(key) {
   if (!t) { toast("Dieser Titel ist nicht mehr im Programm."); profStack.pop(); renderProfile(); return; }
   const p = t.prog, cast = titleCast(p, t.title), mine = t.st && isMe(t.st);
   const kindName = p ? ({ film: "Spielfilm", serie: "Serie", show: p.genre === "Nachrichten" ? "Nachrichtensendung" : "Format", sport: "Live-Sport" }[p.kind] || "Sendung") : "Streaming-Titel";
-  const tabs = p && t.st ? [["overview", "Übersicht"], ["ratings", "Quotenverlauf"], ["audience", "Publikum"], ["analysis", "Analyse"], ...(mine ? [["fx", "Maßnahmen"]] : [])] : [];
+  const tabs = p && t.st ? [["overview", "Übersicht"], ["ratings", "Quotenverlauf"], ["audience", "Publikum"], ["analysis", "Analyse"], ...(mine ? [["fin", "Finanzen"], ["fx", "Maßnahmen"]] : [])] : [];
   if (!tabs.some(([k]) => k === profTab)) profTab = "overview";
   const castPanel = `<section class="panel" style="margin-top:12px"><div class="ph"><h2>Mitwirkende</h2><span class="aside">${cast.length} Personen</span></div>
       ${cast.length ? `<div class="tbl"><table><thead><tr><th></th><th>Name</th><th>Rolle</th><th>Bekanntheit</th><th>Vertrag</th></tr></thead><tbody>${cast.map(c => { const q = ensurePerson(person(c.id)); const st = pState(q); return `<tr><td>${avatar(q, 34)}</td><td class="title">${personLink(q)}<div class="muted">${SPEC_NAME[q.role]}${q.age ? ` · ${q.age} J.` : ""} · ${q.origin}</div></td><td>${esc(c.role)}</td><td class="stars5">${stars5(q.fame)}</td><td><span class="status"><i style="background:${st.color}"></i>${esc(st.label)}</span></td></tr>`; }).join("")}</tbody></table></div>`
