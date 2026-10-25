@@ -2813,6 +2813,11 @@ const moodText = pat => pat >= 70 ? ["Gesprächsbereit", "good"] : pat >= 40 ? [
 function openNego(id, ctx, slot) {
   const p = person(id); if (!p || planLocked()) return;
   if (p.ban > G.day) { toast(`${p.name} spricht bis ${dateShort(p.ban)} nicht mit Ihnen.`); return; }
+  { const sp = expertSport(p), P = me(); if (sp && !holdsSport(P, sp) && !(G.sv && isStreamJob())) {
+    const who = sportOwners(sp).filter(o => o !== P.id).map(holderName).filter((v, k, a) => a.indexOf(v) === k);
+    openModal(`<header><h2>${esc(p.name)} sagt ab</h2><button class="btn" data-act="close">Schließen</button></header><div class="dbody"><div class="nego-person">${avatar(p, 56)}<div><b>${esc(p.name)}</b><span class="muted">${SPEC_NAME[p.role]} · ${sp}</span></div></div>
+      <p class="lead">Die Agentur winkt ab: Ein Wechsel kommt nur zu einem Sender infrage, der ${sp === "Sport" ? "Live-Sport" : `${sp}-Rechte`} hat – sonst gibt es keine Einsätze.${who.length ? ` Aktuell liegen die Rechte bei ${who.slice(0, 4).join(", ")}.` : ""}</p>
+      <div class="actions"><button class="btn hot" data-act="go" data-k="rights">Zu den Sportrechten</button></div></div>`); return; } }
   const dem = pClause(p);
   nego = { id, ctx, slot, type: ctx === "slot" ? "proj" : "excl", weeks: 52, promises: [], clauses: dem ? [dem] : [], pct: 100, msg: null, done: false };
   renderNego();
@@ -3484,7 +3489,7 @@ function nextDay() {
   if (chk.firstBad != null) logMsg("Programmplanung", "Warnung", `Planungsvorlauf: Das Programm ist nur bis ${chk.until >= G.day ? dateShort(chk.until) : "heute"} lückenlos – ${chk.holes} Stunde${chk.holes > 1 ? "n" : ""} offen oder ohne gültige Lizenz. Vor dem nächsten Sendetag müssen ${HORIZON / 7} Wochen geplant sein.`);
   logMsg("Programmhandel", "Programm", "Neue Filme und Serienlizenzen sind eingetroffen.");
   startDay();
-  if (G.adAuto !== false) adAutoBook(me());
+  asstDay(me());
   pickEvent();
   if (!G.event && G.evQ && G.evQ.length) G.event = G.evQ.shift();
   go("overview", true);
@@ -3508,6 +3513,7 @@ $("cont").addEventListener("click", () => {
   if (!G || !$("modal").hidden) return;
   if (G.event) { showEvent(); return; }
   if (G.phase === "plan") {
+    if (asst().plan && planCheck(me()).firstBad != null) fillHorizon(me());
     const chk = planCheck(me());
     if (chk.firstBad != null && G.gateSkip !== G.day) { showPlanGate(chk); return; }
     const empty = me().sched.filter(c => !c.p).length;
@@ -3815,6 +3821,7 @@ function planPage(P) {
   const sc = schedFor(P, d), lock = isToday && planLocked(), chk = planCheck(P), badSet = new Set(chk.bad[d] || []);
   const secured = Math.max(0, chk.until - G.day + 1);
   let h = title("Sendekalender", `<div class="actions">${lock ? "" : `<button class="btn" data-act="autoDay" data-k="${d}">Assistent für ${dateShort(d)}</button><button class="btn" data-act="copyDay" data-k="${d}">Auf alle ${WDL[wd]}e kopieren</button>`}<button class="btn hot" data-act="fillAll" ${planLocked() ? "disabled" : ""}>Alle Lücken füllen</button></div>`);
+  h += asstBar();
   h += `<section class="panel mb"><div class="ph"><h2>Planungsvorlauf</h2><span class="aside">Die Senderleitung verlangt ${HORIZON / 7} Wochen lückenlos geplantes Programm, bevor der nächste Sendetag startet.</span></div>
     <div class="pad"><div class="goal"><div class="row"><b>Gesichert bis ${secured ? dateShort(chk.until) : "–"}</b><span class="${secured >= HORIZON ? "up" : "down"}">${secured} / ${HORIZON} Tage${chk.holes ? ` · ${chk.holes} Stunden offen` : ""}</span></div><div class="track"><i style="width:${secured / HORIZON * 100}%;background:${secured >= HORIZON ? "#22c55e" : "#ef4444"}"></i></div></div>
     ${calendarGrid(P, d, chk)}<p class="fine"><i class="dot live"></i> Live-Sport · <i class="dot pre"></i> Premiere · Rot: offene Stunden oder Lizenz bis dahin ausgeschöpft</p></div></section>`;
@@ -4250,7 +4257,8 @@ function act(b) {
     case "fillDay": { const dd = +b.dataset.k; if (!(dd === G.day && planLocked())) { const n = fillGaps(P, calDay(P, dd), weekday(dd)); autoTidy(P, dd); if (dd === G.day) buildToday(P); toast(n ? `${n} Sendungen in Lücken eingesetzt.` : "Keine Lücken."); } break; }
     case "frameDlg": { const [dd, st] = b.dataset.k.split("|").map(Number); frameDlg(dd, st); return; }
     case "frameAdd": { const [dd, st, kk] = b.dataset.k.split("|"); closeModal(); frameAdd(P, +dd, +st, kk); return; }
-    case "dvZoom": case "dvPick": case "dvResolve": case "dvOver": case "dvOpenK": case "dvCasc": case "dvTime": case "dvDel": case "dvSwap": case "dvIns": case "fixDlg": case "fixWd": case "fixQuick": case "fixTime": case "fixAdd": case "fixDel": dvAction(P, k, b, id); return;
+    case "dvlCat": { const box = document.querySelector(".dvl"); if (box) { box.dataset.cat = b.dataset.k || ""; dvListFilter(); } return; }
+    case "dvZoom": case "dvPick": case "dvResolve": case "dvOver": case "dvOpenK": case "dvCasc": case "dvTime": case "dvDel": case "dvSwap": case "dvIns": case "dvAdBrk": case "dvTrim": case "fixDlg": case "fixWd": case "fixQuick": case "fixTime": case "fixAdd": case "fixDel": dvAction(P, k, b, id); return;
     case "descAi": if (draft) descAi(draft, "descAiOut"); return;
     case "prodInfo": { const pr = G.prods.find(x => String(x.id) === b.dataset.k); if (pr) prodInfo(pr); return; }
     case "boHire": if (!planLocked()) boHire(P, b.dataset.k); break;
@@ -4261,6 +4269,10 @@ function act(b) {
     case "ctxPlan": { const p = progOf(P, id); if (!p) return; dvPick = p.id; planDay = planDay && planDay >= G.day ? planDay : G.day + 1; go("plan"); toast(`„${p.title}“ gewählt – jetzt die Uhrzeit im Kalender antippen.`); return; }
     case "autoWin": if (G.stream) G.stream.autoWin = b.dataset.k || null; break;
     case "nfNew": case "nfEdit": case "nfLen": case "nfMod": case "nfSave": nfAction(P, k, b, id); return;
+    case "nfCancel": { const p = progOf(P, id); if (!p || planLocked()) return; const n = allPlans(P).reduce((a, dd) => a + dd.filter(c => c.p === p.id && !c.cont).length, 0);
+      openModal(`<header><h2>„${esc(p.title)}“ absetzen?</h2><button class="btn" data-act="close">Abbrechen</button></header><div class="dbody"><p class="lead">Das Nachrichtenformat wird eingestellt. ${n} geplante Ausstrahlungen werden aus dem Kalender genommen, feste Sendetermine gelöscht. Die Redaktion bleibt – Sie können jederzeit ein neues Format anlegen.</p>
+        <div class="actions"><button class="btn red" data-act="nfCancelOk" data-id="${p.id}">Absetzen</button><button class="btn" data-act="close">Behalten</button></div></div>`); return; }
+    case "nfCancelOk": { const p = progOf(P, id); if (!p || planLocked()) return; p.slots = null; p.fixSlot = null; closeModal(); progCancel0(P, p); toast(`„${p.title}“ ist abgesetzt. Die freien Sendeplätze füllt „Alle Lücken füllen“.`); break; }
     case "sqIns": case "sqRep": case "sqPick": case "sqDel": case "sqMove": sqAction(P, k, b, id); return;
     case "addExtra": { const [dd, ii] = b.dataset.k.split("|").map(Number); if (dd === G.day && planLocked()) return; openExtraPicker(P, dd, ii); return; }
     case "pickExtra": { const [dd, ii] = b.dataset.k.split("|").map(Number); editPlan(dd, sc => { sc[ii].extra = (sc[ii].extra || []).concat(id); }); closeModal(); break; }
@@ -4411,6 +4423,7 @@ function act(b) {
     case "pickProg": if (moveSrc) { moveProg(P, wd, i); break; } openPicker("prog", i, wd); return;
     case "moveStart": { const sc = schedFor(P, wd); let st = i; while (st > 0 && sc[st].cont && sc[st - 1].p === sc[i].p) st--; if (sc[st].p && !(wd === G.day && planLocked())) moveSrc = { d: wd, i: st, p: sc[st].p, all: b.dataset.v === "all" }; closeModal(); break; }
     case "moveCancel": moveSrc = null; break;
+    case "asstT": { const A = asst(); A[b.dataset.k] = !A[b.dataset.k]; if (b.dataset.k === "ads") G.adAuto = A.ads; toast(`${ASST.find(x => x[0] === b.dataset.k)[1]}-Assistent ${A[b.dataset.k] ? "an" : "aus"}.`); break; }
     case "fillAll": if (!planLocked()) { closeModal(); fillHorizon(P); const c = planCheck(P); toast(c.firstBad == null ? `Der Assistent hat den Kalender bis ${dateShort(c.until)} lückenlos gefüllt.` : `Noch ${c.holes} Stunden offen.`); render(); } break;
     case "gateSkip": closeModal(); P.conf = Math.max(0, P.conf - 1); G.gateSkip = G.day; $("cont").click(); break;
     case "toPlanDay": closeModal(); planDay = wd; go("plan"); return;
@@ -8410,8 +8423,9 @@ function seqEdit(P, d, fn) {
 }
 // Status einer Ausstrahlung: Premiere, neue Folge oder Wiederholung
 // earlier: Startzeit einer früheren Ausstrahlung desselben Titels am selben Tag
-function airChip(p, earlier) {
+function airChip(p, earlier, nPrior = 1) {
   if (p.house || p.kind === "sport") return "";
+  if (earlier != null && p.kind === "serie" && (p.ep || 0) + nPrior < (p.eps || 0)) return `<span class="chip good">Neue Folge ${(p.ep || 0) + nPrior + 1}/${p.eps} · ${nPrior === 1 ? "Doppelfolge" : nPrior === 2 ? "Dreierfolge" : `${nPrior + 1}. Folge am Stück`}</span>`;
   if (earlier != null) return `<span class="chip warn">Wiederholung von ${hhmm(earlier)}</span>`;
   if (p.kind === "serie") return (p.ep || 0) < (p.eps || 0) ? `<span class="chip good">Neue Folge ${(p.ep || 0) + 1}/${p.eps}</span>` : `<span class="chip">Wiederholung</span>`;
   if (p.kind === "film") return (p.runs || 0) === 0 ? '<span class="chip good">Free-TV-Premiere</span>' : `<span class="chip">Wiederholung · ${p.runs + 1}. Lauf</span>`;
@@ -8456,7 +8470,7 @@ function seqTimeline(P, d, lock) {
     h += ins(k) + `<div class="sq ${youth ? "bad" : ""}" style="min-height:${ht}px" ${lock ? "" : `draggable="true" data-sqdrag="${d}|${k}"`} data-sqdrop="${d}|${k}">
       <div class="sq-time">${hhmm(x.start)}<small>${hhmm(x.end % 1440)}</small></div>
       <div class="sq-main"><b>${p.kind !== "sport" ? `<span class="tl" data-title="${P.id}|${p.id}">${esc(p.title)}</span>` : esc(p.title)}</b>
-        <span class="sq-meta"><span class="chip">${len} Min.</span>${airChip(p, prior ? prior.start : null)}${p.house ? '<span class="chip">Kurzformat</span>' : ""}<span>${p.kind === "sport" ? esc(p.comp || "") : `${esc(p.genre)} · <span class="stars">${stars(fit(p.genre, x.i))}</span> · Q ${p.q} · Akt. ${Math.round((p.topic ?? 1) * 100)} %`}</span>${p.fsk >= 12 ? `<span class="chip fsk">FSK ${p.fsk}</span>` : ""}</span>
+        <span class="sq-meta"><span class="chip">${len} Min.</span>${airChip(p, prior ? prior.start : null, rd0.filter(y => !y.gap && y.p.id === p.id && y.start < x.start).length || 1)}${p.house ? '<span class="chip">Kurzformat</span>' : ""}<span>${p.kind === "sport" ? esc(p.comp || "") : `${esc(p.genre)} · <span class="stars">${stars(fit(p.genre, x.i))}</span> · Q ${p.q} · Akt. ${Math.round((p.topic ?? 1) * 100)} %`}</span>${p.fsk >= 12 ? `<span class="chip fsk">FSK ${p.fsk}</span>` : ""}</span>
         ${youth ? `<span class="warnline">⚠ Jugendschutz: FSK ${p.fsk} zu früh</span>` : ""}${w.map(s => `<span class="warnline">⚠ ${esc(s)}</span>`).join("")}
         ${!x.extra ? `<span class="muted">Erwartet ${mio(expected(P, x.i))} Mio.${r ? " · Ergebnis " + resDot(r) : ""}</span>` : ""}
         ${ads ? `<span class="sq-ads">${ads}</span>` : ""}</div>
@@ -8558,8 +8572,8 @@ function overlapMsg(P, d, k) {
   return b.with.length ? ` ⚠ Überschneidung mit „${b.with[0].p ? b.with[0].p.title : b.with[0].title}“.` : b.cut ? ` Werbung wird um ${b.cut} Min. gekürzt.` : "";
 }
 function dvChip(P, d, x, items) {
-  const prior = items.find(y => y !== x && y.p.id === x.p.id && y.t < x.t);
-  if (prior) return airChip(x.p, prior.t);
+  const priors = items.filter(y => y !== x && y.p.id === x.p.id && y.t < x.t);
+  if (priors.length) return airChip(x.p, priors[0].t, priors.length);
   if (x.t < 360 && !x.p.house && d - 1 >= G.day && P.cal && P.cal[d - 1]) { const y = dayItems(P, d - 1).find(y => y.p.id === x.p.id && y.t >= 1080); if (y) return `<span class="chip warn">Wiederholung vom Vortag ${hhmm(y.t)}</span>`; }
   return airChip(x.p);
 }
@@ -8593,12 +8607,22 @@ function dayView(P, d, lock) {
     <div class="dv-scroll"><div class="dv-col ${lock ? "lock" : ""}" data-dvcol="${d}" style="height:${1440 * PX}px">${ticks}${gapHtml}${blockHtml}</div></div></div></section>`;
 }
 // Auswahlliste für Einfügen und Austauschen
+const dvCat = p => p.kind === "film" ? "Film" : p.kind === "serie" ? "Serie" : ["Nachrichten", "Magazin"].includes(p.genre) ? "Info" : ["Doku", "Kultur"].includes(p.genre) ? "Doku" : p.genre === "Talk" ? "Talk" : p.genre === "Reality" ? "Reality" : p.house ? "Kurzformat" : "Show";
+function dvListFilter() {
+  const box = document.querySelector(".dvl"); if (!box) return;
+  const cat = box.dataset.cat || "", q = ((document.getElementById("dvlSearch") || {}).value || "").toLowerCase().trim();
+  let n = 0;
+  box.querySelectorAll(".pick[data-cat]").forEach(el => { const on = (!cat || el.dataset.cat === cat) && (!q || el.dataset.q.includes(q)); el.hidden = !on; if (on) n++; });
+  box.querySelectorAll("[data-act=dvlCat]").forEach(el => el.classList.toggle("on", (el.dataset.k || "") === cat));
+  const c = box.querySelector(".dvl-n"); if (c) c.textContent = `${n} Titel`;
+}
 function dvList(P, d, m, act, key) {
   const wd = weekday(d), hr = Math.floor(m / 60) % 24;
-  ensureHouse(P);
   const list = P.progs.filter(p => p.kind !== "sport" && !p.exclusive && !(p.kind === "film" && p.runs >= p.maxRuns) && !(p.kind === "serie" && !p.own && p.ep >= (p.maxEp || p.eps * 2)) && !(p.until && d > p.until))
-    .sort((a, b) => b.q * fit(b.genre, hr) * (0.35 + 0.65 * (b.topic ?? 1)) - a.q * fit(a.genre, hr) * (0.35 + 0.65 * (a.topic ?? 1))).slice(0, 80);
-  return `<div class="picklist">${list.map(p => { const g = itemDur(P, p, m, wd); return `<button class="pick" data-act="${act}" data-k="${key}" data-id="${p.id}" ${youthOk(p, hr) ? "" : "disabled"}><b>${esc(p.title)}</b><span class="meta"><span class="chip">${g} Min.</span><span>${hhmm(m)}–${hhmm((m + g) % 1440)}</span>${airChip(p)}<span>${esc(p.genre)}</span><span class="stars">${stars(fit(p.genre, hr))}</span><span>Q ${p.q}</span>${youthOk(p, hr) ? "" : `<span class="down">FSK ${p.fsk} zu früh</span>`}</span></button>`; }).join("")}</div>`;
+    .sort((a, b) => b.q * fit(b.genre, hr) * (0.35 + 0.65 * (b.topic ?? 1)) - a.q * fit(a.genre, hr) * (0.35 + 0.65 * (a.topic ?? 1))).slice(0, 250);
+  const cats = ["Serie", "Film", "Show", "Reality", "Talk", "Info", "Doku", "Kurzformat"].filter(c => list.some(p => dvCat(p) === c));
+  return `<div class="dvl" data-cat=""><div class="dv-bar" style="flex-wrap:wrap"><input class="search" id="dvlSearch" placeholder="Titel suchen …" style="max-width:240px"><div class="pills"><button class="on" data-act="dvlCat" data-k="">Alle</button>${cats.map(c => `<button data-act="dvlCat" data-k="${c}">${c}</button>`).join("")}</div><span class="muted dvl-n">${list.length} Titel</span></div>
+  <div class="picklist">${list.map(p => { const g = itemDur(P, p, m, wd); return `<button class="pick" data-cat="${dvCat(p)}" data-q="${esc(p.title.toLowerCase())} ${esc(p.genre.toLowerCase())}" data-act="${act}" data-k="${key}" data-id="${p.id}" ${youthOk(p, hr) ? "" : "disabled"}><b>${esc(p.title)}</b><span class="meta"><span class="chip">${g} Min.</span><span>${hhmm(m)}–${hhmm((m + g) % 1440)}</span>${airChip(p)}<span>${esc(p.genre)}</span><span class="stars">${stars(fit(p.genre, hr))}</span><span>Q ${p.q}</span>${youthOk(p, hr) ? "" : `<span class="down">FSK ${p.fsk} zu früh</span>`}</span></button>`; }).join("")}</div></div>`;
 }
 function dvOpen(d, k) {
   const P = me(), wd = weekday(d), x = dayItems(P, d)[k]; if (!x) return;
@@ -8607,6 +8631,9 @@ function dvOpen(d, k) {
     <div class="actions" style="flex-wrap:wrap;gap:8px;margin-bottom:12px"><label class="muted">Startzeit <input type="time" id="dvTime" step="300" value="${hhmm(x.t)}"></label><button class="btn small hot" data-act="dvTime" data-k="${d}|${k}">Übernehmen</button>
       ${canFix ? `<button class="btn small" data-act="fixDlg" data-id="${x.p.id}">Feste Sendetermine …</button>` : ""}<button class="btn small" data-title="${P.id}|${x.p.id}">Formatprofil</button>
       ${adAllowed(P, h, wd) ? `<button class="btn small" data-act="pickAd" data-i="${h}" data-k="${d}">Werbung ${hh(h)}</button>` : ""}<button class="btn small red" data-act="dvDel" data-k="${d}|${k}">Entfernen</button></div>
+    <div class="actions" style="flex-wrap:wrap;gap:8px;margin-bottom:12px"><span class="muted">Werbeblock danach</span>${[5, 10, 15].map(v => `<button class="btn small" data-act="dvAdBrk" data-k="${d}|${k}|${v}" title="Folgesendungen rücken nach, feste Termine bleiben">+${v} Min.</button>`).join("")}
+      ${x.p.kind !== "sport" ? `<span class="muted" style="margin-left:10px">Länge ${netDur(x.p)} Min.${x.p.dur0 && x.p.dur0 !== x.p.dur ? ` (Original ${x.p.dur0})` : ""}</span><button class="btn small" data-act="dvTrim" data-k="${d}|${k}|-5" ${netDur(x.p) - 5 < Math.ceil((x.p.dur0 || netDur(x.p)) * 0.75) ? "disabled" : ""}>kürzen −5</button><button class="btn small" data-act="dvTrim" data-k="${d}|${k}|5" ${!x.p.dur0 || netDur(x.p) >= x.p.dur0 ? "disabled" : ""}>+5</button>` : ""}</div>
+    <p class="fine">Kürzen gilt für alle Ausstrahlungen. ${x.p.kind === "film" || x.p.kind === "serie" ? "Schnittfassung: −1 Qualität je 5 Minuten." : "Kürzere Ausgabe, kostet keine Qualität."}</p>
     ${(() => { const bb = dayBlocks(P, d).blocks.find(y => y.k === k); return bb && bb.with.length ? `<p class="warnline">⚠ Überschneidung mit „${esc(bb.with[0].p ? bb.with[0].p.title : bb.with[0].title)}“ <button class="btn small hot" data-act="dvOver" data-k="${d}|${k}">Lösungen anzeigen</button></p>` : bb && bb.cut ? `<p class="fine">Werbung${bb.cut > 0 ? ` wird um ${bb.cut} Min. gekürzt` : ""}, damit die nächste Sendung pünktlich beginnt.</p>` : ""; })()}
     <h3>Austauschen gegen …</h3>${dvList(P, d, x.t, "dvSwap", `${d}|${k}`)}</div>`);
 }
@@ -8614,7 +8641,9 @@ function dvInsert(d, m) {
   const P = me(); if (dvLocked(d)) return;
   if (dvPick != null) { const p = progOf(P, dvPick); dvPick = null; if (p) dvPlace(P, d, p, m); return; }
   openModal(`<header><h2>${dateShort(d)} · Sendung um ${hhmm(m)} einfügen</h2><button class="btn" data-act="close">Schließen</button></header><div class="dbody">
-    <p class="lead">Die Sendung beginnt genau um ${hhmm(m)}. Überschneidungen zeigt der Kalender rot an.</p>${dvList(P, d, m, "dvIns", `${d}|${m}`)}</div>`);
+    <p class="lead">Die Sendung beginnt genau um ${hhmm(m)}. Überschneidungen zeigt der Kalender rot an.</p>
+    ${(() => { const prev = dayItems(P, d).filter(y => y.t < m).sort((a, b) => b.t - a.t)[0]; const k = prev ? dayItems(P, d).indexOf(dayItems(P, d).find(y => y.p === prev.p && y.t === prev.t)) : -1; return k >= 0 ? `<div class="actions" style="gap:8px;margin-bottom:10px"><span class="muted">Stattdessen Werbeblock einfügen</span>${[5, 10, 15].map(v => `<button class="btn small" data-act="dvAdBrk" data-k="${d}|${k}|${v}">${v} Min.</button>`).join("")}<span class="fine">Lücken bis 15 Minuten laufen als Werbung & Trailer.</span></div>` : ""; })()}
+    ${dvList(P, d, m, "dvIns", `${d}|${m}`)}</div>`);
 }
 function dvPlace(P, d, p, m) {
   if (!youthOk(p, Math.floor(m / 60) % 24)) { toast(`🚫 „${p.title}“ hat FSK ${p.fsk} und darf erst ab ${p.fsk >= 18 ? "23" : "22"}:00 Uhr laufen.`); return; }
@@ -8690,6 +8719,15 @@ function dvAction(P, k, b, id) {
     case "dvOpenK": dvOpen(d, v); return;
     case "dvCasc": closeModal(); dvCascade(P, d, v, +key.split("|")[2]); return;
     case "dvTime": { const m = readTime("dvTime"); if (m == null) return; const items = dayItems(P, d); if (!items[v]) return; items[v].t = m; closeModal(); dvSave(P, d, items); const k2 = dayItems(P, d).findIndex(x => x.t === m && x.p.id === items[v].p.id); toast(`„${items[v].p.title}“ beginnt jetzt um ${hhmm(m)}.${overlapMsg(P, d, k2)}`); return; }
+    case "dvAdBrk": { const add = +key.split("|")[2], items = dayItems(P, d).sort((a, b) => a.t - b.t), x = dayItems(P, d)[v]; if (!x) return;
+      const wd = weekday(d), isFix = y => slotsOf(y.p).some(s => slotFits(s, d) && Math.abs(s.t - y.t) < 5), end = x.t + itemDur(P, x.p, x.t, wd);
+      let n = 0; for (const y of items) { if (y.t < end || (y.p === x.p && y.t === x.t)) continue; if (isFix(y)) break; y.t += add; n++; }
+      closeModal(); dvSave(P, d, items, `Werbeblock ${add} Min. nach „${x.p.title}“${n ? ` – ${n} Sendungen rücken nach` : ""}.`); return; }
+    case "dvTrim": { const dv = +key.split("|")[2], x = dayItems(P, d)[v]; if (!x || dvLocked(d)) return; const p = x.p, base = p.dur0 || netDur(p), cur = netDur(p), nd = cur + dv;
+      if (nd < Math.ceil(base * 0.75) || nd > base) return;
+      p.dur0 = base; p.dur = nd; if (p.kind === "film" || p.kind === "serie") p.q = clamp(p.q + Math.sign(dv), 5, 99); if (p.epCost) p.epCost = r1000(p.epCost * nd / cur);
+      for (let dd = G.day; dd < G.day + HORIZON; dd++) if (!dvLocked(dd) && P.cal && P.cal[dd]) autoTidy(P, dd);
+      closeModal(); buildToday(P); render(); toast(`„${p.title}“ läuft jetzt ${nd} Min.${nd < base ? ` (Original ${base})` : ""}.`); dvOpen(d, dayItems(P, d).findIndex(y => y.p === p)); return; }
     case "dvDel": { const items = dayItems(P, d); const [x] = items.splice(v, 1); closeModal(); dvSave(P, d, items, x ? `„${x.p.title}“ entfernt – die Lücke bleibt frei.` : ""); return; }
     case "dvSwap": { const items = dayItems(P, d); if (!items[v] || !p) return; const old = items[v].p; items[v].p = p; closeModal(); dvSave(P, d, items); const k2 = dayItems(P, d).findIndex(x => x.p.id === p.id && x.t === items[v].t); toast(`„${old.title}“ → „${p.title}“ um ${hhmm(items[v].t)}.${overlapMsg(P, d, k2)}`); return; }
     case "dvIns": closeModal(); if (p) dvPlace(P, d, p, v); return;
@@ -8715,6 +8753,7 @@ function dvAction(P, k, b, id) {
   }
   render();
 }
+document.addEventListener("input", e => { if (e.target && e.target.id === "dvlSearch") dvListFilter(); });
 document.addEventListener("input", e => { if (e.target && e.target.id === "dvSearch") { dvQuery = e.target.value; const pos = e.target.selectionStart; render(); const el = document.getElementById("dvSearch"); if (el) { el.focus(); el.setSelectionRange(pos, pos); } } });
 document.addEventListener("scroll", e => { if (e.target && e.target.classList && e.target.classList.contains("dv-scroll")) dvScroll = e.target.scrollTop; }, true);
 // Ziehen mit Maus oder Finger: Block folgt dem Zeiger, eingerastet auf 5 Minuten
@@ -8910,7 +8949,7 @@ function newsFmtPanel(P) {
   const list = P.progs.filter(p => p.genre === "Nachrichten" && !p.house);
   return `<section class="panel mb"><div class="ph"><h2>Nachrichtenformate</h2><button class="btn hot small" data-act="nfNew">+ Neues Nachrichtenformat</button></div>
     <div class="tbl"><table><thead><tr><th>Format</th><th>Länge</th><th>Bausteine</th><th class="num">Qualität</th><th></th></tr></thead><tbody>
-    ${list.map(p => { const mods = p.news ? p.news.mods : ["wetter"]; return `<tr><td class="title">${titleLink(`${P.id}|${p.id}`, p.title)}${slotsOf(p).length ? `<div class="muted">${slotsOf(p).map(s => wdsName(s.wds) + " " + hhmm(s.t)).join(" · ")}</div>` : ""}</td><td>${netDur(p)} Min.</td><td>${["head", ...mods].map(id => `<span class="chip">${esc(modOf(id)[1])}</span>`).join(" ")}</td><td class="num">${p.q}</td><td class="r"><button class="btn small" data-act="nfEdit" data-id="${p.id}">Bearbeiten</button> <button class="btn small" data-act="fixDlg" data-id="${p.id}">Sendetermine</button></td></tr>`; }).join("") || '<tr><td colspan="5" class="muted">Noch keine Nachrichtensendung.</td></tr>'}
+    ${list.map(p => { const mods = p.news ? p.news.mods : ["wetter"]; return `<tr><td class="title">${titleLink(`${P.id}|${p.id}`, p.title)}${slotsOf(p).length ? `<div class="muted">${slotsOf(p).map(s => wdsName(s.wds) + " " + hhmm(s.t)).join(" · ")}</div>` : ""}</td><td>${netDur(p)} Min.</td><td>${["head", ...mods].map(id => `<span class="chip">${esc(modOf(id)[1])}</span>`).join(" ")}</td><td class="num">${p.q}</td><td class="r"><button class="btn small" data-act="nfEdit" data-id="${p.id}">Bearbeiten</button> <button class="btn small" data-act="fixDlg" data-id="${p.id}">Sendetermine</button> <button class="btn small red" data-act="nfCancel" data-id="${p.id}" ${planLocked() ? "disabled" : ""}>Absetzen</button></td></tr>`; }).join("") || '<tr><td colspan="5" class="muted">Noch keine Nachrichtensendung.</td></tr>'}
     </tbody></table></div></section>`;
 }
 function openNewsFmt(P) {
@@ -9573,6 +9612,69 @@ function frameAdd(P, d, start, k) {
 }
 // Rahmenprogramme sind Eintagsfliegen
 function frameCleanup(P) { P.progs = P.progs.filter(p => !p.frame || p.frame.day >= G.day); }
+// =====================================================================
+// Assistenten: Disposition, Werbevermarktung und Ziele übernehmen Routinearbeit – jederzeit abschaltbar
+// =====================================================================
+const ASST = [["plan", "Disposition", "Füllt vor jedem Sendetag offene Stunden im Planungsvorlauf."], ["ads", "Werbevermarktung", "Nimmt passende Werbeaufträge an und bucht Spots auf geeignete Plätze."], ["goals", "Ziele", "Rettet Werbeverträge kurz vor Fristende und meldet jeden Montag den Stand der Ziele."]];
+function asst() { G.asst = G.asst || { plan: true, ads: G.adAuto !== false, goals: true }; return G.asst; }
+function asstBar() {
+  const A = asst();
+  return `<section class="panel mb"><div class="ph"><h2>Assistenten</h2><span class="aside">Übernehmen Routinearbeit – Sie behalten das letzte Wort</span></div><div class="pad"><div class="pills">${ASST.map(([k, n, d]) => `<button class="${A[k] ? "on" : ""}" data-act="asstT" data-k="${k}" title="${esc(d)}">${A[k] ? "✓ " : ""}${n}</button>`).join("")}</div>
+    <p class="fine">${ASST.filter(([k]) => A[k]).map(([, n, d]) => `<b>${n}:</b> ${d}`).join(" ") || "Alle Assistenten sind aus – Sie planen alles selbst."}</p></div></section>`;
+}
+// Werbeaufträge annehmen, die der Sender realistisch erfüllen kann
+function asstAds(P) {
+  let took = 0;
+  const cap = expectedPrime(P) * 0.9;
+  for (let g = 0; g < 2 && P.contracts.length < MAX_ADS - 2; g++) {
+    const a = (G.adOffers || []).filter(x => adNeed(x) <= cap && x.spots <= 9).sort((x, y) => y.pay * y.spots - x.pay * x.spots)[0];
+    if (!a) break;
+    P.contracts.push(a); G.adOffers = G.adOffers.filter(x => x !== a); took++;
+    logMsg("Werbe-Assistent", "Werbung", `Auftrag angenommen: ${a.brand}, ${a.spots} Spots, mind. ${mio(a.min)} Mio., Frist ${a.days} Tage.`);
+  }
+  return took + adAutoBook(P);
+}
+// Verträge kurz vor Fristende retten: auf die reichweitenstärksten erlaubten Plätze buchen
+function asstRescue(P) {
+  let n = 0;
+  for (const c of P.contracts.filter(c => c.days <= 2 && c.done < c.spots)) {
+    let open = c.spots - c.done - allPlans(P).reduce((a, d) => a + d.filter(x => x.ad === c.id).length, 0);
+    for (let d = G.day; d < G.day + Math.min(2, c.days) && open > 0; d++) {
+      if (dvLocked(d)) continue;
+      const sc = calDay(P, d), wd = weekday(d);
+      for (const i of HOURS.filter(i => sc[i].p && !sc[i].cont && !sc[i].ad && adAllowed(P, i, wd) && adTimeOk(c, i) && adNeed(c) <= expected(P, i) * 1.05).sort((a, b) => expected(P, b) - expected(P, a))) {
+        if (open <= 0) break; sc[i].ad = c.id; open--; n++;
+      }
+    }
+  }
+  if (n) { buildToday(P); logMsg("Ziel-Assistent", "Werbung", `${n} Spots für Verträge kurz vor Fristende eingebucht – so vermeiden Sie Vertragsstrafen.`); }
+  return n;
+}
+function asstGoalsReport(P) {
+  if (weekday(G.day) !== 1) return;
+  const avg = P.maDays ? P.maSum / P.maDays : 0, C = G.career, ct = C && C.contract, tips = [];
+  if (P.maDays && avg < P.target) tips.push(`Marktanteil ${pct(avg)} liegt unter dem Saisonziel ${pct(P.target)} – stärkste Hebel: Primetime-Premieren und Sendeplätze mit hoher Konkurrenz meiden.`);
+  else if (P.maDays) tips.push(`Saisonziel auf Kurs: ${pct(avg)} bei Ziel ${pct(P.target)}.`);
+  const risky = P.contracts.filter(c => c.days <= 3 && c.done < c.spots).length; if (risky) tips.push(`${risky} Werbeverträge laufen in drei Tagen aus.`);
+  if (ct) tips.push(`Vereinbartes Ziel „${PROMISES.find(x => x.id === ct.id).name}“: ${ct.id === "std" ? "keine Vertragsstrafen zulassen" : ct.id === "save" ? "Kontostand halten" : "junge Reichweite steigern"}.`);
+  const chk = planCheck(P); if (chk.firstBad != null) tips.push(`Planungsvorlauf nur bis ${dateShort(chk.until)}.`);
+  logMsg("Ziel-Assistent", "Ziele", `Wochenstand: ${tips.join(" ")}`, true);
+}
+function asstDay(P) {
+  const A = asst();
+  if (A.plan) { const c = planCheck(P); if (c.firstBad != null) { fillHorizon(P); const c2 = planCheck(P); logMsg("Dispositions-Assistent", "Programm", `${c.holes - c2.holes} offene Stunden im Planungsvorlauf belegt.`); } }
+  if (A.ads) asstAds(P); else if (G.adAuto !== false) adAutoBook(P);
+  if (A.goals) { asstRescue(P); asstGoalsReport(P); }
+}
+// Sport-Expert*innen wechseln nur zu Sendern, bei denen sie ihren Sport auch begleiten können
+const SPORT_RX = [["Fußball", /fußball|torhüter|nationalspieler|bundesliga|kicker|stürmer|trainer/i], ["Handball", /handball/i], ["Tennis", /tennis/i], ["Motorsport", /formel|motorsport|rennfahrer/i], ["Wintersport", /ski|biathlon|wintersport|skispring/i], ["Eishockey", /eishockey/i], ["Darts", /darts/i], ["American Football", /american football|nfl/i], ["Basketball", /basketball|nba/i], ["Boxen", /box/i]];
+function expertSport(p) {
+  if (!p || p.role !== "Experte" || !(p.genres || []).includes("Sport")) return null;
+  const t = `${p.kurz || ""} ${p.known || ""}`; const m = SPORT_RX.find(([, rx]) => rx.test(t));
+  return m ? m[0] : "Sport";
+}
+const sportOwners = sport => (G.rights || []).filter(x => { const r = RIGHTS.find(y => y.id === x.id); return x.owner && r && !r.award && (sport === "Sport" ? !["Preisverleihung", "Doku"].includes(r.sport) : r.sport === sport); }).map(x => x.owner);
+const holdsSport = (P, sport) => sportOwners(sport).includes(P.id);
 // =====================================================================
 // Formatprofil: Quotenverlauf, Publikum, Analyse und Maßnahmen je Sendung
 // =====================================================================
