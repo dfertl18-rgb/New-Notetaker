@@ -4222,9 +4222,9 @@ function act(b) {
   switch (k) {
     case "close": profStack = []; closeModal(); return;
     case "fmOpt": { const t = (G.tenders || []).find(x => String(x.id) === b.dataset.k); if (t && !planLocked()) { const [k2, v] = b.dataset.v.split(":"); t.opt[k2] = ["excl", "slot", "cash"].includes(k2) ? v === "1" : v; } break; }
-    case "fmBid": {
+    case "fmBidV": case "fmBid": {
       const t = (G.tenders || []).find(x => String(x.id) === b.dataset.k); if (!t || planLocked()) return;
-      const v = r1000(+($("fm-" + t.id).value || 0)), min = r1000(t.min * optFactor(t.opt));
+      const v = k === "fmBidV" ? +b.dataset.v : r1000(+($("fm-" + t.id).value || 0) * 1e6), min = r1000(t.min * optFactor(t.opt));
       const late = t.phase === 2 && !t.bid && !t.out, topBid = Math.max(0, ...(t.ai || []).filter(a => !a.out).map(a => a.bid || 0));
       if (late) { if (v < r1000(topBid * 1.05)) { toast(`Nachzügler-Gebot: Ohne Angebot in Runde 1 nimmt das Studio Sie nur auf, wenn Sie das beste Gebot um 5 % übertreffen – mindestens ${meur(r1000(topBid * 1.05))}.`); return; }
         t.short = (t.short || []).concat([me().name + " (Sie)"]); logMsg("Rechteagentur", "Programm", `Ihr Nachzügler-Gebot überzeugt: Das Studio nimmt Sie in die Verhandlungsrunde auf.`, true); }
@@ -10469,6 +10469,22 @@ function presaleDay() {
   }
   G.presales = (G.presales || []).filter(x => x.due > G.day);
 }
+// Gebotsbox: Stand auf einen Blick, Schnellgebote, eigener Betrag in Mio. €
+function fmBidBox(P, t, min) {
+  const top = Math.max(0, ...(t.ai || []).filter(a => !a.out).map(a => a.bid || 0)), late = t.phase === 2 && !t.bid && !t.out;
+  const lock = planLocked(), pay = t.window === "pay" && !(G.stream && G.stream.stage >= 2), closed = t.out || (t.phase > 2 && !t.bid);
+  const why = lock ? "Während der Sendung sind Gebote gesperrt – ab der nächsten Planungsphase wieder möglich." : pay ? "Pay-Fenster: nur mit eigenem Abo-Streamer (Stufe 2)." : t.out ? "Sie sind ausgeschieden." : closed ? "Nur noch die Shortlist bietet – Sie hatten in Runde 1 nicht geboten." : "";
+  const floor = late ? r1000(top * 1.05) : t.phase > 1 && t.bid ? t.bid : min;
+  const quick = [[floor, late ? "Einsteigen (Spitze +5 %)" : t.bid ? "Gebot halten" : "Mindestgebot"], [r1000(Math.max(floor, top) * 1.05), "Spitze +5 %"], [r1000(Math.max(floor, top) * 1.15), "Spitze +15 %"]].filter((x, k, a) => x[0] >= floor && a.findIndex(y => y[0] === x[0]) === k && (k === 0 || top > 0));
+  const dis = lock || pay || closed;
+  return `<div class="fm-bid panel pad" style="margin-top:8px">
+    <div class="kv"><span>Ihr Stand</span><b>${t.bid ? `Gebot ${meur(t.bid)}${t.short && t.short.some(n => n.includes("(Sie)")) || t.phase > 1 ? " · auf der Shortlist" : ""}` : "noch kein Gebot"}</b></div>
+    <div class="kv"><span>Bestes Konkurrenzgebot ${t.phase > 1 ? "" : "(geschätzt)"}</span><b>${top ? meur(top) : "unbekannt"}</b></div>
+    <div class="kv"><span>Frist</span><b>${T_PHASES[(t.phase || 1) - 1][0]} bis ${dateShort(t.close)}</b></div>
+    ${why ? `<p class="fine warnline" style="margin:6px 0">${why}</p>` : late ? `<p class="fine" style="margin:6px 0">Sie haben in Runde 1 nicht geboten – mit „Einsteigen“ kommen Sie noch auf die Shortlist.</p>` : ""}
+    <div class="actions" style="flex-wrap:wrap;gap:8px">${quick.map(([v, l], k) => `<button class="btn ${k === 0 ? "hot" : ""}" data-act="fmBidV" data-k="${t.id}" data-v="${v}" ${dis ? "disabled" : ""}>${l}: ${meur(v)}</button>`).join("")}
+      <span class="muted">oder</span><input type="number" id="fm-${t.id}" min="${(floor / 1e6).toFixed(2)}" step="0.25" value="${(floor / 1e6).toFixed(2)}" style="width:90px" ${dis ? "disabled" : ""}> Mio. €<button class="btn" data-act="fmBid" data-k="${t.id}" ${dis ? "disabled" : ""}>Bieten</button></div></div>`;
+}
 function filmMarketPage(P) {
   G.tenders = G.tenders || []; G.deals = G.deals || [];
   const next = FILM_MARKETS.map(([n, m, d]) => { for (let k = G.day; k < G.day + 370; k++) { const dt = dateOf(k); if (dt.getMonth() === m && dt.getDate() === d) return [n, k]; } return [n, 0]; }).sort((a, b) => a[1] - b[1]);
@@ -10484,8 +10500,7 @@ function filmMarketPage(P) {
         <div class="pkgs"><button class="pkg ${t.opt.terr === "dach" ? "on" : ""}" data-act="fmOpt" data-k="${t.id}" data-v="terr:dach"><b>DACH</b><span>voller Preis</span></button><button class="pkg ${t.opt.terr === "de" ? "on" : ""}" data-act="fmOpt" data-k="${t.id}" data-v="terr:de"><b>nur DE</b><span>−22 %</span></button></div>
         <div class="pkgs"><button class="pkg ${t.opt.excl ? "on" : ""}" data-act="fmOpt" data-k="${t.id}" data-v="excl:1"><b>Exklusiv</b><span>blockiert Konkurrenz</span></button><button class="pkg ${!t.opt.excl ? "on" : ""}" data-act="fmOpt" data-k="${t.id}" data-v="excl:0"><b>Nicht exkl.</b><span>−40 %</span></button></div>
         <div class="pkgs"><button class="pkg ${t.opt.slot ? "on" : ""}" data-act="fmOpt" data-k="${t.id}" data-v="slot:${t.opt.slot ? 0 : 1}"><b>Primetime-Garantie</b><span>+5 % Wertung</span></button><button class="pkg ${t.opt.cash ? "on" : ""}" data-act="fmOpt" data-k="${t.id}" data-v="cash:${t.opt.cash ? 0 : 1}"><b>Sofortzahlung</b><span>+3 % Wertung</span></button></div>
-        ${!t.bid && t.phase === 2 && !t.out ? `<p class="fine warnline" style="margin:0 0 6px">Sie haben in Runde 1 nicht geboten. Nachzügler-Gebot möglich ab ${meur(r1000(Math.max(0, ...(t.ai || []).filter(a => !a.out).map(a => a.bid || 0)) * 1.05))}.</p>` : !t.bid && t.phase > 2 ? '<p class="fine warnline" style="margin:0 0 6px">Dieses Verfahren läuft nur noch mit der Shortlist – Sie hatten nicht geboten.</p>' : ""}
-        <div class="actions"><input type="number" id="fm-${t.id}" min="${min}" step="250000" value="${t.bid || (t.phase === 2 && !t.out ? r1000(Math.max(min, Math.max(0, ...(t.ai || []).filter(a => !a.out).map(a => a.bid || 0)) * 1.05)) : min)}" ${planLocked() ? "disabled" : ""}><button class="btn hot" data-act="fmBid" data-k="${t.id}" ${planLocked() || (t.window === "pay" && !(G.stream && G.stream.stage >= 2)) ? "disabled" : ""}>${t.phase > 1 ? "Gebot erhöhen" : t.bid ? "Angebot ändern" : "Indikatives Angebot"}</button>${t.bid ? `<span class="chip good">${meur(t.bid)}</span>` : ""}</div>
+        ${fmBidBox(P, t, min)}
       </div>${(t.myBids || []).length ? `<p class="fine" style="margin:6px 0 0">Ihre Gebote: ${t.myBids.map(([d, ph, v]) => `${dateShort(d)} R${ph} ${meur(v)}`).join(" → ")}</p>` : ""}<p class="fine" style="margin:6px 0 0">Mindestgebot ${meur(min)}${t.type === "output" ? ` (gesamt, ${meur(min / t.years)} pro Jahr)` : ""}.${t.window === "pay" && !(G.stream && G.stream.stage >= 2) ? " Pay-Fenster nur mit eigenem Abo-Streamer." : ""}</p></div></section>`; };
   return title("Filmrechte", `<span class="muted">Content-Akquisition · Pakete von Studios und Weltvertrieben</span>`) + lockNote() +
     `<p class="lead mb">Filme werden in Fenstern verwertet: Kino → Pay-/Streaming-Erstverwertung → zweites Pay-Fenster → Free-TV. Majors mit eigenem Streamer (Disney, Warner, Universal, Paramount) behalten die Erstverwertung und verkaufen nur Katalog; Sony verkauft alles an den Meistbietenden; Independents wie Constantin oder StudioCanal verkaufen länderweise. Auf den Filmmärkten kommen die meisten Pakete auf den Tisch. Jede Ausschreibung läuft in Runden: unverbindliches indikatives Angebot, Shortlist der besten drei, Verhandlungsrunde mit Rückmeldung des Studios, verbindliches Best and Final Offer – bei Gleichstand ein Stechen. Neben dem Preis zählen Territorium, Exklusivität, Primetime-Garantie und Zahlungsweise; ohne Sofortzahlung wird in zwei Raten gezahlt.</p>
