@@ -3344,12 +3344,32 @@ function daySummary() {
   const best = G.today.slice(s, e).map((r, k) => [s + k, r && r[G.me]]).filter(x => x[1]).sort((a, b) => b[1].ma - a[1].ma)[0];
   logMsg("Medienforschung", "Quote", `Tagesprogramm ${s}–${e} Uhr: ${pct(mine / all * 100)} Marktanteil${best ? `, stärkste Stunde ${hh(best[0])} mit ${pct(best[1].ma)}` : ""}. Die Primetime läuft jetzt live – weiter mit ▶.`, true);
 }
+// Was läuft gerade minutengenau: Sendung, Werbeunterbrechung oder Werbeblock/Trailer
+let monCache = { t: 0, day: -1, m: {} };
+function nowOn(st, min) {
+  const now = performance.now();
+  if (monCache.day !== G.day || now - monCache.t > 4000) monCache = { t: now, day: G.day, m: {} };
+  const rd = monCache.m[st.id] || (monCache.m[st.id] = rdToday(st));
+  const x = rd.find(y => y.start <= min && min < y.end);
+  if (!x) return { label: "Werbung & Trailer", ad: true };
+  if (x.gap) return { label: x.end - x.start <= 15 ? "Werbung & Trailer" : "Programmlücke", ad: true };
+  if (!x.p) return { label: "–" };
+  const live = x.live || (x.c && x.c.live), title = x.title || x.p.title;
+  // Unterbrecherwerbung: gleichmäßig über die Sendung verteilt (nicht bei Nachrichten, Live-Sport, Kurzformaten)
+  const net = netDur(x.p), gross = x.end - x.start, adMin = gross - net;
+  if (!live && adMin >= 3 && net > 20 && !["Nachrichten", "Teleshopping"].includes(x.p.genre)) {
+    const k = Math.max(1, Math.round(net / 25)), seg = net / (k + 1), len = adMin / k, rel = min - x.start;
+    for (let j = 1; j <= k; j++) { const a = j * seg + (j - 1) * len; if (rel >= a && rel < a + len) return { label: `Werbung · ${title}`, ad: true }; }
+  }
+  return { label: live ? `● ${title}` : title, start: x.start, end: x.end };
+}
 function wobble() {
   const i = Math.floor(G.min / 60);
   if (!G.today[i]) return;
   document.querySelectorAll("[data-wob]").forEach(el => {
     const k = +el.dataset.wob, base = G.today[i][k].v;
-    const v = base * (1 + 0.05 * Math.sin(G.min * 0.9 + k * 1.7) + 0.02 * Math.sin(G.min * 3.1 + k));
+    const cur = nowOn(G.stations[k], G.min), tt = el.querySelector(".mon-t"); if (tt && tt.textContent !== cur.label) { tt.textContent = cur.label; tt.classList.toggle("muted", !!cur.ad); }
+    const v = base * (cur.ad ? 0.86 : 1) * (1 + 0.05 * Math.sin(G.min * 0.9 + k * 1.7) + 0.02 * Math.sin(G.min * 3.1 + k));
     const ma = v / BASE[i] * 100;
     const tv = el.querySelector(".v"); if (tv) tv.textContent = pct(ma);
     const bar = el.querySelector(".lbar i"); if (bar) bar.style.width = Math.min(100, ma * 3) + "%";
@@ -4092,7 +4112,7 @@ function livePage(P) {
       <div class="live-head"><div style="display:flex;align-items:center;gap:10px">${crest(P.i, 46)}<div><b style="font-family:var(--font-head);font-size:22px">${esc(P.name)}</b><div class="muted">${r ? `Jetzt: ${pct(r[G.me].ma)} · Platz ${order.indexOf(G.me) + 1}` : "Gleich geht’s los"}</div></div></div>
         <div class="live-clock"><small>${G.phase === "live" ? (G.min < LIVE_FROM * 60 - 1 ? (liveRun ? "TAGESPROGRAMM" : "PAUSIERT") : liveRun ? "LIVE · PRIMETIME" : G.primeHold && G.min < LIVE_FROM * 60 ? "GLEICH PRIMETIME" : "PAUSIERT") : "SENDESCHLUSS"}</small>${hhmm(G.min)}</div>
         <div class="actions" style="justify-content:flex-end"><div class="pills">${[[1, "Regie"], [2, "Normal"], [3, "Schnell"], [4, "Sofort"]].map(([s, n]) => `<button data-act="lspeed" data-k="${s}" class="${liveSpeed === s ? "on" : ""}">${n}</button>`).join("")}</div>${G.phase === "live" && G.min < LIVE_FROM * 60 - 1 ? '<button class="btn" data-act="toPrime">Zur Primetime</button>' : ""}<button class="btn" data-act="finish" ${G.phase !== "live" ? "disabled" : ""}>Bis Sendeschluss</button></div></div>
-      <div class="wall">${order.map(k => { const s = G.stations[k]; const x = r && r[k]; return `<div class="mon ${k === G.me ? "me" : ""}" data-wob="${k}"><div class="mon-top">${crest(k, 20)}<b>${esc(s.name)}</b><span class="v">${x ? pct(x.ma) : "–"}</span></div><div class="mon-t">${x ? esc(x.title) : "–"}</div><div class="lbar"><i style="width:${x ? Math.min(100, x.ma * 3) : 0}%;background:${s.color}"></i></div></div>`; }).join("")}</div>
+      <div class="wall">${order.map(k => { const s = G.stations[k]; const x = r && r[k]; return `<div class="mon ${k === G.me ? "me" : ""}" data-wob="${k}"><div class="mon-top">${crest(k, 20)}<b>${esc(s.name)}</b><span class="v">${x ? pct(x.ma) : "–"}</span></div><div class="mon-t">${esc(nowOn(s, G.min).label)}</div><div class="lbar"><i style="width:${x ? Math.min(100, x.ma * 3) : 0}%;background:${s.color}"></i></div></div>`; }).join("")}</div>
     </section>
     <section class="panel"><div class="ph"><h2>Regie-Eingriffe</h2><span class="aside">${next != null ? `für ${hh(next)}` : "Sendeschluss naht"}</span></div>
       <div class="slist"><div class="srow"><b>${np ? esc(np.title) : next != null ? "Testbild" : "–"}</b><em>${next != null ? mio(expected(P, next)) : ""}</em><span>${nc && nc.live ? "Live-Event – nicht austauschbar" : np ? esc(np.genre) : ""}</span></div></div>
