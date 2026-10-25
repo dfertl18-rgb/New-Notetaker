@@ -3513,11 +3513,15 @@ $("cont").addEventListener("click", () => {
   if (!G || !$("modal").hidden) return;
   if (G.event) { showEvent(); return; }
   if (G.phase === "plan") {
-    if (asst().plan && planCheck(me()).firstBad != null) fillHorizon(me());
-    const chk = planCheck(me());
-    if (chk.firstBad != null && G.gateSkip !== G.day) { showPlanGate(chk); return; }
-    const empty = me().sched.filter(c => !c.p).length;
-    if (empty) {
+    // Ein Fehler in der Kalenderprüfung darf das Spiel nie blockieren: dann wird ohne Prüfung gesendet
+    let empty = 0;
+    try {
+      if (asst().plan && planCheck(me()).firstBad != null) fillHorizon(me());
+      const chk = planCheck(me());
+      if (chk.firstBad != null && G.gateSkip !== G.day) { showPlanGate(chk); return; }
+      const cov = dayCover(me(), G.day); empty = me().sched.filter((c, i) => !c.p && !c.live && cov[i] < 45).length;
+    } catch (err) { console.error(err); logMsg("Programmplanung", "Warnung", "Die Kalenderprüfung ist gestolpert – der Sendetag startet trotzdem."); empty = 0; }
+    if (empty && G.gateSkip !== G.day) {
       openModal(`<header><h2>Programmlöcher</h2></header><div class="dbody"><p class="lead">Heute ${empty === 1 ? "ist 1 Stunde" : `sind ${empty} Stunden`} ohne Programm. Dort läuft ein Testbild.</p>
         <div class="actions"><button class="btn hot" data-act="forceStart">Trotzdem senden</button><button class="btn" data-act="toPlan">Zum Wochenplan</button></div></div>`, true);
       return;
@@ -3820,7 +3824,7 @@ function planPage(P) {
   const d = planDay, wd = weekday(d), isToday = d === G.day;
   const sc = schedFor(P, d), lock = isToday && planLocked(), chk = planCheck(P), badSet = new Set(chk.bad[d] || []);
   const secured = Math.max(0, chk.until - G.day + 1);
-  let h = title("Sendekalender", `<div class="actions">${lock ? "" : `<button class="btn" data-act="autoDay" data-k="${d}">Assistent für ${dateShort(d)}</button><button class="btn" data-act="copyDay" data-k="${d}">Auf alle ${WDL[wd]}e kopieren</button>`}<button class="btn hot" data-act="fillAll" ${planLocked() ? "disabled" : ""}>Alle Lücken füllen</button></div>`);
+  let h = title("Sendekalender", `<div class="actions">${lock ? "" : `<button class="btn" data-act="autoDay" data-k="${d}">Assistent für ${dateShort(d)}</button><button class="btn" data-act="copyDay" data-k="${d}">Auf alle ${WDL[wd]}e kopieren</button><button class="btn" data-act="clearDlg" data-k="${d}">Leeren …</button>`}<button class="btn hot" data-act="fillAll" ${planLocked() ? "disabled" : ""}>Alle Lücken füllen</button></div>`);
   h += asstBar();
   h += `<section class="panel mb"><div class="ph"><h2>Planungsvorlauf</h2><span class="aside">Die Senderleitung verlangt ${HORIZON / 7} Wochen lückenlos geplantes Programm, bevor der nächste Sendetag startet.</span></div>
     <div class="pad"><div class="goal"><div class="row"><b>Gesichert bis ${secured ? dateShort(chk.until) : "–"}</b><span class="${secured >= HORIZON ? "up" : "down"}">${secured} / ${HORIZON} Tage${chk.holes ? ` · ${chk.holes} Stunden offen` : ""}</span></div><div class="track"><i style="width:${secured / HORIZON * 100}%;background:${secured >= HORIZON ? "#22c55e" : "#ef4444"}"></i></div></div>
@@ -4388,6 +4392,8 @@ function act(b) {
     case "jobApply": case "ivAns": case "offerYears": case "offerMore": case "offerAccept": case "pcAns": case "licStart": case "agentToggle": case "resign": c2Action(P, k, b); return;
     case "talkShow": G.talkSel = { pid: b.dataset.k, ids: [] }; break;
     case "talkGuest": { const sl = G.talkSel, g = b.dataset.k; if (sl) sl.ids = sl.ids.includes(g) ? sl.ids.filter(x => x !== g) : sl.ids.concat(g).slice(0, 4); break; }
+    case "talkAuto": { const sl = G.talkSel, p = sl && P.progs.find(x => x.id === sl.pid); if (!p || planLocked()) break; const ids = talkAutoPick(P, p); const err = bookTalk(p.id, ids); toast(err || `Zugesagt: ${p.guests.ids.map(polById).filter(Boolean).map(g => g.name).join(", ")}.`); if (!err) sl.ids = []; break; }
+    case "talkUndo": { const sl = G.talkSel, p = sl && P.progs.find(x => x.id === sl.pid); if (!p || !p.guests || p.guests.done) break; const S = ensurePol(); for (const id of p.guests.ids) if (S.booked[id] === P.id) delete S.booked[id]; p.guests = null; toast("Buchung zurückgezogen."); break; }
     case "talkBook": { const sl = G.talkSel; const err = sl && bookTalk(sl.pid, sl.ids); toast(err || "Die Gäste haben zugesagt – sie sitzen in der nächsten Ausgabe."); if (!err) sl.ids = []; break; }
     case "polSave": toast(`${polSave(($("polEdit") || {}).value || "")} Personen gespeichert (nur auf diesem Gerät).`); break;
     case "polReset": try { localStorage.removeItem(POL_KEY); } catch (e) { /* egal */ } POL_CACHE = null; toast("Gästeliste zurückgesetzt."); break;
@@ -4424,6 +4430,14 @@ function act(b) {
     case "moveStart": { const sc = schedFor(P, wd); let st = i; while (st > 0 && sc[st].cont && sc[st - 1].p === sc[i].p) st--; if (sc[st].p && !(wd === G.day && planLocked())) moveSrc = { d: wd, i: st, p: sc[st].p, all: b.dataset.v === "all" }; closeModal(); break; }
     case "moveCancel": moveSrc = null; break;
     case "asstT": { const A = asst(); A[b.dataset.k] = !A[b.dataset.k]; if (b.dataset.k === "ads") G.adAuto = A.ads; toast(`${ASST.find(x => x[0] === b.dataset.k)[1]}-Assistent ${A[b.dataset.k] ? "an" : "aus"}.`); break; }
+    case "clearDlg": { const d = +b.dataset.k; openModal(`<header><h2>Kalender leeren</h2><button class="btn" data-act="close">Abbrechen</button></header><div class="dbody">
+      <p class="lead">Geplante Sendungen werden entfernt, damit Sie neu planen können. Live-Events bleiben immer stehen, der laufende Sendetag ist gesperrt.</p>
+      <label class="muted"><input type="checkbox" id="clrFix" checked> Feste Sendetermine behalten (z. B. Nachrichten, Serien mit festem Platz)</label>
+      <div class="actions" style="margin-top:12px"><button class="btn red" data-act="clearDo" data-k="${d}|1">Nur ${dateShort(d)}</button><button class="btn red" data-act="clearDo" data-k="${d}|7">${dateShort(d)} + 6 Tage</button><button class="btn red" data-act="clearDo" data-k="${d}|${HORIZON}">Ab ${dateShort(d)} alles</button></div>
+      <p class="fine">Tipp: Der Dispositions-Assistent füllt beim Klick auf „Weiter“ nur Stunden, die dann noch leer sind. Wenn Sie alles selbst planen möchten, schalten Sie ihn oben aus.</p></div>`); return; }
+    case "clearDo": { const [d0, n] = b.dataset.k.split("|").map(Number), keepFix = !!($("clrFix") || {}).checked; let days = 0;
+      for (let d = d0; d < Math.min(d0 + n, G.day + HORIZON); d++) { if (dvLocked(d)) continue; const isFix = x => slotsOf(x.p).some(s => slotFits(s, d) && Math.abs(s.t - x.t) < 5); editPlan(d, () => writeItems(P, d, keepFix ? dayItems(P, d).filter(isFix) : [])); calDay(P, d).forEach(c => { if (!c.p) c.ad = null; }); days++; }
+      closeModal(); buildToday(P); toast(`${days} Tag${days === 1 ? "" : "e"} geleert${keepFix ? " – feste Termine stehen noch" : ""}. Jetzt neu planen oder „Alle Lücken füllen“.`); break; }
     case "fillAll": if (!planLocked()) { closeModal(); fillHorizon(P); const c = planCheck(P); toast(c.firstBad == null ? `Der Assistent hat den Kalender bis ${dateShort(c.until)} lückenlos gefüllt.` : `Noch ${c.holes} Stunden offen.`); render(); } break;
     case "gateSkip": closeModal(); P.conf = Math.max(0, P.conf - 1); G.gateSkip = G.day; $("cont").click(); break;
     case "toPlanDay": closeModal(); planDay = wd; go("plan"); return;
@@ -6335,7 +6349,8 @@ function politicsPage(P) {
       <div class="kv"><span>Runde</span><b>${c.gs.length} Gäste · ${c.parties} Parteien · ${c.camps > 1 ? "beide Lager" : "ein Lager"}${c.fit ? ` · ${c.fit}× Fach-Match` : ""}${c.mis ? ` · ${c.mis}× fachfremd` : ""}${c.cross ? ` · Kreuzfeuer ${esc(c.cross)}` : ""}</b></div>
       <div class="kv"><span>Konfliktintensität</span><b>${c.base + 1}–${c.base + 30} (Lager ${c.camps > 1 && c.gs.some(g => g.lager === "Regierung") && c.gs.some(g => g.lager === "Opposition") ? "+20" : "0"}${c.cross ? ", Ressort +15" : ""}, Zufall 1–30)</b></div>
       <div class="kv"><span>Quoten-Effekt</span><b class="up">+${Math.round(c.boost * 100)} %</b></div><div class="kv"><span>Sende-Risiko (entgleist)</span><b class="${c.esc > 0.2 ? "down" : ""}">${Math.round(c.esc * 100)} %</b></div><div class="kv"><span>Kosten</span><b>${eur(c.cost)}</b></div>
-      <button class="btn hot" data-act="talkBook" ${!c.gs.length || planLocked() || (p.guests && !p.guests.done) ? "disabled" : ""}>Gäste einladen</button></div>`;
+      <div class="actions"><button class="btn hot" data-act="talkBook" ${!c.gs.length || planLocked() || (p.guests && !p.guests.done) ? "disabled" : ""}>Gäste einladen</button><button class="btn" data-act="talkAuto" ${planLocked() || (p.guests && !p.guests.done) ? "disabled" : ""}>Assistent stellt die Runde zusammen</button>${p.guests && !p.guests.done ? `<button class="btn small" data-act="talkUndo">Buchung zurückziehen</button>` : ""}</div>
+      <p class="fine">${(() => { const nd = talkNextAir(P, p); return planLocked() ? "Heute läuft die Sendung – Buchungen sind wieder in der Planungsphase möglich." : p.guests && !p.guests.done ? "Für die nächste Ausgabe ist bereits gebucht. Zum Ändern die Buchung zurückziehen." : nd == null ? "⚠ Keine Ausgabe in den nächsten 14 Tagen im Sendekalender – Gäste wirken erst, wenn die Sendung läuft." : !c.gs.length ? `Nächste Ausgabe: ${dateShort(nd)}. Wählen Sie mit + bis zu vier Gäste – oder lassen Sie den Assistenten wählen.` : `Nächste Ausgabe: ${dateShort(nd)}.${P.money < c.cost ? " ⚠ Budget reicht nicht." : ""}`; })()} ${asst().talk ? "Der Talk-Assistent ist an und bucht automatisch vor jeder Ausgabe." : ""}</p></div>`;
   }
   h += `</section><section class="panel"><div class="ph"><h2>Gästeliste bearbeiten</h2><span class="aside">${window.MM_PRIVATE && window.MM_PRIVATE.politicians ? "aus der privaten Datei" : "Platzhalter"} · nur lokal gespeichert</span></div><div class="pad">
     <p class="fine">Eine Zeile pro Person: Name;Partei;Lager;Amt;Ressort. Lager z. B. Regierung, Opposition, außerparlamentarisch.</p>
@@ -9615,8 +9630,8 @@ function frameCleanup(P) { P.progs = P.progs.filter(p => !p.frame || p.frame.day
 // =====================================================================
 // Assistenten: Disposition, Werbevermarktung und Ziele übernehmen Routinearbeit – jederzeit abschaltbar
 // =====================================================================
-const ASST = [["plan", "Disposition", "Füllt vor jedem Sendetag offene Stunden im Planungsvorlauf."], ["ads", "Werbevermarktung", "Nimmt passende Werbeaufträge an und bucht Spots auf geeignete Plätze."], ["goals", "Ziele", "Rettet Werbeverträge kurz vor Fristende und meldet jeden Montag den Stand der Ziele."]];
-function asst() { G.asst = G.asst || { plan: true, ads: G.adAuto !== false, goals: true }; return G.asst; }
+const ASST = [["plan", "Disposition", "Füllt vor jedem Sendetag offene Stunden im Planungsvorlauf."], ["ads", "Werbevermarktung", "Nimmt passende Werbeaufträge an und bucht Spots auf geeignete Plätze."], ["goals", "Ziele", "Rettet Werbeverträge kurz vor Fristende und meldet jeden Montag den Stand der Ziele."], ["talk", "Talk-Gäste", "Lädt vor jeder Talk-Ausgabe eine passende Runde zum Hauptthema ein."], ["guests", "Show-Gäste", "Gibt eigenen Shows und Talks ein Gästebudget, die Redaktion bucht selbst."]];
+function asst() { G.asst = G.asst || { plan: true, ads: G.adAuto !== false, goals: true }; if (G.asst.talk == null) G.asst.talk = true; if (G.asst.guests == null) G.asst.guests = true; return G.asst; }
 function asstBar() {
   const A = asst();
   return `<section class="panel mb"><div class="ph"><h2>Assistenten</h2><span class="aside">Übernehmen Routinearbeit – Sie behalten das letzte Wort</span></div><div class="pad"><div class="pills">${ASST.map(([k, n, d]) => `<button class="${A[k] ? "on" : ""}" data-act="asstT" data-k="${k}" title="${esc(d)}">${A[k] ? "✓ " : ""}${n}</button>`).join("")}</div>
@@ -9665,6 +9680,8 @@ function asstDay(P) {
   if (A.plan) { const c = planCheck(P); if (c.firstBad != null) { fillHorizon(P); const c2 = planCheck(P); logMsg("Dispositions-Assistent", "Programm", `${c.holes - c2.holes} offene Stunden im Planungsvorlauf belegt.`); } }
   if (A.ads) asstAds(P); else if (G.adAuto !== false) adAutoBook(P);
   if (A.goals) { asstRescue(P); asstGoalsReport(P); }
+  if (A.talk) talkAssist(P);
+  if (A.guests) for (const p of P.progs.filter(x => (x.own || x.home === P.id) && ["Talk", "Show"].includes(x.genre) && !x.guestBudget && !x.house)) p.guestBudget = GUEST_BUDGETS.filter(v => v > 0)[0];
 }
 // Sport-Expert*innen wechseln nur zu Sendern, bei denen sie ihren Sport auch begleiten können
 const SPORT_RX = [["Fußball", /fußball|torhüter|nationalspieler|bundesliga|kicker|stürmer|trainer/i], ["Handball", /handball/i], ["Tennis", /tennis/i], ["Motorsport", /formel|motorsport|rennfahrer/i], ["Wintersport", /ski|biathlon|wintersport|skispring/i], ["Eishockey", /eishockey/i], ["Darts", /darts/i], ["American Football", /american football|nfl/i], ["Basketball", /basketball|nba/i], ["Boxen", /box/i]];
@@ -9675,6 +9692,35 @@ function expertSport(p) {
 }
 const sportOwners = sport => (G.rights || []).filter(x => { const r = RIGHTS.find(y => y.id === x.id); return x.owner && r && !r.award && (sport === "Sport" ? !["Preisverleihung", "Doku"].includes(r.sport) : r.sport === sport); }).map(x => x.owner);
 const holdsSport = (P, sport) => sportOwners(sport).includes(P.id);
+// Talk-Assistent: bucht vor jeder Ausgabe eine passende Runde (Fach-Match zum Hauptthema, möglichst beide Lager)
+function talkNextAir(P, p) { for (let d = G.day; d < G.day + 14; d++) if (!(d === G.day && planLocked()) && dayItems(P, d).some(x => x.p === p)) return d; return null; }
+function talkPending(p) { return p.guests && !p.guests.done; }
+// Polit-Talk (für den Assistenten): bekannte Polit-Runden oder eigene Talks ohne Comedy-/Late-Night-Zuschnitt
+const polTalk = p => isTalk(p) && (/maischberger|miosga|anne will|hart aber fair|lanz|illner|plasberg|presseclub|phoenix|berlin direkt|klartext|politik|runde|debatte|duell|arena|forum/i.test(p.title) || (p.own && !/late|night|comedy|show|witz|spaß/i.test(`${p.title} ${p.sub || ""}`)));
+function talkAutoPick(P, p) {
+  const S = ensurePol(), field = agTop(), mine = new Set(P.progs.filter(talkPending).flatMap(x => x.guests.ids)), free = polList().filter(g => g.lager !== "International" && !S.booked[g.id] && !mine.has(g.id));
+  const fit = g => fieldOf(g.res) === field, score = g => (fit(g) ? 50 : 0) + polProm(g) / 2 + Math.random() * 10;
+  const reg = free.filter(g => g.lager === "Regierung").sort((a, b) => score(b) - score(a)), opp = free.filter(g => g.lager === "Opposition").sort((a, b) => score(b) - score(a));
+  const ids = [];
+  if (reg[0]) ids.push(reg[0].id);
+  const cross = reg[0] && opp.find(o => o.res && o.res === reg[0].res); if (cross) ids.push(cross.id); else if (opp[0]) ids.push(opp[0].id);
+  const third = free.filter(g => !ids.includes(g.id) && !ids.map(polById).some(x => x.partei === g.partei)).sort((a, b) => score(b) - score(a))[0]; if (third) ids.push(third.id);
+  return ids;
+}
+function talkAssist(P, quiet) {
+  let n = 0;
+  for (const p of P.progs.filter(polTalk)) {
+    if (talkPending(p) && p.guests.day < G.day - 14) p.guests.done = true; // nie gesendete Buchung verfällt
+    if (talkPending(p)) continue;
+    const d = talkNextAir(P, p); if (d == null || d > G.day + 7) continue;
+    G.talkSel = G.talkSel || { pid: p.id, ids: [] }; const keep = G.talkSel.field; G.talkSel.field = agTop();
+    let ids = talkAutoPick(P, p), err = bookTalk(p.id, ids);
+    while (err === "Budget reicht nicht." && ids.length > 1) { ids = ids.slice(0, -1); err = bookTalk(p.id, ids); }
+    G.talkSel.field = keep;
+    if (!err) { n++; if (!quiet) logMsg("Talk-Assistent", "Politik", `„${p.title}“ am ${dateShort(d)}: ${p.guests.ids.map(polById).filter(Boolean).map(g => `${g.name} (${g.partei})`).join(", ")} zugesagt – Thema „${p.guests.topic}“.`); }
+  }
+  return n;
+}
 // =====================================================================
 // Formatprofil: Quotenverlauf, Publikum, Analyse und Maßnahmen je Sendung
 // =====================================================================
