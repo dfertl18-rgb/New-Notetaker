@@ -422,10 +422,12 @@ textarea[data-draft] { font: inherit; color: inherit; background: transparent; b
 .ctxmenu button { text-align: left; background: none; border: 0; color: inherit; padding: 7px 10px; border-radius: 6px; cursor: pointer; font: inherit; display: grid; } .ctxmenu button:hover { background: color-mix(in srgb, var(--hot) 18%, transparent); } .ctxmenu small { color: var(--muted); font-size: 11px; }
 .ctx-t { font-weight: 700; padding: 6px 10px; border-bottom: 1px solid var(--line); margin-bottom: 4px; } .ctx-h { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); padding: 6px 10px 2px; }
 .dv-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--line); }
-.dv { display: grid; grid-template-columns: 240px 1fr; gap: 0; } .dv-pool { border-right: 1px solid var(--line); padding: 10px; display: grid; gap: 6px; align-content: start; max-height: 75vh; overflow: auto; } .dv-list { display: grid; gap: 4px; }
+.dv { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 0; } .dv.nopool { grid-template-columns: minmax(0, 1fr); } .dv-pool { border-right: 1px solid var(--line); padding: 10px; display: grid; gap: 6px; align-content: start; max-height: 75vh; overflow: auto; } .dv-list { display: grid; gap: 4px; }
 .dv-scroll { max-height: 75vh; overflow: auto; position: relative; } .dv-col { position: relative; margin: 0 8px; user-select: none; } .dv-col:not(.lock) { cursor: copy; }
 .dv-tick { position: absolute; left: 60px; right: 0; border-top: 1px dotted color-mix(in srgb, var(--line) 60%, transparent); } .dv-tick.h { border-top: 1px solid var(--line); } .dv-tick span { position: absolute; left: -60px; top: -8px; font-size: 12px; font-weight: 700; color: var(--muted); font-variant-numeric: tabular-nums; }
 .dv-gap { position: absolute; left: 60px; right: 4px; background: repeating-linear-gradient(135deg, transparent 0 6px, color-mix(in srgb, #ef4444 12%, transparent) 6px 12px); border: 1px dashed color-mix(in srgb, #ef4444 50%, transparent); border-radius: 6px; overflow: hidden; } .dv-gap span { font-size: 11px; color: var(--muted); padding: 2px 6px; display: block; }
+.dv-rs { position: absolute; left: 0; right: 0; bottom: 0; height: 8px; cursor: ns-resize; } .dv-b:hover .dv-rs { background: color-mix(in srgb, var(--hot) 35%, transparent); }
+.dv-b.adblk { background: repeating-linear-gradient(135deg, color-mix(in srgb, #eab308 14%, var(--panel)) 0 6px, var(--panel) 6px 12px); border-left-color: #eab308; }
 .dv-gap.ad { background: repeating-linear-gradient(135deg, transparent 0 6px, color-mix(in srgb, #eab308 10%, transparent) 6px 12px); border-color: color-mix(in srgb, #eab308 45%, transparent); }
 .dv-b { position: absolute; box-sizing: border-box; background: color-mix(in srgb, var(--hot) 16%, var(--panel)); border: 1px solid color-mix(in srgb, var(--hot) 45%, var(--line)); border-left: 4px solid var(--hot); border-radius: 6px; padding: 2px 6px; overflow: hidden; font-size: 12px; touch-action: none; cursor: grab; z-index: 2; }
 .dv-b.k-film { border-left-color: #f59e0b; } .dv-b.k-serie { border-left-color: #38bdf8; } .dv-b.house { opacity: .8; border-left-color: var(--muted); background: var(--panel); } .dv-b.live { border-left-color: #ef4444; background: color-mix(in srgb, #ef4444 14%, var(--panel)); cursor: default; }
@@ -1963,7 +1965,7 @@ function airHour(i) {
     }
     { const sp = spotMarket(st, i, r.v, r.exp, r.p); r.spot = sp.pay; if (sp.pay) book(st, "TV-Werbung (Spotmarkt)", sp.pay); }
     { const rdT = rdToday(st), cutM = rdT.filter(x => !x.gap && Math.floor(x.start / 60) === i).reduce((s, x) => s + Math.min(x.cut || 0, Math.max(0, grossDur(st, x.p, i) - netDur(x.p))), 0);
-      const gapM = adMinH(st, i) ? rdT.filter(x => x.gap && Math.floor(x.start / 60) === i && x.end - x.start <= 15).reduce((s, x) => s + x.end - x.start, 0) : 0; // kleine Lücken = Werbeblock
+      const gapM = adMinH(st, i) ? rdT.filter(x => ((x.gap && x.end - x.start <= 15) || (!x.gap && x.p && x.p.adBlock)) && Math.floor(x.start / 60) === i).reduce((s, x) => s + x.end - x.start, 0) : 0; // kleine Lücken = Werbeblock
       const blk = adBlockRevenue(st, i, r.v, r.p, clamp(adMinH(st, i) - cutM + gapM, 0, 12)); if (r.p && r.p.adF) blk.pay = r1000(blk.pay * r.p.adF); r.blk = blk.pay; if (blk.pay) { book(st, "TV-Werbung", blk.pay); (G.adLog = G.adLog || []).push([G.day, i, blk.pay, Math.round(blk.k)]); if (G.adLog.length > 600) G.adLog.shift(); } }
     if (G.adBreak[i]) { const add = Math.max(0, Math.min(3, 12 - adMinH(st, i))), extra = add ? adBlockRevenue(st, i, r.v, r.p, add).pay : 0; book(st, "TV-Werbung", extra); logMsg("Live-Regie", "Werbung", `${hh(i)} – Zusatz-Werbeblock: +${eur(extra)}, dafür weniger Zuschauer.`); }
     if (!r.p) logMsg("Sendetechnik", "Warnung", `${hh(i)} – Sendeloch! Testbild auf Sendung.`, i >= LIVE_FROM);
@@ -2734,7 +2736,7 @@ function prodDay() {
     if (G.stream && G.stream.stage >= 2 && G.stream.autoWin) addToStream(prog.id, G.stream.autoWin);
     pr.prog = prog.id;
     payBonuses(pr);
-    if (prog.kind === "film") logMsg("Verleih", "Kino", `„${pr.title}“ kann vor der TV-Premiere ins Kino: Programm → Kino & Rechte → Eigene Kinofilme.`);
+    if (prog.kind === "film") { logMsg("Verleih", "Kino", `„${pr.title}“ ist abgedreht – jetzt Kinostart und Promotion planen oder direkt ins TV.`, true); G.cineAsk = prog.id; }
     logMsg("Produktion", "Produktion", `Fertig: „${pr.title}“ – Rating ${pr.R}/100 (Drehbuch ${pr.script}, Star-Power ${pr.star}, Chemie ${pr.chem}). Jetzt im Archiv und im Wochenplan einsetzbar.`, true);
     reviews(pr);
   }
@@ -3494,6 +3496,7 @@ function nextDay() {
   if (!G.event && G.evQ && G.evQ.length) G.event = G.evQ.shift();
   go("overview", true);
   if (G.event) showEvent();
+  else if (G.cineAsk) { const id = G.cineAsk; G.cineAsk = null; openCinePlan(id); }
 }
 
 // =====================================================================
@@ -3844,7 +3847,7 @@ function planPage(P) {
 }
 function archiv(P) {
   return title("Archiv", `<span class="muted">${P.progs.length} Programme</span>`) + `<p class="lead mb">Lizenzen lassen sich für 40 % des Einkaufspreises weiterverkaufen – nicht, solange sie im Kalender stehen. Eigene Shows und Serien kosten pro Folge: Budget kürzen spart Geld und kostet Qualität, eine neue Besetzung ändert Qualität und Kosten, Absetzen räumt die Sendeplätze.</p>
-    <section class="panel">${progTable(P.progs, p => { const inPlan = allPlans(P).some(d => d.some(c => c.p === p.id)); const can = p.price > 0 && !p.home && !inPlan; return p.own ? progManage(P, p) : (canManageCast(P, p) ? progManage(P, p) : "") + (p.price ? `<span class="muted">${eur(p.price * 0.4)}</span> <button class="btn" data-act="sell" data-id="${p.id}" ${!can || planLocked() ? "disabled" : ""}>${inPlan ? "Im Plan" : "Verkaufen"}</button>` : '<span class="muted">Eigenformat</span>'); }, "Verkauf")}</section>`;
+    <section class="panel">${progTable(P.progs.filter(p => !p.var && !p.adBlock), p => { const inPlan = allPlans(P).some(d => d.some(c => c.p === p.id)); const can = p.price > 0 && !p.home && !inPlan; return p.own ? progManage(P, p) : (canManageCast(P, p) ? progManage(P, p) : "") + (p.price ? `<span class="muted">${eur(p.price * 0.4)}</span> <button class="btn" data-act="sell" data-id="${p.id}" ${!can || planLocked() ? "disabled" : ""}>${inPlan ? "Im Plan" : "Verkaufen"}</button>` : '<span class="muted">Eigenformat</span>'); }, "Verkauf")}</section>`;
 }
 function market(P) {
   return title("Programmhandel", `<span class="muted">${G.market.length} Angebote · Konto ${meur(P.money)}</span>`) + lockNote() + `<p class="lead mb">Sie haben jeden Morgen den ersten Zugriff, zum Sendestart greift die Konkurrenz zu. Lizenzen laufen 1 Jahr (Filme 3, Serien 2 Durchläufe) oder 2 Jahre (5 bzw. 3 Durchläufe, 1,65-facher Preis). Abgelaufene Titel kommen später wieder auf den Markt.</p>
@@ -4262,7 +4265,7 @@ function act(b) {
     case "frameDlg": { const [dd, st] = b.dataset.k.split("|").map(Number); frameDlg(dd, st); return; }
     case "frameAdd": { const [dd, st, kk] = b.dataset.k.split("|"); closeModal(); frameAdd(P, +dd, +st, kk); return; }
     case "dvlCat": { const box = document.querySelector(".dvl"); if (box) { box.dataset.cat = b.dataset.k || ""; dvListFilter(); } return; }
-    case "dvZoom": case "dvPick": case "dvResolve": case "dvOver": case "dvOpenK": case "dvCasc": case "dvTime": case "dvDel": case "dvSwap": case "dvIns": case "dvAdBrk": case "dvTrim": case "fixDlg": case "fixWd": case "fixQuick": case "fixTime": case "fixAdd": case "fixDel": dvAction(P, k, b, id); return;
+    case "dvZoom": case "dvPick": case "dvResolve": case "dvOver": case "dvOpenK": case "dvCasc": case "dvTime": case "dvDel": case "dvSwap": case "dvIns": case "dvAdBrk": case "dvTrim": case "dvInsAd": case "dvInsShort": case "fixDlg": case "fixWd": case "fixQuick": case "fixTime": case "fixAdd": case "fixDel": dvAction(P, k, b, id); return;
     case "descAi": if (draft) descAi(draft, "descAiOut"); return;
     case "prodInfo": { const pr = G.prods.find(x => String(x.id) === b.dataset.k); if (pr) prodInfo(pr); return; }
     case "boHire": if (!planLocked()) boHire(P, b.dataset.k); break;
@@ -4364,6 +4367,8 @@ function act(b) {
     case "openSettings": if (G) { go("settings"); return; } break;
     case "cineTab": cineTab = b.dataset.k; break;
     case "cineBuy": { const err = cineBuy(b.dataset.k, b.dataset.v); toast(err || "Rechte gesichert."); break; }
+    case "cpWeeks": case "cpStrat": case "cpPa": case "cpPromo": case "cpTv": case "cpGo": cineAction(P, k, b); return;
+    case "cpOpen": openCinePlan(id); return;
     case "cineRelease": { const id = b.dataset.k, st = ($(`cs_${id}`) || {}).value, pa = +(($(`cp_${id}`) || {}).value || 0); const err = cineOwnRelease(id, st, pa); toast(err || "Kinostart geplant."); break; }
     case "houseSet": if (draft) draft.house = b.dataset.k; break;
     case "foundInhouse": { const err = foundInhouse(); toast(err || "Eigenes Studio gegründet."); break; }
@@ -4390,7 +4395,7 @@ function act(b) {
     case "boardPoker": openBoardPoker(b.dataset.k); return;
     case "signJob": { const err = signContract(b.dataset.k, b.dataset.v); closeModal(); toast(err || "Willkommen an Bord!"); if (!err) { afterSign(b.dataset.k); go("overview"); return; } break; }
     case "jobApply": case "ivAns": case "offerYears": case "offerMore": case "offerAccept": case "pcAns": case "licStart": case "agentToggle": case "resign": c2Action(P, k, b); return;
-    case "talkShow": G.talkSel = { pid: b.dataset.k, ids: [] }; break;
+    case "talkShow": G.talkSel = { pid: +b.dataset.k, ids: [], field: G.talkSel && G.talkSel.field }; break;
     case "talkGuest": { const sl = G.talkSel, g = b.dataset.k; if (sl) sl.ids = sl.ids.includes(g) ? sl.ids.filter(x => x !== g) : sl.ids.concat(g).slice(0, 4); break; }
     case "talkAuto": { const sl = G.talkSel, p = sl && P.progs.find(x => x.id === sl.pid); if (!p || planLocked()) break; const ids = talkAutoPick(P, p); const err = bookTalk(p.id, ids); toast(err || `Zugesagt: ${p.guests.ids.map(polById).filter(Boolean).map(g => g.name).join(", ")}.`); if (!err) sl.ids = []; break; }
     case "talkUndo": { const sl = G.talkSel, p = sl && P.progs.find(x => x.id === sl.pid); if (!p || !p.guests || p.guests.done) break; const S = ensurePol(); for (const id of p.guests.ids) if (S.booked[id] === P.id) delete S.booked[id]; p.guests = null; toast("Buchung zurückgezogen."); break; }
@@ -5124,6 +5129,7 @@ function adMinH(st, i, wd = weekday(G.day)) {
 // Bruttolänge: Nettolänge plus Werbeunterbrechungen (Nachrichten ohne Unterbrechung)
 function grossDur(st, p, i, wd) {
   const n = netDur(p);
+  if (p && (p.adBlock || p.var)) return n;
   if (!p || p.house || p.kind === "sport" || p.genre === "Nachrichten" || p.genre === "Teleshopping" || n <= 15) return ceil5(n);
   const a = Math.min(12, adMinH(st, i, wd));
   return ceil5(n * 60 / (60 - a));
@@ -5225,7 +5231,7 @@ function openExtraPicker(P, d, i) {
   const nextIt = rd.find(x => !x.gap && x.start >= (last ? last.end : i * 60) && x.i !== i), free = nextIt ? nextIt.planned - (last ? last.end : i * 60) : 1440 - (last ? last.end : i * 60);
   const h = last ? Math.floor(last.end / 60) % 24 : i;
   ensureHouse(P);
-  const list = P.progs.filter(p => p.kind !== "sport" && !p.exclusive && !(p.kind === "film" && p.runs >= p.maxRuns) && !(p.kind === "serie" && !p.own && p.ep >= (p.maxEp || p.eps * 2)))
+  const list = P.progs.filter(p => !p.var && !p.adBlock && p.kind !== "sport" && !p.exclusive && !(p.kind === "film" && p.runs >= p.maxRuns) && !(p.kind === "serie" && !p.own && p.ep >= (p.maxEp || p.eps * 2)))
     .map(p => ({ p, g: grossDur(P, p, h, wd) })).sort((a, b) => (a.g <= free) - (b.g <= free) || b.p.q - a.p.q).reverse().slice(0, 60);
   openModal(`<header><h2>${dateShort(d)} · Anschluss ab ${last ? hhmm(last.end) : hh(i)}</h2><button class="btn" data-act="close">Schließen</button></header><div class="dbody">
     <p class="lead">Frei bis zur nächsten festen Sendung: <b>${Math.max(0, free)} Min.</b> Längere Sendungen verschieben das Folgeprogramm.</p>
@@ -5696,7 +5702,7 @@ function weekPlanPage(P) {
   h += `<p class="lead mb">Ziehen Sie Sendungen aus dem Content-Pool in den Wochenplan oder verschieben Sie Blöcke (am Handy: Sendung antippen, dann Zeitpunkt antippen). Die Länge im Raster ist die echte Sendezeit inklusive Werbung. <span class="legend-dot red"></span> fest/live · <span class="legend-dot green"></span> frei belegt · <span class="legend-dot yellow"></span> Highlight der Konkurrenz.</p>`;
   // Content-Pool
   const genres = ["alle", "Film", "Serie", "Show", "Info", "Sport"], gOf = p => p.kind === "film" ? "Film" : p.kind === "serie" ? "Serie" : ["Nachrichten", "Magazin", "Doku", "Talk"].includes(p.genre) ? "Info" : p.kind === "sport" ? "Sport" : "Show";
-  const pool = P.progs.filter(p => p.kind !== "sport" && !p.house && !p.exclusive && (wpFilter === "alle" || gOf(p) === wpFilter) && (!wpQuery || p.title.toLowerCase().includes(wpQuery.toLowerCase())) && !(p.kind === "film" && p.runs >= p.maxRuns)).sort((a, b) => b.q - a.q).slice(0, 80);
+  const pool = P.progs.filter(p => !p.var && !p.adBlock && p.kind !== "sport" && !p.house && !p.exclusive && (wpFilter === "alle" || gOf(p) === wpFilter) && (!wpQuery || p.title.toLowerCase().includes(wpQuery.toLowerCase())) && !(p.kind === "film" && p.runs >= p.maxRuns)).sort((a, b) => b.q - a.q).slice(0, 80);
   const left = `<aside class="wp-pool"><h3>Content-Pool</h3><input class="search" id="wpSearch" placeholder="Suchen …" value="${esc(wpQuery)}"><div class="pills">${genres.map(g => `<button data-act="wpFilter" data-k="${g}" class="${wpFilter === g ? "on" : ""}">${g}</button>`).join("")}</div>
     <div class="wp-list">${pool.map(p => `<div class="wp-item ${wpPick === p.id ? "on" : ""}" draggable="true" data-drag="${p.id}" data-act="wpPick" data-id="${p.id}"><b>${esc(p.title)}</b><span>${esc(p.genre)} · ${netDur(p)} Min. · Q ${p.q}${p.fsk >= 12 ? ` · FSK ${p.fsk}` : ""}${p.aired === 0 ? " · Premiere" : ""}</span></div>`).join("")}</div></aside>`;
   // Raster
@@ -7280,16 +7286,16 @@ function cineRightsDay() {
 }
 // Eigener Film ins Kino
 const CINE_STRAT = { limited: ["Begrenzter Start", 80, 0.25], wide: ["Breiter Start", 550, 0.7], platform: ["Schrittweise Ausweitung", 120, 0.35], event: ["Eventauswertung (3 Tage)", 350, 0.3] };
-function cineOwnRelease(progId, strat, pa) {
+function cineOwnRelease(progId, strat, pa, opt = {}) {
   const P = me(), p = P.progs.find(x => x.id === progId); if (!p) return "Film nicht gefunden.";
   const s = CINE_STRAT[strat]; if (!s) return "Strategie fehlt.";
   if (P.money < pa) return "Das P&A-Budget übersteigt Ihren Kontostand.";
   book(P, "Kinomarketing (P&A)", -pa);
-  const start = G.day + ((4 - weekday(G.day) + 7) % 7 || 7);
+  const start = cineStartDay(opt.weeks || 1);
   const pr0 = p.prod && G.prods.find(x => x.id === p.prod), soc = pr0 ? castMarket(pr0.cast).social : 10;
-  const aware = clamp(0.08 + pa / 6e6 * (1 + (soc - 10) * 0.03) + (p.pull || 0) * 0.3, 0.05, 0.9);
+  const aware = clamp(0.08 + pa / 6e6 * (1 + (soc - 10) * 0.03) + (p.pull || 0) * 0.3 + (opt.extra || 0), 0.05, 0.9);
   const f = cineFilm({ own: true, title: p.title, genre: p.genre, us: false, type: strat === "event" ? "event" : strat === "platform" ? "legs" : "normal", budget: 0, dist: "self", q: p.q, aware, screens: s[1], start, fsk: p.fsk || 0, pa });
-  f.prog = { ...p }; f.rights = { svod: { by: P.id, price: 0, avail: addMonths(start, CINE_WIN.svod) }, free: { by: P.id, price: 0, avail: addMonths(start, CINE_WIN.free) } };
+  f.prog = { ...p }; f.promo = opt.promo || []; f.rights = { svod: { by: P.id, price: 0, avail: addMonths(start, CINE_WIN.svod) }, free: { by: P.id, price: 0, avail: addMonths(start, CINE_WIN.free) } };
   ensureCine().films.push(f);
   P.progs = P.progs.filter(x => x !== p); // bis zum Fenster nicht im linearen Programm
   allPlans(P).forEach(d => d.forEach(c => { if (c.p === p.id) { c.p = null; c.cont = false; } }));
@@ -7300,7 +7306,7 @@ const STUDIO_NAME = id => id === "self" ? me().name + " (Eigenverleih)" : (STUDI
 function cineDay() {
   ensureCine();
   if (weekday(G.day) === 1) { cineSupply(); cineWeek(); }
-  cineAIBuy(); cineRightsDay();
+  cineAIBuy(); cineRightsDay(); cinePromoDay();
 }
 let cineTab = "charts";
 function cinePage(P) {
@@ -7323,7 +7329,7 @@ function cinePage(P) {
   }
   if (cineTab === "own") {
     const mine = C.films.filter(f => f.own), films = P.progs.filter(p => p.own && p.kind === "film" && !p.aired);
-    h += `<section class="panel mb"><div class="ph"><h2>Eigene Filme ins Kino bringen</h2>${info("P&A = Kopien und Werbung. Der Verleih erhält einen wochenabhängigen Anteil am Kassenumsatz (Spielwert: 47 % in Woche 1–2, 42 % in Woche 3–4, danach 37 %). Bis zum Free-TV-Fenster ist der Film nicht im linearen Programm planbar.")}</div>${films.length ? `<div class="tbl"><table><tbody>${films.map(p => `<tr><td class="title">${esc(p.title)}<div class="muted">Qualität ${p.q}</div></td><td><select id="cs_${p.id}">${Object.entries(CINE_STRAT).map(([k, s]) => `<option value="${k}">${s[0]} (${s[1]} Leinwände)</option>`).join("")}</select></td><td><input id="cp_${p.id}" type="number" min="50000" step="50000" value="400000" style="width:120px"> €</td><td><button class="btn hot small" data-act="cineRelease" data-k="${p.id}" ${planLocked() ? "disabled" : ""}>Kinostart</button></td></tr>`).join("")}</tbody></table></div>` : '<p class="fine pad">Keine ungesendeten Eigenproduktionen vom Typ Film.</p>'}</section>`;
+    h += `<section class="panel mb"><div class="ph"><h2>Eigene Filme ins Kino bringen</h2>${info("P&A = Kopien und Werbung. Der Verleih erhält einen wochenabhängigen Anteil am Kassenumsatz (Spielwert: 47 % in Woche 1–2, 42 % in Woche 3–4, danach 37 %). Bis zum Free-TV-Fenster ist der Film nicht im linearen Programm planbar.")}</div>${films.length ? `<div class="tbl"><table><tbody>${films.map(p => `<tr><td class="title">${esc(p.title)}<div class="muted">Qualität ${p.q}</div></td><td class="r"><button class="btn hot small" data-act="cpOpen" data-id="${p.id}" ${planLocked() ? "disabled" : ""}>Kinostart & Promotion planen …</button></td></tr>`).join("")}</tbody></table></div>` : '<p class="fine pad">Keine ungesendeten Eigenproduktionen vom Typ Film.</p>'}</section>`;
     if (mine.length) h += `<section class="panel"><div class="ph"><h2>Ihre Kinofilme</h2></div><div class="tbl"><table><thead><tr><th>Titel</th><th>Start</th><th class="num">Woche</th><th class="num">Besuche</th><th class="num">Kasse</th><th class="num">Verleiherlös</th><th class="num">P&A</th><th class="num">Ergebnis</th></tr></thead><tbody>${mine.map(f => `<tr><td class="title">${esc(f.title)}</td><td>${dateShort(f.start)}</td><td class="num">${f.wk}</td><td class="num">${f.cum.toLocaleString("de-DE")}</td><td class="num">${eur(f.gross)}</td><td class="num">${eur(f.rental || 0)}</td><td class="num">${eur(f.pa || 0)}</td><td class="num ${(f.rental || 0) - (f.pa || 0) < 0 ? "down" : "up"}">${meur((f.rental || 0) - (f.pa || 0))}</td></tr>`).join("")}</tbody></table></div></section>`;
   }
   if (cineTab === "markets") h += `<section class="panel"><div class="ph"><h2>Kinomärkte</h2><span class="aside">Weltweit 2025: 33,55 Mrd. US$ (Schätzung Gower Street)</span></div><div class="tbl"><table><thead><tr><th>Markt</th><th class="num">Besuche/Jahr</th><th class="num">Umsatz/Jahr</th><th>Datenstatus</th></tr></thead><tbody>${CINE_MARKETS.map(m => `<tr><td>${m.name}</td><td class="num">${(m.adm / 1e6).toFixed(1).replace(".", ",")} Mio.</td><td class="num">${(m.gross / 1e6).toLocaleString("de-DE", { maximumFractionDigits: 1 })} Mio. ${m.cur}</td><td class="muted">${esc(m.status)}</td></tr>`).join("")}</tbody></table></div>
@@ -8496,7 +8502,7 @@ function seqTimeline(P, d, lock) {
 function openSeqPicker(P, d, pos, replace) {
   const wd = weekday(d), seq = seqOf(P, d), at = seq[pos] ? seq[pos].start : seq.length ? seq[seq.length - 1].end : 0, hr = Math.floor(at / 60) % 24;
   ensureHouse(P);
-  const list = P.progs.filter(p => p.kind !== "sport" && !p.exclusive && !(p.kind === "film" && p.runs >= p.maxRuns) && !(p.kind === "serie" && !p.own && p.ep >= (p.maxEp || p.eps * 2)) && !(p.until && d > p.until))
+  const list = P.progs.filter(p => !p.var && !p.adBlock && p.kind !== "sport" && !p.exclusive && !(p.kind === "film" && p.runs >= p.maxRuns) && !(p.kind === "serie" && !p.own && p.ep >= (p.maxEp || p.eps * 2)) && !(p.until && d > p.until))
     .sort((a, b) => b.q * fit(b.genre, hr) * (0.35 + 0.65 * (b.topic ?? 1)) - a.q * fit(a.genre, hr) * (0.35 + 0.65 * (a.topic ?? 1))).slice(0, 80);
   openModal(`<header><h2>${dateShort(d)} · ${replace ? `„${esc(seq[pos].p.title)}“ ersetzen` : "Sendung einfügen"} ab ${hhmm(at)}</h2><button class="btn" data-act="close">Schließen</button></header><div class="dbody">
     <p class="lead">Die Sendung läuft in voller Länge; alles danach rückt entsprechend nach hinten${replace ? " oder vor" : ""}.</p>
@@ -8607,17 +8613,17 @@ function dayView(P, d, lock) {
     const warn = b.with.length ? `<span class="dv-warn" ${b.live || lock ? "" : `data-act="dvOver" data-k="${d}|${b.k}"`}>⚠ ${b.live || lock ? "" : "Lösen: "}Überschneidung mit ${b.with.map(o => `„${esc(o.p ? o.p.title : o.title)}“ (${Math.min(b.end, o.end) - Math.max(b.start, o.start)} Min.)`).join(", ")}</span>` : "";
     if (b.live) return `<div class="dv-b live ${b.with.length ? "over" : ""}" style="${pos}"><div class="dv-t"><b>${hhmm(b.start)}–${hhmm(b.end % 1440)}</b> ${b.carry ? "↳ " : "● LIVE · "}${esc(b.title)}</div>${lock || b.carry ? "" : `<button class="btn small" data-act="frameDlg" data-k="${d}|${b.start}" style="margin-top:4px">Rahmenprogramm planen</button>`}${warn}</div>`;
     const p = b.p, youth = !youthOk(p, Math.floor(b.start / 60) % 24);
-    return `<div class="dv-b ${b.with.length ? "over" : ""} ${youth ? "bad" : ""} ${p.house ? "house" : ""} k-${p.kind}" style="${pos}" ${lock ? "" : `data-dv="${d}|${b.k}"`} data-ctx="p|${p.id}" title="${esc(p.title)} · ${hhmm(b.start)}–${hhmm(b.end % 1440)}">
+    return `<div class="dv-b ${b.with.length ? "over" : ""} ${youth ? "bad" : ""} ${p.house ? "house" : ""} ${p.adBlock ? "adblk" : ""} k-${p.kind}" style="${pos}" ${lock ? "" : `data-dv="${d}|${b.k}"`} data-ctx="p|${p.id}" title="${esc(p.title)} · ${hhmm(b.start)}–${hhmm(b.end % 1440)}">
       <div class="dv-t"><b>${hhmm(b.start)}–${hhmm(b.end % 1440)}</b> ${esc(p.title)}</div>
-      ${ht >= 34 ? `<div class="dv-m"><span class="chip">${b.end - b.start} Min.</span>${b.cut ? `<span class="chip warn" title="Wird automatisch aufgefangen">${b.cut > itemDur(P, b.p, b.start, wd) - netOf(b.p) ? "Werbung + Abspann" : "Werbung"} −${b.cut} Min.${cutLoss(P, b) ? ` · ≈ −${eur(cutLoss(P, b))}` : ""}</span>` : ""}${dvChip(P, d, b.x, items)}${slotsOf(p).some(s => slotFits(s, d) && Math.abs(s.t - b.start) < 5) ? '<span class="chip real">fester Termin</span>' : ""}<span>${esc(p.genre)} · Q ${p.q}</span>${youth ? `<span class="down">FSK ${p.fsk} zu früh</span>` : ""}</div>` : ""}${warn}</div>`;
+      ${ht >= 34 ? `<div class="dv-m"><span class="chip">${b.end - b.start} Min.</span>${b.cut ? `<span class="chip warn" title="Wird automatisch aufgefangen">${b.cut > itemDur(P, b.p, b.start, wd) - netOf(b.p) ? "Werbung + Abspann" : "Werbung"} −${b.cut} Min.${cutLoss(P, b) ? ` · ≈ −${eur(cutLoss(P, b))}` : ""}</span>` : ""}${dvChip(P, d, b.x, items)}${slotsOf(p).some(s => slotFits(s, d) && Math.abs(s.t - b.start) < 5) ? '<span class="chip real">fester Termin</span>' : ""}<span>${esc(p.genre)} · Q ${p.q}</span>${youth ? `<span class="down">FSK ${p.fsk} zu früh</span>` : ""}</div>` : ""}${warn}${lock || p.kind === "sport" ? "" : `<i class="dv-rs" data-dvrs="${d}|${b.k}" data-fine="${shortFmt(p) ? 1 : 0}" title="Ziehen: Länge ändern"></i>`}</div>`;
   }).join("");
-  const pool = P.progs.filter(p => p.kind !== "sport" && !p.exclusive && !(p.kind === "film" && p.runs >= p.maxRuns) && (!dvQuery || p.title.toLowerCase().includes(dvQuery.toLowerCase()))).sort((a, b) => (a.house - b.house) || b.q - a.q).slice(0, 120);
+  const pool = P.progs.filter(p => !p.var && !p.adBlock && p.kind !== "sport" && !p.exclusive && !(p.kind === "film" && p.runs >= p.maxRuns) && (!dvQuery || p.title.toLowerCase().includes(dvQuery.toLowerCase()))).sort((a, b) => (a.house - b.house) || b.q - a.q).slice(0, 120);
   requestAnimationFrame(() => { const s = document.querySelector(".dv-scroll"); if (s) s.scrollTop = dvScroll ?? Math.max(0, 17 * 60 * PX - 20); });
   return `<section class="panel"><div class="ph"><h2>Tagesansicht ${dateLabel(d)}</h2><span class="aside">Block ziehen = verschieben · antippen = austauschen, Uhrzeit, feste Termine · Lücke antippen = einfügen</span></div>
     <div class="dv-bar"><span class="muted">Zoom</span>${[[1.2, "S"], [2, "M"], [3.2, "L"]].map(([z, l]) => `<button class="btn small ${dvZoom === z ? "hot" : ""}" data-act="dvZoom" data-k="${z}">${l}</button>`).join("")}
       ${nOver ? `<span class="down">⚠ ${nOver} Sendungen überschneiden sich</span>${lock ? "" : `<button class="btn small hot" data-act="dvResolve" data-k="${d}">Überschneidungen auflösen (nachrücken)</button>`}` : '<span class="up">Keine Überschneidungen</span>'}
       ${dvPick != null ? `<span class="chip warn">„${esc((progOf(P, dvPick) || {}).title || "")}“ gewählt – jetzt Uhrzeit im Kalender antippen</span><button class="btn small" data-act="dvPick" data-id="">Abbrechen</button>` : ""}</div>
-    <div class="dv">${lock ? "" : `<aside class="dv-pool"><input class="search" id="dvSearch" placeholder="Programm suchen …" value="${esc(dvQuery)}"><p class="fine">In den Kalender ziehen oder antippen und dann die Uhrzeit antippen.</p>
+    <div class="dv ${lock ? "nopool" : ""}">${lock ? "" : `<aside class="dv-pool"><input class="search" id="dvSearch" placeholder="Programm suchen …" value="${esc(dvQuery)}"><p class="fine">In den Kalender ziehen oder antippen und dann die Uhrzeit antippen.</p>
       <div class="dv-list">${pool.map(p => `<div class="wp-item ${dvPick === p.id ? "on" : ""}" draggable="true" data-dvpool="${p.id}" data-act="dvPick" data-id="${p.id}"><b>${esc(p.title)}</b><span>${esc(p.genre)} · ${itemDur(P, p, 1200, wd)} Min. · Q ${p.q}${slotsOf(p).length ? " · fester Termin" : ""}</span></div>`).join("")}</div></aside>`}
     <div class="dv-scroll"><div class="dv-col ${lock ? "lock" : ""}" data-dvcol="${d}" style="height:${1440 * PX}px">${ticks}${gapHtml}${blockHtml}</div></div></div></section>`;
 }
@@ -8633,7 +8639,7 @@ function dvListFilter() {
 }
 function dvList(P, d, m, act, key) {
   const wd = weekday(d), hr = Math.floor(m / 60) % 24;
-  const list = P.progs.filter(p => p.kind !== "sport" && !p.exclusive && !(p.kind === "film" && p.runs >= p.maxRuns) && !(p.kind === "serie" && !p.own && p.ep >= (p.maxEp || p.eps * 2)) && !(p.until && d > p.until))
+  const list = P.progs.filter(p => !p.var && !p.adBlock && p.kind !== "sport" && !p.exclusive && !(p.kind === "film" && p.runs >= p.maxRuns) && !(p.kind === "serie" && !p.own && p.ep >= (p.maxEp || p.eps * 2)) && !(p.until && d > p.until))
     .sort((a, b) => b.q * fit(b.genre, hr) * (0.35 + 0.65 * (b.topic ?? 1)) - a.q * fit(a.genre, hr) * (0.35 + 0.65 * (a.topic ?? 1))).slice(0, 250);
   const cats = ["Serie", "Film", "Show", "Reality", "Talk", "Info", "Doku", "Kurzformat"].filter(c => list.some(p => dvCat(p) === c));
   return `<div class="dvl" data-cat=""><div class="dv-bar" style="flex-wrap:wrap"><input class="search" id="dvlSearch" placeholder="Titel suchen …" style="max-width:240px"><div class="pills"><button class="on" data-act="dvlCat" data-k="">Alle</button>${cats.map(c => `<button data-act="dvlCat" data-k="${c}">${c}</button>`).join("")}</div><span class="muted dvl-n">${list.length} Titel</span></div>
@@ -8658,7 +8664,7 @@ function dvInsert(d, m) {
   openModal(`<header><h2>${dateShort(d)} · Sendung um ${hhmm(m)} einfügen</h2><button class="btn" data-act="close">Schließen</button></header><div class="dbody">
     <p class="lead">Die Sendung beginnt genau um ${hhmm(m)}. Überschneidungen zeigt der Kalender rot an.</p>
     ${(() => { const prev = dayItems(P, d).filter(y => y.t < m).sort((a, b) => b.t - a.t)[0]; const k = prev ? dayItems(P, d).indexOf(dayItems(P, d).find(y => y.p === prev.p && y.t === prev.t)) : -1; return k >= 0 ? `<div class="actions" style="gap:8px;margin-bottom:10px"><span class="muted">Stattdessen Werbeblock einfügen</span>${[5, 10, 15].map(v => `<button class="btn small" data-act="dvAdBrk" data-k="${d}|${k}|${v}">${v} Min.</button>`).join("")}<span class="fine">Lücken bis 15 Minuten laufen als Werbung & Trailer.</span></div>` : ""; })()}
-    ${dvList(P, d, m, "dvIns", `${d}|${m}`)}</div>`);
+    ${dvInsShortHtml(P, d, m)}${dvList(P, d, m, "dvIns", `${d}|${m}`)}</div>`);
 }
 function dvPlace(P, d, p, m) {
   if (!youthOk(p, Math.floor(m / 60) % 24)) { toast(`🚫 „${p.title}“ hat FSK ${p.fsk} und darf erst ab ${p.fsk >= 18 ? "23" : "22"}:00 Uhr laufen.`); return; }
@@ -8734,6 +8740,8 @@ function dvAction(P, k, b, id) {
     case "dvOpenK": dvOpen(d, v); return;
     case "dvCasc": closeModal(); dvCascade(P, d, v, +key.split("|")[2]); return;
     case "dvTime": { const m = readTime("dvTime"); if (m == null) return; const items = dayItems(P, d); if (!items[v]) return; items[v].t = m; closeModal(); dvSave(P, d, items); const k2 = dayItems(P, d).findIndex(x => x.t === m && x.p.id === items[v].p.id); toast(`„${items[v].p.title}“ beginnt jetzt um ${hhmm(m)}.${overlapMsg(P, d, k2)}`); return; }
+    case "dvInsAd": { const n = +(($("insAdLen") || {}).value || 5); closeModal(); dvPlace(P, d, lenVariant(P, adBlockProg(P), n), v); return; }
+    case "dvInsShort": { const base = progOf(P, +(($("insShort") || {}).value)), n = +(($("insShortLen") || {}).value || 5); if (!base) return; closeModal(); dvPlace(P, d, lenVariant(P, base, n), v); return; }
     case "dvAdBrk": { const add = +key.split("|")[2], items = dayItems(P, d).sort((a, b) => a.t - b.t), x = dayItems(P, d)[v]; if (!x) return;
       const wd = weekday(d), isFix = y => slotsOf(y.p).some(s => slotFits(s, d) && Math.abs(s.t - y.t) < 5), end = x.t + itemDur(P, x.p, x.t, wd);
       let n = 0; for (const y of items) { if (y.t < end || (y.p === x.p && y.t === x.t)) continue; if (isFix(y)) break; y.t += add; n++; }
@@ -8961,7 +8969,7 @@ function newsMoodPanel(P) {
 // ---------------------------------------------------------------------
 let nfDraft = null;
 function newsFmtPanel(P) {
-  const list = P.progs.filter(p => p.genre === "Nachrichten" && !p.house);
+  const list = P.progs.filter(p => p.genre === "Nachrichten" && !p.house && !p.var);
   return `<section class="panel mb"><div class="ph"><h2>Nachrichtenformate</h2><button class="btn hot small" data-act="nfNew">+ Neues Nachrichtenformat</button></div>
     <div class="tbl"><table><thead><tr><th>Format</th><th>Länge</th><th>Bausteine</th><th class="num">Qualität</th><th></th></tr></thead><tbody>
     ${list.map(p => { const mods = p.news ? p.news.mods : ["wetter"]; return `<tr><td class="title">${titleLink(`${P.id}|${p.id}`, p.title)}${slotsOf(p).length ? `<div class="muted">${slotsOf(p).map(s => wdsName(s.wds) + " " + hhmm(s.t)).join(" · ")}</div>` : ""}</td><td>${netDur(p)} Min.</td><td>${["head", ...mods].map(id => `<span class="chip">${esc(modOf(id)[1])}</span>`).join(" ")}</td><td class="num">${p.q}</td><td class="r"><button class="btn small" data-act="nfEdit" data-id="${p.id}">Bearbeiten</button> <button class="btn small" data-act="fixDlg" data-id="${p.id}">Sendetermine</button> <button class="btn small red" data-act="nfCancel" data-id="${p.id}" ${planLocked() ? "disabled" : ""}>Absetzen</button></td></tr>`; }).join("") || '<tr><td colspan="5" class="muted">Noch keine Nachrichtensendung.</td></tr>'}
@@ -9720,6 +9728,127 @@ function talkAssist(P, quiet) {
     if (!err) { n++; if (!quiet) logMsg("Talk-Assistent", "Politik", `„${p.title}“ am ${dateShort(d)}: ${p.guests.ids.map(polById).filter(Boolean).map(g => `${g.name} (${g.partei})`).join(", ")} zugesagt – Thema „${p.guests.topic}“.`); }
   }
   return n;
+}
+// =====================================================================
+// Kinoauswertung planen: Starttermin, Strategie, P&A und Promotion – direkt nach Drehschluss
+// =====================================================================
+const CINE_PROMO = [
+  ["trailer", "Trailer im eigenen Programm", 0, 0.05, "Kostenlos – Ihre Primetime-Werbeblöcke bewerben den Film."],
+  ["premiere", "Premiere mit rotem Teppich", 150000, 0.05, "Presse und Social Media berichten am Vorabend des Starts."],
+  ["social", "Social-Media-Kampagne", 300000, 0.06, "Erreicht vor allem jüngeres Publikum."],
+  ["talk", "Auftritte der Besetzung in Talks & Shows", 40000, 0.04, "Wirkt stärker mit eigenen Talk- und Showformaten."],
+  ["press", "Pressevorführung", 50000, 0.03, "Gute Kritiken bei guter Qualität – bei schwacher Qualität eher ein Risiko."],
+];
+const CINE_LEAD = [[2, 0.8], [4, 1], [6, 1.1], [8, 1.15]];
+let cinePlan = null;
+function cineStartDay(weeks) { return G.day + ((4 - weekday(G.day) + 7) % 7 || 7) + (weeks - 1) * 7; }
+function cinePromoAware(P, p, plan) {
+  let a = 0;
+  for (const [k, , , v] of CINE_PROMO) if (plan.promo.includes(k)) a += k === "talk" && P.progs.some(x => (x.own || x.home === P.id) && ["Talk", "Show"].includes(x.genre)) ? v * 1.5 : k === "press" ? v * (p.q >= 65 ? 1.6 : p.q < 45 ? -1 : 0.6) : v;
+  return a * (CINE_LEAD.find(x => x[0] === plan.weeks) || [0, 1])[1];
+}
+function cinePromoCost(plan) { return CINE_PROMO.filter(x => plan.promo.includes(x[0])).reduce((s, x) => s + x[2], 0); }
+function cineForecast(P, p, plan) {
+  const s = CINE_STRAT[plan.strat], start = cineStartDay(plan.weeks), pr0 = p.prod && G.prods.find(x => x.id === p.prod), soc = pr0 ? castMarket(pr0.cast).social : 10;
+  const aware = clamp(0.08 + plan.pa / 6e6 * (1 + (soc - 10) * 0.03) + (p.pull || 0) * 0.3 + cinePromoAware(P, p, plan), 0.05, 0.9);
+  const f = { own: true, q: p.q, qEst: p.q, aware, us: false, type: plan.strat === "event" ? "event" : plan.strat === "platform" ? "legs" : "normal", screens: s[1], scr: 0, start, wk: 0, seen: 0 };
+  f.pot = clamp(aware * 2.2 * (0.5 + p.q / 100) * 0.8, 0.05, 3.5) * 1e6;
+  return { aware, start, first: Math.round(cineWeekDemand(f) * 0.62), week: Math.round(cineWeekDemand(f)) };
+}
+function openCinePlan(id) {
+  const P = me(), p = P.progs.find(x => x.id === id); if (!p) return;
+  if (!cinePlan || cinePlan.id !== id) cinePlan = { id, strat: p.q >= 70 ? "wide" : "limited", pa: p.q >= 70 ? 2e6 : 5e5, weeks: 4, promo: ["trailer"] };
+  const c = cinePlan, fc = cineForecast(P, p, c), cost = c.pa + cinePromoCost(c);
+  const pill = (act, v, l, on) => `<button class="${on ? "on" : ""}" data-act="${act}" data-k="${v}">${l}</button>`;
+  openModal(`<header><h2>Kinoauswertung: „${esc(p.title)}“</h2><button class="btn" data-act="close">Später</button></header><div class="dbody">
+    <p class="lead">Ihr Film ist abgedreht (Qualität ${p.q}, ${esc(p.genre)}). Planen Sie Kinostart und Promotion – oder bringen Sie ihn direkt ins Fernsehen.</p>
+    <h3>Starttermin</h3><div class="pills">${CINE_LEAD.map(([w, f]) => pill("cpWeeks", w, `${dateShort(cineStartDay(w))} (in ${w} Wochen${f !== 1 ? `, Vorlauf ×${String(f).replace(".", ",")}` : ""})`, c.weeks === w)).join("")}</div>
+    <h3 style="margin-top:10px">Strategie</h3><div class="pills">${Object.entries(CINE_STRAT).map(([k, s]) => pill("cpStrat", k, `${s[0]} · ${s[1]} Leinwände`, c.strat === k)).join("")}</div>
+    <h3 style="margin-top:10px">P&A-Budget (Kopien & Werbung)</h3><div class="pills">${[2e5, 5e5, 1e6, 2e6, 4e6].map(v => pill("cpPa", v, meur(v), c.pa === v)).join("")}</div>
+    <h3 style="margin-top:10px">Promotion</h3><div class="picklist">${CINE_PROMO.map(([k, n, cst, , d]) => `<button class="pick ${c.promo.includes(k) ? "on" : ""}" data-act="cpPromo" data-k="${k}"><b>${c.promo.includes(k) ? "✓ " : ""}${n}${cst ? ` · ${eur(cst)}` : " · kostenlos"}</b><span class="meta">${esc(d)}</span></button>`).join("")}</div>
+    <div class="tiles" style="margin-top:12px"><div class="tile"><small>Bekanntheit zum Start</small><b>${Math.round(fc.aware * 100)} %</b></div><div class="tile"><small>Prognose 1. Wochenende</small><b>${fc.first.toLocaleString("de-DE")}</b><span>Besuche</span></div><div class="tile"><small>Kosten gesamt</small><b class="${P.money < cost ? "down" : ""}">${eur(cost)}</b><span>Kontostand ${meur(P.money)}</span></div><div class="tile"><small>Danach</small><b>SVOD ${dateShort(addMonths(fc.start, CINE_WIN.svod))}</b><span>Free-TV ${dateShort(addMonths(fc.start, CINE_WIN.free))}</span></div></div>
+    <div class="actions"><button class="btn hot" data-act="cpGo" ${P.money < cost ? "disabled" : ""}>Kinostart festlegen</button><button class="btn" data-act="cpTv">Kein Kino – direkt ins TV</button></div>
+    <p class="fine">Bis zum Free-TV-Fenster ist der Film nicht im linearen Programm planbar. Prognosen sind Schätzungen des Verleihs – Wetter und Konkurrenz am Startwochenende entscheiden mit.</p></div>`);
+}
+function cineAction(P, k, b) {
+  const c = cinePlan; if (!c) return;
+  switch (k) {
+    case "cpWeeks": c.weeks = +b.dataset.k; break;
+    case "cpStrat": c.strat = b.dataset.k; break;
+    case "cpPa": c.pa = +b.dataset.k; break;
+    case "cpPromo": { const x = b.dataset.k; c.promo = c.promo.includes(x) ? c.promo.filter(y => y !== x) : c.promo.concat(x); break; }
+    case "cpTv": { const p = P.progs.find(x => x.id === c.id); cinePlan = null; closeModal(); if (p) toast(`„${p.title}“ bleibt im Archiv – planen Sie die TV-Premiere im Sendekalender.`); return; }
+    case "cpGo": {
+      const p = P.progs.find(x => x.id === c.id); if (!p) return;
+      const promoCost = cinePromoCost(c); if (P.money < c.pa + promoCost) { toast("Das Budget übersteigt Ihren Kontostand."); return; }
+      book(P, "Kinomarketing (P&A)", -promoCost);
+      const err = cineOwnRelease(p.id, c.strat, c.pa, { weeks: c.weeks, extra: cinePromoAware(P, p, c), promo: c.promo.slice() });
+      cinePlan = null; closeModal(); toast(err || `Kinostart festgelegt. Die Promotion läuft an.`); go("kino"); return;
+    }
+  }
+  openCinePlan(c.id);
+}
+// Promotion im Vorlauf: Premiere am Vorabend, Talk-Auftritte in der Startwoche
+function cinePromoDay() {
+  const P = me();
+  for (const f of ensureCine().films.filter(x => x.own && x.promo && !x.done)) {
+    if (f.promo.includes("premiere") && f.start - 1 === G.day) postArticle("Branchendienst Medienplatz", "Kino", `Roter Teppich für „${f.title}“`, [`Am Vorabend des Kinostarts feierte ${P.name} die Premiere. Fotos vom roten Teppich gehen durch die sozialen Netzwerke.`, `Der Verleih rechnet mit ${Math.round(f.forecast * 0.62).toLocaleString("de-DE")} Besuchen am Startwochenende.`], true);
+    if (f.promo.includes("press") && f.start - 7 === G.day) postArticle("Kritikerspiegel", "Kino", `Erste Kritiken zu „${f.title}“`, [f.q >= 65 ? "Die Pressevorführung kommt gut an: gelobt werden Tempo, Besetzung und Bildsprache." : f.q < 45 ? "Nach der Pressevorführung fallen die Kritiken verhalten aus – das Drehbuch überzeugt nicht alle." : "Gemischte Reaktionen nach der Pressevorführung: solide Unterhaltung, aber kein großer Wurf."], true);
+    if (f.promo.includes("trailer") && f.start - G.day === 14) logMsg("Promotion", "Kino", `Der Trailer zu „${f.title}“ läuft ab heute in Ihren Werbeblöcken.`);
+  }
+}
+// =====================================================================
+// Freie Längen: Werbeblöcke und Kurzformate minutengenau, Länge im Kalender per Ziehen ändern
+// =====================================================================
+const shortFmt = p => p && (p.adBlock || p.house || p.var || (p.genre === "Nachrichten" && netDur(p) <= 30));
+function adBlockProg(P) {
+  let a = P.progs.find(x => x.adBlock && !x.var);
+  if (!a) { a = { id: uid(), title: "Werbeblock", genre: "Magazin", kind: "show", q: 12, len: 1, dur: 5, topic: 1, wear: 1, fsk: 0, filler: true, house: true, adBlock: true, aired: 0, runs: 0, real: false }; P.progs.push(a); }
+  return a;
+}
+// Längenvariante eines Kurzformats (eigene Programmkopie je Länge, im Archiv ausgeblendet)
+function lenVariant(P, base, dur) {
+  dur = clamp(Math.round(dur), 1, base.adBlock ? 20 : 30);
+  const rootId = base.root || base.id, root = P.progs.find(x => x.id === rootId) || base;
+  if (netDur(root) === dur) return root;
+  let v = P.progs.find(x => x.root === rootId && netDur(x) === dur);
+  if (!v) { v = { ...root, id: uid(), dur, var: true, root: rootId, aired: 0, hist: [] }; delete v.slots; delete v.fixSlot; if (root.news) v.news = { ...root.news, len: dur }; P.progs.push(v); }
+  return v;
+}
+// Länge eines Eintrags ändern: Kurzformate minutengenau je Ausstrahlung, andere Sendungen als gekürzte Fassung für alle Ausstrahlungen
+function dvResize(P, d, k, gross) {
+  const items = dayItems(P, d), x = items[k]; if (!x) return;
+  const p = x.p, wd = weekday(d), old = itemDur(P, p, x.t, wd);
+  if (shortFmt(p)) { x.p = lenVariant(P, p, gross); dvSave(P, d, items, `„${p.title}“ läuft jetzt ${netDur(x.p)} Min.`); return; }
+  if (p.kind === "sport") return;
+  const base = p.dur0 || netDur(p), cur = netDur(p), nd = clamp(ceil5(cur + gross - old), Math.ceil(base * 0.75 / 5) * 5, base);
+  if (nd === cur) { toast(nd === base ? `„${p.title}“ hat schon die volle Länge (${base} Min.).` : `Kürzer als 75 % geht nicht (${Math.ceil(base * 0.75)} Min.).`); render(); return; }
+  p.dur0 = base; p.dur = nd; if (p.kind === "film" || p.kind === "serie") p.q = clamp(p.q - Math.round((cur - nd) / 5), 5, 99); if (p.epCost) p.epCost = r1000(p.epCost * nd / cur);
+  buildToday(P); render(); toast(`„${p.title}“: ${nd} Min. für alle Ausstrahlungen${nd < base ? ` (Original ${base})` : ""}.`);
+}
+let dvRes = null;
+document.addEventListener("pointerdown", e => {
+  const h = e.target.closest && e.target.closest(".dv-rs"); if (!h || e.button !== 0) return;
+  e.stopPropagation(); const b = h.closest(".dv-b");
+  dvRes = { el: b, y0: e.clientY, h0: parseFloat(b.style.height), key: h.dataset.dvrs, g: null, fine: h.dataset.fine === "1" };
+  try { h.setPointerCapture(e.pointerId); } catch (_) {}
+}, true);
+document.addEventListener("pointermove", e => {
+  if (!dvRes) return; const st = dvRes.fine ? 1 : 5;
+  const g = Math.max(st, Math.round((dvRes.h0 + 2 + e.clientY - dvRes.y0) / dvZoom / st) * st); dvRes.g = g;
+  dvRes.el.style.height = Math.max(12, g * dvZoom - 2) + "px"; dvRes.el.classList.add("drag");
+  const t = dvRes.el.querySelector(".dv-t b"); if (t) t.textContent = `${g} Min. …`;
+});
+document.addEventListener("pointerup", () => {
+  if (!dvRes) return; const r = dvRes; dvRes = null; if (r.g == null) return;
+  const [d, k] = r.key.split("|").map(Number); dvResize(me(), d, k, r.g);
+});
+function dvInsShortHtml(P, d, m) {
+  ensureHouse(P);
+  const shorts = P.progs.filter(p => !p.var && !p.adBlock && (p.house || (p.genre === "Nachrichten" && netDur(p) <= 30)));
+  return `<div class="panel pad" style="margin-bottom:10px"><div class="actions" style="gap:8px;flex-wrap:wrap"><b>Werbeblock</b><input type="number" id="insAdLen" min="1" max="20" value="5" style="width:64px"> Min.<button class="btn small hot" data-act="dvInsAd" data-k="${d}|${m}">Einfügen</button>
+    <span style="width:18px"></span><b>Kurzformat</b><select id="insShort">${shorts.map(p => `<option value="${p.id}">${esc(p.title)} (${netDur(p)} Min.)</option>`).join("")}</select><input type="number" id="insShortLen" min="1" max="30" value="5" style="width:64px"> Min.<button class="btn small" data-act="dvInsShort" data-k="${d}|${m}" ${shorts.length ? "" : "disabled"}>Einfügen</button></div>
+    <p class="fine">Länge frei wählbar. Im Kalender lässt sich jede Sendung am unteren Rand länger oder kürzer ziehen – Werbeblöcke und Kurzformate minutengenau.</p></div>`;
 }
 // =====================================================================
 // Formatprofil: Quotenverlauf, Publikum, Analyse und Maßnahmen je Sendung
