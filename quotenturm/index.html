@@ -1972,7 +1972,8 @@ function airHour(i) {
     { const sp = spotMarket(st, i, r.v, r.exp, r.p); r.spot = sp.pay; if (sp.pay) book(st, "TV-Werbung (Spotmarkt)", sp.pay); }
     { const rdT = rdToday(st), cutM = rdT.filter(x => !x.gap && Math.floor(x.start / 60) === i).reduce((s, x) => s + Math.min(x.cut || 0, Math.max(0, grossDur(st, x.p, i) - netDur(x.p))), 0);
       const gapM = adMinH(st, i) ? rdT.filter(x => ((x.gap && x.end - x.start <= 15) || (!x.gap && x.p && x.p.adBlock)) && Math.floor(x.start / 60) === i).reduce((s, x) => s + x.end - x.start, 0) : 0; // kleine Lücken = Werbeblock
-      const blk = adBlockRevenue(st, i, r.v, r.p, clamp(adMinH(st, i) - cutM + gapM, 0, 12)); if (r.p && r.p.adF) blk.pay = r1000(blk.pay * r.p.adF); r.blk = blk.pay; if (blk.pay) { book(st, "TV-Werbung", blk.pay); (G.adLog = G.adLog || []).push([G.day, i, blk.pay, Math.round(blk.k)]); if (G.adLog.length > 600) G.adLog.shift(); } }
+      const xM = adMinH(st, i) || st.type !== "oer" ? rdT.filter(x => !x.gap && x.p && x.p.adX && Math.floor(x.start / 60) === i).reduce((s, x) => s + x.p.adX, 0) : 0; // zusätzliche Werbeinseln durch längeres Ziehen
+      const blk = adBlockRevenue(st, i, r.v, r.p, clamp(adMinH(st, i) - cutM + gapM + xM, 0, 12)); if (r.p && r.p.adF) blk.pay = r1000(blk.pay * r.p.adF); r.blk = blk.pay; if (blk.pay) { book(st, "TV-Werbung", blk.pay); (G.adLog = G.adLog || []).push([G.day, i, blk.pay, Math.round(blk.k)]); if (G.adLog.length > 600) G.adLog.shift(); } }
     if (G.adBreak[i]) { const add = Math.max(0, Math.min(3, 12 - adMinH(st, i))), extra = add ? adBlockRevenue(st, i, r.v, r.p, add).pay : 0; book(st, "TV-Werbung", extra); logMsg("Live-Regie", "Werbung", `${hh(i)} – Zusatz-Werbeblock: +${eur(extra)}, dafür weniger Zuschauer.`); }
     if (!r.p) logMsg("Sendetechnik", "Warnung", `${hh(i)} – Sendeloch! Testbild auf Sendung.`, i >= LIVE_FROM);
   }
@@ -5005,7 +5006,7 @@ function adsalesPage(P) {
   const mx = Math.max(1, ...byPart.map(x => x[1]));
   const advs = Object.entries(G.adv || {}).sort((a, b) => b[1].rev - a[1].rev);
   const month = dateOf(G.day).getMonth();
-  return title("Werbevermarktung", `<span class="muted">Saison-Index ${adSeason().toFixed(2).replace(".", ",")}</span>`) + lockNote() +
+  return title("Werbevermarktung", `<span class="muted">Saison-Index ${adSeason().toFixed(2).replace(".", ",")}</span>`) + lockNote() + asstBar() +
     `<div class="tiles mb">
       <div class="tile"><small>Werbeerlöse 7 Tage</small><b>${meur(sum(7))}</b><span>30 Tage: ${meur(sum(30))}</span></div>
       <div class="tile"><small>Ø TKP netto</small><b>${tkp ? tkp.toFixed(2).replace(".", ",") + " €" : "–"}</b><span>je 1.000 Kontakte · Liste brutto ${tkpBrutto(P, 20, null).toFixed(0)} € (Prime)</span></div>
@@ -5139,9 +5140,9 @@ function adMinH(st, i, wd = weekday(G.day)) {
 function grossDur(st, p, i, wd) {
   const n = netDur(p);
   if (p && (p.adBlock || p.var)) return n;
-  if (!p || p.house || p.kind === "sport" || p.genre === "Nachrichten" || p.genre === "Teleshopping" || n <= 15) return ceil5(n);
+  if (!p || p.house || p.kind === "sport" || p.genre === "Nachrichten" || p.genre === "Teleshopping" || n <= 15) return ceil5(n + (p && !p.house && p.kind !== "sport" ? p.adX || 0 : 0));
   const a = Math.min(12, adMinH(st, i, wd));
-  return ceil5(n * 60 / (60 - a));
+  return ceil5(n * 60 / (60 - a) + (p.adX || 0));
 }
 const creditSq = p => p && (p.kind === "film" || p.kind === "serie") ? 3 : 0; // Minuten, die ein gestraffter Abspann spart
 const anchored = p => p && (p.genre === "Nachrichten" || p.kind === "sport");
@@ -5651,7 +5652,7 @@ function fmResolve(y) {
   G.fmBids = [];
 }
 // Format ohne sein Gesicht verliert Publikum, bis eine neue Moderation gebunden ist
-const hostMalus = p => (p && p.hostLost && G.day - (p.movedAt || 0) < 180 ? 0.65 : 1) * hostChangeF(p) * (p && p.hostFit ? 0.8 + 0.2 * p.hostFit : 1); // nach einem halben Jahr hat sich das Publikum gewöhnt
+const hostMalus = p => (p && p.adX ? Math.max(0.65, 1 - p.adX * 0.012) : 1) * (p && p.hostLost && G.day - (p.movedAt || 0) < 180 ? 0.65 : 1) * hostChangeF(p) * (p && p.hostFit ? 0.8 + 0.2 * p.hostFit : 1); // nach einem halben Jahr hat sich das Publikum gewöhnt
 function formatMarketPage(P) {
   const y = nextWindowYear(), list = expiringFormats(y), open = fmWindow(), bids = G.fmBids || [];
   let h = title("Formatmarkt", `<span class="muted">${open ? `Bieterfenster offen bis ${dateShort(marchEnd(y))}` : `Nächstes Bieterfenster: 1.–31. März ${y}`}</span>`) + lockNote();
@@ -8625,7 +8626,7 @@ function dayView(P, d, lock) {
     const p = b.p, youth = !youthOk(p, Math.floor(b.start / 60) % 24);
     return `<div class="dv-b ${b.with.length ? "over" : ""} ${youth ? "bad" : ""} ${p.house ? "house" : ""} ${p.adBlock ? "adblk" : ""} k-${p.kind}" style="${pos}" ${lock ? "" : `data-dv="${d}|${b.k}"`} data-ctx="p|${p.id}" title="${esc(p.title)} · ${hhmm(b.start)}–${hhmm(b.end % 1440)}">
       <div class="dv-t"><b>${hhmm(b.start)}–${hhmm(b.end % 1440)}</b> ${esc(p.title)}</div>
-      ${ht >= 34 ? `<div class="dv-m"><span class="chip">${b.end - b.start} Min.</span>${b.cut ? `<span class="chip warn" title="Wird automatisch aufgefangen">${b.cut > itemDur(P, b.p, b.start, wd) - netOf(b.p) ? "Werbung + Abspann" : "Werbung"} −${b.cut} Min.${cutLoss(P, b) ? ` · ≈ −${eur(cutLoss(P, b))}` : ""}</span>` : ""}${dvChip(P, d, b.x, items)}${slotsOf(p).some(s => slotFits(s, d) && Math.abs(s.t - b.start) < 5) ? '<span class="chip real">fester Termin</span>' : ""}<span>${esc(p.genre)} · Q ${p.q}</span>${youth ? `<span class="down">FSK ${p.fsk} zu früh</span>` : ""}</div>` : ""}${warn}${lock || p.kind === "sport" ? "" : `<i class="dv-rs" data-dvrs="${d}|${b.k}" data-fine="${shortFmt(p) ? 1 : 0}" title="Ziehen: Länge ändern"></i>`}</div>`;
+      ${ht >= 34 ? `<div class="dv-m"><span class="chip">${b.end - b.start} Min.</span>${p.adX ? `<span class="chip warn" title="Zusätzliche Werbeinseln">+${p.adX} Min. Werbung</span>` : ""}${b.cut ? `<span class="chip warn" title="Wird automatisch aufgefangen">${b.cut > itemDur(P, b.p, b.start, wd) - netOf(b.p) ? "Werbung + Abspann" : "Werbung"} −${b.cut} Min.${cutLoss(P, b) ? ` · ≈ −${eur(cutLoss(P, b))}` : ""}</span>` : ""}${dvChip(P, d, b.x, items)}${slotsOf(p).some(s => slotFits(s, d) && Math.abs(s.t - b.start) < 5) ? '<span class="chip real">fester Termin</span>' : ""}<span>${esc(p.genre)} · Q ${p.q}</span>${youth ? `<span class="down">FSK ${p.fsk} zu früh</span>` : ""}</div>` : ""}${warn}${lock || p.kind === "sport" ? "" : `<i class="dv-rs" data-dvrs="${d}|${b.k}" data-fine="${shortFmt(p) ? 1 : 0}" title="Ziehen: Länge ändern"></i>`}</div>`;
   }).join("");
   const pool = P.progs.filter(p => !p.var && !p.adBlock && p.kind !== "sport" && !p.exclusive && !(p.kind === "film" && p.runs >= p.maxRuns) && (!dvQuery || p.title.toLowerCase().includes(dvQuery.toLowerCase()))).sort((a, b) => (a.house - b.house) || b.q - a.q).slice(0, 120);
   requestAnimationFrame(() => { const s = document.querySelector(".dv-scroll"); if (s) s.scrollTop = dvScroll ?? Math.max(0, 17 * 60 * PX - 20); });
@@ -9649,7 +9650,7 @@ function frameCleanup(P) { P.progs = P.progs.filter(p => !p.frame || p.frame.day
 // =====================================================================
 // Assistenten: Disposition, Werbevermarktung und Ziele übernehmen Routinearbeit – jederzeit abschaltbar
 // =====================================================================
-const ASST = [["plan", "Disposition", "Füllt vor jedem Sendetag offene Stunden im Planungsvorlauf."], ["ads", "Werbevermarktung", "Nimmt passende Werbeaufträge an und bucht Spots auf geeignete Plätze."], ["goals", "Ziele", "Rettet Werbeverträge kurz vor Fristende und meldet jeden Montag den Stand der Ziele."], ["talk", "Talk-Gäste", "Lädt vor jeder Talk-Ausgabe eine passende Runde zum Hauptthema ein."], ["guests", "Show-Gäste", "Gibt eigenen Shows und Talks ein Gästebudget, die Redaktion bucht selbst."]];
+const ASST = [["plan", "Disposition", "Füllt vor jedem Sendetag offene Stunden im Planungsvorlauf."], ["ads", "Werbevermarktung", "Kauft bzw. nimmt passende Werbeaufträge und Rahmenverträge an, bucht Spots auf geeignete Plätze und belegt zusätzliche Werbezeit, wenn Sie Sendungen länger ziehen."], ["goals", "Ziele", "Rettet Werbeverträge kurz vor Fristende und meldet jeden Montag den Stand der Ziele."], ["talk", "Talk-Gäste", "Lädt vor jeder Talk-Ausgabe eine passende Runde zum Hauptthema ein."], ["guests", "Show-Gäste", "Gibt eigenen Shows und Talks ein Gästebudget, die Redaktion bucht selbst."]];
 function asst() { G.asst = G.asst || { plan: true, ads: G.adAuto !== false, goals: true }; if (G.asst.talk == null) G.asst.talk = true; if (G.asst.guests == null) G.asst.guests = true; return G.asst; }
 function asstBar() {
   const A = asst();
@@ -9666,6 +9667,9 @@ function asstAds(P) {
     P.contracts.push(a); G.adOffers = G.adOffers.filter(x => x !== a); took++;
     logMsg("Werbe-Assistent", "Werbung", `Auftrag angenommen: ${a.brand}, ${a.spots} Spots, mind. ${mio(a.min)} Mio., Frist ${a.days} Tage.`);
   }
+  // Rahmenverträge (Upfronts): einen passenden pro Monat mitnehmen
+  const fr = (G.frameOffers || []).filter(x => adNeed(x) <= cap).sort((x, y) => y.pay * y.spots - x.pay * x.spots)[0];
+  if (fr && P.contracts.length < MAX_ADS - 1 && !P.contracts.some(c => c.frame && G.day - (c.took || 0) < 28)) { fr.took = G.day; P.contracts.push(fr); G.frameOffers = G.frameOffers.filter(x => x !== fr); took++; logMsg("Werbe-Assistent", "Werbung", `Rahmenvertrag angenommen: ${fr.brand}, ${fr.spots} Spots in ${fr.days} Tagen.`); }
   return took + adAutoBook(P);
 }
 // Verträge kurz vor Fristende retten: auf die reichweitenstärksten erlaubten Plätze buchen
@@ -9832,6 +9836,18 @@ function dvResize(P, d, k, gross) {
   const p = x.p, wd = weekday(d), old = itemDur(P, p, x.t, wd);
   if (shortFmt(p)) { x.p = lenVariant(P, p, gross); dvSave(P, d, items, `„${p.title}“ läuft jetzt ${netDur(x.p)} Min.`); return; }
   if (p.kind === "sport") return;
+  let delta = gross - old;
+  if (delta > 0) { // länger ziehen: erst eine gekürzte Fassung zurück auf Originallänge, der Rest wird zusätzliche Werbezeit
+    const back = Math.min(delta, (p.dur0 || netDur(p)) - netDur(p)); if (back > 0) { p.dur = netDur(p) + back; delta -= back; }
+    if (delta > 0) {
+      if (P.type === "oer") { toast("Öffentlich-rechtlich: keine zusätzliche Werbung – die Sendung bleibt bei Originallänge."); buildToday(P); render(); return; }
+      const cap = 30, add = Math.min((p.adX || 0) + Math.ceil(delta / 5) * 5, cap);
+      if (add <= (p.adX || 0) && !back) { toast(`Mehr geht nicht: höchstens ${cap} Min. Zusatzwerbung pro Ausstrahlung.`); render(); return; }
+      p.adX = add;
+    }
+    buildToday(P); render(); toast(`„${p.title}“: ${netDur(p)} Min. Sendung${p.adX ? ` + ${p.adX} Min. zusätzliche Werbung (mehr Erlös, aber −${Math.round(p.adX * 1.2)} % Zuschauer durch Werbedruck)` : ""} – gilt für alle Ausstrahlungen. Der Werbe-Assistent belegt die Werbezeit.`); if (asst().ads) adAutoBook(P); return;
+  }
+  if (p.adX) { const cut = Math.min(p.adX, -delta); p.adX -= cut; delta += cut; if (!delta) { buildToday(P); render(); toast(`„${p.title}“: Zusatzwerbung jetzt ${p.adX} Min.`); return; } gross = old + delta; }
   const base = p.dur0 || netDur(p), cur = netDur(p), nd = clamp(ceil5(cur + gross - old), Math.ceil(base * 0.75 / 5) * 5, base);
   if (nd === cur) { toast(nd === base ? `„${p.title}“ hat schon die volle Länge (${base} Min.).` : `Kürzer als 75 % geht nicht (${Math.ceil(base * 0.75)} Min.).`); render(); return; }
   p.dur0 = base; p.dur = nd; if (p.kind === "film" || p.kind === "serie") p.q = clamp(p.q - Math.round((cur - nd) / 5), 5, 99); if (p.epCost) p.epCost = r1000(p.epCost * nd / cur);
