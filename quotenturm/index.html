@@ -426,6 +426,7 @@ textarea[data-draft] { font: inherit; color: inherit; background: transparent; b
 .dv-scroll { max-height: 75vh; overflow: auto; position: relative; } .dv-col { position: relative; margin: 0 8px; user-select: none; } .dv-col:not(.lock) { cursor: copy; }
 .dv-tick { position: absolute; left: 60px; right: 0; border-top: 1px dotted color-mix(in srgb, var(--line) 60%, transparent); } .dv-tick.h { border-top: 1px solid var(--line); } .dv-tick span { position: absolute; left: -60px; top: -8px; font-size: 12px; font-weight: 700; color: var(--muted); font-variant-numeric: tabular-nums; }
 .dv-gap { position: absolute; left: 60px; right: 4px; background: repeating-linear-gradient(135deg, transparent 0 6px, color-mix(in srgb, #ef4444 12%, transparent) 6px 12px); border: 1px dashed color-mix(in srgb, #ef4444 50%, transparent); border-radius: 6px; overflow: hidden; } .dv-gap span { font-size: 11px; color: var(--muted); padding: 2px 6px; display: block; }
+.dv-gap.ad { background: repeating-linear-gradient(135deg, transparent 0 6px, color-mix(in srgb, #eab308 10%, transparent) 6px 12px); border-color: color-mix(in srgb, #eab308 45%, transparent); }
 .dv-b { position: absolute; box-sizing: border-box; background: color-mix(in srgb, var(--hot) 16%, var(--panel)); border: 1px solid color-mix(in srgb, var(--hot) 45%, var(--line)); border-left: 4px solid var(--hot); border-radius: 6px; padding: 2px 6px; overflow: hidden; font-size: 12px; touch-action: none; cursor: grab; z-index: 2; }
 .dv-b.k-film { border-left-color: #f59e0b; } .dv-b.k-serie { border-left-color: #38bdf8; } .dv-b.house { opacity: .8; border-left-color: var(--muted); background: var(--panel); } .dv-b.live { border-left-color: #ef4444; background: color-mix(in srgb, #ef4444 14%, var(--panel)); cursor: default; }
 .dv-b.over { outline: 2px solid #ef4444; outline-offset: -2px; } .dv-b.bad { border-color: #ef4444; } .dv-b.drag { z-index: 5; box-shadow: 0 8px 24px rgba(0,0,0,.4); cursor: grabbing; opacity: .92; } .dv-b:hover { filter: brightness(1.12); }
@@ -1655,16 +1656,25 @@ function liveHours(P, d) {
   return out;
 }
 // Prüft den Planungszeitraum der Reihe nach: leere Stunden, fehlende Programme, erschöpfte Lizenzen
+// Minuten Programm je Stunde, inklusive Sendungen, die vom Vortag über Mitternacht laufen
+function dayCover(P, d) {
+  const cov = new Array(24).fill(0), add = (a, b) => { for (let h = Math.max(0, Math.floor(a / 60)); h < 24 && h * 60 < b; h++) cov[h] += Math.max(0, Math.min(b, (h + 1) * 60) - Math.max(a, h * 60)); };
+  for (const x of rundown(P, schedFor(P, d), weekday(d))) if (!x.gap) add(x.start, x.end);
+  const pc = P.cal && P.cal[d - 1]; if (pc) for (const x of rundown(P, pc, weekday(d - 1))) if (!x.gap && x.end > 1440) add(0, x.end - 1440);
+  for (const l of dayLives(P, d)) add(l.start, l.end);
+  return cov;
+}
 function planCheck(P) {
   const left = new Map(), bad = {}, premieres = {};
   let firstBad = null, holes = 0;
   const seen = new Set();
   for (let d = G.day; d < G.day + HORIZON; d++) {
-    const sc = schedFor(P, d), live = d === G.day ? new Set() : liveHours(P, d);
+    const sc = schedFor(P, d), live = d === G.day ? new Set() : liveHours(P, d), cov = dayCover(P, d);
     let prevOk = true, n = 0;
     sc.forEach((c, i) => {
       if (live.has(i) || c.live) { prevOk = true; return; }
       const p = c.p && progOf(P, c.p);
+      if (!p && cov[i] >= 45) { prevOk = true; return; } // kleine Lücken sind Werbung & Trailer
       let ok = !!p && !(p.until && d > p.until); // Lizenz endet vor diesem Tag
       if (p && c.cont) ok = ok && prevOk;
       else if (p) {
@@ -1708,6 +1718,31 @@ function fillHorizon(P) {
     }
     buildToday(P);
   }
+  holeRescue(P);
+}
+// Notnagel: was der Assistent nicht belegen konnte, bekommt eine Wiederholung oder Archiv-Dokus – der Spieler bleibt nie hängen
+function archivFill(P) {
+  let a = P.progs.find(p => p.archiv);
+  if (!a) { a = { id: uid(), title: "Dokumentationen aus dem Archiv", genre: "Doku", kind: "show", q: 38, len: 1, dur: 60, topic: 1, wear: 1, fsk: 0, filler: true, archiv: true, aired: 1, runs: 0, real: false }; P.progs.push(a); }
+  return a;
+}
+function holeRescue(P) {
+  const chk = planCheck(P); if (chk.firstBad == null) return 0;
+  let n = 0;
+  for (const [k, hs] of Object.entries(chk.bad)) {
+    const d = +k, sc = calDay(P, d), wd = weekday(d);
+    for (const i of hs) {
+      if (sc[i].live) continue;
+      clearAt(P, sc, i);
+      // Eigenproduktionen und Shows ohne Lizenzgrenze, die in die Stunde passen
+      const pool = P.progs.filter(p => budgetOf(p) === Infinity && !p.house && !p.exclusive && p.kind !== "sport" && (p.len || 1) === 1 && youthOk(p, i) && !offSeason(p, d) && !sc.some(c => c.p === p.id))
+        .sort((a, b) => b.q * fit(b.genre, i) - a.q * fit(a.genre, i));
+      placeAt(P, sc, i, pool[0] || archivFill(P)); n++;
+    }
+    autoTidy(P, d);
+  }
+  buildToday(P);
+  return n;
 }
 // Verschieben: ein Programm auf einen anderen Sendeplatz, wahlweise im ganzen Planungszeitraum
 let moveSrc = null;
@@ -1808,16 +1843,16 @@ function eventsOn(day) {
   }
   return out;
 }
-function buildToday(st) {
+function buildToday(st, noFill) {
   const wd = weekday(G.day);
-  fillGaps(st, isMe(st) ? calDay(st, G.day) : st.week[wd], wd);
+  if (!noFill) fillGaps(st, isMe(st) ? calDay(st, G.day) : st.week[wd], wd);
   st.sched = (isMe(st) ? calDay(st, G.day) : st.week[wd]).map(c => ({ ...c, live: false }));
   for (const ev of st.live) {
     for (let k = 0; k < ev.len; k++) { const i = ev.h + k; clearAt(st, st.sched, i); st.sched[i] = { p: ev.id, ad: st.sched[i].ad, cont: k > 0, live: true, ...(k === 0 && ev.t != null ? { t: ev.t } : {}) }; }
   }
   st.sched.forEach((c, i) => { if (c.p && !progOf(st, c.p)) { c.p = null; c.cont = false; } if (c.ad && !adOf(st, c.ad)) c.ad = null; });
   if (st.sched.some(c => !c.p)) planDayFor(st, wd, st.sched, { keep: true, day: G.day }); // verdrängte Sendungen ersetzen
-  fillGaps(st, st.sched, wd); // Live-Events können neue Lücken reißen
+  if (!noFill) fillGaps(st, st.sched, wd); // Live-Events können neue Lücken reißen
 }
 function placeEvents() {
   for (const st of G.stations) st.live = [];
@@ -1833,7 +1868,7 @@ function placeEvents() {
 function editPlan(d, fn) {
   const P = me();
   fn(calDay(P, d));
-  if (d === G.day) buildToday(P);
+  if (d === G.day) buildToday(P, true);
 }
 
 // =====================================================================
@@ -1895,7 +1930,8 @@ function airHour(i) {
     r.v = tv * r.A / sum;
     r.exp = st.last[i];
     st.last[i] = r.v; zAcc(st, r);
-    r.title = r.p ? r.p.title + (r.p.kind === "serie" ? ` (Folge ${(r.p.ep % r.p.eps) + 1})` : "") : "Testbild";
+    { const dom = (r.parts || []).filter(x => !x.sg.gap).sort((a, b) => b.sg.min - a.sg.min)[0], tp = dom ? dom.sg.p : r.p; // Stunde trägt den Namen der Sendung, die den größten Teil läuft
+      r.title = tp ? tp.title + (tp.kind === "serie" && tp.eps ? ` (Folge ${(tp.ep % tp.eps) + 1})` : "") : "Testbild"; }
     if (!G.record || r.v > G.record.v) G.record = { v: r.v, title: r.title, st: st.i, day: G.day, h: i };
     if (r.p && !r.c.cont) airedOnce(st, r.p, i);
     if (r.p) { r.p.bestMA = Math.max(r.p.bestMA || 0, r.v / BASE[i] * 100); if (!r.c.cont) r.p.lastAired = G.day; }
@@ -1926,7 +1962,9 @@ function airHour(i) {
       } else logMsg("Werbezeitenvermarktung", "Werbung", `${hh(i)} – Spot „${ad.brand}“ verfehlt: ${mio(reach)} statt ${mio(ad.min)} Mio.${ad.tg && ad.tg !== "all" ? ` (Zielgruppe ${AD_TG[ad.tg][0]})` : ""}${ad.prime && (i < 20 || i > 22) ? " – Premium-Spot nur 20–23 Uhr" : ""}${ad.alc && i >= 6 && i < 20 ? " – Alkohol/Erotik erst ab 20 Uhr" : ""}`, i >= LIVE_FROM);
     }
     { const sp = spotMarket(st, i, r.v, r.exp, r.p); r.spot = sp.pay; if (sp.pay) book(st, "TV-Werbung (Spotmarkt)", sp.pay); }
-    { const cutM = rdToday(st).filter(x => !x.gap && Math.floor(x.start / 60) === i).reduce((s, x) => s + Math.min(x.cut || 0, Math.max(0, grossDur(st, x.p, i) - netDur(x.p))), 0), blk = adBlockRevenue(st, i, r.v, r.p, Math.max(0, adMinH(st, i) - cutM)); if (r.p && r.p.adF) blk.pay = r1000(blk.pay * r.p.adF); r.blk = blk.pay; if (blk.pay) { book(st, "TV-Werbung", blk.pay); (G.adLog = G.adLog || []).push([G.day, i, blk.pay, Math.round(blk.k)]); if (G.adLog.length > 600) G.adLog.shift(); } }
+    { const rdT = rdToday(st), cutM = rdT.filter(x => !x.gap && Math.floor(x.start / 60) === i).reduce((s, x) => s + Math.min(x.cut || 0, Math.max(0, grossDur(st, x.p, i) - netDur(x.p))), 0);
+      const gapM = adMinH(st, i) ? rdT.filter(x => x.gap && Math.floor(x.start / 60) === i && x.end - x.start <= 15).reduce((s, x) => s + x.end - x.start, 0) : 0; // kleine Lücken = Werbeblock
+      const blk = adBlockRevenue(st, i, r.v, r.p, clamp(adMinH(st, i) - cutM + gapM, 0, 12)); if (r.p && r.p.adF) blk.pay = r1000(blk.pay * r.p.adF); r.blk = blk.pay; if (blk.pay) { book(st, "TV-Werbung", blk.pay); (G.adLog = G.adLog || []).push([G.day, i, blk.pay, Math.round(blk.k)]); if (G.adLog.length > 600) G.adLog.shift(); } }
     if (G.adBreak[i]) { const add = Math.max(0, Math.min(3, 12 - adMinH(st, i))), extra = add ? adBlockRevenue(st, i, r.v, r.p, add).pay : 0; book(st, "TV-Werbung", extra); logMsg("Live-Regie", "Werbung", `${hh(i)} – Zusatz-Werbeblock: +${eur(extra)}, dafür weniger Zuschauer.`); }
     if (!r.p) logMsg("Sendetechnik", "Warnung", `${hh(i)} – Sendeloch! Testbild auf Sendung.`, i >= LIVE_FROM);
   }
@@ -3471,7 +3509,7 @@ $("cont").addEventListener("click", () => {
   if (G.event) { showEvent(); return; }
   if (G.phase === "plan") {
     const chk = planCheck(me());
-    if (chk.firstBad != null) { showPlanGate(chk); return; }
+    if (chk.firstBad != null && G.gateSkip !== G.day) { showPlanGate(chk); return; }
     const empty = me().sched.filter(c => !c.p).length;
     if (empty) {
       openModal(`<header><h2>Programmlöcher</h2></header><div class="dbody"><p class="lead">Heute ${empty === 1 ? "ist 1 Stunde" : `sind ${empty} Stunden`} ohne Programm. Dort läuft ein Testbild.</p>
@@ -3625,7 +3663,7 @@ function eveningTable(P) {
   return `<div class="tbl"><table><thead><tr><th>Zeit</th><th>Programm</th><th class="num">Erw.</th><th>Ergebnis</th></tr></thead><tbody>
     ${rd.map(x => { const h = Math.min(23, Math.floor(x.start / 60)), seg = (G.daySeg || []).find(d => d.st === P.i && d.id === x.p.id && d.start === x.start);
       const res = seg && seg.min ? `<span class="res"><i class="${seg.vs / seg.bs * 100 >= stationAvgMA(P) ? "w" : "l"}"></i>${pct(seg.vs / seg.bs * 100)} · ${mio(seg.vs / seg.min)} Mio.</span>` : '<span class="muted">–</span>';
-      return `<tr><td>${hhmm(x.start)}<span class="muted" style="font-size:11px"> – ${hhmm(x.end)}</span></td><td class="title">${x.c.live ? '<span class="chip live">LIVE</span> ' : ""}${x.extra ? '<span class="muted">· </span>' : ""}${x.p.kind === "sport" ? esc(x.p.title) : titleLink(`${P.id}|${x.p.id}`, x.p.title)}${x.p.wdh ? ' <span class="chip">Wdh.</span>' : ""}</td><td class="num muted">${mio(expected(P, h))}</td><td>${res}</td></tr>`; }).join("")}</tbody></table></div>`;
+      return `<tr><td>${hhmm(x.start)}<span class="muted" style="font-size:11px"> – ${hhmm(x.end)}</span></td><td class="title">${x.c.live ? '<span class="chip live">LIVE</span> ' : ""}${x.extra ? '<span class="muted">· </span>' : ""}${x.p.kind === "sport" ? esc(x.p.title) : titleLink(`${P.id}|${x.p.id}`, x.p.title)}${x.p.wdh ? ' <span class="chip">Wdh.</span>' : ""}</td><td class="num muted">${(() => { try { return mio(forecast(P, G.day, x).v); } catch (e) { return mio(expected(P, h)); } })()}</td><td>${res}</td></tr>`; }).join("")}</tbody></table></div>`;
 }
 function standings() {
   return [...G.stations].map(s => ({ s, avg: s.maDays ? s.maSum / s.maDays : s.base * (1 - otherShare()) })).sort((a, b) => b.avg - a.avg);
@@ -3771,6 +3809,7 @@ function eveningTimeline(P, wd, sc, isToday, lock, d) {
     <div class="st-wrap"><h2 class="st">Konkurrenz um ${hh(spyH)}</h2></div><div class="tbl"><table><thead><tr><th>Sender</th><th>Programm</th><th class="num">Qual.</th><th>Einschätzung</th></tr></thead><tbody>${rivals}</tbody></table></div></section>`;
 }
 function planPage(P) {
+  houseMig(P);
   if (planDay == null || planDay < G.day || planDay >= G.day + HORIZON) planDay = G.day;
   const d = planDay, wd = weekday(d), isToday = d === G.day;
   const sc = schedFor(P, d), lock = isToday && planLocked(), chk = planCheck(P), badSet = new Set(chk.bad[d] || []);
@@ -4094,7 +4133,8 @@ function showPlanGate(chk) {
   openModal(`<header><h2>Planungsvorlauf zu kurz</h2></header><div class="dbody">
     <p class="lead">Die Senderleitung verlangt ${HORIZON / 7} Wochen lückenlos geplantes Programm. Gesichert ist es nur bis ${chk.until >= G.day ? dateShort(chk.until) : "–"}: ${chk.holes} Stunde${chk.holes > 1 ? "n sind" : " ist"} offen oder mit einer Lizenz belegt, die bis dahin ausgeschöpft ist.</p>
     <div class="tbl"><table><tbody>${days.slice(0, 6).map(d => `<tr><td>${dateLabel(d)}</td><td class="num down">${chk.bad[d].length} Std.</td><td class="num"><button class="btn small" data-act="toPlanDay" data-k="${d}">Öffnen</button></td></tr>`).join("")}${days.length > 6 ? `<tr><td colspan="3" class="muted">… und ${days.length - 6} weitere Tage</td></tr>` : ""}</tbody></table></div>
-    <div class="actions"><button class="btn hot" data-act="fillAll">Assistent füllt alle Lücken</button><button class="btn" data-act="toPlanDay" data-k="${days[0]}">Zum Kalender</button></div></div>`, true);
+    <div class="actions"><button class="btn hot" data-act="fillAll">Assistent füllt alle Lücken</button><button class="btn" data-act="toPlanDay" data-k="${days[0]}">Zum Kalender</button><button class="btn" data-act="gateSkip">Trotzdem weiter</button></div>
+    <p class="fine">„Trotzdem weiter“ startet den Sendetag; die Senderleitung vermerkt den kurzen Vorlauf (Vertrauen −1).</p></div>`, true);
 }
 function showSummary(report) {
   const P = me();
@@ -4371,7 +4411,8 @@ function act(b) {
     case "pickProg": if (moveSrc) { moveProg(P, wd, i); break; } openPicker("prog", i, wd); return;
     case "moveStart": { const sc = schedFor(P, wd); let st = i; while (st > 0 && sc[st].cont && sc[st - 1].p === sc[i].p) st--; if (sc[st].p && !(wd === G.day && planLocked())) moveSrc = { d: wd, i: st, p: sc[st].p, all: b.dataset.v === "all" }; closeModal(); break; }
     case "moveCancel": moveSrc = null; break;
-    case "fillAll": if (!planLocked()) { fillHorizon(P); const c = planCheck(P); toast(c.firstBad == null ? `Der Assistent hat den Kalender bis ${dateShort(c.until)} lückenlos gefüllt.` : `Noch ${c.holes} Stunden offen.`); } break;
+    case "fillAll": if (!planLocked()) { closeModal(); fillHorizon(P); const c = planCheck(P); toast(c.firstBad == null ? `Der Assistent hat den Kalender bis ${dateShort(c.until)} lückenlos gefüllt.` : `Noch ${c.holes} Stunden offen.`); render(); } break;
+    case "gateSkip": closeModal(); P.conf = Math.max(0, P.conf - 1); G.gateSkip = G.day; $("cont").click(); break;
     case "toPlanDay": closeModal(); planDay = wd; go("plan"); return;
     case "pickAd": openPicker("ad", i, wd); return;
     case "swap": openPicker("prog", i, G.day, true); return;
@@ -5147,6 +5188,7 @@ function gapPick(st, len, h, wd, used, prevId) {
     if (s > bs) { bs = s; best = p; }
   }
   if (best) return best;
+  if (isMe(st)) return null; // eigener Sender: keine automatischen Kurzformate – kleine Lücken werden Werbung & Trailer
   const house = ensureHouse(st);
   // Kurzformate: größtes passendes, nie zweimal dasselbe direkt hintereinander, jedes höchstens einmal pro Lücke
   return house.find(p => p.dur <= len && p.id !== prevId) || house.filter(p => p.dur <= len).pop() || house[house.length - 1];
@@ -5176,7 +5218,7 @@ function fillGaps(st, sc, wd = weekday(G.day)) {
     const len = effEnd(g) - g.start;
     const used = new Set(rd.filter(x => !x.gap && !x.p.filler).map(x => x.p.id));
     const p = gapPick(st, len, Math.floor(g.start / 60) % 24, wd, used, prev.p.id);
-    if (grossDur(st, p, Math.floor(g.start / 60) % 24, wd) > len) { skip.add(g.start); continue; }
+    if (!p || grossDur(st, p, Math.floor(g.start / 60) % 24, wd) > len) { skip.add(g.start); continue; }
     // direkt hinter der Vorsendung einsetzen (neue Arrays: Kalendertage teilen sich keine Listen)
     const host = sc[prev.i], pos = rd.slice(0, k).filter(x => !x.gap && x.i === prev.i && x.extra).length;
     const ex = (host.extra || []).slice(); ex.splice(pos, 0, p.id); host.extra = ex;
@@ -5622,7 +5664,7 @@ function forecast(P, day, it) {
 function weekPlanPage(P) {
   const mon = wpMonday(), from = wpFrom(), H = (1440 - from) * WP_PX;
   const days = Array.from({ length: 7 }, (_, k) => mon + k).filter(d => d >= G.day - 6);
-  for (const d of days) if (d > G.day || (d === G.day && !planLocked())) fillGaps(P, d === G.day ? calDay(P, d) : calDay(P, d), weekday(d)); // lückenlos auch in der Vorschau
+  // keine automatische Füllung in der Ansicht – Lücken füllt der Assistent nur auf Wunsch
   let h = title("Wochenplan", `<div class="actions"><button class="btn small" data-act="wpWeek" data-k="-1" ${wpWeek <= 0 ? "disabled" : ""}>‹ Woche</button><span class="muted">${dateShort(mon)} – ${dateShort(mon + 6)}</span><button class="btn small" data-act="wpWeek" data-k="1" ${wpWeek >= 5 ? "disabled" : ""}>Woche ›</button><button class="btn small" data-act="wpNight">${wpNight ? "ab 6 Uhr" : "0–24 Uhr"}</button></div>`);
   h += `<p class="lead mb">Ziehen Sie Sendungen aus dem Content-Pool in den Wochenplan oder verschieben Sie Blöcke (am Handy: Sendung antippen, dann Zeitpunkt antippen). Die Länge im Raster ist die echte Sendezeit inklusive Werbung. <span class="legend-dot red"></span> fest/live · <span class="legend-dot green"></span> frei belegt · <span class="legend-dot yellow"></span> Highlight der Konkurrenz.</p>`;
   // Content-Pool
@@ -8463,7 +8505,10 @@ const itemDur = (P, p, t, wd) => p.kind === "sport" ? netDur(p) : grossDur(P, p,
 // Einträge eines Kalendertags mit geplanter Startzeit (Überschneidungen sind möglich)
 const dayItems = (P, d) => rundown(P, calDay(P, d), weekday(d)).filter(x => !x.gap && !x.c.live).map(x => ({ p: x.p, t: x.planned }));
 function dayLives(P, d) {
-  return eventsOn(d).filter(e => e.o.owner === P.id).map(({ d: def, m }) => ({ live: true, start: m ? m.t : def.h * 60, end: m ? m.t + m.dur : (def.h + def.len) * 60, title: def.award ? (m ? m.fix : def.name) : `${def.sport}: ${m ? m.fix : def.name}` }));
+  const out = eventsOn(d).filter(e => e.o.owner === P.id).map(({ d: def, m }) => ({ live: true, start: m ? m.t : def.h * 60, end: m ? m.t + m.dur : (def.h + def.len) * 60, title: def.award ? (m ? m.fix : def.name) : `${def.sport}: ${m ? m.fix : def.name}` }));
+  const pc = P.cal && P.cal[d - 1]; // läuft vom Vortag über Mitternacht
+  if (pc) for (const x of rundown(P, pc, weekday(d - 1))) if (!x.gap && x.end > 1440) out.push({ live: true, carry: true, start: 0, end: x.end - 1440, title: `${x.p.title} (vom Vortag)` });
+  return out;
 }
 // Einträge ins Stundenraster schreiben: erste Sendung einer Stunde ist der Sendeplatz, weitere folgen mit fester Startzeit
 function writeItems(P, d, items) {
@@ -8527,11 +8572,11 @@ function dayView(P, d, lock) {
   if (cov < 1440) gaps.push([cov, 1440]);
   let ticks = "";
   for (let m = 0; m < 1440; m += 15) ticks += `<i class="dv-tick ${m % 60 ? "" : "h"}" style="top:${m * PX}px">${m % 60 ? "" : `<span>${hhmm(m)}</span>`}</i>`;
-  const gapHtml = gaps.filter(([a, b]) => b - a >= 5).map(([a, b]) => `<div class="dv-gap" data-dvgap="${d}|${a}" style="top:${a * PX}px;height:${(b - a) * PX}px"><span>${hhmm(a)}–${hhmm(b % 1440)} · Lücke ${b - a} Min.${lock ? "" : " – antippen zum Füllen"}</span></div>`).join("");
+  const gapHtml = gaps.filter(([a, b]) => b - a >= 5).map(([a, b]) => `<div class="dv-gap ${b - a <= 15 ? "ad" : ""}" data-dvgap="${d}|${a}" style="top:${a * PX}px;height:${(b - a) * PX}px"><span>${hhmm(a)}–${hhmm(b % 1440)} · ${b - a <= 15 ? `Werbeblock & Trailer ${b - a} Min.` : `Lücke ${b - a} Min.`}${lock ? "" : " – antippen zum Füllen"}</span></div>`).join("");
   const blockHtml = blocks.map(b => {
     const ht = Math.max(12, (Math.min(b.end, 1440) - b.start) * PX - 2), pos = `top:${b.start * PX}px;height:${ht}px;left:calc(${b.col} * (100% - 60px) / ${b.cols} + 60px);width:calc((100% - 60px) / ${b.cols} - 4px)`;
     const warn = b.with.length ? `<span class="dv-warn" ${b.live || lock ? "" : `data-act="dvOver" data-k="${d}|${b.k}"`}>⚠ ${b.live || lock ? "" : "Lösen: "}Überschneidung mit ${b.with.map(o => `„${esc(o.p ? o.p.title : o.title)}“ (${Math.min(b.end, o.end) - Math.max(b.start, o.start)} Min.)`).join(", ")}</span>` : "";
-    if (b.live) return `<div class="dv-b live ${b.with.length ? "over" : ""}" style="${pos}"><div class="dv-t"><b>${hhmm(b.start)}–${hhmm(b.end % 1440)}</b> ● LIVE · ${esc(b.title)}</div>${lock ? "" : `<button class="btn small" data-act="frameDlg" data-k="${d}|${b.start}" style="margin-top:4px">Rahmenprogramm planen</button>`}${warn}</div>`;
+    if (b.live) return `<div class="dv-b live ${b.with.length ? "over" : ""}" style="${pos}"><div class="dv-t"><b>${hhmm(b.start)}–${hhmm(b.end % 1440)}</b> ${b.carry ? "↳ " : "● LIVE · "}${esc(b.title)}</div>${lock || b.carry ? "" : `<button class="btn small" data-act="frameDlg" data-k="${d}|${b.start}" style="margin-top:4px">Rahmenprogramm planen</button>`}${warn}</div>`;
     const p = b.p, youth = !youthOk(p, Math.floor(b.start / 60) % 24);
     return `<div class="dv-b ${b.with.length ? "over" : ""} ${youth ? "bad" : ""} ${p.house ? "house" : ""} k-${p.kind}" style="${pos}" ${lock ? "" : `data-dv="${d}|${b.k}"`} data-ctx="p|${p.id}" title="${esc(p.title)} · ${hhmm(b.start)}–${hhmm(b.end % 1440)}">
       <div class="dv-t"><b>${hhmm(b.start)}–${hhmm(b.end % 1440)}</b> ${esc(p.title)}</div>
@@ -8758,15 +8803,16 @@ function dvOverDlg(d, k) {
 function autoTidy(P, d) {
   if (dvLocked(d)) return;
   const wd = weekday(d), lives = dayLives(P, d), all = dayItems(P, d);
-  let items = all.filter(x => { const e = x.t + itemDur(P, x.p, x.t, wd); return !lives.some(l => x.t < l.end && e > l.start); }).sort((a, b) => a.t - b.t);
+  const isFix = x => slotsOf(x.p).some(s => slotFits(s, d) && Math.abs(s.t - x.t) < 5);
+  let items = all.filter(x => { const e = x.t + itemDur(P, x.p, x.t, wd); return isFix(x) || !lives.some(l => !l.carry && x.t < l.end && e > l.start); }).sort((a, b) => a.t - b.t);
+  const anchors = lives.concat(items.filter(isFix).map(x => ({ start: x.t, end: x.t + itemDur(P, x.p, x.t, wd) })));
   let changed = items.length !== all.length, prevEnd = 0, prevSoft = 0;
   for (const x of items) {
-    if (x.t < prevEnd && x.t < prevSoft) {
-      let t = ceil5(prevEnd), dur = itemDur(P, x.p, t, wd);
-      for (const l of lives) if (t < l.end && t + dur > l.start) { t = l.end; dur = itemDur(P, x.p, t, wd); }
-      x.t = t; changed = true;
-    }
-    prevEnd = x.t + itemDur(P, x.p, x.t, wd); prevSoft = x.t + netOf(x.p) - creditSq(x.p);
+    if (isFix(x)) { prevEnd = Math.max(prevEnd, x.t + itemDur(P, x.p, x.t, wd)); prevSoft = x.t + netOf(x.p) - creditSq(x.p); continue; } // feste Termine laufen immer zu ihrer Zeit
+    let t = x.t < prevEnd && x.t < prevSoft ? ceil5(prevEnd) : x.t, dur = itemDur(P, x.p, t, wd);
+    for (let g = 0; g < 8; g++) { const a = anchors.find(l => t < l.end && t + dur > l.start); if (!a) break; t = ceil5(a.end); dur = itemDur(P, x.p, t, wd); }
+    if (t !== x.t) { x.t = t; changed = true; }
+    prevEnd = x.t + dur; prevSoft = x.t + netOf(x.p) - creditSq(x.p);
   }
   items = items.filter(x => x.t < 1440);
   // Lücken – auch vor und nach Live-Events – mit passenden Sendungen bzw. Kurzformaten schließen
@@ -9021,7 +9067,10 @@ function orderEps(P, p, n) {
   book(P, "Eigenproduktion", -c); p.order = { n, ready: G.day + Math.max(7, n * 2) };
   logMsg("Produktion", "Produktion", `„${p.title}“: ${n} neue Folgen bestellt (${meur(c)}), fertig am ${dateShort(p.order.ready)}.`, true);
 }
+// Einmalig: automatisch gesetzte Kurzformate aus dem eigenen Kalender entfernen (ältere Spielstände)
+function houseMig(P) { if (G.houseMig) return; G.houseMig = 1; for (const k of Object.keys(P.cal || {})) { const d = +k; if (d < G.day || dvLocked(d)) continue; const it = dayItems(P, d), keep = it.filter(x => !x.p.house); if (keep.length < it.length) writeItems(P, d, keep); } }
 function castDay(P) {
+  houseMig(P);
   ensureAwardRights(); frameCleanup(P);
   if (!G.exMig) { G.exMig = 1; for (const q of G.people) if (q.holder && q.holder !== P.id && !(G.sv && q.holder === G.sv.id) && !aiExcl(q)) { q.prodAt = q.holder; q.holder = null; } } // ältere Spielstände: zu viele Exklusivverträge auflösen
   for (const q of G.people) if (q.course && G.day >= q.course.until) {
@@ -9724,8 +9773,8 @@ function fmtCompetition(st, p) {
 function fmtDates(st, p) {
   const out = [];
   for (let d = G.day; d < G.day + 14 && out.length < 8; d++) {
-    const sc = isMe(st) ? calDay(st, d) : st.week[weekday(d)];
-    sc.forEach((c, i) => { if (c.p === p.id && !c.cont) out.push([d, i]); });
+    if (isMe(st)) { for (const x of dayItems(st, d)) if (x.p.id === p.id) out.push([d, Math.floor(x.t / 60) % 24]); continue; }
+    st.week[weekday(d)].forEach((c, i) => { if (c.p === p.id && !c.cont) out.push([d, i]); });
   }
   return out;
 }
