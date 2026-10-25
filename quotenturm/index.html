@@ -2246,6 +2246,8 @@ function liveStream(v, title) {
 // =====================================================================
 // Medien-Ticker: Ereignisse mit Entscheidungen
 // =====================================================================
+// Nur eigene Produktionen und Eigenformate haben ein „Set“ und eine Redaktion – eingekaufte Serien und Filme nicht
+const ownMade = p => !!(p && (p.own || p.prod || p.home === me().id) && !p.house && !p.var);
 const myProg = filter => { const P = me(); const used = new Set(allPlans(P).flatMap(d => d.map(c => c.p))); return shuffle(P.progs.filter(p => used.has(p.id) && !p.filler && filter(p)))[0]; };
 const EVENTS = [
   { id: "hollywood", type: "Markt", when: () => !(G.mods.filmShortage >= G.day),
@@ -2271,8 +2273,8 @@ const EVENTS = [
     make: () => { const r = pick(G.rights.filter(x => x.owner && x.owner !== me().id && x.days > 5)); return { data: r.id, title: `Exklusiv: „${RDEF(r.id).name}“ wird vorzeitig neu vergeben`, text: `Der Rechteinhaber ${holderName(r.owner)} steckt in Finanznöten. Die Rechteagentur fragt diskret nach Interesse.`,
       opts: [["Interesse anmelden", "Das Paket kommt sofort in die Ausschreibung."], ["Kein Interesse", "Alles bleibt, wie es ist."]] }; },
     fn: (k, rid) => { if (k === 0) { const r = G.rights.find(x => x.id === rid); Object.assign(r, { owner: null, pay: null, alp: null, terr: null, fee: 0, alpFee: 0, days: 0, next: null, tender: null }); openTender(r); go("rights"); } } },
-  { id: "setfight", type: "Skandal", when: () => !!myProg(p => p.kind === "serie" || (p.kind === "show" && p.genre !== "Nachrichten")),
-    make: () => { const p = myProg(p => p.kind === "serie" || (p.kind === "show" && p.genre !== "Nachrichten")); return { data: p.id, title: `Eklat am Set von „${p.title}“`, text: "Nach einem Streit über das Drehbuch geraten Hauptdarsteller und Regie handgreiflich aneinander. Die Boulevardpresse hat Wind davon bekommen.",
+  { id: "setfight", type: "Skandal", when: () => !!myProg(p => ownMade(p) && (p.kind === "serie" || (p.kind === "show" && p.genre !== "Nachrichten"))),
+    make: () => { const p = myProg(p => ownMade(p) && (p.kind === "serie" || (p.kind === "show" && p.genre !== "Nachrichten"))); return { data: p.id, title: `Eklat am Set von „${p.title}“`, text: "Nach einem Streit über das Drehbuch geraten Hauptdarsteller und Regie handgreiflich aneinander. Die Boulevardpresse hat Wind davon bekommen.",
       opts: [["Fristlos trennen", "Prestige steigt, die Produktion verliert 15 Qualitätspunkte."], ["Mit PR-Geld beruhigen", "−100.000 €, die Quote bleibt stabil – aber es könnte später auffliegen."], ["Krisen-Spezial senden", "Neue Reality-Sendung mit großem Quotenpotenzial. Kostet Prestige."]] }; },
     fn: (k, pid) => {
       const P = me(), p = P.progs.find(x => x.id === pid); if (!p) return;
@@ -2280,8 +2282,8 @@ const EVENTS = [
       if (k === 1) { book(P, "PR & Krisen", -100000); G.mods.coverup = { day: G.day + ri(3, 8), title: p.title }; }
       if (k === 2) { P.progs.push({ id: uid(), title: `Krisen-Spezial: ${p.title}`, genre: "Reality", kind: "show", q: 84, len: 1, topic: 1, fsk: 0, real: false, price: 0, aired: 0 }); P.favor = Math.max(0, P.favor - 5); P.brand = Math.max(0.5, P.brand - 0.1); }
     } },
-  { id: "host", type: "Skandal", when: () => !!myProg(p => p.kind === "show" && ["Show", "Talk", "Reality"].includes(p.genre)),
-    make: () => { const p = myProg(p => p.kind === "show" && ["Show", "Talk", "Reality"].includes(p.genre)); return { data: p.id, title: `Empörung über Moderation von „${p.title}“`, text: "In der letzten Ausgabe fielen abwertende Bemerkungen über eine Bevölkerungsgruppe. Zuschauerinnen und Zuschauer sowie Werbekunden fordern Konsequenzen.",
+  { id: "host", type: "Skandal", when: () => !!myProg(p => ownMade(p) && p.kind === "show" && ["Show", "Talk", "Reality"].includes(p.genre)),
+    make: () => { const p = myProg(p => ownMade(p) && p.kind === "show" && ["Show", "Talk", "Reality"].includes(p.genre)); return { data: p.id, title: `Empörung über Moderation von „${p.title}“`, text: "In der letzten Ausgabe fielen abwertende Bemerkungen über eine Bevölkerungsgruppe. Zuschauerinnen und Zuschauer sowie Werbekunden fordern Konsequenzen.",
       opts: [["Moderation austauschen", "Klare Haltung: Prestige steigt, die Sendung verliert 10 Qualitätspunkte."], ["Öffentliche Entschuldigung", "Vertrauen der Senderleitung −2."], ["Aussitzen", "Ein Werbekunde springt ab, das Image leidet deutlich."]] }; },
     fn: (k, pid) => {
       const P = me(), p = P.progs.find(x => x.id === pid);
@@ -2427,7 +2429,7 @@ function castingEngine(n = 4000) {
 }
 let PIDX = null, PIDX_SRC = null;
 const person = id => { if (PIDX_SRC !== G.people) { PIDX = new Map(G.people.map(p => [p.id, p])); PIDX_SRC = G.people; } return PIDX.get(id) || (G.pAlias && G.pAlias[id] ? PIDX.get(G.pAlias[id]) : undefined); };
-// Gleiche Person, andere Schreibweise: „Klöppel“ = „Kloeppel“, „Müller“ = „Mueller“, Akzente und Bindestriche egal
+// Gleiche Person, andere Schreibweise: „Müller“ = „Mueller“, „Schröder“ = „Schroeder“, Akzente und Bindestriche egal
 const normName = n => String(n || "").toLowerCase().replace(/ä/g, "ae").replace(/ö/g, "oe").replace(/ü/g, "ue").replace(/ß/g, "ss").normalize("NFKD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z]+/g, " ").trim();
 // Sprachen aus der Herkunft – keine erfundenen Zusatzsprachen bei echten Personen
 const ORIGIN_LANG = { DE: "Deutsch", AT: "Deutsch", CH: "Deutsch", LI: "Deutsch", US: "Englisch", GB: "Englisch", CA: "Englisch", AU: "Englisch", NZ: "Englisch", IE: "Englisch", FR: "Französisch", ES: "Spanisch", MX: "Spanisch", CL: "Spanisch", AR: "Spanisch", IT: "Italienisch", TR: "Türkisch", PL: "Polnisch", NL: "Niederländisch", DK: "Dänisch", SE: "Schwedisch", NO: "Norwegisch", KR: "Koreanisch", JP: "Japanisch", BR: "Portugiesisch", PT: "Portugiesisch", RU: "Russisch" };
@@ -9458,9 +9460,9 @@ function rentRows(P) {
     if (rev && sum("blk") < rev * 0.5 && st.ma >= avgMA) tips.push("Starke Quote, wenig Werbegeld – Werbelast im Sendeplatz erhöhen oder Sponsoring suchen.");
     if (st.y >= 12 && p.kind !== "film") tips.push("Junges Publikum – ideal für Premium-Kampagnen und den Stream.");
     if ((p.topic ?? 1) < 0.6) tips.push("Abgenutzt – eine Pause hebt die Aktualität wieder.");
-    if (st.trend < -1.5) tips.push("Quote sinkt – Sendeplatz prüfen oder neu besetzen.");
+    if (st.trend < -1.5) tips.push(ownMade(p) ? "Quote sinkt – Sendeplatz prüfen oder neu besetzen." : "Quote sinkt – anderen Sendeplatz wählen oder eine Pause einlegen.");
     if (p.until && p.until - G.day < 30) tips.push(`Lizenz endet am ${dateShort(p.until)} – Verlängerung prüfen.`);
-    if (res > 0 && st.ma >= avgMA * 1.2) tips.push("Zugpferd – feste Sendetermine sichern, Hauptdarsteller langfristig binden.");
+    if (res > 0 && st.ma >= avgMA * 1.2) tips.push(ownMade(p) ? "Zugpferd – feste Sendetermine sichern, Hauptdarsteller langfristig binden." : p.kind === "film" ? "Zugpferd – weitere Ausstrahlungsrechte oder ähnliche Filme einkaufen." : "Zugpferd – feste Sendetermine sichern, Lizenz verlängern oder weitere Staffeln einkaufen.");
     return { p, n, rev, cost, res, margin: rev ? res / rev : -1, ma: st.ma, tips };
   }).sort((a, b) => a.res - b.res);
 }
@@ -10827,7 +10829,7 @@ function seedPrivate(D) {
   D.privV = M.version; EDB_IDX = null; storeDB();
   return D;
 }
-// Editor-Datenbank: gleiche Person in anderer Schreibweise (Klöppel/Kloeppel) zu einem Eintrag zusammenführen
+// Editor-Datenbank: gleiche Person in anderer Schreibweise (Müller/Mueller) zu einem Eintrag zusammenführen
 let EDB_DEDUP = false;
 function dedupeDB(D) {
   if (EDB_DEDUP || !D || !Array.isArray(D.people)) return D; EDB_DEDUP = true;
