@@ -4995,8 +4995,18 @@ function adEnv(ad, p) {
   if ((ad.env || []).includes(p.genre)) return [1.15, 1];
   return [1, 0];
 }
+// Plausibilitätsgrenzen: Ein Spot kostet höchstens das 2,5-Fache des Kontaktwerts (TKP) seiner Reichweite
+const spotCap = (mio, sec = 30) => r1000(Math.max(3000, mio * 1000 * TKP_BASE * 2.5 * (sec / 30)));
+function adSanitize(list) {
+  for (const c of list || []) {
+    if (c.min > 25) c.min = Math.round(c.min / 1e3 * 100) / 100; // Reichweite in Tausend statt Mio. importiert
+    const cap = r1000(campaignPay(Math.max(0.05, c.min || 0.2), c.sec || 30) * 2.5);
+    if (c.pay > cap) c.pay = cap;
+    const pcap = r1000(c.pay * c.spots * (c.frame ? 0.25 : 0.6)); if (c.penalty > pcap) c.penalty = pcap;
+  }
+}
 function adPaid(st, ad, p, i, v) {
-  const adv = advOf(ad.brand, ad.cat), [ef, dr] = adEnv(ad, p), pay = r1000(ad.pay * ef * newsroomCalc().adF);
+  const adv = advOf(ad.brand, ad.cat), [ef, dr] = adEnv(ad, p), pay = Math.min(r1000(ad.pay * ef * newsroomCalc().adF), spotCap(Math.max(v, ad.min || 0), ad.sec || 30));
   adv.rel = clamp(adv.rel + dr * 0.5, 0, 100); adv.rev += pay; adv.spots++;
   (G.adLog = G.adLog || []).push([G.day, i, pay, Math.round(v * 1000)]); if (G.adLog.length > 400) G.adLog.shift();
   if (dr < 0 && i >= LIVE_FROM) logMsg("Werbezeitenvermarktung", "Werbung", `${ad.brand} beschwert sich: Spot lief im Umfeld „${p.genre}“ – nur ${Math.round(ef * 100)} % des Preises.`);
@@ -5110,7 +5120,7 @@ async function importAdsFile(f) {
     let pen = anum(ag(o, "strafe_eur"));
     if (!(pen > 0)) pen = Math.round(pay * (anum(ag(o, "straf_faktor_spiel")) || 1.5) / 500) * 500;
     out.push({ id, brand, camp: String(ag(o, "kampagne")).trim().slice(0, 80), cat: String(ag(o, "branche")).trim().slice(0, 40) || "Handel",
-      min: Math.round(reach / 1e4) / 100, spots: Math.round(spots), days: Math.max(2, Math.round(anum(ag(o, "frist_tage")) || 5)), pay, pen, sec: anum(ag(o, "spotdauer_sekunden")) || 30, bf: (anum(ag(o, "branchenfaktor_spiel")) || 1) * (anum(ag(o, "variationsfaktor_spiel")) || 1), sf: anum(ag(o, "straf_faktor_spiel")) || 1.5, alc: String(ag(o, "alkohol_oder_erotik_filter")).trim() === "1" });
+      min: (m => m > 25 ? Math.round(m / 1e3 * 100) / 100 : m)(Math.round(reach / 1e4) / 100), spots: Math.round(spots), days: Math.max(2, Math.round(anum(ag(o, "frist_tage")) || 5)), pay, pen, sec: anum(ag(o, "spotdauer_sekunden")) || 30, bf: (anum(ag(o, "branchenfaktor_spiel")) || 1) * (anum(ag(o, "variationsfaktor_spiel")) || 1), sf: anum(ag(o, "straf_faktor_spiel")) || 1.5, alc: String(ag(o, "alkohol_oder_erotik_filter")).trim() === "1" });
   }
   if (!out.length) throw new Error("Keine Werbeverträge erkannt (Spalten vertrag_id, kunde, mindestreichweite, spots).");
   const pool = AD_POOL || [], r = upsert(pool, out, "id");
@@ -9806,6 +9816,7 @@ function asstGoalsReport(P) {
   logMsg("Ziel-Assistent", "Ziele", `Wochenstand: ${tips.join(" ")}`, true);
 }
 function asstDay(P) {
+  adSanitize(P.contracts); adSanitize(G.adOffers); adSanitize(G.frameOffers); if (AD_POOL) adSanitize(AD_POOL);
   const A = asst();
   if (A.plan) { const c = planCheck(P); if (c.firstBad != null) { fillHorizon(P); const c2 = planCheck(P); logMsg("Dispositions-Assistent", "Programm", `${c.holes - c2.holes} offene Stunden im Planungsvorlauf belegt.`); } }
   if (A.ads) asstAds(P); else if (G.adAuto !== false) adAutoBook(P);
