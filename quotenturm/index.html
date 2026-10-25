@@ -3307,10 +3307,10 @@ function aiTurn(st) {
 }
 function startBroadcast() {
   for (const st of G.stations) if (!isMe(st)) aiTurn(st);
-  // Nacht und früher Morgen (0–8 Uhr) werden sofort ausgewertet; ab 8 Uhr läuft der Tag im Zeitraffer, ab 18 Uhr live
-  for (let i = 0; i < DAY_FROM; i++) { G.min = i * 60; airHour(i); }
-  G.dayFeed = []; G.primeHold = false;
-  G.phase = "live"; G.min = DAY_FROM * 60 - 1;
+  // Der Tag bis 18 Uhr wird sofort im Hintergrund gerechnet (Ergebnisse im Live-Ticker), ab 18 Uhr läuft der Abend live
+  G.dayFeed = []; G.phase = "live";
+  for (let i = 0; i < LIVE_FROM; i++) { G.min = i * 60; airHour(i); if (i >= DAY_FROM) dayTicker(i); }
+  G.min = LIVE_FROM * 60 - 1; G.primeHold = true; daySummary();
   liveRun = true; lastT = performance.now();
   go("live", true);
   requestAnimationFrame(liveTick);
@@ -3351,7 +3351,7 @@ function dayTicker(h) {
 function daySummary() {
   const s = DAY_FROM, e = LIVE_FROM, mine = G.today.slice(s, e).reduce((a, r) => a + (r ? r[G.me].v : 0), 0), all = BASE.slice(s, e).reduce((a, b) => a + b, 0);
   const best = G.today.slice(s, e).map((r, k) => [s + k, r && r[G.me]]).filter(x => x[1]).sort((a, b) => b[1].ma - a[1].ma)[0];
-  logMsg("Medienforschung", "Quote", `Tagesprogramm ${s}–${e} Uhr: ${pct(mine / all * 100)} Marktanteil${best ? `, stärkste Stunde ${hh(best[0])} mit ${pct(best[1].ma)}` : ""}. Die Primetime läuft jetzt live – weiter mit ▶.`, true);
+  logMsg("Medienforschung", "Quote", `Tagesprogramm ${s}–${e} Uhr: ${pct(mine / all * 100)} Marktanteil${best ? `, stärkste Stunde ${hh(best[0])} mit ${pct(best[1].ma)}` : ""}. Ab 18 Uhr läuft der Abend live.`, true);
 }
 // Was läuft gerade minutengenau: Sendung, Werbeunterbrechung oder Werbeblock/Trailer
 let monCache = { t: 0, day: -1, m: {} };
