@@ -3831,7 +3831,7 @@ function eveningTimeline(P, wd, sc, isToday, lock, d) {
     <div class="st-wrap"><h2 class="st">Konkurrenz um ${hh(spyH)}</h2></div><div class="tbl"><table><thead><tr><th>Sender</th><th>Programm</th><th class="num">Qual.</th><th>Einschätzung</th></tr></thead><tbody>${rivals}</tbody></table></div></section>`;
 }
 function planPage(P) {
-  houseMig(P);
+  fmtMig(); houseMig(P);
   if (planDay == null || planDay < G.day || planDay >= G.day + HORIZON) planDay = G.day;
   const d = planDay, wd = weekday(d), isToday = d === G.day;
   const sc = schedFor(P, d), lock = isToday && planLocked(), chk = planCheck(P), badSet = new Set(chk.bad[d] || []);
@@ -8457,6 +8457,7 @@ function seqEdit(P, d, fn) {
 // earlier: Startzeit einer früheren Ausstrahlung desselben Titels am selben Tag
 function airChip(p, earlier, nPrior = 1) {
   if (p.house || p.kind === "sport") return "";
+  if (earlier != null && ["Nachrichten", "Teleshopping"].includes(p.genre)) return '<span class="chip good">Neue Ausgabe</span>'; // jede Nachrichtensendung ist aktuell
   if (earlier != null && p.kind === "serie" && (p.ep || 0) + nPrior < (p.eps || 0)) return `<span class="chip good">Neue Folge ${(p.ep || 0) + nPrior + 1}/${p.eps} · ${nPrior === 1 ? "Doppelfolge" : nPrior === 2 ? "Dreierfolge" : `${nPrior + 1}. Folge am Stück`}</span>`;
   if (earlier != null) return `<span class="chip warn">Wiederholung von ${hhmm(earlier)}</span>`;
   if (p.kind === "serie") return (p.ep || 0) < (p.eps || 0) ? `<span class="chip good">Neue Folge ${(p.ep || 0) + 1}/${p.eps}</span>` : `<span class="chip">Wiederholung</span>`;
@@ -9142,9 +9143,14 @@ function orderEps(P, p, n) {
   logMsg("Produktion", "Produktion", `„${p.title}“: ${n} neue Folgen bestellt (${meur(c)}), fertig am ${dateShort(p.order.ready)}.`, true);
 }
 // Einmalig: automatisch gesetzte Kurzformate aus dem eigenen Kalender entfernen (ältere Spielstände)
+// Nachrichten, Magazine, Talks und Shows sind Dauerformate mit Ausgaben – keine Serien mit begrenzter Folgenzahl
+const DAILY_G = ["Nachrichten", "Magazin", "Talk", "Show"];
+function fmtMig() {
+  for (const st of G.stations) for (const x of st.progs) if (x.kind === "serie" && DAILY_G.includes(x.genre)) { x.kind = "show"; x.issues = x.eps; delete x.maxEp; x.wear = x.wear || (x.genre === "Nachrichten" ? 0.98 : 0.95); }
+}
 function houseMig(P) { if (G.houseMig) return; G.houseMig = 1; for (const k of Object.keys(P.cal || {})) { const d = +k; if (d < G.day || dvLocked(d)) continue; const it = dayItems(P, d), keep = it.filter(x => !x.p.house); if (keep.length < it.length) writeItems(P, d, keep); } }
 function castDay(P) {
-  houseMig(P);
+  fmtMig(); houseMig(P);
   ensureAwardRights(); frameCleanup(P);
   if (!G.exMig) { G.exMig = 1; for (const q of G.people) if (q.holder && q.holder !== P.id && !(G.sv && q.holder === G.sv.id) && !aiExcl(q)) { q.prodAt = q.holder; q.holder = null; } } // ältere Spielstände: zu viele Exklusivverträge auflösen
   for (const q of G.people) if (q.course && G.day >= q.course.until) {
