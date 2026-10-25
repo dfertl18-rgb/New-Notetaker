@@ -10004,7 +10004,7 @@ const evSpan = e => { const s = e.m ? e.m.t : e.d.h * 60; return [s, e.m ? s + e
 const evName = e => e.d.award ? (e.m ? e.m.fix : e.d.name) : `${e.d.sport}: ${e.m ? e.m.fix : e.d.name}`;
 // Überschneidende eigene Live-Events eines Tages (ohne bereits entschiedene)
 function sportClashes(P, day) {
-  const ev = eventsOnRaw(day).filter(e => e.o.owner === P.id && !e.d.award), out = [];
+  const ev = eventsOnRaw(day).filter(e => e.o.owner === P.id), out = [];
   for (let a = 0; a < ev.length; a++) for (let b = a + 1; b < ev.length; b++) {
     const [s1, e1] = evSpan(ev[a]), [s2, e2] = evSpan(ev[b]);
     if (s1 < e2 && s2 < e1) { const [x, y] = (ev[a].m ? ev[a].m.q : ev[a].d.q) >= (ev[b].m ? ev[b].m.q : ev[b].d.q) ? [ev[a], ev[b]] : [ev[b], ev[a]]; out.push({ main: x, side: y, kMain: evKey(day, x), kSide: evKey(day, y), over: Math.min(e1, e2) - Math.max(s1, s2) }); }
@@ -10013,7 +10013,9 @@ function sportClashes(P, day) {
 }
 const subPrice = e => r1000(Math.pow(e.m ? e.m.q : e.d.q, 2) * 85);
 function clashDecide(P, day, kSide, choice) {
-  const c = sportClashes(P, day).find(x => x.kSide === kSide); if (!c) return "Keine Überschneidung mehr.";
+  let c = sportClashes(P, day).find(x => x.kSide === kSide || x.kMain === kSide); if (!c) return "Keine Überschneidung mehr.";
+  if (c.kMain === kSide) c = { main: c.side, side: c.main, kMain: c.kSide, kSide: c.kMain, over: c.over }; // Spieler gibt das stärkere Event ab
+  if (choice === "konf" && c.main.d.sport !== c.side.d.sport) return "Eine Konferenz geht nur bei derselben Sportart.";
   G.clash = G.clash || {};
   const q2 = c.side.m ? c.side.m.q : c.side.d.q, n2 = evName(c.side);
   if (choice === "konf") { G.clash[kSide] = { c: "konf", main: c.kMain }; G.clash[c.kMain] = { c: "main", title: n2, q: q2 }; logMsg("Sportredaktion", "Sport", `${dateShort(day)}: Konferenz – „${evName(c.main)}“ und „${n2}“ laufen im Wechsel in einer Sendung.`); }
@@ -10028,21 +10030,33 @@ function clashDecide(P, day, kSide, choice) {
   if (day === G.day) { placeEvents(); buildToday(P); }
   return null;
 }
+// Was bringt ein Event im Stream? Abo-Schub bzw. Online-Werbung (Spielwerte), jüngeres Publikum reagiert stärker
+function streamPush(e) {
+  const q = e.m ? e.m.q : e.d.q, young = e.d.award ? 0.8 : 1.2;
+  if (G.stream) { const S = G.stream, n = Math.round((S.subs || S.reach || 1) * 0.004 * q / 80 * young * 1e6); return `ca. +${n.toLocaleString("de-DE")} ${S.subs ? "Abos" : "Nutzer"} für ${S.name}`; }
+  return `ca. ${eur(r1000(q * 1500))} Online-Werbung in der Mediathek`;
+}
+const evQ = e => e.m ? e.m.q : e.d.q;
 function clashBanner(P, d, lock) {
   const cs = sportClashes(P, d); if (!cs.length) return "";
-  return cs.map(c => `<div class="nego-msg warn mb"><b>⚠ Parallele Live-Rechte:</b> „${esc(evName(c.main))}“ ${hhmm(evSpan(c.main)[0])} und „${esc(evName(c.side))}“ ${hhmm(evSpan(c.side)[0])} überschneiden sich ${c.over} Min. Was soll mit dem schwächeren Spiel passieren?
-    ${lock ? "" : `<div class="actions" style="margin-top:6px;flex-wrap:wrap"><button class="btn small hot" data-act="clash" data-k="${d}|${c.kSide}|konf" title="Beide Spiele in einer Sendung, Live-Schalten zwischen den Stadien">Konferenz (Quote +5 %)</button><button class="btn small" data-act="clash" data-k="${d}|${c.kSide}|stream" title="Läuft komplett online">In den Livestream${G.stream ? ` (${esc(G.stream.name)})` : " (Mediathek)"}</button><button class="btn small" data-act="clash" data-k="${d}|${c.kSide}|sub" title="Ein anderer Sender überträgt">Weiterverkaufen · ${eur(subPrice(c.side))}</button></div>`}</div>`).join("");
+  return cs.map(c => { const same = c.main.d.sport === c.side.d.sport && !c.main.d.award && !c.side.d.award;
+    const opt = (e, k) => `<div class="pick" style="cursor:default"><b>${esc(evName(e))}</b><span class="meta"><span>${hhmm(evSpan(e)[0])}–${hhmm(evSpan(e)[1] % 1440)}</span><span>Zugkraft ${evQ(e)}</span><span>${e.d.award ? "Preisverleihung" : esc(e.d.sport)}</span></span>
+      ${lock ? "" : `<div class="actions" style="margin-top:6px;flex-wrap:wrap"><button class="btn small" data-act="clash" data-k="${d}|${k}|stream">Ins Streaming – ${esc(streamPush(e))}</button><button class="btn small" data-act="clash" data-k="${d}|${k}|sub">Weiterverkaufen · ${eur(subPrice(e))}</button></div>`}</div>`;
+    return `<div class="nego-msg warn mb"><b>⚠ Zwei Live-Rechte zur selben Zeit (${c.over} Min. Überschneidung).</b> Entscheiden Sie, was im linearen TV läuft – das andere Event geht ins Streaming oder wird an einen anderen Sender weiterverkauft. Empfehlung: Das stärkere Event (${esc(evName(c.main))}, Zugkraft ${evQ(c.main)}) linear, das schwächere als Stream-Push.
+      <div class="picklist" style="margin-top:8px">${opt(c.main, c.kMain)}${opt(c.side, c.kSide)}</div>
+      ${same && !lock ? `<div class="actions" style="margin-top:6px"><button class="btn small hot" data-act="clash" data-k="${d}|${c.kSide}|konf">Konferenz: beide in einer Sendung (Quote +5 %)</button></div>` : ""}
+      ${lock ? "" : '<p class="fine" style="margin:6px 0 0">Ohne Entscheidung zeigt die Sportredaktion am Sendetag das stärkere Event linear und streamt das andere.</p>'}</div>`; }).join("");
 }
 // Tageswirkung: Livestreams bringen Abos bzw. Online-Werbung; offene Fälle entscheidet die Sportredaktion selbst
 function clashDay(P) {
   for (let d = G.day; d < G.day + 7; d++) for (const c of sportClashes(P, d)) {
     G.clashMsg = G.clashMsg || {};
-    if (d === G.day) { clashDecide(P, d, c.kSide, "konf"); logMsg("Sportredaktion", "Sport", "Keine Entscheidung zur Überschneidung – die Sportredaktion fährt eine Konferenz."); continue; }
-    if (!G.clashMsg[c.kSide]) { G.clashMsg[c.kSide] = 1; logMsg("Sportredaktion", "Sport", `${dateShort(d)}: „${evName(c.main)}“ und „${evName(c.side)}“ laufen parallel. Konferenz, Livestream oder Weiterverkauf? → Sendekalender ${dateShort(d)}.`, true); }
+    if (d === G.day) { const same = c.main.d.sport === c.side.d.sport && !c.main.d.award && !c.side.d.award; clashDecide(P, d, c.kSide, same ? "konf" : "stream"); logMsg("Sportredaktion", "Sport", same ? "Keine Entscheidung zur Überschneidung – die Sportredaktion fährt eine Konferenz." : `Keine Entscheidung zur Überschneidung – „${evName(c.side)}“ läuft im Livestream.`); continue; }
+    if (!G.clashMsg[c.kSide]) { G.clashMsg[c.kSide] = 1; logMsg("Sportredaktion", "Sport", `${dateShort(d)}: „${evName(c.main)}“ und „${evName(c.side)}“ laufen parallel. Was läuft linear, was im Stream? → Sendekalender ${dateShort(d)}.`, true); }
   }
   for (const [k, v] of Object.entries(G.clash || {})) if (v.c === "stream" && v.day === G.day) {
     if (G.stream) { const S = G.stream, add = Math.round((S.subs || S.reach || 1) * 0.004 * v.q / 80 * 1e6) / 1e6; if (S.subs) S.subs += add; logMsg("Digitalvorstand", "Streaming", `Livestream „${v.title}“: ${Math.round(add * 1e6).toLocaleString("de-DE")} neue Abos bzw. Nutzer.`); }
-    else { const pay = r1000(v.q * 4500); book(P, "Online-Werbung", pay); logMsg("Digitalvorstand", "Streaming", `Livestream „${v.title}“ in der Mediathek: ${eur(pay)} Online-Werbung.`); }
+    else { const pay = r1000(v.q * 1500); book(P, "Online-Werbung", pay); logMsg("Digitalvorstand", "Streaming", `Livestream „${v.title}“ in der Mediathek: ${eur(pay)} Online-Werbung.`); }
   }
 }
 // =====================================================================
