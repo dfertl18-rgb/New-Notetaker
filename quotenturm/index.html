@@ -1887,7 +1887,7 @@ function attractiveness(st, i) {
   if (!segs.length) return attrCell(st, i, c);
   let prev = st.flow && st.flow.day === G.day && st.flow.h === i - 1 ? st.flow : null;
   const parts = segs.map(sg => {
-    let a = sg.gap ? st.brand * (sg.end - sg.start <= 10 ? 0.25 : 0.4) : attrCell(st, i, { p: sg.p.id, cont: !sg.startsHere, ad: c.ad, live: sg.c.live }).A;
+    let a = sg.gap ? st.brand * (sg.end - sg.start <= 15 ? 0.3 : 0.05) : attrCell(st, i, { p: sg.p.id, cont: !sg.startsHere, ad: c.ad, live: sg.c.live }).A;
     const pp = prev && prev.id && progOf(st, prev.id);
     if (!sg.gap && sg.startsHere && pp && pp.id !== sg.p.id) a += 0.25 * zOverlap(st, pp, sg.p) * prev.a; // Audience Flow
     prev = { id: sg.gap ? null : sg.p.id, a, day: G.day, h: i };
@@ -4196,6 +4196,7 @@ function showSummary(report) {
       <div class="tile"><small>EBITDA</small><b class="${last.ebitda < 0 ? "down" : "up"}">${meur(last.ebitda)}</b><span>operatives Ergebnis</span></div>
       ${S && sr ? `<div class="tile"><small>${esc(S.name)}</small><b>${sFree(S) ? mio(S.reach) : mio(S.subs)} Mio.</b><span>${sFree(S) ? "Nutzer" : "Abonnenten"} · ${mio(sr.views / 1e6)} Mio. Abrufe</span></div>` : `<div class="tile"><small>Kontostand</small><b>${meur(P.money)}</b></div>`}
     </div>
+    ${quotaPanel(P)}
     <section class="panel"><div class="tbl" style="max-height:44vh;overflow:auto"><table><thead><tr><th>Zeit</th><th>Ihr Programm</th><th class="num">Mio.</th><th class="num">MA</th><th class="num">Platz</th><th>Stundensieger</th></tr></thead><tbody>${rows}</tbody></table></div></section>
     ${report.length ? `<section class="panel"><div class="msgs">${report.map(r => `<div class="msg"><span class="from">Werbezeitenvermarktung</span><span class="chip tag">Strafe</span><span class="txt">${esc(r)}</span><time></time></div>`).join("")}</div></section>` : ""}
     <div class="actions"><button class="btn hot" data-act="next">${G.over ? "Weiter" : "Nächster Tag"}</button><button class="btn" data-act="close">Bericht schließen</button></div></div>`);
@@ -7898,9 +7899,12 @@ function titleDB() {
     // Wikidata kennt Shows genauer als IMDb (dort oft „tvSeries“): Kabarett, Spielshow, Kochsendung, Talk … sind Sendungen, keine Serien
     const wty = (w.ty || []).join(" "), wg = (w.g || []).join(" ").toLowerCase();
     const showG = /kabarett|satire|spielshow|quiz|kochsendung|talk|castingshow|late-night|musiksendung|unterhaltungssendung|reality|magazin|nachricht/.test(wg);
-    const isShow = showG || (/fernsehsendung|show/i.test(wty) && !/fernsehserie|soap|sitcom|telenovela|film/i.test(wty));
+    // fiktionale Genres (Krimi, Drama, Komödie …) sind Serien bzw. Reihen, auch wenn Wikidata „Fernsehsendung“ sagt
+    const fic = !showG && /kriminal|krimi|polizei|thriller|drama|komödie|comedy|sitcom|science|fantasy|mystery|liebes|romant|arzt|familienserie|heimat|abenteuer/.test(wg);
+    const ficG = /kriminal|krimi|polizei|thriller/.test(wg) ? "Krimi" : /komödie|comedy|sitcom/.test(wg) ? "Komödie" : /science|fantasy|mystery/.test(wg) ? "Science-Fiction" : /liebes|romant/.test(wg) ? "Liebesfilm" : "Drama";
+    const isShow = !fic && (showG || (/fernsehsendung|show/i.test(wty) && !/fernsehserie|soap|sitcom|telenovela|film/i.test(wty)));
     const g2 = /talk/.test(wg) ? "Talk" : /nachricht/.test(wg) ? "Nachrichten" : /magazin/.test(wg) ? "Magazin" : /reality|doku-soap/.test(wg) ? "Reality" : "Show";
-    const g = isShow ? [g2] : i ? gde(i.g) : [], k = isShow ? "show" : i ? i.k : kindWd(w.ty);
+    const g = isShow ? [g2] : fic ? [ficG].concat(i ? gde(i.g) : []) : i ? gde(i.g) : [], k0 = isShow ? "show" : i ? i.k : kindWd(w.ty), k = fic && (k0 === "show" || k0 === "doku") ? "serie" : k0;
     all.push({ key: w.q, orig0: 1, n: (i && i.de) || w.n || (i && i.n), k: k === "doku" ? "show" : k, doku: k === "doku" || g.includes("Doku") || /dokument|reportage/i.test((w.ty || []).concat(w.g || []).join(" ")),
       y: w.y0 || (i && i.y), y1: w.y1 || (i && i.y1), s: w.s || (i && i.se), e: w.e || (i && i.ep), r: i && i.r, v: i ? i.v : 0, rt: i && i.rt, g: g.length ? g : (w.g || []).slice(0, 2), net: w.net || [], imdb: w.imdb, orig: w.o || [], de: true, alt: [w.n, i && i.n, i && i.de].filter(Boolean) });
   }
@@ -9191,7 +9195,42 @@ function orderEps(P, p, n) {
 // Nachrichten, Magazine, Talks und Shows sind Dauerformate mit Ausgaben – keine Serien mit begrenzter Folgenzahl
 const DAILY_G = ["Nachrichten", "Magazin", "Talk", "Show"];
 function fmtMig() {
+  const db = (() => { try { return titleDB(); } catch (e) { return null; } })();
+  if ((G.fmtMigV || 0) < 2) { // einmalig: falsch einsortierte Krimis/Dramen zurück zu Serien, Staffel-Dubletten zusammenführen
+    for (const st of G.stations) {
+      if (db) for (const x of st.progs) { const t = x.db && db.byKey.get(x.db); if (t && t.k === "serie" && x.kind === "show" && !x.own) { x.kind = "serie"; x.genre = dbGenre(t); x.eps = Math.max(6, Math.min(t.e || x.issues || 10, 60)); x.ep = x.ep || 0; if (x.home) x.maxEp = 9999; } }
+      mergeStaffeln(st);
+    }
+    G.fmtMigV = 2;
+  }
   for (const st of G.stations) for (const x of st.progs) if (x.kind === "serie" && DAILY_G.includes(x.genre)) { x.kind = "show"; x.issues = x.eps; delete x.maxEp; x.wear = x.wear || (x.genre === "Nachrichten" ? 0.98 : 0.95); }
+}
+// „Maybrit Illner, Staffel 26“, „… Staffel 27“, „CarenMiosga“ → ein Format je Sender
+const staffelBase = t => String(t).replace(/\s*[,\/–-]?\s*(staffel|season|series)\s*\d+\s*(\(.*?\))?\s*$/i, "").trim();
+const staffelKey = t => staffelBase(t).toLowerCase().replace(/[^a-z0-9äöüß]/g, "");
+function mergeStaffeln(st) {
+  const groups = new Map();
+  for (const x of st.progs) { if (x.house || x.var || x.adBlock || x.kind === "film" || x.kind === "sport" || x.own) continue; const k = staffelKey(x.title) + "|" + x.kind; if (!groups.has(k)) groups.set(k, []); groups.get(k).push(x); }
+  const repl = new Map();
+  for (const list of groups.values()) {
+    if (list.length < 2) continue;
+    const plans = isMe(st) ? allPlans(st).concat([st.sched]) : st.week.concat([st.sched]);
+    const used = x => plans.some(d => d.some(c => c.p === x.id || (c.extra || []).includes(x.id)));
+    const keep = list.slice().sort((a, b) => used(b) - used(a) || (b.aired || 0) - (a.aired || 0) || b.q - a.q)[0];
+    const names = list.map(x => staffelBase(x.title)).sort((a, b) => (b.split(" ").length - a.split(" ").length) || b.length - a.length);
+    keep.title = names[0]; keep.q = Math.max(...list.map(x => x.q)); if (list.some(x => x.genre === "Talk")) keep.genre = "Talk";
+    if (keep.kind === "serie") { keep.eps = list.reduce((a, x) => a + (x.eps || 0), 0); keep.ep = Math.max(...list.map(x => x.ep || 0)); if (list.some(x => x.maxEp === 9999)) keep.maxEp = 9999; }
+    keep.aired = list.reduce((a, x) => a + (x.aired || 0), 0); keep.hist = list.flatMap(x => x.hist || []).sort((a, b) => a[0] - b[0]);
+    for (const x of list) if (x !== keep) repl.set(x.id, keep.id);
+  }
+  if (!repl.size) return 0;
+  const fix = d => d.forEach(c => { if (repl.has(c.p)) c.p = repl.get(c.p); if (c.extra) c.extra = c.extra.map(id => repl.get(id) || id); });
+  (isMe(st) ? allPlans(st) : st.week).forEach(fix); fix(st.sched);
+  for (const q of G.people) if (repl.has(q.show)) q.show = repl.get(q.show);
+  if (isMe(st) && G.stream) G.stream.catalog = G.stream.catalog.filter(c => !repl.has(c.id));
+  if (G.talkSel && repl.has(G.talkSel.pid)) G.talkSel.pid = repl.get(G.talkSel.pid);
+  st.progs = st.progs.filter(x => !repl.has(x.id));
+  return repl.size;
 }
 function houseMig(P) { if (G.houseMig) return; G.houseMig = 1; for (const k of Object.keys(P.cal || {})) { const d = +k; if (d < G.day || dvLocked(d)) continue; const it = dayItems(P, d), keep = it.filter(x => !x.p.house); if (keep.length < it.length) writeItems(P, d, keep); } }
 function castDay(P) {
@@ -10048,6 +10087,32 @@ function worldNewsDay() {
   if (Math.random() < 0.55) rivalStarNews();
   if (Math.random() < 0.4) rivalMoveNews();
   aiBackground();
+}
+// =====================================================================
+// Quotenanalyse nach Sendeschluss: Einflüsse aus dem Spielmodell, auf Wunsch von der lokalen KI zusammengefasst
+// =====================================================================
+function quotaFactors(P) {
+  const out = [], w = weatherOf(G.day), hol = holidayOf(G.day), use = tvSeason(G.day, 20);
+  out.push(`TV-Nutzung am Abend ${use >= 1 ? "+" : "−"}${Math.abs(Math.round((use - 1) * 100))} % (${w.label}, ${w.t} °C, ${dateOf(G.day).toLocaleDateString("de-DE", { month: "long" })}${hol ? `, ${hol}` : ""})`);
+  const rd = rdToday(P), gapMin = rd.filter(x => x.gap && x.end - x.start > 15 && x.start >= 360).reduce((a, x) => a + x.end - x.start, 0);
+  if (gapMin) out.push(`${gapMin} Min. Programmlücken – dort lief praktisch nichts, der Marktanteil bricht ein`);
+  const worn = [...new Set(rd.filter(x => !x.gap && x.p && x.p.kind !== "sport" && !x.p.house && x.p.topic < 0.5 && x.start >= 17 * 60).map(x => x.p.title))].slice(0, 3);
+  if (worn.length) out.push(`Abnutzung: ${worn.map(t => `„${t}“`).join(", ")} ${worn.length > 1 ? "wirken" : "wirkt"} verbraucht`);
+  const rows = HOURS.filter(i => i >= 18 && G.today[i]).map(i => { const r = G.today[i], me_ = r[G.me]; const top = [...r].sort((a, b) => b.v - a.v)[0]; return { i, me_, top, idx: r.indexOf(top), ratio: me_.exp ? me_.v / me_.exp : 1 }; });
+  const lost = rows.filter(x => x.idx !== G.me).sort((a, b) => b.top.v - a.top.v)[0];
+  if (lost) out.push(`Stärkste Konkurrenz: ${G.stations[lost.idx].name} um ${hh(lost.i)} mit „${lost.top.title}“ (${pct(lost.top.ma)})`);
+  const best = rows.slice().sort((a, b) => b.ratio - a.ratio)[0], worst = rows.slice().sort((a, b) => a.ratio - b.ratio)[0];
+  if (best && best.ratio > 1.08) out.push(`Über Erwartung: ${hh(best.i)} „${best.me_.title}“ (+${Math.round((best.ratio - 1) * 100)} %)`);
+  if (worst && worst.ratio < 0.92) out.push(`Unter Erwartung: ${hh(worst.i)} „${worst.me_.title}“ (−${Math.round((1 - worst.ratio) * 100)} %)`);
+  return out;
+}
+function quotaPanel(P) {
+  let f = []; try { f = quotaFactors(P); } catch (e) { console.error(e); }
+  if (!f.length) return "";
+  if (aiOn()) setTimeout(() => {
+    llm(`Du bist Medienforscherin eines deutschen Fernsehsenders in einem Managerspiel. Fasse diese Einflüsse auf die heutigen Einschaltquoten in zwei kurzen Sätzen zusammen und gib einen konkreten Tipp für morgen. Nutze nur die genannten Fakten, keine neuen Zahlen, keine Personen. ${AI_RULES}\nEinflüsse: ${f.join("; ")}`, 30000).then(t => { const c = aiClean(t), el = document.getElementById("qaAi"); if (el && c) el.textContent = `Medienforschung (lokale KI): ${c}`; }).catch(() => {});
+  }, 50);
+  return `<section class="panel"><div class="ph"><h2>Quotenanalyse</h2><span class="aside">Konkurrenz · Abnutzung · Wetter · Jahreszeit</span></div><ul class="pad" style="margin:0 0 0 18px">${f.map(x => `<li>${esc(x)}</li>`).join("")}</ul><p class="fine pad" id="qaAi" style="margin:0">${aiOn() ? "Die lokale KI wertet aus …" : ""}</p></section>`;
 }
 // =====================================================================
 // Formatprofil: Quotenverlauf, Publikum, Analyse und Maßnahmen je Sendung
