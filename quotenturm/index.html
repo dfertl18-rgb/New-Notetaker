@@ -1826,7 +1826,12 @@ function planDayFor(st, wd, sc = st.week[wd], opts = {}) {
   }
 }
 // Live-Events des Tages
+// Live-Events für das lineare Programm: entschiedene Parallelspiele (Livestream, Sublizenz, Konferenz-Nebenspiel) fallen heraus
 function eventsOn(day) {
+  const all = eventsOnRaw(day); if (!G.clash) return all;
+  return all.filter(e => { const v = G.clash[`${day}|${e.r.id}|${e.m ? e.m.t : e.d.h * 60}`]; return !v || v.c === "main"; });
+}
+function eventsOnRaw(day) {
   const out = [];
   for (const r of G.rights) {
     const d = RDEF(r.id);
@@ -1862,6 +1867,7 @@ function placeEvents() {
     const st = G.stations[SIDX[o.owner || r.owner]]; if (!st) continue;
     const ev = { id: uid(), title: d.award ? (m ? m.fix : d.name) : `${d.sport}: ${m ? m.fix : d.fix()}`, comp: d.name, genre: d.award ? "Show" : "Sport", kind: "sport", q: m ? Math.round(m.q * injuryF(m.fix)) : d.q, len: d.len, h: d.h, t: m ? m.t : d.h * 60, dur: m ? m.dur : d.len * 60, topic: 1, fsk: 0, real: true };
     const cm = (G.comm || {})[r.id], cq = cm && person(cm); if (cq && cq.holder === st.id) ev.comm = cm;
+    { const kv = G.clash && G.clash[`${G.day}|${r.id}|${m ? m.t : d.h * 60}`]; if (kv && kv.c === "main") { ev.title = `Konferenz: ${ev.title} + ${kv.title}`; ev.q = Math.min(99, Math.round(Math.max(ev.q, kv.q) * 1.05)); } }
     st.live.push(ev);
     if (isMe(st)) logMsg("Sportredaktion", "Sport", `Heute live um ${hhmm(ev.t)}: ${ev.title} (${d.name}).`);
   }
@@ -3492,6 +3498,8 @@ function nextDay() {
   logMsg("Programmhandel", "Programm", "Neue Filme und Serienlizenzen sind eingetroffen.");
   startDay();
   asstDay(me());
+  try { clashDay(me()); } catch (err) { console.error(err); }
+  try { worldNewsDay(); } catch (err) { console.error(err); }
   pickEvent();
   if (!G.event && G.evQ && G.evQ.length) G.event = G.evQ.shift();
   go("overview", true);
@@ -3828,7 +3836,7 @@ function planPage(P) {
   const sc = schedFor(P, d), lock = isToday && planLocked(), chk = planCheck(P), badSet = new Set(chk.bad[d] || []);
   const secured = Math.max(0, chk.until - G.day + 1);
   let h = title("Sendekalender", `<div class="actions">${lock ? "" : `<button class="btn" data-act="autoDay" data-k="${d}">Assistent für ${dateShort(d)}</button><button class="btn" data-act="copyDay" data-k="${d}">Auf alle ${WDL[wd]}e kopieren</button><button class="btn" data-act="clearDlg" data-k="${d}">Leeren …</button>`}<button class="btn hot" data-act="fillAll" ${planLocked() ? "disabled" : ""}>Alle Lücken füllen</button></div>`);
-  h += asstBar();
+  h += asstBar() + clashBanner(P, d, lock);
   h += `<section class="panel mb"><div class="ph"><h2>Planungsvorlauf</h2><span class="aside">Die Senderleitung verlangt ${HORIZON / 7} Wochen lückenlos geplantes Programm, bevor der nächste Sendetag startet.</span></div>
     <div class="pad"><div class="goal"><div class="row"><b>Gesichert bis ${secured ? dateShort(chk.until) : "–"}</b><span class="${secured >= HORIZON ? "up" : "down"}">${secured} / ${HORIZON} Tage${chk.holes ? ` · ${chk.holes} Stunden offen` : ""}</span></div><div class="track"><i style="width:${secured / HORIZON * 100}%;background:${secured >= HORIZON ? "#22c55e" : "#ef4444"}"></i></div></div>
     ${calendarGrid(P, d, chk)}<p class="fine"><i class="dot live"></i> Live-Sport · <i class="dot pre"></i> Premiere · Rot: offene Stunden oder Lizenz bis dahin ausgeschöpft</p></div></section>`;
@@ -4434,6 +4442,7 @@ function act(b) {
     case "pickProg": if (moveSrc) { moveProg(P, wd, i); break; } openPicker("prog", i, wd); return;
     case "moveStart": { const sc = schedFor(P, wd); let st = i; while (st > 0 && sc[st].cont && sc[st - 1].p === sc[i].p) st--; if (sc[st].p && !(wd === G.day && planLocked())) moveSrc = { d: wd, i: st, p: sc[st].p, all: b.dataset.v === "all" }; closeModal(); break; }
     case "moveCancel": moveSrc = null; break;
+    case "clash": { const [d, ...rest] = b.dataset.k.split("|"), ch = rest.pop(); const err = clashDecide(P, +d, rest.join("|"), ch); toast(err || (ch === "konf" ? "Konferenz eingeplant." : ch === "stream" ? "Das Spiel läuft im Livestream." : "Sublizenz verkauft.")); break; }
     case "asstT": { const A = asst(); A[b.dataset.k] = !A[b.dataset.k]; if (b.dataset.k === "ads") G.adAuto = A.ads; toast(`${ASST.find(x => x[0] === b.dataset.k)[1]}-Assistent ${A[b.dataset.k] ? "an" : "aus"}.`); break; }
     case "clearDlg": { const d = +b.dataset.k; openModal(`<header><h2>Kalender leeren</h2><button class="btn" data-act="close">Abbrechen</button></header><div class="dbody">
       <p class="lead">Geplante Sendungen werden entfernt, damit Sie neu planen können. Live-Events bleiben immer stehen, der laufende Sendetag ist gesperrt.</p>
@@ -8158,7 +8167,8 @@ function facePanel(st, p) {
   const ids = [p.host].concat(titleCast(p, p.title).map(c => c.id)).filter(Boolean), seen = new Set(), list = [];
   for (const id of ids) if (!seen.has(id)) { seen.add(id); const q = person(id); if (q) list.push(q); }
   if (!list.length) return "";
-  return `<section class="panel" style="margin-top:12px"><div class="ph"><h2>Gesicht des Formats</h2></div><div class="tbl"><table><tbody>${list.slice(0, 4).map(q => { const m = matrix(q); return `<tr><td>${avatar(q, 30)}</td><td class="title">${personLink(q)}<div class="fine">${esc(SPEC_NAME[q.role] || q.role)}</div></td><td class="num">Bekanntheit <b>${m.bekannt}</b></td><td class="num">Beliebtheit <b>${m.beliebt}</b></td><td class="num">Charisma <b>${m.charisma}</b></td></tr>`; }).join("")}</tbody></table></div></section>`;
+  const hc = p.hostChange && p.hostChange.hype && G.day - p.hostChange.day < 60 ? Math.round((hostChangeF(p) - 1) * 100) : null;
+  return `<section class="panel" style="margin-top:12px"><div class="ph"><h2>Gesicht des Formats</h2>${isMe(st) && canManageCast(st, p) ? `<button class="btn small hot" data-act="castMgr" data-id="${p.id}">Besetzung tauschen</button>` : ""}</div>${hc != null ? `<p class="fine pad" style="margin:0">Neues Gesicht seit ${G.day - p.hostChange.day} Tagen: Neugier-Effekt ${hc >= 0 ? "+" : ""}${hc} % – flacht in den nächsten Wochen ab, danach zählt die Qualität.</p>` : ""}<div class="tbl"><table><tbody>${list.slice(0, 4).map(q => { const m = matrix(q); return `<tr><td>${avatar(q, 30)}</td><td class="title">${personLink(q)}<div class="fine">${esc(SPEC_NAME[q.role] || q.role)}</div></td><td class="num">Bekanntheit <b>${m.bekannt}</b></td><td class="num">Beliebtheit <b>${m.beliebt}</b></td><td class="num">Charisma <b>${m.charisma}</b></td></tr>`; }).join("")}</tbody></table></div></section>`;
 }
 
 // =====================================================================
@@ -9051,12 +9061,13 @@ const fitFor = (q, role) => { role = String(role || "").replace("?", ""); if (!q
 const fitChip = (q, role) => { const f = fitFor(q, role); return f >= 0.95 ? "" : `<span class="chip ${f >= 0.75 ? "warn" : "fsk"}" title="Fachfremd: Wirkung auf die Sendung ${Math.round(f * 100)} %">Eignung ${Math.round(f * 100)} %</span>`; };
 const castFitAvg = (cast, roles) => cast.length ? cast.reduce((a, q, k) => a + fitFor(q, roles[k] ? roles[k][0] : ""), 0) / cast.length : 1;
 // Umbesetzung wirkt eine Weile nach, dann hat sich das Publikum gewöhnt
-const hostChangeF = p => p && p.hostChange ? 1 - (1 - p.hostChange.f) * Math.max(0, 1 - (G.day - p.hostChange.day) / 120) : 1;
-const castRole = (p, slot) => { const pr = prodOf(p); return pr && FORMATS[pr.kind] && FORMATS[pr.kind].roles[slot] ? FORMATS[pr.kind].roles[slot][0].replace("?", "") : slot === 0 && p.kind !== "serie" ? "Moderation" : "Schauspiel"; };
+const hostChangeF = p => { if (!p || !p.hostChange) return 1; const t = G.day - p.hostChange.day; return (1 - (1 - p.hostChange.f) * Math.max(0, 1 - t / 120)) * (1 + (p.hostChange.hype || 0) * Math.exp(-t / 10)); };
+const castRole = (p, slot) => { const pr = prodOf(p); return pr && FORMATS[pr.kind] && FORMATS[pr.kind].roles[slot] ? FORMATS[pr.kind].roles[slot][0].replace("?", "") : slot === 0 && p.genre === "Nachrichten" ? "Nachrichten" : slot === 0 && p.kind !== "serie" ? "Moderation" : "Schauspiel"; };
 function castSlots(p) {
   const pr = prodOf(p);
   if (pr && FORMATS[pr.kind]) return FORMATS[pr.kind].roles.map(([r, l], k) => ({ k, role: r.replace("?", ""), label: l, id: pr.cast[k] || null }));
   if (p.kind === "show" && p.genre !== "Nachrichten") { const h = p.host ? person(p.host) : hostOf(p); return [{ k: 0, role: "Moderation", label: "Moderation", id: h ? h.id : null }]; }
+  if (p.kind === "show" && p.genre === "Nachrichten" && !p.house && !p.var) { const h = p.host ? person(p.host) : hostOf(p) || (titleCast(p, p.title)[0] && person(titleCast(p, p.title)[0].id)); return [{ k: 0, role: "Nachrichten", label: "Moderation / Sprecher*in", id: h ? h.id : null }]; }
   return [];
 }
 const canManageCast = (P, p) => (p.own || p.home === P.id) && castSlots(p).length > 0 && p.kind !== "film";
@@ -9072,7 +9083,7 @@ function swapCast(P, p, nid, slot = 0) {
   p.q = clamp(p.q + dq, 5, 99);
   if (p.epCost) p.epCost = Math.max(10000, r1000(p.epCost + ((np.gage - (old ? old.gage : 0)) / 40)));
   if (pr) pr.cast[slot] = np.id;
-  if (slot === 0 && (p.host || !pr || ["show", "reality", "live"].includes(pr.kind))) { p.host = np.id; p.hostLost = null; p.hostChange = { day: G.day, f: 0.92 }; }
+  if (slot === 0 && (p.host || !pr || ["show", "reality", "live"].includes(pr.kind))) { p.host = np.id; p.hostLost = null; p.hostChange = { day: G.day, f: 1, hype: clamp(0.06 + (np.fame || np.buzz || 50) / 100 * 0.12, 0.06, 0.18) }; }
   if (!np.holder) { np.holder = P.id; np.until = G.day + 180; }
   np.show = p.id; p.hostFit = slot === 0 ? fitFor(np, role) : p.hostFit;
   logMsg("Produktion", "Produktion", `Umbesetzung bei „${p.title}“: ${np.name} übernimmt ${slot === 0 && role === "Moderation" ? "die Moderation" : "die Rolle"}${old ? ` von ${old.name}` : ""}. Qualität ${dq >= 0 ? "+" : ""}${dq}${fitFor(np, role) < 0.95 ? ` (fachfremd, Eignung ${Math.round(fitFor(np, role) * 100)} %)` : ""}${fee ? `, Einstiegsgage ${eur(fee)}` : ""}.`, true);
@@ -9849,6 +9860,127 @@ function dvInsShortHtml(P, d, m) {
   return `<div class="panel pad" style="margin-bottom:10px"><div class="actions" style="gap:8px;flex-wrap:wrap"><b>Werbeblock</b><input type="number" id="insAdLen" min="1" max="20" value="5" style="width:64px"> Min.<button class="btn small hot" data-act="dvInsAd" data-k="${d}|${m}">Einfügen</button>
     <span style="width:18px"></span><b>Kurzformat</b><select id="insShort">${shorts.map(p => `<option value="${p.id}">${esc(p.title)} (${netDur(p)} Min.)</option>`).join("")}</select><input type="number" id="insShortLen" min="1" max="30" value="5" style="width:64px"> Min.<button class="btn small" data-act="dvInsShort" data-k="${d}|${m}" ${shorts.length ? "" : "disabled"}>Einfügen</button></div>
     <p class="fine">Länge frei wählbar. Im Kalender lässt sich jede Sendung am unteren Rand länger oder kürzer ziehen – Werbeblöcke und Kurzformate minutengenau.</p></div>`;
+}
+// =====================================================================
+// Parallele Sportrechte: Konferenz, Livestream oder Weiterverkauf (Sublizenz)
+// =====================================================================
+const evKey = (day, e) => `${day}|${e.r.id}|${e.m ? e.m.t : e.d.h * 60}`;
+const evSpan = e => { const s = e.m ? e.m.t : e.d.h * 60; return [s, e.m ? s + e.m.dur : s + e.d.len * 60]; };
+const evName = e => e.d.award ? (e.m ? e.m.fix : e.d.name) : `${e.d.sport}: ${e.m ? e.m.fix : e.d.name}`;
+// Überschneidende eigene Live-Events eines Tages (ohne bereits entschiedene)
+function sportClashes(P, day) {
+  const ev = eventsOnRaw(day).filter(e => e.o.owner === P.id && !e.d.award), out = [];
+  for (let a = 0; a < ev.length; a++) for (let b = a + 1; b < ev.length; b++) {
+    const [s1, e1] = evSpan(ev[a]), [s2, e2] = evSpan(ev[b]);
+    if (s1 < e2 && s2 < e1) { const [x, y] = (ev[a].m ? ev[a].m.q : ev[a].d.q) >= (ev[b].m ? ev[b].m.q : ev[b].d.q) ? [ev[a], ev[b]] : [ev[b], ev[a]]; out.push({ main: x, side: y, kMain: evKey(day, x), kSide: evKey(day, y), over: Math.min(e1, e2) - Math.max(s1, s2) }); }
+  }
+  return out.filter(c => !(G.clash && (G.clash[c.kSide] || (G.clash[c.kMain] && G.clash[c.kMain].c !== "main"))));
+}
+const subPrice = e => r1000(Math.pow(e.m ? e.m.q : e.d.q, 2) * 85);
+function clashDecide(P, day, kSide, choice) {
+  const c = sportClashes(P, day).find(x => x.kSide === kSide); if (!c) return "Keine Überschneidung mehr.";
+  G.clash = G.clash || {};
+  const q2 = c.side.m ? c.side.m.q : c.side.d.q, n2 = evName(c.side);
+  if (choice === "konf") { G.clash[kSide] = { c: "konf", main: c.kMain }; G.clash[c.kMain] = { c: "main", title: n2, q: q2 }; logMsg("Sportredaktion", "Sport", `${dateShort(day)}: Konferenz – „${evName(c.main)}“ und „${n2}“ laufen im Wechsel in einer Sendung.`); }
+  else if (choice === "stream") { G.clash[kSide] = { c: "stream", q: q2, day, title: n2 }; logMsg("Sportredaktion", "Sport", `${dateShort(day)}: „${n2}“ läuft komplett im Livestream${G.stream ? ` auf ${G.stream.name}` : " in der Mediathek"}.`); }
+  else if (choice === "sub") {
+    const buyers = G.stations.filter(s => !isMe(s) && s.type === "privat" && !sportOwners(c.side.d.sport).includes(s.id)), buyer = pick(buyers.length ? buyers : G.stations.filter(s => !isMe(s)));
+    const price = subPrice(c.side); book(P, "Rechteverwertung (Sublizenz)", price);
+    G.clash[kSide] = { c: "sub", to: buyer.id };
+    postArticle("Branchendienst Medienplatz", "Sport", `${buyer.name} überträgt „${n2}“`, [`${P.name} gibt das Spiel am ${dateShort(day)} per Sublizenz ab, weil es parallel zu „${evName(c.main)}“ läuft. Über den Preis wurde Stillschweigen vereinbart.`], true);
+    logMsg("Rechteabteilung", "Sport", `Sublizenz verkauft: „${n2}“ an ${buyer.name} für ${eur(price)}.`, true);
+  } else return "Unbekannte Option.";
+  if (day === G.day) { placeEvents(); buildToday(P); }
+  return null;
+}
+function clashBanner(P, d, lock) {
+  const cs = sportClashes(P, d); if (!cs.length) return "";
+  return cs.map(c => `<div class="nego-msg warn mb"><b>⚠ Parallele Live-Rechte:</b> „${esc(evName(c.main))}“ ${hhmm(evSpan(c.main)[0])} und „${esc(evName(c.side))}“ ${hhmm(evSpan(c.side)[0])} überschneiden sich ${c.over} Min. Was soll mit dem schwächeren Spiel passieren?
+    ${lock ? "" : `<div class="actions" style="margin-top:6px;flex-wrap:wrap"><button class="btn small hot" data-act="clash" data-k="${d}|${c.kSide}|konf" title="Beide Spiele in einer Sendung, Live-Schalten zwischen den Stadien">Konferenz (Quote +5 %)</button><button class="btn small" data-act="clash" data-k="${d}|${c.kSide}|stream" title="Läuft komplett online">In den Livestream${G.stream ? ` (${esc(G.stream.name)})` : " (Mediathek)"}</button><button class="btn small" data-act="clash" data-k="${d}|${c.kSide}|sub" title="Ein anderer Sender überträgt">Weiterverkaufen · ${eur(subPrice(c.side))}</button></div>`}</div>`).join("");
+}
+// Tageswirkung: Livestreams bringen Abos bzw. Online-Werbung; offene Fälle entscheidet die Sportredaktion selbst
+function clashDay(P) {
+  for (let d = G.day; d < G.day + 7; d++) for (const c of sportClashes(P, d)) {
+    G.clashMsg = G.clashMsg || {};
+    if (d === G.day) { clashDecide(P, d, c.kSide, "konf"); logMsg("Sportredaktion", "Sport", "Keine Entscheidung zur Überschneidung – die Sportredaktion fährt eine Konferenz."); continue; }
+    if (!G.clashMsg[c.kSide]) { G.clashMsg[c.kSide] = 1; logMsg("Sportredaktion", "Sport", `${dateShort(d)}: „${evName(c.main)}“ und „${evName(c.side)}“ laufen parallel. Konferenz, Livestream oder Weiterverkauf? → Sendekalender ${dateShort(d)}.`, true); }
+  }
+  for (const [k, v] of Object.entries(G.clash || {})) if (v.c === "stream" && v.day === G.day) {
+    if (G.stream) { const S = G.stream, add = Math.round((S.subs || S.reach || 1) * 0.004 * v.q / 80 * 1e6) / 1e6; if (S.subs) S.subs += add; logMsg("Digitalvorstand", "Streaming", `Livestream „${v.title}“: ${Math.round(add * 1e6).toLocaleString("de-DE")} neue Abos bzw. Nutzer.`); }
+    else { const pay = r1000(v.q * 4500); book(P, "Online-Werbung", pay); logMsg("Digitalvorstand", "Streaming", `Livestream „${v.title}“ in der Mediathek: ${eur(pay)} Online-Werbung.`); }
+  }
+}
+// =====================================================================
+// Streaming-Titel: Rechtelaufzeit (Spielwert), Abrufe, Rang; Rechte wandern bei Neuausschreibung
+// =====================================================================
+const SPORT_HINT = /league|liga|bundesliga|nfl|ufc|nba|formel|motogp|tennis|wimbledon|open|tour de|darts|boxen|wwe|redzone|handball|eishockey|del\b|nhl|sport/i;
+function sRight(sid, title) {
+  G.srights = G.srights || {};
+  const k = `${sid}|${title}`, sport = SPORT_HINT.test(title);
+  if (!G.srights[k]) G.srights[k] = { since: G.day - ri(60, 900), until: G.day + (sport ? ri(120, 1000) : ri(180, 1200)), sport };
+  return G.srights[k];
+}
+function streamTitlePanel(sid, title) {
+  const s = STREAMERS.find(x => x.id === sid); if (!s) return "";
+  const k = s.hits.indexOf(title), r = sRight(sid, title), left = r.until - G.day;
+  const views = Math.round((s.subs || 1) * 1e6 * 0.06 / (Math.max(0, k) + 1) * 7);
+  const ex = r.sport ? EXCLUSIVE.find(e => title.toLowerCase().includes(e[1].toLowerCase().split(/[ (,&]/)[0]) || e[1].toLowerCase().includes(title.toLowerCase())) : null;
+  const rivals = G.stations.filter(x => !isMe(x) && x.streamer === sid).map(x => x.name);
+  return `<div class="tiles" style="margin-top:10px">
+    <div class="tile"><small>Art</small><b style="font-size:18px">${r.sport ? "Sportrecht" : "Lizenz / Original"}</b><span>${esc(s.name)} · ${esc(s.model || "")}</span></div>
+    <div class="tile"><small>Rechte bei ${esc(s.name)}</small><b style="font-size:18px">bis ${dateShort(r.until)}</b><span>${left > 60 ? `noch ${Math.round(left / 30)} Monate` : `<span class="down">läuft in ${left} Tagen aus</span>`} · seit ${dateShort(r.since)}</span></div>
+    <div class="tile"><small>Abrufe (geschätzt)</small><b>${mio(views / 1e6)} Mio.</b><span>pro Woche · Rang ${k + 1} im Portal</span></div>
+    <div class="tile"><small>Abo-Wirkung</small><b>${k === 0 ? "Hauptzugpferd" : k < 3 ? "stark" : "solide"}</b><span>${s.subs ? `${String(s.subs).replace(".", ",")} Mio. Abos gesamt` : ""}</span></div></div>
+    ${ex ? `<p class="fine" style="margin-top:8px">Rechtelage am Markt: ${esc(ex[1])} – ${esc(ex[2])}.</p>` : ""}
+    <p class="fine" style="margin-top:6px">Laufzeiten und Abrufzahlen sind Spielwerte. ${left <= 120 ? "Die Neuausschreibung steht bevor – Meldungen dazu kommen über den Branchendienst." : ""}${rivals.length ? ` Senderfamilie: ${esc(rivals.join(", "))}.` : ""}</p>`;
+}
+function streamRightsDay() {
+  for (const s of STREAMERS) for (const t of s.hits.slice()) {
+    const r = sRight(s.id, t);
+    if (r.until - G.day === 60) postArticle("Branchendienst Medienplatz", "Streaming", `Rechte an „${t}“ werden neu vergeben`, [`Der Vertrag von ${s.name} läuft in zwei Monaten aus. Mehrere Plattformen sollen Interesse angemeldet haben.`]);
+    if (r.until > G.day) continue;
+    const others = STREAMERS.filter(x => x !== s && x.model === s.model);
+    if (others.length && Math.random() < 0.3) {
+      const to = pick(others); s.hits = s.hits.filter(x => x !== t); to.hits.push(t); delete G.srights[`${s.id}|${t}`]; sRight(to.id, t).since = G.day;
+      postArticle("Branchendienst Medienplatz", "Streaming", `„${t}“ wechselt zu ${to.name}`, [`${s.name} verliert einen seiner bekannten Titel. ${to.name} hat sich die Rechte für die nächsten Jahre gesichert.`, `Für Abonnent*innen heißt das: Wer den Titel weiter sehen will, braucht künftig ein anderes Abo.`], true);
+    } else { r.since = G.day; r.until = G.day + ri(500, 1100); postArticle("Branchendienst Medienplatz", "Streaming", `${s.name} verlängert „${t}“`, [`Die Rechte bleiben bis ${dateShort(r.until)} beim bisherigen Anbieter.`]); }
+  }
+}
+// =====================================================================
+// Hintergrundmeldungen: Wo die Konkurrenz ihre Stars einsetzt, Programmzüge der Rivalen, Branchenstimmung
+// Echte Personen: nur sachliche Programmhinweise, keine Zitate, keine Wertungen
+// =====================================================================
+function rivalStarNews() {
+  const cands = G.people.filter(q => q.show && q.holder && SIDX[q.holder] !== undefined && !isMe(G.stations[SIDX[q.holder]])).sort(() => Math.random() - 0.5).slice(0, 60);
+  for (const q of cands) {
+    const st = G.stations[SIDX[q.holder]], p = st.progs.find(x => x.id === q.show); if (!p) continue;
+    let when = null; for (let d = G.day; d < G.day + 7 && !when; d++) { const sc = d === G.day ? st.sched : st.week[weekday(d)]; const i = sc.findIndex(c => c.p === p.id && !c.cont); if (i >= 17) when = [d, i]; }
+    if (!when) continue;
+    postArticle("Branchendienst Medienplatz", "Konkurrenz", `${st.name} setzt auf ${q.name}`, [`${q.name} ist am ${dateShort(when[0])} um ${hh(when[1])} in „${p.title}“ zu sehen.`, `Für Ihre Planung: Gegen ein starkes Gesicht hilft oft ein Gegenprogramm für ein anderes Publikum.`]);
+    return;
+  }
+}
+function rivalMoveNews() {
+  const st = pick(G.stations.filter(x => !isMe(x))), sc = st.sched;
+  const i = [20, 21].find(h => sc[h] && sc[h].p), p = i != null && progOf(st, sc[i].p); if (!p) return;
+  const fresh = p.debut === G.day || (G.day > 3 && !p.aired && p.kind !== "film");
+  const lines = fresh ? [`${st.name} startet heute um ${hh(i)} „${p.title}“ (${p.genre}). Die Konkurrenz beobachtet den Start genau.`]
+    : [`${st.name} bleibt heute um ${hh(i)} bei „${p.title}“ (${p.genre}).`, p.bestMA ? `Bisher bester Marktanteil: ${pct(p.bestMA)}.` : ""].filter(Boolean);
+  postArticle("Branchendienst Medienplatz", "Konkurrenz", fresh ? `Premiere bei ${st.name}: „${p.title}“` : `${st.name} setzt in der Primetime auf „${p.title}“`, lines);
+}
+function aiBackground() {
+  if (!aiOn() || Math.random() > 0.35) return;
+  const st = pick(G.stations.filter(x => !isMe(x))), topic = G.pol && G.pol.topic ? G.pol.topic.t : "Streaming";
+  llm(`Schreibe zwei kurze Sätze als Hintergrundmeldung eines erfundenen deutschen Branchendienstes über den Fernsehsender ${st.name} in einem Managerspiel – z. B. Programmstrategie, Zielgruppe, Streaming oder Werbemarkt, Themenlage: ${topic}. Nenne keine Personen, keine Zahlen, keine Zitate. ${AI_RULES}`, 30000).then(t => {
+    const c = aiClean(t); if (!c || G.people.some(q => q.custom && c.includes(q.name))) return;
+    postArticle("Branchendienst Medienplatz", "Hintergrund", `Hintergrund: ${st.name}`, [c, "(Von der lokalen KI verfasste Spielmeldung.)"]);
+  }).catch(() => {});
+}
+function worldNewsDay() {
+  try { streamRightsDay(); } catch (e) { console.error(e); }
+  if (Math.random() < 0.55) rivalStarNews();
+  if (Math.random() < 0.4) rivalMoveNews();
+  aiBackground();
 }
 // =====================================================================
 // Formatprofil: Quotenverlauf, Publikum, Analyse und Maßnahmen je Sendung
@@ -10893,7 +11025,7 @@ function openTitle(key) {
       ${p.fsk ? `<div class="tile"><small>Freigabe</small><b>FSK ${p.fsk}</b><span>${p.fsk >= 16 ? "ab 22 Uhr" : "jederzeit"}</span></div>` : ""}
     </div>` : ""}`;
   const szp = p && t.st ? szPanel(t.st, p) + facePanel(t.st, p) : "";
-  const body = !tabs.length ? facts + szp + castPanel : profTab === "overview" ? fmtTabBody(t, "overview") + `<div style="margin-top:12px">${facts}</div>` + szp + castPanel : fmtTabBody(t, profTab);
+  const body = !tabs.length ? (t.streamer ? streamTitlePanel(t.owner, t.title) : "") + facts + szp + castPanel : profTab === "overview" ? fmtTabBody(t, "overview") + `<div style="margin-top:12px">${facts}</div>` + szp + castPanel : fmtTabBody(t, profTab);
   openModal(`<header><h2>${esc(t.title)}</h2><button class="btn" data-act="close">Schließen</button></header><div class="dbody">
     <div class="ttl-head"><div class="grow"><span class="chip real">${kindName}</span>${p ? ` <span class="chip">${esc(p.genre)}</span>` : ""}${p && p.own ? ' <span class="chip good">Eigenproduktion</span>' : p && p.home ? ' <span class="chip real">Eigenformat</span>' : ""}${p && p.sponsor ? ' <span class="chip">gesponsert</span>' : ""}${p && (p.fx || []).length ? ` <span class="chip warn">${p.fx.length} Maßnahme${p.fx.length > 1 ? "n" : ""} läuft</span>` : ""}
       ${mine && p && !["film", "sport"].includes(p.kind) && !p.house ? `<div class="actions" style="margin-top:8px">${canManageCast(me(), p) ? `<button class="btn small" data-act="castMgr" data-id="${p.id}">Besetzung verwalten</button>` : ""}<button class="btn small hot" data-act="fixDlg" data-id="${p.id}">Feste Sendetermine${slotsOf(p).length ? ` (${slotsOf(p).map(x => wdsName(x.wds) + " " + hhmm(x.t)).join(" · ")})` : " festlegen"}</button></div>` : ""}
