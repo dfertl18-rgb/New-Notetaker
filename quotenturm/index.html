@@ -8475,12 +8475,35 @@ function seqEdit(P, d, fn) {
 }
 // Status einer Ausstrahlung: Premiere, neue Folge oder Wiederholung
 // earlier: Startzeit einer früheren Ausstrahlung desselben Titels am selben Tag
-function airChip(p, earlier, nPrior = 1) {
+// Folgenstand einer Serie zum Zeitpunkt (Tag d, Minute m): bereits gesendete plus vorher eingeplante Folgen
+function epAt(P, p, d, m) {
+  let n = p.ep || 0;
+  if (!P || !P.cal) return n;
+  for (let dd = G.day; dd <= d; dd++) {
+    const sc = dd === G.day ? P.sched : P.cal[dd]; if (!sc) continue;
+    sc.forEach((c, i) => {
+      const ts = [[c.p, c.t != null ? c.t : i * 60, c.cont]].concat((c.extra || []).map((id, k) => [id, c.xt && c.xt[k] != null ? c.xt[k] : i * 60 + 30, false]));
+      for (const [id, t, cont] of ts) if (id === p.id && !cont && (dd < d || t < m) && !(dd === G.day && G.phase !== "plan" && t < G.min)) n++;
+    });
+  }
+  return n;
+}
+// Wie viele Folgen derselben Serie laufen direkt davor (Abstand höchstens 15 Min.)?
+function chainBefore(P, d, items, p, t) {
+  const wd = weekday(d), same = items.filter(y => y.p.id === p.id && y.t < t).sort((a, b) => b.t - a.t);
+  let n = 0, cur = t;
+  for (const y of same) { if (cur - (y.t + itemDur(P, y.p, y.t, wd)) > 15) break; n++; cur = y.t; }
+  return n;
+}
+function serieChip(p, idx, nPrior) {
+  const eps = p.eps || 1, tag = nPrior ? ` · ${nPrior === 1 ? "Doppelfolge" : nPrior === 2 ? "Dreierfolge" : `${nPrior + 1}. Folge am Stück`}` : "";
+  return idx < eps ? `<span class="chip good">Neue Folge ${idx + 1}/${eps}${tag}</span>` : `<span class="chip">Wiederholung · Folge ${idx % eps + 1}/${eps}${tag}</span>`;
+}
+function airChip(p, earlier, nPrior = 1, idx = null) {
   if (p.house || p.kind === "sport") return "";
   if (earlier != null && ["Nachrichten", "Teleshopping"].includes(p.genre)) return '<span class="chip good">Neue Ausgabe</span>'; // jede Nachrichtensendung ist aktuell
-  if (earlier != null && p.kind === "serie" && (p.ep || 0) + nPrior < (p.eps || 0)) return `<span class="chip good">Neue Folge ${(p.ep || 0) + nPrior + 1}/${p.eps} · ${nPrior === 1 ? "Doppelfolge" : nPrior === 2 ? "Dreierfolge" : `${nPrior + 1}. Folge am Stück`}</span>`;
+  if (p.kind === "serie") return serieChip(p, idx != null ? idx : (p.ep || 0) + (earlier != null ? nPrior : 0), earlier != null ? nPrior : 0); // jede weitere Ausstrahlung ist die nächste Folge
   if (earlier != null) return `<span class="chip warn">Wiederholung von ${hhmm(earlier)}</span>`;
-  if (p.kind === "serie") return (p.ep || 0) < (p.eps || 0) ? `<span class="chip good">Neue Folge ${(p.ep || 0) + 1}/${p.eps}</span>` : `<span class="chip">Wiederholung</span>`;
   if (p.kind === "film") return (p.runs || 0) === 0 ? '<span class="chip good">Free-TV-Premiere</span>' : `<span class="chip">Wiederholung · ${p.runs + 1}. Lauf</span>`;
   return !p.aired && !["Nachrichten", "Magazin", "Talk"].includes(p.genre) ? '<span class="chip good">Erstausstrahlung</span>' : '<span class="chip good">Neue Ausgabe</span>';
 }
@@ -8626,6 +8649,7 @@ function overlapMsg(P, d, k) {
 }
 function dvChip(P, d, x, items) {
   const priors = items.filter(y => y !== x && y.p.id === x.p.id && y.t < x.t);
+  if (x.p.kind === "serie") { const ch = chainBefore(P, d, items, x.p, x.t); return airChip(x.p, ch ? x.t : null, ch, epAt(P, x.p, d, x.t)); }
   if (priors.length) return airChip(x.p, priors[0].t, priors.length);
   if (x.t < 360 && !x.p.house && d - 1 >= G.day && P.cal && P.cal[d - 1]) { const y = dayItems(P, d - 1).find(y => y.p.id === x.p.id && y.t >= 1080); if (y) return `<span class="chip warn">Wiederholung vom Vortag ${hhmm(y.t)}</span>`; }
   return airChip(x.p);
@@ -8674,8 +8698,9 @@ function dvList(P, d, m, act, key) {
   const list = P.progs.filter(p => !p.var && !p.adBlock && p.kind !== "sport" && !p.exclusive && !(p.kind === "film" && p.runs >= p.maxRuns) && !(p.kind === "serie" && !p.own && p.ep >= (p.maxEp || p.eps * 2)) && !(p.until && d > p.until))
     .sort((a, b) => b.q * fit(b.genre, hr) * (0.35 + 0.65 * (b.topic ?? 1)) - a.q * fit(a.genre, hr) * (0.35 + 0.65 * (a.topic ?? 1))).slice(0, 250);
   const cats = ["Serie", "Film", "Show", "Reality", "Talk", "Info", "Doku", "Kurzformat"].filter(c => list.some(p => dvCat(p) === c));
+  const dayIt = dayItems(P, d), chipAt = p => { const pr = dayIt.filter(y => y.p.id === p.id && y.t < m); const ch = p.kind === "serie" ? chainBefore(P, d, dayIt, p, m) : 0; return p.kind === "serie" ? airChip(p, ch ? m : null, ch, epAt(P, p, d, m)) : airChip(p, pr.length ? pr[0].t : null, pr.length); };
   return `<div class="dvl" data-cat=""><div class="dv-bar" style="flex-wrap:wrap"><input class="search" id="dvlSearch" placeholder="Titel suchen …" style="max-width:240px"><div class="pills"><button class="on" data-act="dvlCat" data-k="">Alle</button>${cats.map(c => `<button data-act="dvlCat" data-k="${c}">${c}</button>`).join("")}</div><span class="muted dvl-n">${list.length} Titel</span></div>
-  <div class="picklist">${list.map(p => { const g = itemDur(P, p, m, wd); return `<button class="pick" data-cat="${dvCat(p)}" data-q="${esc(p.title.toLowerCase())} ${esc(p.genre.toLowerCase())}" data-act="${act}" data-k="${key}" data-id="${p.id}" ${youthOk(p, hr) ? "" : "disabled"}><b>${esc(p.title)}</b><span class="meta"><span class="chip">${g} Min.</span><span>${hhmm(m)}–${hhmm((m + g) % 1440)}</span>${airChip(p)}<span>${esc(p.genre)}</span><span class="stars">${stars(fit(p.genre, hr))}</span><span>Q ${p.q}</span>${youthOk(p, hr) ? "" : `<span class="down">FSK ${p.fsk} zu früh</span>`}</span></button>`; }).join("")}</div></div>`;
+  <div class="picklist">${list.map(p => { const g = itemDur(P, p, m, wd); return `<button class="pick" data-cat="${dvCat(p)}" data-q="${esc(p.title.toLowerCase())} ${esc(p.genre.toLowerCase())}" data-act="${act}" data-k="${key}" data-id="${p.id}" ${youthOk(p, hr) ? "" : "disabled"}><b>${esc(p.title)}</b><span class="meta"><span class="chip">${g} Min.</span><span>${hhmm(m)}–${hhmm((m + g) % 1440)}</span>${chipAt(p)}<span>${esc(p.genre)}</span><span class="stars">${stars(fit(p.genre, hr))}</span><span>Q ${p.q}</span>${youthOk(p, hr) ? "" : `<span class="down">FSK ${p.fsk} zu früh</span>`}</span></button>`; }).join("")}</div></div>`;
 }
 function dvOpen(d, k) {
   const P = me(), wd = weekday(d), x = dayItems(P, d)[k]; if (!x) return;
