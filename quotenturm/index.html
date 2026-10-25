@@ -247,7 +247,8 @@ input[type=number] { width: 130px; }
 .mon-top { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .mon-top b { font-family: var(--font-head); font-size: 16px; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .mon-top span { font-family: var(--font-head); font-weight: 700; font-size: 18px; font-variant-numeric: tabular-nums; }
-.mon-t { color: var(--muted); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mon-t { color: inherit; font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .mon-t.muted { color: #eab308; font-weight: 500; }
+.mon-n { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 0; }
 .lbar { height: 6px; border-radius: 3px; background: #2a2f37; overflow: hidden; }
 .lbar i { display: block; height: 100%; transition: width .35s ease; }
 .chart { display: block; width: 100%; height: auto; }
@@ -667,7 +668,8 @@ textarea[data-draft] { font: inherit; color: inherit; background: transparent; b
 // =====================================================================
 const HOURS = Array.from({ length: 24 }, (_, h) => h);
 // Mio. Menschen vor dem Fernseher je Stunde (grob am deutschen Tagesverlauf orientiert)
-const BASE = [3.5, 2, 1.2, 0.8, 0.7, 1, 2, 3, 3.5, 4, 4.5, 5, 6, 6, 6, 7, 8, 10, 13, 17, 28, 29, 21, 12];
+// TV-Nutzung je Stunde in Mio. (Gesamtpublikum ab 3 J.), Tageskurve nach AGF-Verlauf: Primetime ≈ 100, Access 70–85, Nachmittag 45–60, Late Night 50–60, Nacht 10–15
+const BASE = [5, 2.6, 1.4, 0.9, 0.8, 1.2, 2.4, 3.6, 4.5, 5.2, 5.8, 6.5, 7.8, 8, 8, 8.8, 10, 12.5, 16.5, 21, 26.5, 27.5, 20, 13.5];
 const LIVE_FROM = 18; // ab hier läuft der Abend in der Live-Regie
 const DAY_FROM = 8; // ab hier läuft der Sendetag sichtbar im Zeitraffer (wie ein Spieltag im Fußball-Manager)
 const DAY_SPEEDS = { 1: 4000, 2: 1500, 3: 600, 4: 120 }; // ms pro Sendestunde im Tagesprogramm
@@ -679,18 +681,18 @@ const MAX_ADS = 10;
 
 // Senderlandschaft. Startmarktanteile grob an reale Größenordnungen angelehnt; alle Quoten im Spiel sind simuliert.
 const STATIONS = [
-  { id: "zdf", name: "ZDF", short: "ZDF", type: "oer", share: 14.5, color: "#f59f00", profile: ["Krimi", "Serie", "Show", "Doku"], streamer: "mediathek" },
-  { id: "ard", name: "Das Erste", short: "1", type: "oer", share: 12.5, color: "#4c6ef5", profile: ["Krimi", "Show", "Serie", "Doku"], streamer: "mediathek" },
-  { id: "dritte", name: "Die Dritten", short: "III", type: "oer", share: 12.0, color: "#868e96", profile: ["Doku", "Krimi", "Show", "Kultur"], streamer: "mediathek" },
-  { id: "rtl", name: "RTL", short: "RTL", type: "privat", share: 7.6, color: "#e03131", profile: ["Show", "Soap", "Krimi", "Reality"], streamer: "rtlplus" },
-  { id: "sat1", name: "Sat.1", short: "S1", type: "privat", share: 5.6, color: "#15aabf", profile: ["Show", "Krimi", "Komödie", "Reality"], streamer: "joyn" },
-  { id: "vox", name: "VOX", short: "VOX", type: "privat", share: 4.6, color: "#ae3ec9", profile: ["Reality", "Serie", "Show", "Krimi"], streamer: "rtlplus" },
-  { id: "pro7", name: "ProSieben", short: "P7", type: "privat", share: 4.2, color: "#f76707", profile: ["Sitcom", "Show", "Science-Fiction", "Action"], streamer: "joyn" },
-  { id: "kabel1", name: "kabel eins", short: "K1", type: "privat", share: 3.5, color: "#20c997", profile: ["Krimi", "Action", "Reality", "Sitcom"], streamer: "joyn" },
-  { id: "zdfneo", name: "ZDFneo", short: "neo", type: "oer", share: 3.0, color: "#f06595", profile: ["Krimi", "Serie", "Komödie"], streamer: "mediathek" },
-  { id: "rtl2", name: "RTLZWEI", short: "RTL2", type: "privat", share: 2.8, color: "#94d82d", profile: ["Reality", "Soap", "Action"], streamer: "rtlplus" },
-  { id: "nitro", name: "Nitro", short: "NIT", type: "privat", share: 1.6, color: "#845ef7", profile: ["Action", "Krimi", "Science-Fiction"], streamer: "rtlplus" },
-  { id: "arte", name: "ARTE", short: "arte", type: "oer", share: 1.3, color: "#ffc078", profile: ["Kultur", "Doku"], streamer: "mediathek" },
+  { id: "zdf", name: "ZDF", short: "ZDF", type: "oer", share: 14.9, color: "#f59f00", profile: ["Krimi", "Serie", "Show", "Doku"], streamer: "mediathek" },
+  { id: "ard", name: "Das Erste", short: "1", type: "oer", share: 12.7, color: "#4c6ef5", profile: ["Krimi", "Show", "Serie", "Doku"], streamer: "mediathek" },
+  { id: "dritte", name: "Die Dritten", short: "III", type: "oer", share: 13.7, color: "#868e96", profile: ["Doku", "Krimi", "Show", "Kultur"], streamer: "mediathek" },
+  { id: "rtl", name: "RTL", short: "RTL", type: "privat", share: 7.7, color: "#e03131", profile: ["Show", "Soap", "Krimi", "Reality"], streamer: "rtlplus" },
+  { id: "sat1", name: "Sat.1", short: "S1", type: "privat", share: 4.6, color: "#15aabf", profile: ["Show", "Krimi", "Komödie", "Reality"], streamer: "joyn" },
+  { id: "vox", name: "VOX", short: "VOX", type: "privat", share: 4.2, color: "#ae3ec9", profile: ["Reality", "Serie", "Show", "Krimi"], streamer: "rtlplus" },
+  { id: "pro7", name: "ProSieben", short: "P7", type: "privat", share: 2.7, color: "#f76707", profile: ["Sitcom", "Show", "Science-Fiction", "Action"], streamer: "joyn" },
+  { id: "kabel1", name: "kabel eins", short: "K1", type: "privat", share: 2.7, color: "#20c997", profile: ["Krimi", "Action", "Reality", "Sitcom"], streamer: "joyn" },
+  { id: "zdfneo", name: "ZDFneo", short: "neo", type: "oer", share: 3.3, color: "#f06595", profile: ["Krimi", "Serie", "Komödie"], streamer: "mediathek" },
+  { id: "rtl2", name: "RTLZWEI", short: "RTL2", type: "privat", share: 2.2, color: "#94d82d", profile: ["Reality", "Soap", "Action"], streamer: "rtlplus" },
+  { id: "nitro", name: "Nitro", short: "NIT", type: "privat", share: 1.4, color: "#845ef7", profile: ["Action", "Krimi", "Science-Fiction"], streamer: "rtlplus" },
+  { id: "arte", name: "ARTE", short: "arte", type: "oer", share: 1.2, color: "#ffc078", profile: ["Kultur", "Doku"], streamer: "mediathek" },
 ];
 const SIDX = Object.fromEntries(STATIONS.map((s, i) => [s.id, i]));
 
@@ -1528,7 +1530,8 @@ function openTender(r) {
   r.tender = { close: G.day + (act ? 21 : 14) };
   logMsg("Rechteagentur", "Sport", `Ausschreibung: „${d.name}“ für ${rightYears(r)} ${rightYears(r) > 1 ? "Jahre" : "Jahr"}${act ? ` ab ${dateShort(G.day + r.days)}` : " ab sofort"} – Gebote bis ${dateShort(r.tender.close)}, Mindestgebot ${meur(r.price)} pro Jahr (Gesamt-DACH).`);
 }
-const otherShare = () => Math.min(0.34, 0.16 + 0.0015 * (G.day - 1) + (G.stream ? G.stream.subs * 0.002 : 0)); // sonstige Sender + Streaming
+// Sonstige Sender + Streaming: 2025 rund 29 % (die zwölf Spielsender kommen real auf gut 71 %), Fragmentierung wächst etwa einen Punkt pro Jahr
+const otherShare = () => Math.min(0.42, 0.285 + 0.01 * (G.day - 1) / 365 + (G.stream ? G.stream.subs * 0.001 : 0));
 
 function newGame(stationId) {
   G = { day: 1, min: 8 * 60, phase: "plan", idc: 0, market: [], adOffers: [], newsOffers: [], log: [], over: null, today: HOURS.map(() => null), yesterday: null, record: null,
@@ -1898,12 +1901,14 @@ function attractiveness(st, i) {
   const am = adMinH(st, i); if (am > 6) A *= 1 - (am - 6) * 0.01; // hohe Werbelast vertreibt Zuschauer
   return { p, c, A, parts };
 }
+const ST_CAL = { zdf: 0.98, ard: 1.0, dritte: 1.18, rtl: 1.1, sat1: 1.12, vox: 1.18, pro7: 1.3, kabel1: 1.1, zdfneo: 1.36, rtl2: 1.27, nitro: 1.28, arte: 1.2 };
 function attrCell(st, i, c) {
   const p = c.p ? progOf(st, c.p) : null;
   const newsMult = 1 + Math.min(st.news.reduce((a, n) => a + n.q, 0) / 3, 100) / 1250;
   let A = st.brand * 0.08;
   if (p) {
-    let topic = p.kind === "sport" ? 1.7 : 0.35 + 0.65 * p.topic;
+    const tp = ["Krimi", "Doku"].includes(p.genre) ? Math.max(p.topic, 0.55) : ["Reality", "Show"].includes(p.genre) ? Math.pow(p.topic, 1.4) : p.topic;
+    let topic = p.kind === "sport" ? 1.7 : 0.35 + 0.65 * tp;
     if (p.streamFirst && !p.aired) topic *= 0.8; // Fans kennen es schon vom Streamer
     A = st.brand * Math.pow(p.q / 60, 1.5) * fit(p.genre, i) * topic * newsMult * rnd(0.9, 1.1);
     if (c.cont && p.kind !== "sport") A *= 0.96;
@@ -1913,8 +1918,10 @@ function attrCell(st, i, c) {
     if (p.kind === "sport") A *= commF(p); // Kommentator*in
     if (blMagazine(p) && !matchday(G.day)) A *= 0.35; // ohne Spieltag keine Bilder
     if (p.boost && (!p.boost.day || p.boost.day === G.day)) A *= 1 + p.boost.v; // Gaststar, Event-Ausgabe, Relaunch
+    for (const b of p.boosts || []) if (b.day === G.day) A *= 1 + b.v; // gekoppelte Sonderausgaben (mehrere möglich)
     if (p.young) A *= 1 + p.young / 1000 * Math.min(1.5, ST_YOUNG[st.id] || 1);
   }
+  A *= ST_CAL[st.id] || 1;
   if (isMe(st)) A *= 1 + 0.03 * boSkill("dispo") + (p && (p.own || p.home === st.id) ? 0.03 * relF("presse") : 0); // Disposition, Medienpresse
   if (isMe(st) && G.adBreak[i]) A *= 0.85;
   if (isMe(st) && p && p.hypeTv && (p.aired === 0 || (c.cont && p.aired === 1 && p.lastAired === G.day))) A *= 1 + p.hypeTv / 100;
@@ -3350,25 +3357,28 @@ function nowOn(st, min) {
   const now = performance.now();
   if (monCache.day !== G.day || now - monCache.t > 4000) monCache = { t: now, day: G.day, m: {} };
   const rd = monCache.m[st.id] || (monCache.m[st.id] = rdToday(st));
-  const x = rd.find(y => y.start <= min && min < y.end);
-  if (!x) return { label: "Werbung & Trailer", ad: true };
-  if (x.gap) return { label: x.end - x.start <= 15 ? "Werbung & Trailer" : "Programmlücke", ad: true };
+  const x = rd.find(y => y.start <= min && min < y.end), nx = rd.find(y => !y.gap && y.p && y.start > min && y !== x);
+  const nextTxt = nx ? `danach ${hhmm(nx.start)} ${nx.title || nx.p.title}` : "";
+  if (!x) return { label: "Werbung & Trailer", ad: true, next: nextTxt };
+  if (x.gap) return { label: x.end - x.start <= 15 ? "Werbung & Trailer" : "Programmlücke", ad: true, range: `${hhmm(x.start)}–${hhmm(x.end % 1440)}`, next: nextTxt };
   if (!x.p) return { label: "–" };
   const live = x.live || (x.c && x.c.live), title = x.title || x.p.title;
   // Unterbrecherwerbung: gleichmäßig über die Sendung verteilt (nicht bei Nachrichten, Live-Sport, Kurzformaten)
   const net = netDur(x.p), gross = x.end - x.start, adMin = gross - net;
   if (!live && adMin >= 3 && net > 20 && !["Nachrichten", "Teleshopping"].includes(x.p.genre)) {
     const k = Math.max(1, Math.round(net / 25)), seg = net / (k + 1), len = adMin / k, rel = min - x.start;
-    for (let j = 1; j <= k; j++) { const a = j * seg + (j - 1) * len; if (rel >= a && rel < a + len) return { label: `Werbung · ${title}`, ad: true }; }
+    for (let j = 1; j <= k; j++) { const a = j * seg + (j - 1) * len; if (rel >= a && rel < a + len) return { label: `Werbung · ${title}`, ad: true, range: `${hhmm(x.start)}–${hhmm(x.end % 1440)}`, next: nextTxt }; }
   }
-  return { label: live ? `● ${title}` : title, start: x.start, end: x.end };
+  return { label: live ? `● ${title}` : title, start: x.start, end: x.end, range: `${hhmm(x.start)}–${hhmm(x.end % 1440)}`, next: nextTxt };
 }
 function wobble() {
   const i = Math.floor(G.min / 60);
-  if (!G.today[i]) return;
   document.querySelectorAll("[data-wob]").forEach(el => {
-    const k = +el.dataset.wob, base = G.today[i][k].v;
+    const k = +el.dataset.wob;
     const cur = nowOn(G.stations[k], G.min), tt = el.querySelector(".mon-t"); if (tt && tt.textContent !== cur.label) { tt.textContent = cur.label; tt.classList.toggle("muted", !!cur.ad); }
+    const tn = el.querySelector(".mon-n"), nt = [cur.range, cur.next].filter(Boolean).join(" · "); if (tn && tn.textContent !== nt) tn.textContent = nt;
+    if (!G.today[i]) return; // Quote erst, wenn die Stunde berechnet ist
+    const base = G.today[i][k].v;
     const v = base * (cur.ad ? 0.86 : 1) * (1 + 0.05 * Math.sin(G.min * 0.9 + k * 1.7) + 0.02 * Math.sin(G.min * 3.1 + k));
     const ma = v / BASE[i] * 100;
     const tv = el.querySelector(".v"); if (tv) tv.textContent = pct(ma);
@@ -4112,7 +4122,7 @@ function livePage(P) {
       <div class="live-head"><div style="display:flex;align-items:center;gap:10px">${crest(P.i, 46)}<div><b style="font-family:var(--font-head);font-size:22px">${esc(P.name)}</b><div class="muted">${r ? `Jetzt: ${pct(r[G.me].ma)} · Platz ${order.indexOf(G.me) + 1}` : "Gleich geht’s los"}</div></div></div>
         <div class="live-clock"><small>${G.phase === "live" ? (G.min < LIVE_FROM * 60 - 1 ? (liveRun ? "TAGESPROGRAMM" : "PAUSIERT") : liveRun ? "LIVE · PRIMETIME" : G.primeHold && G.min < LIVE_FROM * 60 ? "GLEICH PRIMETIME" : "PAUSIERT") : "SENDESCHLUSS"}</small>${hhmm(G.min)}</div>
         <div class="actions" style="justify-content:flex-end"><div class="pills">${[[1, "Regie"], [2, "Normal"], [3, "Schnell"], [4, "Sofort"]].map(([s, n]) => `<button data-act="lspeed" data-k="${s}" class="${liveSpeed === s ? "on" : ""}">${n}</button>`).join("")}</div>${G.phase === "live" && G.min < LIVE_FROM * 60 - 1 ? '<button class="btn" data-act="toPrime">Zur Primetime</button>' : ""}<button class="btn" data-act="finish" ${G.phase !== "live" ? "disabled" : ""}>Bis Sendeschluss</button></div></div>
-      <div class="wall">${order.map(k => { const s = G.stations[k]; const x = r && r[k]; return `<div class="mon ${k === G.me ? "me" : ""}" data-wob="${k}"><div class="mon-top">${crest(k, 20)}<b>${esc(s.name)}</b><span class="v">${x ? pct(x.ma) : "–"}</span></div><div class="mon-t">${esc(nowOn(s, G.min).label)}</div><div class="lbar"><i style="width:${x ? Math.min(100, x.ma * 3) : 0}%;background:${s.color}"></i></div></div>`; }).join("")}</div>
+      <div class="wall">${order.map(k => { const s = G.stations[k]; const x = r && r[k]; return `<div class="mon ${k === G.me ? "me" : ""}" data-wob="${k}"><div class="mon-top">${crest(k, 20)}<b>${esc(s.name)}</b><span class="v">${x ? pct(x.ma) : "–"}</span></div>${(() => { const c = nowOn(s, G.min); return `<div class="mon-t ${c.ad ? "muted" : ""}">${esc(c.label)}</div><div class="mon-n fine">${esc([c.range, c.next].filter(Boolean).join(" · "))}</div>`; })()}<div class="lbar"><i style="width:${x ? Math.min(100, x.ma * 3) : 0}%;background:${s.color}"></i></div></div>`; }).join("")}</div>
     </section>
     <section class="panel"><div class="ph"><h2>Regie-Eingriffe</h2><span class="aside">${next != null ? `für ${hh(next)}` : "Sendeschluss naht"}</span></div>
       <div class="slist"><div class="srow"><b>${np ? esc(np.title) : next != null ? "Testbild" : "–"}</b><em>${next != null ? mio(expected(P, next)) : ""}</em><span>${nc && nc.live ? "Live-Event – nicht austauschbar" : np ? esc(np.genre) : ""}</span></div></div>
@@ -7114,7 +7124,8 @@ function tvSeason(day, h) {
   if (schoolBreak(day) && h >= 9 && h <= 15) f *= m === 11 || m === 0 ? 1.12 : 0.95; // Ferien: Kinder vor dem Fernseher, im Sommer im Urlaub
   return f;
 }
-function seasonBase() { for (let i = 0; i < BASE.length; i++) BASE[i] = BASE0[i] * tvSeason(G.day, i); }
+const marketShrink = () => Math.pow(0.95, Math.max(0, G.day - 1) / 365); // 2024→2025: 171 → 158 Min. Sehdauer
+function seasonBase() { for (let i = 0; i < BASE.length; i++) BASE[i] = BASE0[i] * tvSeason(G.day, i) * marketShrink(); }
 // Streaming wird im Winter stärker genutzt
 const streamSeason = (day = G.day) => [1.12, 1.1, 1.02, 0.96, 0.92, 0.88, 0.86, 0.88, 0.95, 1.02, 1.08, 1.12][dateOf(day).getMonth()];
 // Saisonale Genres und Titel
@@ -8123,7 +8134,8 @@ function eventIdeas(P, p) {
   const dates = fmtDates(P, p); if (!dates.length) return [];
   return upcomingEvents().map(ev => {
     const f = fitOf(ev, p); if (f < 0.4) return null;
-    const air = dates.filter(([d]) => d <= ev.day && ev.day - d <= 6).pop() || dates.find(([d]) => d >= ev.day && d - ev.day <= 2); if (!air) return null;
+    // Ausgabe am Ereignistag selbst, sonst kurz danach, sonst in den Tagen davor
+    const air = dates.find(([d]) => d === ev.day) || dates.find(([d]) => d > ev.day && d - ev.day <= 2) || dates.filter(([d]) => d < ev.day && ev.day - d <= 6).pop(); if (!air) return null;
     const v = Math.round((0.1 + 0.25 * f) * 100) / 100, cost = r1000(Math.max(60000, (p.epCost || p.q * 3000) * (0.4 + f * 0.6)));
     return { ev, f, v, cost, air };
   }).filter(Boolean).sort((a, b) => b.f - a.f).slice(0, 5);
@@ -8131,8 +8143,9 @@ function eventIdeas(P, p) {
 function couple(P, p, idx) {
   const it = eventIdeas(P, p)[idx]; if (!it) return "Kein passender Anlass.";
   if (P.money < it.cost) return "Dafür reicht das Budget nicht.";
-  if (p.boost && p.boost.day && p.boost.day >= G.day) return "Für diese Sendung ist bereits eine Sonderausgabe geplant.";
-  book(P, "Eigenproduktion", -it.cost); p.boost = { v: it.v, day: it.air[0], why: it.ev.k };
+  p.boosts = (p.boosts || []).filter(b => b.day >= G.day);
+  if (p.boosts.some(b => b.day === it.air[0]) || (p.boost && p.boost.day === it.air[0])) return `Die Ausgabe am ${dateShort(it.air[0])} ist schon eine Sonderausgabe – planen Sie für diesen Anlass einen eigenen Sendetermin.`;
+  book(P, "Eigenproduktion", -it.cost); p.boosts.push({ v: it.v, day: it.air[0], why: it.ev.k });
   fxNote(p, "event", `Sonderausgabe zum Anlass „${it.ev.k}“ am ${dateShort(it.air[0])} (+${Math.round(it.v * 100)} % erwartet, ${eur(it.cost)})`);
   logMsg("Programmentwicklung", "Programm", `„${p.title}“ bekommt zum Anlass „${it.ev.k}“ eine Sonderausgabe am ${dateShort(it.air[0])}.`);
   return null;
@@ -8157,9 +8170,10 @@ function guestPanel(P, p) {
 function guestBook(P, p, qid, day) {
   const q = person(qid); if (!q || !pAvail(q)) return "Diese Person ist nicht verfügbar.";
   const fee = guestFee(q); if (P.money < fee) return "Dafür reicht das Budget nicht.";
-  if (p.boost && p.boost.day && p.boost.day >= G.day) return "Für diese Sendung ist bereits eine Sonderausgabe geplant.";
-  book(P, "Redaktion & Gagen", -fee); p.boost = { v: guestBoost(q, p), day, why: `Gast: ${q.name}` };
-  fxNote(p, "guest", `Gastauftritt von ${q.name} am ${dateShort(day)} (${eur(fee)}, +${Math.round(p.boost.v * 100)} % erwartet)`);
+  p.boosts = (p.boosts || []).filter(b => b.day >= G.day);
+  if (p.boosts.some(b => b.day === day && /^Gast/.test(b.why))) return `Für die Ausgabe am ${dateShort(day)} ist schon ein Gast gebucht.`;
+  const bv = guestBoost(q, p); book(P, "Redaktion & Gagen", -fee); p.boosts.push({ v: bv, day, why: `Gast: ${q.name}` });
+  fxNote(p, "guest", `Gastauftritt von ${q.name} am ${dateShort(day)} (${eur(fee)}, +${Math.round(bv * 100)} % erwartet)`);
   logMsg("Redaktion", "Programm", `„${p.title}“: ${q.name} ist am ${dateShort(day)} zu Gast.`);
   return null;
 }
@@ -8168,8 +8182,9 @@ function polBoost(g) { const ag = ensureAgenda(), top = agTop(), rel = { wirt: /
   return Math.round((0.06 + (/kanzler|minister|vorsitz|präsident/i.test(g.amt || "") ? 0.06 : 0.02) + (rel && rel.test(`${g.res} ${g.amt}`) ? 0.06 * ag[top] / 100 : 0)) * 100) / 100; }
 function polBook(P, p, gid, day) {
   const g = polList().find(x => String(x.id) === String(gid)); if (!g) return "Gast nicht gefunden.";
-  if (p.boost && p.boost.day && p.boost.day >= G.day) return "Für diese Sendung ist bereits eine Sonderausgabe geplant.";
-  book(P, "Redaktion & Gagen", -polFee(g)); p.boost = { v: polBoost(g), day, why: `Gast: ${g.name}` };
+  p.boosts = (p.boosts || []).filter(b => b.day >= G.day);
+  if (p.boosts.some(b => b.day === day && /^Gast/.test(b.why))) return `Für die Ausgabe am ${dateShort(day)} ist schon ein Gast gebucht.`;
+  book(P, "Redaktion & Gagen", -polFee(g)); p.boosts.push({ v: polBoost(g), day, why: `Gast: ${g.name}` });
   fxNote(p, "guest", `Politikgast ${g.name} (${g.partei}) am ${dateShort(day)}`); logMsg("Redaktion", "Politik", `„${p.title}“: ${g.name} (${g.partei}, ${g.amt}) ist am ${dateShort(day)} zu Gast.`);
   return null;
 }
@@ -8177,7 +8192,7 @@ function ideaPanel(P, p) {
   const ideas = eventIdeas(P, p);
   return `<section class="panel" style="margin-top:12px"><div class="ph"><h2>An ein Ereignis koppeln</h2><span class="aside">nur passende Anlässe</span></div>
     ${ideas.length ? `<div class="tbl"><table><tbody>${ideas.map((x, k) => `<tr><td><b>${esc(x.ev.k)}</b><div class="fine">Ausgabe am ${dateShort(x.air[0])} · Passung ${Math.round(x.f * 100)} %</div><div class="fine" id="idea${k}"></div></td><td class="num">${eur(x.cost)}</td><td class="num">+${Math.round(x.v * 100)} %</td>
-      <td class="num" style="white-space:nowrap"><button class="btn small hot" data-act="couple" data-k="${k}" data-id="${p.id}">Koppeln</button>${aiOn() ? ` <button class="btn small" data-act="ideaAi" data-k="${k}" data-id="${p.id}">KI-Idee</button>` : ""}</td></tr>`).join("")}</tbody></table></div>`
+      <td class="num" style="white-space:nowrap">${(p.boosts || []).some(b => b.why === x.ev.k && b.day >= G.day) ? '<span class="chip good">✓ gekoppelt</span>' : `<button class="btn small hot" data-act="couple" data-k="${k}" data-id="${p.id}" ${(p.boosts || []).some(b => b.day === x.air[0]) ? 'disabled title="Diese Ausgabe ist schon eine Sonderausgabe"' : ""}>Koppeln</button>`}${aiOn() ? ` <button class="btn small" data-act="ideaAi" data-k="${k}" data-id="${p.id}">KI-Idee</button>` : ""}</td></tr>`).join("")}</tbody></table></div>`
       : '<p class="fine pad">In den nächsten Wochen gibt es keinen Anlass, der zu diesem Format passt – oder es ist nicht eingeplant.</p>'}</section>`;
 }
 function ideaAi(P, p, k) {
@@ -10118,8 +10133,8 @@ function quotaPanel(P) {
 // Formatprofil: Quotenverlauf, Publikum, Analyse und Maßnahmen je Sendung
 // =====================================================================
 // Affinität zur Zielgruppe 14–49 (Spielwerte): Sender-Image × Genre
-const ST_YOUNG = { zdf: 0.45, ard: 0.5, dritte: 0.35, rtl: 1.25, sat1: 1.0, vox: 1.35, pro7: 2.0, kabel1: 1.15, zdfneo: 0.8, rtl2: 1.6, nitro: 1.0, arte: 0.5 };
-const G_YOUNG = { Reality: 1.35, Sitcom: 1.4, Soap: 1.25, "Science-Fiction": 1.3, Action: 1.2, Show: 1.05, Komödie: 1.1, Talk: 0.8, Nachrichten: 0.75, Magazin: 0.8, Krimi: 0.85, Doku: 0.85, Kultur: 0.7, Liebesfilm: 0.95, Drama: 0.9, Serie: 1.0, Monumental: 0.9, Teleshopping: 0.5 };
+const ST_YOUNG = { zdf: 0.2, ard: 0.39, dritte: 0.3, rtl: 0.92, sat1: 0.97, vox: 1.16, pro7: 4.4, kabel1: 1.15, zdfneo: 0.8, rtl2: 1.6, nitro: 1.0, arte: 0.5 };
+const G_YOUNG = { Reality: 1.35, Sitcom: 1.4, Soap: 1.25, "Science-Fiction": 1.3, Action: 1.2, Show: 1.05, Komödie: 1.1, Talk: 0.8, Nachrichten: 0.75, Magazin: 0.8, Krimi: 0.95, Doku: 1.0, Kultur: 0.7, Liebesfilm: 0.95, Drama: 0.9, Serie: 1.0, Monumental: 0.9, Teleshopping: 0.5 };
 const youthIdx = (st, p) => { const z = zMix(st, p); return clamp((z[0] + z[1]) / 0.4, 0.2, 2.5) * (1 + ((p && p.young) || 0) / 100); };
 const AGE_GROUPS = ZN.map(n => [n]);
 function ageMix(st, p) { return zMix(st, p).map(x => x * 100); }
