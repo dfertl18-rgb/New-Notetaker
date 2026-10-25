@@ -3399,6 +3399,7 @@ function endDay() {
   G.phase = "done"; G.min = 24 * 60; liveRun = false;
   const report = [];
   const totalBase = BASE.reduce((a, b) => a + b, 0);
+  try { freshDay(); } catch (err) { console.error(err); }
   const srec = streamDay();
   for (const st of G.stations) {
     const views = G.today.reduce((a, r) => a + (r ? r[st.i].v : 0), 0);
@@ -10132,6 +10133,12 @@ function quotaFactors(P) {
   const best = rows.slice().sort((a, b) => b.ratio - a.ratio)[0], worst = rows.slice().sort((a, b) => a.ratio - b.ratio)[0];
   if (best && best.ratio > 1.08) out.push(`Über Erwartung: ${hh(best.i)} „${best.me_.title}“ (+${Math.round((best.ratio - 1) * 100)} %)`);
   if (worst && worst.ratio < 0.92) out.push(`Unter Erwartung: ${hh(worst.i)} „${worst.me_.title}“ (−${Math.round((1 - worst.ratio) * 100)} %)`);
+  const dw = dayWinners(), lab = x => x ? `„${x.title}“ (${G.stations[x.st].name}, ${mio(x.vs / x.min)} Mio. · ${pct(x.vs / x.bs * 100)} gesamt · ${pct(x.ys / x.min)} 14–49)` : "–";
+  if (dw.tot) out.push(`Tagessieger Gesamtpublikum: ${lab(dw.tot)}`);
+  if (dw.young && dw.young !== dw.tot) out.push(`Tagessieger 14–49: ${lab(dw.young)}`);
+  const fr = P.fresh ?? freshness(P); out.push(`Frische-Index Primetime: ${Math.round(fr * 100)} % neue Ware${fr < 0.6 ? " – zu viele Wiederholungen kosten Image" : ""}`);
+  const mine = (G.daySeg || []).filter(x => x.st === G.me && x.min && x.bs), vs = mine.reduce((a, x) => a + x.vs, 0), bs = mine.reduce((a, x) => a + x.bs, 0), ys = mine.reduce((a, x) => a + (x.ys || 0), 0), mn = mine.reduce((a, x) => a + x.min, 0);
+  if (bs && mn && ST_AGE[P.id]) { const ratio = (ys / mn) / (vs / bs * 100), base = ST_YOUNG[P.id] || 1, d = ratio / base; out.push(`Publikum: Ø etwa ${ST_AGE[P.id]} Jahre (Senderprofil)${d > 1.15 ? " – heute jünger als sonst" : d < 0.85 ? " – heute älter als sonst" : ""}`); }
   return out;
 }
 function quotaPanel(P) {
@@ -10143,12 +10150,34 @@ function quotaPanel(P) {
   return `<section class="panel"><div class="ph"><h2>Quotenanalyse</h2><span class="aside">Konkurrenz · Abnutzung · Wetter · Jahreszeit</span></div><ul class="pad" style="margin:0 0 0 18px">${f.map(x => `<li>${esc(x)}</li>`).join("")}</ul><p class="fine pad" id="qaAi" style="margin:0">${aiOn() ? "Die lokale KI wertet aus …" : ""}</p></section>`;
 }
 // =====================================================================
+// Zwei Tagessieger (Gesamtpublikum und 14–49), Frische-Index, Publikumsalter je Sender
+// Ankerwerte: DWDL/AGF 2022–2026 (Durchschnittsalter H1 2022, Monats- und Tageswerte 2026)
+// =====================================================================
+const ST_AGE = { zdf: 65, ard: 64, dritte: 66, rtl: 55, sat1: 54, vox: 54, pro7: 44, kabel1: 53, zdfneo: 60, rtl2: 51, nitro: 50, arte: 62 };
+function dayWinners() {
+  const segs = (G.daySeg || []).filter(s => s.min >= 20 && s.bs > 0);
+  // Tagessieger nach Zuschauerzahl (wie in den Quotenmeldungen), 14–49 nach Zuschauern der Zielgruppe (MA × Nutzung)
+  const tot = segs.slice().sort((a, b) => b.vs / b.min - a.vs / a.min)[0], young = segs.filter(s => s.ys != null).sort((a, b) => b.ys * b.bs - a.ys * a.bs)[0];
+  return { tot, young };
+}
+// Anteil der Wiederholungen in der eigenen Primetime (20–23 Uhr) – wenig Frische kostet Image
+function freshness(st) {
+  const rd = rdToday(st).filter(x => !x.gap && x.p && x.start >= 20 * 60 && x.start < 23 * 60 && x.p.kind !== "sport" && !x.p.house);
+  if (!rd.length) return 1;
+  const rerun = x => (x.p.kind === "film" && (x.p.runs || 0) > 1) || (x.p.kind === "serie" && (x.p.ep || 0) >= (x.p.eps || 1)) || (x.p.kind === "show" && (x.p.topic ?? 1) < 0.5);
+  return 1 - rd.filter(rerun).length / rd.length;
+}
+function freshDay() {
+  for (const st of G.stations) { const f = freshness(st); st.fresh = f; if (f < 0.6) st.brand = Math.max(0.5, st.brand * (1 - (0.6 - f) * 0.02)); }
+}
+// =====================================================================
 // Formatprofil: Quotenverlauf, Publikum, Analyse und Maßnahmen je Sendung
 // =====================================================================
 // Affinität zur Zielgruppe 14–49 (Spielwerte): Sender-Image × Genre
 const ST_YOUNG = { zdf: 0.2, ard: 0.39, dritte: 0.3, rtl: 0.92, sat1: 0.97, vox: 1.16, pro7: 4.4, kabel1: 1.15, zdfneo: 0.8, rtl2: 1.6, nitro: 1.0, arte: 0.5 };
-const G_YOUNG = { Reality: 1.35, Sitcom: 1.4, Soap: 1.25, "Science-Fiction": 1.3, Action: 1.2, Show: 1.05, Komödie: 1.1, Talk: 0.8, Nachrichten: 0.75, Magazin: 0.8, Krimi: 0.95, Doku: 1.0, Kultur: 0.7, Liebesfilm: 0.95, Drama: 0.9, Serie: 1.0, Monumental: 0.9, Teleshopping: 0.5 };
-const youthIdx = (st, p) => { const z = zMix(st, p); return clamp((z[0] + z[1]) / 0.4, 0.2, 2.5) * (1 + ((p && p.young) || 0) / 100); };
+const G_YOUNG = { Reality: 1.35, Sitcom: 1.4, Soap: 1.25, "Science-Fiction": 1.3, Action: 1.2, Show: 1.05, Komödie: 1.1, Talk: 0.8, Nachrichten: 0.75, Magazin: 0.8, Krimi: 0.8, Doku: 1.0, Kultur: 0.7, Liebesfilm: 0.95, Drama: 0.9, Serie: 1.0, Monumental: 0.9, Teleshopping: 0.5 };
+const SATIRE_RX = /heute-show|magazin royale|satire|comedy|late night|late-night|kabarett|anstalt|tv total|neo magazin/i;
+const youthIdx = (st, p) => { const z = zMix(st, p); return clamp((z[0] + z[1]) / 0.4, 0.2, 2.5) * (1 + ((p && p.young) || 0) / 100) * (p && SATIRE_RX.test(`${p.title} ${p.sub || ""}`) ? 1.8 : 1) * (p && p.kind === "sport" ? 1.5 : 1); };
 const AGE_GROUPS = ZN.map(n => [n]);
 function ageMix(st, p) { return zMix(st, p).map(x => x * 100); }
 // Eintrag je Ausstrahlung: [Tag, Stunde, Mio., MA %, MA 14–49 %, Platz, Stunden, (eigener Sender:) Gegner-Sender, Gegner-Titel, Folge]
@@ -10178,7 +10207,7 @@ function recordHour(res, sorted, i) {
       }
       // Tagesbilanz je Ausstrahlung (für die Quoten-News)
       const ds = G.daySeg.find(d => d.st === r.st.i && d.id === p.id && d.start === start);
-      if (ds) { ds.vs += v * min; ds.bs += BASE[i] * min; ds.min += min; } else G.daySeg.push({ st: r.st.i, id: p.id, start, title: p.title, vs: v * min, bs: BASE[i] * min, min });
+      { const ym = Math.min(70, ma * youthIdx(r.st, p)) * min; if (ds) { ds.vs += v * min; ds.bs += BASE[i] * min; ds.min += min; ds.ys = (ds.ys || 0) + ym; } else G.daySeg.push({ st: r.st.i, id: p.id, start, title: p.title, vs: v * min, bs: BASE[i] * min, min, ys: ym }); }
       if (p.kind === "sport") continue;
       const y = Math.min(60, ma * youthIdx(r.st, p) * rnd(0.93, 1.07));
       p.hist = p.hist || [];
