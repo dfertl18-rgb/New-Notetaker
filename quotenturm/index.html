@@ -601,6 +601,12 @@ svg.avatar.look { border-radius: 50%; display: block; flex: none; }
   #mainnav button { font-size: 17px; padding: 8px 4px 8px 6px; }
   #cont { min-width: 150px; }
 }
+/* Tablets (z. B. iPad quer): Hauptmenü in eine eigene Zeile, damit alle Bereiche sichtbar bleiben */
+@media (max-width: 1280px) {
+  #top { flex-wrap: wrap; }
+  #mainnav { order: 5; width: 100%; }
+}
+@media (hover: none) { [data-ctx] { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; } }
 @media (max-width: 900px) {
   #top { flex-wrap: wrap; }
   #mainnav { order: 5; width: 100%; }
@@ -3793,7 +3799,7 @@ function heroCard(P) {
   const y = G.yesterday;
   if (!y || !y.res[20]) {
     return `<div class="hero"><div class="hero-img">${crest(P.i, 70)}</div><div class="hero-body"><h3>${esc(P.name)} stellt neue Programmdirektion vor</h3>
-      <p>Die Senderleitung erwartet über den ganzen Tag einen Marktanteil von ${pct(P.target)}. Erste Bewährungsprobe ist die Primetime um 20:15 Uhr gegen elf Sender und die Streamingdienste.</p>
+      <p>Die Senderleitung erwartet über den ganzen Tag einen Marktanteil von ${pct(P.target)}. Erste Bewährungsprobe ist die Primetime um 20:15 Uhr gegen ${STATIONS.length - 1} Sender und die Streamingdienste.</p>
       <div class="hero-meta"><span>Heute</span><span>· Senderleitung</span></div></div></div>`;
   }
   const r = y.res[20].map((x, k) => ({ ...x, k })).sort((a, b) => b.v - a.v);
@@ -3904,7 +3910,7 @@ function overview(P) {
       ${!S ? `<section class="panel"><div class="ph"><h2>Streaming</h2></div><div class="pad"><p class="lead">${G.project ? `Projekt „${STAGES[G.project.n].name}“ im Bau – noch ${G.project.left} Tage.` : "Noch kein eigener Streamer."} <button class="btn" data-page="stream">Zur Planung</button></p></div></section>` : ""}
       ${holes ? `<section class="panel"><div class="ph"><h2>Programmlöcher</h2></div><div class="pad"><p class="lead">Heute ${holes === 1 ? "ist 1 Stunde" : `sind ${holes} Stunden`} leer. <button class="btn" data-page="plan">Zum Wochenplan</button></p></div></section>` : ""}
       <section class="panel"><div class="ph"><h2>Primetime</h2><span class="aside">${dateLabel(G.day)}</span></div>
-        <div class="fixture"><div class="side">${crest(P.i, 26)}<b>${pp ? esc(pp.title) : "Testbild"}</b></div><div class="t">20:15</div><div class="side"><span class="muted">vs. 11 Sender & Streaming</span></div></div></section>
+        <div class="fixture"><div class="side">${crest(P.i, 26)}<b>${pp ? esc(pp.title) : "Testbild"}</b></div><div class="t">20:15</div><div class="side"><span class="muted">vs. ${STATIONS.length - 1} Sender & Streaming</span></div></div></section>
       ${S ? `<section class="panel"><div class="ph"><h2>${esc(S.name)}</h2><span class="aside">Streaming</span></div><div class="slist">
         <div class="srow"><b>${sFree(S) ? "Reichweite" : "Abonnenten"}</b><em>${sFree(S) ? mio(S.reach) : mio(S.subs)} Mio.</em><span>${sl ? (sFree(S) ? "Nutzer pro Tag" : `Churn ${pct(sl.churn)} / Monat`) : "noch keine Daten"}</span></div>
         <div class="srow"><b>Katalog</b><em>${S.catalog.length}</em><span>${sl ? sl.newCount + " neue Titel in 7 Tagen" : "Titel"}</span></div></div></section>` : ""}
@@ -4146,7 +4152,7 @@ function ratings() {
 }
 function landscape() {
   const o = otherShare() * 100;
-  return title("Markt") + `<div class="tiles mb"><div class="tile"><small>Streaming & sonstige Sender</small><b>${pct(o)}</b><span>wächst täglich – Zuschauer, die keinem der 12 Sender zusehen</span></div>
+  return title("Markt") + `<div class="tiles mb"><div class="tile"><small>Streaming & sonstige Sender</small><b>${pct(o)}</b><span>wächst täglich – Zuschauer, die keinem der ${STATIONS.length} Sender zusehen</span></div>
     <div class="tile"><small>Öffentlich-rechtlich</small><b>${G.stations.filter(s => s.type === "oer").length} Sender</b><span>Rundfunkbeitrag, Werbung nur vor 20 Uhr</span></div><div class="tile"><small>Privat</small><b>${G.stations.filter(s => s.type === "privat").length} Sender</b><span>Werbung, Distribution, Teleshopping</span></div></div>
     <section class="panel"><div class="ph"><h2>Sendergruppen & Streamer</h2></div><div class="tbl"><table><thead><tr><th>Sender</th><th>Typ</th><th>Streamer der Gruppe</th><th class="num">Startmarktanteil</th></tr></thead><tbody>
       ${STATIONS.map((s, i) => `<tr class="${i === G.me ? "mine" : ""}"><td>${sname(i)}</td><td class="muted">${s.type === "oer" ? "öffentlich-rechtlich" : "privat"}</td><td>${s.streamer ? `<span class="sn">${sbadge(s.streamer)}${esc(STREAMERS.find(x => x.id === s.streamer).name)}</span>` : "–"}</td><td class="num">${pct(s.share)}</td></tr>`).join("")}</tbody></table></div></section>`;
@@ -9461,6 +9467,14 @@ function showCtx(key, x, y) {
 }
 document.addEventListener("contextmenu", e => { const t = e.target.closest && e.target.closest("[data-ctx]"); if (!t || !G) return; e.preventDefault(); showCtx(t.dataset.ctx, e.clientX, e.clientY); });
 document.addEventListener("click", e => { if (ctxEl) setTimeout(hideCtx, 0); }, true);
+// Touch (iPad): langes Drücken öffnet das Kontextmenü wie ein Rechtsklick
+{ let lpT = null, lpXY = null, lpFired = false;
+  document.addEventListener("touchstart", e => { const t = e.target.closest && e.target.closest("[data-ctx]"); lpFired = false; if (!t || !G || e.touches.length !== 1) return;
+    lpXY = [e.touches[0].clientX, e.touches[0].clientY]; clearTimeout(lpT); lpT = setTimeout(() => { lpFired = true; showCtx(t.dataset.ctx, lpXY[0], lpXY[1]); }, 550); }, { passive: true });
+  document.addEventListener("touchmove", e => { if (lpT && lpXY && Math.hypot(e.touches[0].clientX - lpXY[0], e.touches[0].clientY - lpXY[1]) > 10) { clearTimeout(lpT); lpT = null; } }, { passive: true });
+  document.addEventListener("touchend", e => { clearTimeout(lpT); lpT = null; if (lpFired) { e.preventDefault(); lpFired = false; } });
+  document.addEventListener("dragstart", () => { clearTimeout(lpT); lpT = null; }, true); // Ziehen (Drag & Drop) hat Vorrang
+}
 document.addEventListener("keydown", e => { if (e.key === "Escape") hideCtx(); });
 document.addEventListener("change", e => { const id = e.target && e.target.dataset && e.target.dataset.swin; if (!id || !G) return; const P = me(), p = progOf(P, +id); if (p) { setWindow(P, p, e.target.value); render(); } });
 // =====================================================================
