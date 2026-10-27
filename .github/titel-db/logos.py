@@ -5,10 +5,10 @@ ITEMS = {"ard": ["Das Erste"], "dritte": ["WDR Fernsehen", "NDR Fernsehen", "BR 
   "arte": ["Arte"], "prime": ["Amazon Prime Video", "Prime Video"], "disney": ["Disney+"], "rtlplus": ["RTL+"], "wow": ["WOW"], "joyn": ["Joyn"], "mediathek": ["ARD Mediathek", "ZDFmediathek"],
   "rtl2": ["RTL Zwei"], "vox": ["VOX"], "sat1": ["Sat.1"], "pro7": ["ProSieben"], "rtl": ["RTL"], "zdf": ["ZDF"], "netflix": ["Netflix"], "paramount": ["Paramount+"], "dazn": ["DAZN"]}
 # Neue Sender: eindeutig über den Titel des deutschen Wikipedia-Artikels
-WIKI = {"sat1gold": "Sat.1 Gold", "rtlup": "RTLup", "welt": "Welt (Fernsehsender)", "ntv": "n-tv", "superrtl": "Super RTL", "dmax": "DMAX (Fernsehsender)",
-  "k1doku": "Kabel Eins Doku", "pro7maxx": "ProSieben Maxx", "voxup": "VOXup", "tele5": "Tele 5", "n24doku": "N24 Doku", "sixx": "Sixx", "tlc": "TLC (Fernsehsender)",
-  "disneych": "Disney Channel (Deutschland)", "sport1": "Sport1", "eurosport": "Eurosport 1", "skysport": "Sky Sport (Fernsehsender)", "euronews": "Euronews",
-  "kabel1": "Kabel eins", "nitro": "Nitro (Fernsehsender)"}
+WIKI = {"ntv": ["N-tv", "Ntv"], "dmax": ["DMAX (Deutschland)", "DMAX (Fernsehsender)", "DMAX"], "rtlup": ["RTLup", "RTLplus (Fernsehsender)", "RTLplus"],
+  "skysport": ["Sky Sport (Deutschland)", "Sky Sport", "Sky Sport Bundesliga"], "kabel1": ["Kabel Eins", "Kabel eins"],
+  "zdfinfo": ["ZDFinfo"], "phoenix": ["Phoenix (Fernsehsender)"], "dreisat": ["3sat"], "one": ["One (Fernsehsender)", "ONE (Fernsehsender)"], "kika": ["KiKA", "Kika"],
+  "comedy": ["Comedy Central (Deutschland)", "Comedy Central Deutschland"], "nick": ["Nickelodeon (Deutschland)", "Nick (Deutschland)"]}
 def get(url, tries=3):
     for i in range(tries):
         try:
@@ -24,7 +24,9 @@ def fetch(sid, res, lab):
     ct = "image/svg+xml" if url.lower().endswith(".svg") and "svg" in (ct or "svg") else (ct or "image/png").split(";")[0]
     out[sid] = f"data:{ct};base64," + base64.b64encode(data).decode()
     print(sid, lab, url, len(data), file=sys.stderr); return True
-for sid, art in WIKI.items():
+for sid, arts in WIKI.items():
+  for art in arts:
+    if sid in out: break
     q = f'SELECT ?logo WHERE {{ ?a schema:about ?i ; schema:isPartOf <https://de.wikipedia.org/> ; schema:name "{art}"@de . ?i wdt:P154 ?logo }} LIMIT 1'
     b, _ = get("https://query.wikidata.org/sparql?format=json&query=" + urllib.parse.quote(q))
     rows = json.loads(b)["results"]["bindings"] if b else []
