@@ -53,5 +53,17 @@ for sid, labels in ITEMS.items():
         out[sid] = f"data:{ct};base64," + base64.b64encode(data).decode()
         print(sid, lab, url, len(data), file=sys.stderr); break
     time.sleep(1)
+# Rückfall: direkte Dateisuche auf Wikimedia Commons (Logo-Dateien), wenn Wikidata kein Logo kennt
+COMMONS = {"ntv": ["n-tv logo", "ntv Nachrichten logo"], "rtlup": ["RTLup logo", "RTL up logo"], "kika": ["KiKA logo", "Kika logo 2024"], "nick": ["Nickelodeon Deutschland logo", "Nickelodeon logo 2009"]}
+for sid, queries in COMMONS.items():
+    if sid in out: continue
+    for qy in queries:
+        b, _ = get("https://commons.wikimedia.org/w/api.php?action=query&format=json&list=search&srnamespace=6&srlimit=10&srsearch=" + urllib.parse.quote(qy + " filetype:drawing"))
+        hits = [h["title"] for h in json.loads(b)["query"]["search"]] if b else []
+        key = sid.replace("rtlup", "rtl").replace("nick", "nick")[:3].lower()
+        hits = [h for h in hits if key in h.lower().replace("-", "").replace(" ", "")]
+        print("Commons", sid, qy, hits[:5], file=sys.stderr)
+        if hits and fetch(sid, "https://commons.wikimedia.org/wiki/Special:FilePath/" + urllib.parse.quote(hits[0][5:]), "commons:" + hits[0]): break
+        time.sleep(1)
 json.dump(out, open("logos.json", "w"))
 print("Logos:", len(out), sorted(out), file=sys.stderr)
