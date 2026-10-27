@@ -15,4 +15,4 @@ if errorlevel 1 (
 )
 echo.
 echo  Installation startet - die KI (4,7 GB) wird dabei mitkopiert, das dauert einige Minuten.
-start /wait "" "Medienmanager-2027-1.3.1-Setup.exe"
+start /wait "" "Medienmanager-2027-1.3.2-Setup.exe"
