@@ -1,7 +1,7 @@
 {
   "name": "quotenturm",
   "productName": "Medienmanager 2027",
-  "version": "1.3.3",
+  "version": "1.4.0",
   "description": "TV- & Streaming-Manager",
   "main": "main.js",
   "private": true,
