@@ -602,7 +602,7 @@ svg.avatar.look { border-radius: 50%; display: block; flex: none; }
   #cont { min-width: 150px; }
 }
 /* Tablets (z. B. iPad quer): Hauptmenü in eine eigene Zeile, damit alle Bereiche sichtbar bleiben */
-@media (max-width: 1280px) {
+@media (max-width: 1520px) {
   #top { flex-wrap: wrap; }
   #mainnav { order: 5; width: 100%; }
 }
@@ -3563,6 +3563,7 @@ function endDay() {
   }
   quotenReport();
   try { qcSnap(); } catch (err) { console.error(err); }
+  try { fileBackup(); } catch (err) { console.error(err); }
   for (const r of G.rights) {
     if (rActive(r)) {
       if (--r.days <= 0) {
@@ -4386,6 +4387,11 @@ function act(b) {
   if (k === "edCodes") { exportCodes(); return; }
   if (["edClose", "edRole", "edPick", "edNew", "edSave", "edDelete", "edClearTitles", "edClearPeople"].includes(k)) { edAct(k, b); return; }
   if (k === "pickStation") { closeModal(); hideHome(); hist = []; fut = []; planDay = null; newGame(b.dataset.k); go("overview", true); return; }
+  if (k === "fileSaves") { openSaveFiles(); return; }
+  if (k === "fileLoad") { fileLoad(b.dataset.k); return; }
+  if (k === "fileDel") { if (confirm("Diesen Spielstand löschen?")) window.mmSave.del(b.dataset.k).then(openSaveFiles); return; }
+  if (k === "fileDir") { window.mmSave.openDir(); return; }
+  if (k === "fileSaveAs") { fileSaveAs(); setTimeout(openSaveFiles, 400); return; }
   if (k === "load") { load().then(ok => { if (ok) { closeModal(); hideHome(); hist = []; fut = []; planDay = null; startDay(); go("overview", true); } else toast("Spielstand konnte nicht geladen werden."); }); return; }
   if (!G) return;
   const P = me();
@@ -6844,7 +6850,7 @@ function bankPage(P) {
   h += `<section class="panel mb"><div class="ph"><h2>Kreditinstitute</h2><span class="aside">fiktive Banken</span></div><div class="tbl"><table><tbody>${BANKS.map(b => { const l = loans.find(x => x.bank === b.id), vol = r1000(b.vol * bankScale(P));
     return `<tr><td class="title"><b>${b.name}</b><div class="muted">${b.profile}</div><div class="fine">${b.cond}</div></td><td class="num">${b.rate.toLocaleString("de-DE")} % p. a.</td><td class="num">${vol ? eur(vol) + ` · ${b.weeks} Wo.` : "Linie +50 %"}</td><td>${l ? `<span class="chip">läuft · Rest ${eur(l.rest)} · ${l.left} Wo.${l.missed ? ` · ${l.missed}× verpasst` : ""}</span>` : `<button class="btn hot small" data-act="loan" data-k="${b.id}" ${planLocked() || imageOf(P) < b.need ? "disabled" : ""}>${b.vol ? "Kredit beantragen" : "Unterzeichnen"}</button>`}</td></tr>`; }).join("")}</tbody></table></div></section>`;
   h += `<section class="panel"><div class="ph"><h2>Spielstand-Datei</h2></div><div class="pad"><p class="fine">Der Spielstand wird automatisch auf diesem Gerät gespeichert. Zusätzlich können Sie ihn als Datei sichern und später wieder einlesen (in der Windows-App).</p>
-    <div class="row"><button class="btn" data-act="saveExport">Spielstand als Datei sichern</button> <label class="btn ghost">Spielstand laden<input type="file" accept=".json" data-upload="save" hidden></label></div></div></section>`;
+    <div class="row">${hasFiles() ? '<button class="btn hot" data-act="fileSaves">Spielstände (Ordner)</button> ' : ""}<button class="btn" data-act="saveExport">Spielstand als Datei sichern</button> <label class="btn ghost">Spielstand laden<input type="file" accept=".json" data-upload="save" hidden></label></div></div></section>`;
   return h;
 }
 // Spielstand als JSON-Datei
@@ -7098,7 +7104,8 @@ function settingsPage(P) {
   h += `<section class="panel mb"><div class="ph"><h2>Spiel</h2></div><div class="pad">
     <div class="kv"><span>Tempo am Sendeabend</span>${seg("speed", [[1, "Regie"], [2, "Normal"], [3, "Schnell"], [4, "Sofort"]])}</div>
     <div class="kv"><span>Automatisches Speichern</span><b>nach jeder Aktion</b></div>
-    <div class="row" style="margin-top:8px"><button class="btn" data-act="saveExport">Spielstand als Datei sichern</button> <button class="btn hot" data-act="saveQuit">Speichern & beenden</button></div></div></section>`;
+    ${hasFiles() ? '<div class="kv"><span>Spielstand-Dateien</span><b>Dokumente › Medienmanager 2027 › Spielstände</b></div>' : ""}
+    <div class="row" style="margin-top:8px">${hasFiles() ? '<button class="btn" data-act="fileSaves">Spielstände verwalten</button> ' : ""}<button class="btn" data-act="saveExport">Spielstand als Datei sichern</button> <button class="btn hot" data-act="saveQuit">Speichern & beenden</button></div></div></section>`;
   h += logoCard();
   h += `<section class="panel"><div class="ph"><h2>${BUILTIN_AI() ? "Eingebaute KI" : "Lokale KI (optional)"}</h2>${info("Ein kleines Sprachmodell auf Ihrem eigenen Rechner (Ollama) formuliert Branchenmeldungen und wertet frei formulierte Antworten in Pressekonferenzen aus. Es werden keine Daten ins Internet geschickt. Quoten, Werbung und Finanzen rechnet weiterhin das Spiel. Echte Personen erhalten keine erfundenen Zitate.")}</div><div class="pad">
     <div class="kv"><span>KI-Texte</span><div class="pills">${[[false, "Aus"], [true, "Ein"]].map(([v, n]) => `<button data-act="setOpt" data-k="ai" data-v="${v}" class="${aiOn() === v ? "on" : ""}">${n}</button>`).join("")}</div></div>
@@ -8406,7 +8413,7 @@ function showStart() {
       <span class="hm-btn hm-user">👤 ${esc(AV.name || "Programmdirektion")}</span>${desk ? '<button class="hm-btn" data-act="homeQuit">Beenden</button>' : ""}</div></div>
     <div class="hm-grid">
       <button class="hm-card hm-hero" data-act="choose"><h2>Neue Karriere starten</h2><p>Übernehmen Sie die Programmdirektion eines Senders – und arbeiten Sie sich nach oben.</p><span class="hm-art hm-studio"><i></i><i></i><i></i><em></em></span></button>
-      <button class="hm-card" data-act="${has ? "load" : "homeImport"}"><h2>Spiel laden</h2><p>${has ? "Ihren gespeicherten Spielstand fortsetzen." : "Noch kein Spielstand auf diesem Gerät – Spielstand-Datei laden."}</p>${has ? '<span class="hm-link" data-act="homeImport">oder Datei laden ›</span>' : ""}</button>
+      <button class="hm-card" data-act="${has ? "load" : "homeImport"}"><h2>Spiel laden</h2><p>${has ? "Ihren gespeicherten Spielstand fortsetzen." : "Noch kein Spielstand auf diesem Gerät – Spielstand-Datei laden."}</p>${hasFiles() ? '<span class="hm-link" data-act="fileSaves">Spielstände aus dem Ordner ›</span>' : ""}${has ? '<span class="hm-link" data-act="homeImport">oder Datei laden ›</span>' : ""}</button>
       <button class="hm-card" data-act="editor"><h2>Datenbank</h2><p>Personen, Titel, Fotos und IMDb-Dateien verwalten – alles bleibt lokal.</p></button>
       <button class="hm-card hm-stream" data-act="homeQuick" data-k="stream:netflix"><h3>STREAMER-KARRIERE</h3><p>Leiten Sie einen Streamingdienst in DACH: Abos, Kündigungen, Originals.</p><span class="hm-link">Schnellstart ›</span><span class="hm-badge">▶</span></button>
       <button class="hm-card hm-oer" data-act="homeQuick" data-k="station:zdf"><h3>Öffentlich-rechtlich</h3><p>Beitrag statt Werbung, Auftrag und Quote im Gleichgewicht – übernehmen Sie das ZDF.</p><span class="hm-link">Schnellstart ›</span><span class="hm-badge">📡</span></button>
@@ -10728,6 +10735,37 @@ function streamChartsPage(P) {
   return h;
 }
 // =====================================================================
+// Spielstände als Dateien (nur Windows-App): Dokumente\Medienmanager 2027\Spielstände
+// autosave.json nach jeder Aktion (verzögert), Tagessicherung nach jedem Sendetag, eigene Stände per „Speichern unter“
+// =====================================================================
+const hasFiles = () => typeof window !== "undefined" && !!window.mmSave;
+let fileSaveT = null;
+const savePayload = () => JSON.stringify({ app: "Medienmanager 2027", v: 1, saved: new Date().toISOString(), station: me() ? me().name : "", day: G.day, G });
+function fileSaveSoon() { if (!hasFiles() || !G) return; clearTimeout(fileSaveT); fileSaveT = setTimeout(() => { try { window.mmSave.write("autosave.json", savePayload()).catch(() => {}); } catch (e) { /* egal */ } }, 2500); }
+function fileBackup() {
+  if (!hasFiles() || !G) return;
+  const d = dateOf(G.day), ds = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  window.mmSave.write(`Tag-${String(G.day).padStart(4, "0")}_${me().name.replace(/[^A-Za-z0-9ÄÖÜäöüß]+/g, "")}_${ds}.json`, savePayload()).catch(() => {});
+}
+function fileSaveAs() {
+  if (!hasFiles() || !G) return;
+  const n = (prompt("Name für den Spielstand:", `${me().name} Tag ${G.day}`) || "").trim(); if (!n) return;
+  window.mmSave.write(`Eigen_${n.replace(/[^A-Za-z0-9ÄÖÜäöüß _-]+/g, "_").slice(0, 60)}.json`, savePayload()).then(r => toast(r && r.ok ? "Spielstand gespeichert." : "Speichern fehlgeschlagen."));
+}
+const saveLabel = n => n === "autosave.json" ? "Automatisch (zuletzt)" : n.startsWith("Tag-") ? `Tagessicherung ${n.replace(/^Tag-0*/, "Tag ").replace(/_/g, " · ").replace(/\.json$/, "")}` : n.replace(/^Eigen_/, "").replace(/\.json$/, "");
+async function openSaveFiles() {
+  if (!hasFiles()) return toast("Spielstand-Dateien gibt es nur in der Windows-App.");
+  const [list, dir] = await Promise.all([window.mmSave.list(), window.mmSave.dir()]);
+  openModal(`<header><h2>Spielstände</h2>${G ? '<button class="btn" data-act="fileSaveAs">Speichern unter …</button>' : ""}<button class="btn" data-act="fileDir">Ordner öffnen</button><button class="btn" data-act="close">Schließen</button></header><div class="dbody">
+    <p class="fine mb">Ordner: ${esc(dir)} – zum Mitnehmen auf einen anderen PC einfach die Dateien kopieren.</p>
+    ${list.length ? `<div class="tbl"><table><tbody>${list.map(x => `<tr><td class="title">${esc(saveLabel(x.name))}</td><td class="muted">${new Date(x.mtime).toLocaleString("de-DE", { dateStyle: "short", timeStyle: "short" })}</td><td class="num muted">${(x.size / 1048576).toFixed(1).replace(".", ",")} MB</td>
+      <td class="num"><button class="btn small hot" data-act="fileLoad" data-k="${esc(x.name)}">Laden</button> ${x.name === "autosave.json" ? "" : `<button class="btn small" data-act="fileDel" data-k="${esc(x.name)}">Löschen</button>`}</td></tr>`).join("")}</tbody></table></div>` : '<p class="lead">Noch keine Spielstand-Dateien.</p>'}</div>`);
+}
+async function fileLoad(name) {
+  const txt = await window.mmSave.read(name); if (!txt) return toast("Datei nicht gefunden.");
+  try { await importSave({ text: async () => txt }); closeModal(); hideHome(); hist = []; fut = []; planDay = null; toast("Spielstand geladen."); } catch (e) { toast(`Laden fehlgeschlagen: ${e.message}`); }
+}
+// =====================================================================
 // Formatprofil: Quotenverlauf, Publikum, Analyse und Maßnahmen je Sendung
 // =====================================================================
 // Affinität zur Zielgruppe 14–49 (Spielwerte): Sender-Image × Genre
@@ -12091,6 +12129,7 @@ async function storeTitlesAsync() { if (IDB.db) { try { await idbSet(TITLE_KEY, 
 // =====================================================================
 const KEY = "quotenturm-v7";
 function save() {
+  fileSaveSoon();
   if (IDB.db) { idbSet(KEY, G).catch(() => {}); try { localStorage.setItem(KEY + "-has", "1"); localStorage.removeItem(KEY); } catch (e) { /* egal */ } return; }
   try { localStorage.setItem(KEY, JSON.stringify(G)); } catch (e) { /* ohne Speicher spielbar */ }
 }

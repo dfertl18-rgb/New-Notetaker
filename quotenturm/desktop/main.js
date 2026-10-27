@@ -6,6 +6,24 @@ const path = require("path");
 // Spielstände aus der Zeit als „Quotenturm“ weiter nutzen
 app.setPath("userData", path.join(app.getPath("appData"), "Quotenturm"));
 
+// Spielstände als Dateien: Dokumente\Medienmanager 2027\Spielstände (Autosave, Tagessicherungen, eigene Stände)
+const saveDir = () => { const d = path.join(app.getPath("documents"), "Medienmanager 2027", "Spielstände"); fs.mkdirSync(d, { recursive: true }); return d; };
+const safeName = n => String(n || "").replace(/[^A-Za-z0-9ÄÖÜäöüß _.-]/g, "_").slice(0, 80);
+ipcMain.handle("save:write", (_e, name, data) => {
+  const n = safeName(name); if (!n.endsWith(".json")) return { ok: false };
+  const f = path.join(saveDir(), n), tmp = f + ".tmp";
+  fs.writeFileSync(tmp, data, "utf8"); fs.renameSync(tmp, f);
+  // Tagessicherungen begrenzen (die letzten 15 bleiben)
+  const days = fs.readdirSync(saveDir()).filter(x => x.startsWith("Tag-") && x.endsWith(".json")).map(x => [x, fs.statSync(path.join(saveDir(), x)).mtimeMs]).sort((a, b) => b[1] - a[1]);
+  for (const [x] of days.slice(15)) try { fs.unlinkSync(path.join(saveDir(), x)); } catch (e) { /* egal */ }
+  return { ok: true, path: f };
+});
+ipcMain.handle("save:list", () => fs.readdirSync(saveDir()).filter(x => x.endsWith(".json")).map(x => { const st = fs.statSync(path.join(saveDir(), x)); return { name: x, size: st.size, mtime: st.mtimeMs }; }).sort((a, b) => b.mtime - a.mtime));
+ipcMain.handle("save:read", (_e, name) => { const f = path.join(saveDir(), safeName(name)); return fs.existsSync(f) ? fs.readFileSync(f, "utf8") : null; });
+ipcMain.handle("save:del", (_e, name) => { const f = path.join(saveDir(), safeName(name)); if (fs.existsSync(f)) fs.unlinkSync(f); return true; });
+ipcMain.handle("save:open", () => shell.openPath(saveDir()));
+ipcMain.handle("save:dir", () => saveDir());
+
 function createWindow() {
   const win = new BrowserWindow({
     width: 1440, height: 900, minWidth: 1024, minHeight: 700,
