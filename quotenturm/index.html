@@ -664,6 +664,18 @@ svg.avatar.look { border-radius: 50%; display: block; flex: none; }
 .hm-academy span { color: #7c3aed; }
 .hm-stamp { font: 700 30px/1 "Barlow Condensed", sans-serif; color: #15122a; padding: 8px 14px; border: 3px solid #e11d48; border-left-color: #7c3aed; border-right-color: #7c3aed; }
 @media (max-width: 760px) { .hm-grid { grid-template-columns: 1fr; } .hm-wall { opacity: .25; width: 90%; } .hm-desk { opacity: .3; } .hm-academy { font-size: 30px; } .hm-stamp { font-size: 20px; } }
+
+.qc-h{color:var(--good,#37b24d)}
+.qc-tabs{display:flex;gap:4px;border-bottom:1px solid var(--line,#333);margin:0 0 14px}
+.qc-tabs button{background:none;border:0;border-bottom:2px solid transparent;padding:8px 14px;color:var(--good,#37b24d);font:inherit;cursor:pointer}
+.qc-tabs button.on{border-bottom-color:currentColor;font-weight:700}
+.qc-grid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:14px}
+@media (max-width:900px){.qc-grid{grid-template-columns:1fr}}
+.qc-t td{padding:5px 8px}.qc-t tr:nth-child(odd) td{background:rgba(127,127,127,.06)}
+.qc-l{width:52px;text-align:center}.qc-l img,.qc-l svg{vertical-align:middle}
+.qc-bars{padding:8px 12px}.qc-bar{display:grid;grid-template-columns:52px 58px 1fr;align-items:center;gap:8px;height:30px}
+.qc-bar .qc-v{text-align:right;font-variant-numeric:tabular-nums}.qc-track{height:20px}.qc-track i{display:block;height:100%;border-radius:2px}
+.qc-bar.mine .qc-v{font-weight:800}
 </style>
 </head>
 <body>
@@ -1428,7 +1440,7 @@ const MENU = [
   { id: "produktion", name: "Produktion", subs: [["studio", "Studio", "Eigene Filme, Serien, Shows und Dokus"], ["formatdev", "Formatentwicklung", "Messen, Scouting, Ideenschmiede"], ["talent", "Talent-Gespräche", "Vorgespräche mit Agenturen, Pitches, Branchentreffen"], ["casting", "Casting", "Stars, Moderation, Nachrichtengesichter"], ["newsroom", "Nachrichtenredaktion", "Blattlinie, Stil, Etat und Sprecher*in"], ["export", "Rechtemarkt international", "Formate und Produktionen ins Ausland verkaufen"]] },
   { id: "streaming", name: "Streaming", subs: [["stream", "Plattform", "Abos, Churn, ARPU und Preismodell"], ["catalog", "Katalog", "Titel und Verwertungsfenster"], ["smarket", "Wettbewerb", "Streamer im Vergleich und Top 10"], ["svhq", "Streaming-Zentrale", "Leitung eines Streamers (Karriere)"]] },
   { id: "sport", name: "Sport", subs: [["rights", "Rechtemarkt", "Ausschreibungen und Gebote"], ["myrights", "Meine Rechte", "Pakete und Live-Termine"], ["spielplan", "Spielplan", "Rahmenterminkalender Fußball"]] },
-  { id: "quoten", name: "Quoten", subs: [["table", "Quotentabelle", "Senderranking nach Marktanteil"], ["ratings", "Einschaltquoten", "Jede Stunde, jeder Sender"], ["rivals", "Konkurrenz", "Tagesplan der anderen Sender"], ["landscape", "Markt", "Sendergruppen und Streamer"], ["mediaana", "Media-Analyse", "Marktanteile Z1–Z4 je Sender, Quartal"]] },
+  { id: "quoten", name: "Quoten", subs: [["table", "Quotentabelle", "Senderranking nach Marktanteil"], ["charts", "Quoten-Charts", "Meistgesehene Sendungen, Tagesmarktanteile, 14-49 / 14-59"], ["streamcharts", "Streaming-Charts", "Abrufe, Programmmarken, Plattformnutzung"], ["ratings", "Einschaltquoten", "Jede Stunde, jeder Sender"], ["rivals", "Konkurrenz", "Tagesplan der anderen Sender"], ["landscape", "Markt", "Sendergruppen und Streamer"], ["mediaana", "Media-Analyse", "Marktanteile Z1–Z4 je Sender, Quartal"]] },
   { id: "sender", name: "Sender", subs: [["chiefs", "Rivalen", "Beziehungen zu den Senderchefs"], ["board", "Senderleitung", "Erwartungen, Vertrauen, Kredit"], ["finance", "Finanzen", "Erlöse, Kosten, EBITDA"], ["contracts", "Werbeverträge", "Laufende Werbeverträge"], ["adsales", "Vermarktung", "Erlöse, TKP, Kunden, Preisliste"], ["personal", "Personal", "Moderation, Kommentar, Produktion"], ["backroom", "Mitarbeiterstab", "Vermarktung, Disposition, Casting, Technik"], ["rentab", "Rentabilität", "Ergebnis je Sendung mit Tipps"], ["network", "Beziehungen", "Studios, Presse, Medienpolitik, Stars"], ["karriere", "Karriere", "Job-Sicherheit, Arbeitsmarkt, Vorstand"], ["bank", "Bank & Bilanz", "Kredite, Liquidität, Abschreibung, Spielstand"], ["hof", "Ruhmeshalle", "Jahresrückblick und Auszeichnungen"], ["agency", "Werbeagentur", "Neue Werbekunden gewinnen"], ["jury", "Fernsehpreise", "Grimme, Fernsehpreis, Bambi, Henne"]] },
 ];
 let openMenu = null;
@@ -3376,7 +3388,7 @@ function startDay() {
 function aiTurn(st) {
   // Bietergefecht um begehrte Titel: reiche Sender schnappen Topware schnell weg
   let bought = false;
-  const hot = G.market.filter(p => isHot(p) && (p.mdays || 0) >= 1 && stAllow(st, p.genre)).sort((a, b) => (b.pull || 0) + b.q / 100 - (a.pull || 0) - a.q / 100)[0];
+  const hot = G.market.filter(p => isHot(p) && (p.mdays || 0) >= 1 && stAllow(st, p.genre) && (st.type !== "oer" || !["Sitcom", "Reality", "Action", "Science-Fiction"].includes(p.genre))).sort((a, b) => (b.pull || 0) + b.q / 100 - (a.pull || 0) - a.q / 100)[0];
   if (hot && st.money > hot.price * 1.5 && Math.random() < 0.18 * (Math.min(st.base, 15) / 8 + (st.base < 2 ? 0.1 : 0.5))) {
     G.market = G.market.filter(x => x !== hot); applyLicense(hot, pick([1, 2])); st.progs.push(hot);
     logMsg("Branchendienst", "Konkurrenz", `Bietergefecht entschieden: ${st.name} sichert sich ${hot.kind === "film" ? "den begehrten Film" : "die begehrte Serie"} „${hot.title}“${hot.imdb ? ` (IMDb ${hot.imdb[0].toLocaleString("de-DE")})` : ""}.`);
@@ -3527,6 +3539,7 @@ function endDay() {
     st.hist.push({ day: G.day, ma: st.dayMA, d, money: st.money, fin: { ...st.fin }, ebitda, views, conf: st.conf, stream: srec });
   }
   quotenReport();
+  try { qcSnap(); } catch (err) { console.error(err); }
   for (const r of G.rights) {
     if (rActive(r)) {
       if (--r.days <= 0) {
@@ -3751,7 +3764,7 @@ function applyClubColors() {
 function render(top) {
   if (!G) return;
   renderNav(); renderTop(); try { roomDock(); } catch (e) {}
-  const pages = { overview, inbox, plan: planPage, archiv, market, filmmarket: filmMarketPage, chiefs: rivalsPage, adsales: adsalesPage, spielplan: spielplanPage, formatmarkt: formatMarketPage, wochenplan: weekPlanPage, formatdev: formatDevPage, personal: staffPage, backroom: backroomPage, rentab: rentPage, network: networkPage, karriere: careerPage, social: socialPage, svhq: svPage, talent: talentPage, kino: cinePage, hof: hofPage, settings: settingsPage, bank: bankPage, mediaana: maPage, politik: politicsPage, stream: streamPage, catalog, smarket, rights: rightsPage, myrights, contracts, agency, ticker, table: tablePage, ratings, landscape, board, finance, jury, rivals, live: livePage, studio, newprod: newProdPage, casting, newsroom, export: exportPage };
+  const pages = { overview, inbox, plan: planPage, archiv, market, filmmarket: filmMarketPage, chiefs: rivalsPage, adsales: adsalesPage, spielplan: spielplanPage, formatmarkt: formatMarketPage, wochenplan: weekPlanPage, formatdev: formatDevPage, personal: staffPage, backroom: backroomPage, rentab: rentPage, network: networkPage, karriere: careerPage, social: socialPage, svhq: svPage, talent: talentPage, kino: cinePage, hof: hofPage, settings: settingsPage, bank: bankPage, mediaana: maPage, charts: chartsPage, streamcharts: streamChartsPage, politik: politicsPage, stream: streamPage, catalog, smarket, rights: rightsPage, myrights, contracts, agency, ticker, table: tablePage, ratings, landscape, board, finance, jury, rivals, live: livePage, studio, newprod: newProdPage, casting, newsroom, export: exportPage };
   const sc = $("content").scrollTop;
   $("content").innerHTML = (pages[page] || overview)(me());
   if (!top) $("content").scrollTop = sc;
@@ -4526,6 +4539,10 @@ function act(b) {
     case "svCommission": { const err = isStreamJob() ? svCommission(($("svG") || {}).value, ($("svF") || {}).value, ($("svH") || {}).value, ($("svC") || {}).value) : "Kein Streamer-Job."; toast(err || "Original beauftragt."); break; }
     case "feedF": feedFilter = b.dataset.k; break;
     case "maZ": maZ = +b.dataset.k; break;
+    case "qcTab": qcTab = b.dataset.k; break;
+    case "qcDay": qcDayOff = Math.max(0, qcDayOff + +b.dataset.k); break;
+    case "qcFin": qcFinal = !qcFinal; break;
+    case "scTab": scTab = b.dataset.k; break;
     case "saveExport": exportSave(); toast("Spielstand-Datei wird gespeichert."); return;
     case "talkField": G.talkSel = { ...(G.talkSel || { ids: [] }), field: b.dataset.k }; break;
     case "boardPoker": openBoardPoker(b.dataset.k); return;
@@ -7943,7 +7960,7 @@ function primeCheck() {
 // =====================================================================
 // Jede Nachricht lässt sich öffnen: Volltext, erwähnte Personen/Sender/Titel als Links, passender Bereich, optional KI-Einordnung
 // =====================================================================
-const MSG_GO = { Quote: ["ratings", "Einschaltquoten"], Quoten: ["ratings", "Einschaltquoten"], Personal: ["casting", "Casting"], Talent: ["talent", "Talent-Gespräche"], Vertrag: ["casting", "Casting"],
+const MSG_GO = { Quote: ["charts", "Quoten-Charts"], Quoten: ["charts", "Quoten-Charts"], Personal: ["casting", "Casting"], Talent: ["talent", "Talent-Gespräche"], Vertrag: ["casting", "Casting"],
   Streaming: [() => isStreamJob() ? "svhq" : "stream", "Streaming"], Kino: ["kino", "Kino & Rechte"], Werbung: ["adsales", "Werbung"], Finanzen: ["bank", "Bank & Bilanz"], Strafen: ["bank", "Bank & Bilanz"],
   Karriere: ["karriere", "Karriere"], Vorstand: ["karriere", "Karriere"], Vertrauen: ["karriere", "Karriere"], Sport: ["spielplan", "Sport"], Produktion: ["studio", "Studio"], Konkurrenz: ["chiefs", "Konkurrenz"],
   Politik: ["politik", "Politik & Talk"], Eilmeldung: ["politik", "Politik & Talk"], Rechte: ["filmmarket", "Filmrechte"], Programm: ["market", "Programmhandel"], Kritik: ["ratings", "Einschaltquoten"],
@@ -10532,6 +10549,148 @@ function figSvg(L0, o = {}) {
   return `<svg class="avatar fig ${mode}" viewBox="${box}" width="${w}" height="${h}" aria-hidden="true">${defs}${bgEl}${figure}</svg>`;
 }
 // =====================================================================
+// Quoten-Charts: meistgesehene Sendungen und Tagesmarktanteile je Zielgruppe (ab 3 / 14–49 / 14–59),
+// vorläufig und endgültig gewichtet (+ zeitversetzte Nutzung nach 7 Tagen), Streaming-Charts und Plattformnutzung.
+// Alle Werte sind simulierte Spielwerte.
+// =====================================================================
+const QC_GROUPS = [["all", "Gesamtpublikum ab 3"], ["y", "Zielgruppe 14-49"], ["y5", "Zielgruppe 14-59"]];
+const QC_GY = 0.2, QC_G5 = 0.38; // Anteil der Gruppe an der gesamten TV-Nutzung (Spielwert)
+const mio3 = v => v.toLocaleString("de-DE", { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+let qcTab = "all", qcDayOff = 0, qcFinal = false, scTab = "charts";
+// 14–59: Z1 + Z2 + gut die Hälfte von Z3 (50–64), normiert auf den Bevölkerungsanteil
+const idx59 = (st, p) => { const z = zMix(st, p), pop = ZPOP[0] + ZPOP[1] + 0.6 * ZPOP[2]; return clamp((z[0] + z[1] + 0.6 * z[2]) / pop, 0.3, 1.8) * (p && SATIRE_RX.test(`${p.title} ${p.sub || ""}`) ? 1.4 : 1) * (p && p.kind === "sport" ? 1.25 : 1); };
+// Nachschlag durch zeitversetzte Nutzung (3 Tage) und Livestreams – nach Genre und Sendeplatz
+function qcLate(row) {
+  const [, start, title, , , , , , , genre] = row, h = Math.floor(start / 60);
+  let f = { Krimi: 0.08, Serie: 0.07, Soap: 0.09, Sitcom: 0.06, Komödie: 0.06, Drama: 0.06, Show: 0.05, Reality: 0.09, Talk: 0.1, Kultur: 0.05, Doku: 0.05, Magazin: 0.03, Nachrichten: 0.01, Sport: 0.02, Kinder: 0.02, Teleshopping: 0 }[genre] ?? 0.05;
+  if (SATIRE_RX.test(title)) f = 0.3;
+  if (h >= 22 || h < 2) f += 0.04;
+  if (h < 17 && h >= 6) f *= 0.5;
+  const r = 0.7 + (hashStr(title + start) % 600) / 1000;
+  return { all: f * r, y: f * r * 1.8, y5: f * r * 1.4 };
+}
+function qcSnap() {
+  const segs = (G.daySeg || []).filter(d => d.min >= 5 && d.bs > 0);
+  const rows = segs.map(d => {
+    const st = G.stations[d.st], p = progOf(st, d.id), v = d.vs / d.min, ma = d.vs / d.bs * 100, maY = (d.ys || 0) / d.min, ma5 = (d.y5 || 0) / d.min;
+    return [d.st, d.start, d.title, +v.toFixed(3), +ma.toFixed(1), +maY.toFixed(1), +ma5.toFixed(1), +(v * (maY / Math.max(ma, 0.01)) * QC_GY).toFixed(3), +(v * (ma5 / Math.max(ma, 0.01)) * QC_G5).toFixed(3), p ? (p.kind === "sport" ? "Sport" : p.genre) : "–"];
+  });
+  const keep = new Set([...rows].sort((a, b) => b[3] - a[3]).slice(0, 50).concat([...rows].sort((a, b) => b[7] - a[7]).slice(0, 40), [...rows].sort((a, b) => b[8] - a[8]).slice(0, 40)));
+  // Tagesmarktanteile: gesamt aus dem Tagesverlauf, Zielgruppen normiert über alle Sender
+  const wY = G.stations.map(() => 0), w5 = G.stations.map(() => 0);
+  for (const d of segs) { wY[d.st] += (d.ys || 0) * d.bs / (100 * d.min); w5[d.st] += (d.y5 || 0) * d.bs / (100 * d.min); }
+  const sY = wY.reduce((a, x) => a + x, 0) || 1, s5 = w5.reduce((a, x) => a + x, 0) || 1, lin = (1 - otherShare()) * 100;
+  const day = G.stations.map((st, i) => [+st.dayMA.toFixed(2), +(wY[i] / sY * lin).toFixed(2), +(w5[i] / s5 * lin).toFixed(2)]);
+  G.qc = (G.qc || []).filter(x => x.day !== G.day).concat([{ day: G.day, rows: rows.filter(r => keep.has(r)), d: day }]).slice(-21);
+  qcFinalize();
+  platMonth();
+}
+// Sieben Tage später: endgültig gewichtete Werte und montags der Nachschlag-Bericht
+function qcFinalize() {
+  const e = G.qc.find(x => x.day === G.day - 7);
+  if (e && !e.fin) {
+    e.fin = e.rows.map(r => { const f = qcLate(r); return [+(r[3] * f.all).toFixed(3), +(r[7] * f.y).toFixed(3), +(r[8] * f.y5).toFixed(3)]; });
+    e.dfin = e.d.map((x, i) => { const own = e.rows.map((r, k) => r[0] === i ? e.fin[k] : null).filter(Boolean); return x.map((v, g) => +(v * (1 + Math.min(0.08, own.reduce((a, f) => a + f[g], 0) / 40))).toFixed(2)); });
+  }
+  if (weekday(G.day) !== 1) return;
+  const wk = G.qc.filter(x => x.fin && x.day <= G.day - 7 && x.day > G.day - 14);
+  if (!wk.length) return;
+  const all = wk.flatMap(x => x.rows.map((r, k) => ({ day: x.day, r, f: x.fin[k] }))).filter(o => Math.floor(o.r[1] / 60) >= 18 && o.r[1] < 23.5 * 60);
+  const seen = new Set(), top = all.sort((a, b) => b.f[0] - a.f[0]).filter(o => !seen.has(o.r[2]) && seen.add(o.r[2])).slice(0, 5);
+  if (!top.length) return;
+  const mine = all.filter(o => o.r[0] === G.me).sort((a, b) => b.f[0] - a.f[0])[0];
+  logMsg("Branchendienst Medienplatz", "Quote", `Endgültig gewichtete Quoten (${dateShort(wk[0].day)} – ${dateShort(wk[wk.length - 1].day)}): Größter Nachschlag für ${top.map(o => `„${o.r[2]}“ (${G.stations[o.r[0]].name}) +${mio(o.f[0])} Mio. auf ${mio(o.r[3] + o.f[0])} Mio.`).join(", ")}${mine ? ` Ihr Sender: „${mine.r[2]}“ legt um ${mio(mine.f[0])} Mio. zu, bei den 14- bis 49-Jährigen um ${mio(mine.f[1])} Mio.` : ""} Details unter Quoten › Quoten-Charts („endgültig gewichtet“).`);
+}
+// Plattformnutzung je Monat (Stunden), Vergleich zum Vormonat
+const PLAT_H = { prime: 7.4, mediathek: 0, netflix: 9, disney: 5.5, rtlplus: 9.9, joyn: 11.8, dazn: 4.2, wow: 2.8, paramount: 3 };
+const PLAT_Y = { prime: 0.71, mediathek: 0.3, netflix: 0.72, disney: 0.7, rtlplus: 0.75, joyn: 0.54, dazn: 0.62, wow: 0.65, paramount: 0.5 };
+function platNow() {
+  const m = dateOf(G.day).getMonth(), sea = TV_MONTH[m] || 1, out = {};
+  for (const s of G.streamers) {
+    const d = STREAMERS.find(x => x.id === s.id); if (!d) continue;
+    let h = s.id === "mediathek" ? 106e6 * (0.7 + 0.3 * (1 - otherShare())) : s.subs * 1e6 * (PLAT_H[s.id] || 5);
+    if (s.id === "dazn" && [7, 8, 9, 10, 11, 0, 1, 2, 3, 4].includes(m)) h *= 1.6; // Fußballsaison
+    out[s.id] = { h: Math.round(h * sea * (0.95 + (hashStr(s.id + m + G.day) % 100) / 1000)), y: PLAT_Y[s.id] || 0.6 };
+  }
+  if (G.stream && G.stream.subs) out.own = { h: Math.round(G.stream.subs * 1e6 * 6 * sea), y: 0.6, name: G.stream.name };
+  return out;
+}
+function platMonth() {
+  const m = dateOf(G.day).getMonth(), next = dateOf(G.day + 1).getMonth();
+  if (m === next) return;
+  G.plat = (G.plat || []).concat([{ m, y: dateOf(G.day).getFullYear(), v: platNow() }]).slice(-14);
+}
+// Streaming-Charts der Woche (Views in Mio.): Hits der Streamer, Formate der Sender-Mediatheken, eigener Streamer
+function streamCharts(wk) {
+  const rr = s => (hashStr(s + "|" + wk) % 1000) / 1000, list = [];
+  for (const s of G.streamers) {
+    const d = STREAMERS.find(x => x.id === s.id); if (!d || s.id === "mediathek") continue;
+    d.hits.forEach((t, k) => list.push({ sid: s.id, title: t, v: s.subs * (0.16 - k * 0.018) * (0.55 + rr(t)) }));
+  }
+  const last = (G.qc || []).filter(x => x.day > G.day - 7);
+  const best = new Map();
+  for (const x of last) for (const r of x.rows) {
+    const st = G.stations[r[0]], sid = STATIONS[r[0]].streamer; if (!sid || r[9] === "Nachrichten" && rr(r[2]) < 0.6) continue;
+    const v = (r[7] * 1.6 + r[3] * 0.12) * (r[9] === "Sport" ? 1.4 : 1) * (0.7 + rr(r[2]) * 0.6), k = r[2] + "|" + st.id;
+    if (!best.has(k) || best.get(k).v < v) best.set(k, { sid, st: st.i, title: r[2], v });
+  }
+  list.push(...best.values());
+  if (G.stream && G.stream.subs) (G.stream.catalog || []).slice(0, 12).forEach(c => { const p = progOf(me(), c.id); if (p) list.push({ sid: "own", title: p.title, v: G.stream.subs * 0.12 * (0.5 + rr(p.title)) }); });
+  return list.filter(x => x.v > 0.05).sort((a, b) => b.v - a.v);
+}
+function qcLogo(o) {
+  if (o.sid === "own") return `<span class="sbadge" style="--c:var(--club)">${esc(G.stream.name.split(" ")[0])}</span>`;
+  if (o.st != null) return crest(o.st, 16);
+  return sbadge(o.sid, 16);
+}
+function chartsPage(P) {
+  const days = G.qc || [];
+  if (!days.length) return title("Quoten-Charts") + `<section class="panel"><p class="pad">Die ersten Charts erscheinen nach dem ersten vollständigen Sendetag.</p></section>`;
+  const idx = clamp(days.length - 1 - qcDayOff, 0, days.length - 1), e = days[idx], fin = qcFinal && e.fin, g = QC_GROUPS.findIndex(x => x[0] === qcTab);
+  const d = dateOf(e.day), dlab = `${WDL[d.getDay()]}, dem ${d.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" })}`;
+  const gName = ["", " (14-49)", " (14-59)"][g];
+  const rows = e.rows.map((r, k) => { const add = fin ? e.fin[k] : [0, 0, 0]; const v = [r[3] + add[0], r[7] + add[1], r[8] + add[2]][g], base = [r[3], r[7], r[8]][g] || 0.001, ma = [r[4], r[5], r[6]][g] * (fin ? 1 + (v / base - 1) * 0.6 : 1); return { r, v, ma, add: add[g] }; })
+    .sort((a, b) => b.v - a.v).slice(0, 25);
+  const dm = (fin ? e.dfin : e.d).map((x, i) => ({ i, ma: x[g] })).sort((a, b) => b.ma - a.ma).slice(0, 20), mx = Math.max(...dm.map(x => x.ma), 1);
+  let h = `<div class="page-title"><div class="grow"><h1 class="qc-h">Die Quoten-Charts von ${dlab}</h1></div><div class="pills">
+    <button data-act="qcDay" data-k="1" ${idx === 0 ? "disabled" : ""}>‹ Vortag</button><button data-act="qcDay" data-k="-1" ${qcDayOff === 0 ? "disabled" : ""}>Folgetag ›</button>
+    <button data-act="qcFin" class="${qcFinal ? "on" : ""}" ${e.fin ? "" : "disabled"} title="${e.fin ? "inkl. 3 Tage zeitversetzte Nutzung und Livestreams" : "Endgültige Werte liegen erst nach 7 Tagen vor"}">${qcFinal && e.fin ? "endgültig gewichtet" : "vorläufig gewichtet"}</button></div></div>`;
+  h += `<div class="qc-tabs">${QC_GROUPS.map(([k, n]) => `<button data-act="qcTab" data-k="${k}" class="${qcTab === k ? "on" : ""}">${n}</button>`).join("")}</div>`;
+  h += `<div class="qc-grid"><section class="panel"><div class="ph"><h2>Meistgesehene Sendungen${gName}</h2></div><div class="tbl"><table class="qc-t"><tbody>
+    ${rows.map(x => `<tr class="${x.r[0] === P.i ? "mine" : ""}"><td class="qc-l">${crest(x.r[0], 18)}</td><td class="muted">${hhmm(x.r[1])}</td><td class="title">${esc(x.r[2])}</td><td class="num">${mio3(x.v)}${fin && x.add > 0.005 ? ` <small class="up">+${mio(x.add)}</small>` : ""} Mio</td><td class="num">${pct(x.ma)}</td></tr>`).join("")}
+  </tbody></table></div></section>
+  <section class="panel"><div class="ph"><h2>Tagesmarktanteile${gName}</h2></div><div class="qc-bars">
+    ${dm.map(x => `<div class="qc-bar ${x.i === P.i ? "mine" : ""}"><span class="qc-l">${crest(x.i, 18)}</span><span class="qc-v">${pct(x.ma)}</span><span class="qc-track"><i style="width:${(x.ma / mx * 100).toFixed(1)}%;background:${STATIONS[x.i].color}"></i></span></div>`).join("")}
+  </div></section></div>
+  <p class="fine">Quelle: Medienforschung im Spiel – simulierte Werte. Sendungsdaten produktbezogen, Tages-MA nutzungsbezogen; ${fin ? "endgültig gewichtet (inkl. zeitversetzter Nutzung bis 3 Tage und Livestreams)" : "vorläufig gewichtet"}. Zielgruppen-MA bezogen auf die lineare TV-Nutzung der Altersgruppe.</p>`;
+  return h;
+}
+function streamChartsPage(P) {
+  const wk = Math.floor((G.day - 1) / 7), list = streamCharts(wk), d0 = dateOf(G.day), th = new Date(d0.getFullYear(), d0.getMonth(), d0.getDate() + 3 - ((d0.getDay() + 6) % 7));
+  const kw = 1 + Math.round((th - new Date(th.getFullYear(), 0, 4)) / 864e5 / 7 - 3 / 7 + ((new Date(th.getFullYear(), 0, 4).getDay() + 6) % 7) / 7);
+  let h = title("Streaming-Charts", '<span class="muted">simulierte Abrufe · Spielwerte</span>');
+  h += `<div class="qc-tabs">${[["charts", "Streaming-Charts"], ["marken", "Programmmarken"], ["plat", "Plattformen"]].map(([k, n]) => `<button data-act="scTab" data-k="${k}" class="${scTab === k ? "on" : ""}">${n}</button>`).join("")}</div>`;
+  if (scTab === "charts") {
+    h += `<section class="panel"><div class="ph"><h2>Sendung</h2><span class="aside">Views · KW ${kw}</span></div><div class="tbl"><table class="qc-t"><tbody>
+      ${list.slice(0, 25).map((o, k) => `<tr class="${o.st === P.i || o.sid === "own" ? "mine" : ""}"><td class="num muted">${k + 1}</td><td class="qc-l">${qcLogo(o)}</td><td class="title">${esc(o.title)}</td><td class="num">${mio3(o.v)} Mio.</td></tr>`).join("")}</tbody></table></div></section>`;
+  } else if (scTab === "marken") {
+    const m = new Map();
+    for (const o of list) { const k = o.title.replace(/\s*\(Folge.*$/, "") + "|" + o.sid; const x = m.get(k) || { ...o, v: 0 }; x.v += o.v * (1.6 + (hashStr(k) % 100) / 100); m.set(k, x); }
+    const top = [...m.values()].sort((a, b) => b.v - a.v).slice(0, 20);
+    h += `<section class="panel"><div class="ph"><h2>Programmmarke</h2><span class="aside">Netto-Reichweite · KW ${kw}</span></div><div class="tbl"><table class="qc-t"><tbody>
+      ${top.map((o, k) => `<tr class="${o.st === P.i || o.sid === "own" ? "mine" : ""}"><td class="num muted">${k + 1}</td><td class="qc-l">${qcLogo(o)}</td><td class="title">${esc(o.title)}</td><td class="num">${mio(o.v)} Mio.</td></tr>`).join("")}</tbody></table></div></section>`;
+  } else {
+    const cur = platNow(), prev = (G.plat || []).slice(-1)[0], mname = dateOf(G.day).toLocaleDateString("de-DE", { month: "long", year: "numeric" });
+    const rows = Object.entries(cur).map(([id, x]) => ({ id, ...x, p: prev && prev.v[id] })).sort((a, b) => b.h - a.h);
+    const ch = (a, b) => b ? `<span class="${a >= b ? "up" : "down"}">${a >= b ? "+" : ""}${((a / b - 1) * 100).toFixed(1).replace(".", ",")} %</span>` : "–";
+    const nm = r => r.id === "own" ? esc(r.name) : esc(STREAMERS.find(s => s.id === r.id).name);
+    h += `<section class="panel"><div class="ph"><h2>Nutzungsvolumen der Plattformen · ${mname}</h2><span class="aside">${prev ? "Vergleich zum Vormonat" : "erster Messmonat"}</span></div><div class="tbl"><table class="qc-t"><thead><tr><th>Plattform</th><th class="num">Stunden ab 3</th><th class="num">+/- Vormonat</th><th class="num">Stunden 14-49</th><th class="num">+/- Vormonat</th></tr></thead><tbody>
+      ${rows.map(r => `<tr class="${r.id === "own" ? "mine" : ""}"><td class="title">${r.id === "own" ? "" : sbadge(r.id, 14)} ${nm(r)}</td><td class="num">${r.h.toLocaleString("de-DE")}</td><td class="num">${ch(r.h, r.p && r.p.h)}</td><td class="num">${Math.round(r.h * r.y).toLocaleString("de-DE")}</td><td class="num">${ch(r.h * r.y, r.p && r.p.h * r.p.y)}</td></tr>`).join("")}
+    </tbody></table></div><p class="fine pad">Hochrechnung für den laufenden Monat aus Abos und Nutzung je Abo (Spielwerte). Die ARD Mediathek wird ohne Abo über die Reichweite geschätzt.</p></section>`;
+  }
+  return h;
+}
+// =====================================================================
 // Formatprofil: Quotenverlauf, Publikum, Analyse und Maßnahmen je Sendung
 // =====================================================================
 // Affinität zur Zielgruppe 14–49 (Spielwerte): Sender-Image × Genre
@@ -10569,7 +10728,7 @@ function recordHour(res, sorted, i) {
       }
       // Tagesbilanz je Ausstrahlung (für die Quoten-News)
       const ds = G.daySeg.find(d => d.st === r.st.i && d.id === p.id && d.start === start);
-      { const ym = Math.min(70, ma * youthIdx(r.st, p)) * min; if (ds) { ds.vs += v * min; ds.bs += BASE[i] * min; ds.min += min; ds.ys = (ds.ys || 0) + ym; } else G.daySeg.push({ st: r.st.i, id: p.id, start, title: p.title, vs: v * min, bs: BASE[i] * min, min, ys: ym }); }
+      { const ym = Math.min(70, ma * youthIdx(r.st, p)) * min, y5 = Math.min(70, ma * idx59(r.st, p)) * min; if (ds) { ds.vs += v * min; ds.bs += BASE[i] * min; ds.min += min; ds.ys = (ds.ys || 0) + ym; ds.y5 = (ds.y5 || 0) + y5; } else G.daySeg.push({ st: r.st.i, id: p.id, start, title: p.title, vs: v * min, bs: BASE[i] * min, min, ys: ym, y5 }); }
       if (p.kind === "sport") continue;
       const y = Math.min(60, ma * youthIdx(r.st, p) * rnd(0.93, 1.07));
       p.hist = p.hist || [];
