@@ -1,0 +1,35 @@
+name: Personenfotos (privat, verschlüsselt)
+
+# Frei lizenzierte Fotos von Wikimedia Commons über Wikidata (P18) für die private Spielversion.
+# Eingabe: nur gesalzene Namens-Prüfsummen; Ergebnis mit öffentlichem RSA-Schlüssel verschlüsselt (kein Klartext).
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/fotos.yml"
+      - ".github/fotos/**"
+
+permissions:
+  contents: write
+
+jobs:
+  fotos:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fotos suchen
+        run: python3 .github/fotos/fotos.py && ls -la photos.json
+      - name: Verschlüsseln
+        run: |
+          gzip -9 photos.json
+          openssl rand -hex 32 > key.bin
+          openssl enc -aes-256-cbc -pbkdf2 -salt -in photos.json.gz -out photos.enc -pass file:key.bin
+          openssl pkeyutl -encrypt -pubin -inkey .github/titel-db/pub.pem -in key.bin -out photos-key.enc
+          rm -f key.bin photos.json.gz
+      - name: Als Release-Datei ablegen
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view titel-db-enc -R "${{ github.repository }}" >/dev/null 2>&1 || gh release create titel-db-enc -R "${{ github.repository }}" --target "${{ github.sha }}" --title "Titeldatenbank (verschlüsselt)" --notes "Nur verschlüsselte Daten."
+          gh release upload titel-db-enc photos.enc photos-key.enc -R "${{ github.repository }}" --clobber
