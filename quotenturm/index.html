@@ -429,6 +429,11 @@ textarea[data-draft] { font: inherit; color: inherit; background: transparent; b
 .dv-gap { position: absolute; left: 60px; right: 4px; background: repeating-linear-gradient(135deg, transparent 0 6px, color-mix(in srgb, #ef4444 12%, transparent) 6px 12px); border: 1px dashed color-mix(in srgb, #ef4444 50%, transparent); border-radius: 6px; overflow: hidden; } .dv-gap span { font-size: 11px; color: var(--muted); padding: 2px 6px; display: block; }
 .dv-rs { position: absolute; left: 0; right: 0; bottom: 0; height: 8px; cursor: ns-resize; } .dv-b:hover .dv-rs { background: color-mix(in srgb, var(--hot) 35%, transparent); }
 .dv-b.adblk { background: repeating-linear-gradient(135deg, color-mix(in srgb, #eab308 14%, var(--panel)) 0 6px, var(--panel) 6px 12px); border-left-color: #eab308; }
+.look-ed { display: grid; grid-template-columns: 190px 1fr; gap: 16px; align-items: start; } .look-prev { display: grid; gap: 8px; justify-items: center; position: sticky; top: 0; }
+.look-row { display: grid; grid-template-columns: 120px 1fr; gap: 8px; align-items: center; margin-bottom: 6px; } .look-row .pills button { font-size: 12px; }
+.pills .sw { width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--line); padding: 0; } .pills .sw.on { outline: 3px solid var(--hot); outline-offset: 1px; }
+svg.avatar.look { border-radius: 50%; display: block; flex: none; }
+@media (max-width: 640px) { .look-ed { grid-template-columns: 1fr; } .look-row { grid-template-columns: 1fr; } }
 .dv-gap.ad { background: repeating-linear-gradient(135deg, transparent 0 6px, color-mix(in srgb, #eab308 10%, transparent) 6px 12px); border-color: color-mix(in srgb, #eab308 45%, transparent); }
 .dv-b { position: absolute; box-sizing: border-box; background: color-mix(in srgb, var(--hot) 16%, var(--panel)); border: 1px solid color-mix(in srgb, var(--hot) 45%, var(--line)); border-left: 4px solid var(--hot); border-radius: 6px; padding: 2px 6px; overflow: hidden; font-size: 12px; touch-action: none; cursor: grab; z-index: 2; }
 .dv-b.k-film { border-left-color: #f59e0b; } .dv-b.k-serie { border-left-color: #38bdf8; } .dv-b.house { opacity: .8; border-left-color: var(--muted); background: var(--panel); } .dv-b.live { border-left-color: #ef4444; background: color-mix(in srgb, #ef4444 14%, var(--panel)); cursor: default; }
@@ -1560,7 +1565,7 @@ function newGame(stationId) {
   const P = me();
   // Ziel: Startmarktanteil auf alle TV-Nutzer umgerechnet plus Ehrgeiz der Senderleitung
   P.conf = 60; P.target = Math.round(P.base * 84 / 73.2 * 1.04 * 10) / 10;
-  G.avatar = { ...AV, name: AV.name || "Programmdirektion" };
+  G.avatar = { ...AV, name: AV.name || "Programmdirektion", look: { ...(AV.look || LOOK_DEFAULT) }, bio: { ...(AV.bio || {}) } };
   P.money += (AV_OFFICES.find(o => o[0] === AV.office) || [0, 0, 0, 0, 0])[4];
   initRivals();
   for (let k = 0; k < 3; k++) P.contracts.push(makeAd(expectedPrime(P) * 0.5));
@@ -4243,8 +4248,11 @@ function act(b) {
   if (k === "homeMore") { const m = $("homeMenu"); if (m) m.hidden = !m.hidden; return; }
   if (k === "homeImport") { const f = $("homeFile"); if (f) f.click(); return; }
   if (k === "homeQuit") { window.close(); return; }
-  if (k === "avSet") { AV[b.dataset.k] = b.dataset.v; const tot = avPoints(); while (AV.neg + AV.cre + AV.med > tot) { const kk = ["med", "cre", "neg"].find(x => AV[x] > 0); AV[kk]--; } showAvatar(); return; }
-  if (k === "avPt") { AV[b.dataset.k] = clamp(AV[b.dataset.k] + +b.dataset.v, 0, 15); showAvatar(); return; }
+  if (k === "look" || k === "lookRnd" || k === "lookNoPhoto") { const ctx = b.dataset.x; if ($("avName")) AV.name = $("avName").value; const L = lookTarget(ctx);
+    if (k === "look") L[b.dataset.k] = /^(skin|hairCol|eyes|outCol|bg)$/.test(b.dataset.k) ? +b.dataset.v : b.dataset.v; else if (k === "lookRnd") Object.assign(L, randomLook()); else L.photo = null;
+    lookRefresh(ctx); if (G && ctx === "game") render(); return; }
+  if (k === "avSet") { if ($("avName")) AV.name = $("avName").value; AV[b.dataset.k] = b.dataset.v; const tot = avPoints(); while (AV.neg + AV.cre + AV.med > tot) { const kk = ["med", "cre", "neg"].find(x => AV[x] > 0); AV[kk]--; } showAvatar(); return; }
+  if (k === "avPt") { if ($("avName")) AV.name = $("avName").value; AV[b.dataset.k] = clamp(AV[b.dataset.k] + +b.dataset.v, 0, 15); showAvatar(); return; }
   if (k === "avDone") { AV.name = ($("avName").value || "").trim().slice(0, 40);
     if (QUICKSTART) { const [kind, id] = QUICKSTART.split(":"); QUICKSTART = null; closeModal(); hideHome(); hist = []; fut = []; planDay = null;
       newGame(kind === "station" ? id : "kabel1"); go("overview", true);
@@ -4478,6 +4486,7 @@ function act(b) {
     case "moveStart": { const sc = schedFor(P, wd); let st = i; while (st > 0 && sc[st].cont && sc[st - 1].p === sc[i].p) st--; if (sc[st].p && !(wd === G.day && planLocked())) moveSrc = { d: wd, i: st, p: sc[st].p, all: b.dataset.v === "all" }; closeModal(); break; }
     case "moveCancel": moveSrc = null; break;
     case "clash": { const [d, ...rest] = b.dataset.k.split("|"), ch = rest.pop(); const err = clashDecide(P, +d, rest.join("|"), ch); toast(err || (ch === "konf" ? "Konferenz eingeplant." : ch === "stream" ? "Das Spiel läuft im Livestream." : "Sublizenz verkauft.")); break; }
+    case "lookEdit": openLookGame(); return;
     case "asstT": { const A = asst(); A[b.dataset.k] = !A[b.dataset.k]; if (b.dataset.k === "ads") G.adAuto = A.ads; toast(`${ASST.find(x => x[0] === b.dataset.k)[1]}-Assistent ${A[b.dataset.k] ? "an" : "aus"}.`); break; }
     case "clearDlg": { const d = +b.dataset.k; openModal(`<header><h2>Kalender leeren</h2><button class="btn" data-act="close">Abbrechen</button></header><div class="dbody">
       <p class="lead">Geplante Sendungen werden entfernt, damit Sie neu planen können. Live-Events bleiben immer stehen, der laufende Sendetag ist gesperrt.</p>
@@ -9670,7 +9679,9 @@ function finishOfferView() {
 }
 function careerProfile(P) {
   const C = c2(), e = expDelta(P), sec = secLabel(P.conf), nx = MGR_LIC[C.lic + 1];
-  return `<section class="panel mb"><div class="ph"><h2>Ihr Profil</h2><span class="aside">${esc(G.avatar.name || "Programmdirektion")}</span></div>
+  const bio = G.avatar.bio || {};
+  return `<section class="panel mb"><div class="ph"><h2>Ihr Profil</h2><button class="btn small" data-act="lookEdit">Avatar bearbeiten</button></div>
+    <div class="pad" style="display:flex;gap:16px;align-items:center;padding-bottom:0">${lookSvg(myLook(), 96)}<div><b style="font-family:var(--font-head);font-size:22px">${esc(G.avatar.name || "Programmdirektion")}</b><div class="muted">${esc([bio.home && `aus ${bio.home}`, bio.past, bio.genre && `Lieblingsgenre: ${bio.genre}`].filter(Boolean).join(" · ") || "Programmdirektion")}</div></div></div>
     <div class="tiles" style="padding:12px"><div class="tile"><small>Ruf DACH</small><b>${starsHtml(repHalf())}</b><span>${hopMalus() ? `Sprunghaft: −${hopMalus()} (zu viele Wechsel)` : "aus Leistung, Vertrauen, Preisen"}</span></div>
       <div class="tile"><small>Ruf international</small><b>${C.world}</b><span>Preise, Exporte, Streaming</span></div>
       <div class="tile"><small>Abschluss</small><b style="font-size:15px">${esc(MGR_LIC[C.lic].n)}</b><span>${C.licCourse ? `${MGR_LIC[C.licCourse.lvl].n} bis ${dateShort(C.licCourse.until)}` : nx ? "nächste Stufe möglich" : "höchste Stufe"}</span></div>
@@ -10185,6 +10196,92 @@ function freshDay() {
   for (const st of G.stations) { const f = freshness(st); st.fresh = f; if (f < 0.6) st.brand = Math.max(0.5, st.brand * (1 - (0.6 - f) * 0.02)); }
 }
 // =====================================================================
+// Avatar-Baukasten (FM-Stil): Gesicht, Frisur, Bart, Brille, Kleidung – rein optisch, ohne Einfluss auf Spielwerte.
+// Optional ein eigenes Foto: wird verkleinert und nur im lokalen Spielstand gespeichert.
+// =====================================================================
+const LOOK_OPTS = {
+  skin: ["#f6d7c3", "#eac0a2", "#d9a37f", "#c18661", "#9c6644", "#7a4b2e", "#5b3420"],
+  hair: [["kurz", "Kurz"], ["scheitel", "Seitenscheitel"], ["locken", "Locken"], ["lang", "Lang"], ["dutt", "Dutt"], ["buzz", "Raspelkurz"], ["halbglatze", "Halbglatze"], ["glatze", "Glatze"], ["zopf", "Zopf"]],
+  hairCol: ["#1c1714", "#3b2618", "#6b4226", "#a8703f", "#d8b26e", "#b8452c", "#8f8f8f", "#e6e6e6"],
+  beard: [["ohne", "Ohne"], ["stoppel", "Stoppeln"], ["kinn", "Kinnbart"], ["schnauzer", "Schnauzer"], ["voll", "Vollbart"]],
+  eyes: ["#4a3426", "#2f5d8a", "#3f7a4c", "#7a7a7a", "#1f1f1f"],
+  glasses: [["ohne", "Ohne"], ["rund", "Rund"], ["eckig", "Eckig"], ["horn", "Hornbrille"], ["sonne", "Sonnenbrille"]],
+  brows: [["normal", "Normal"], ["kraeftig", "Kräftig"], ["schmal", "Schmal"]],
+  mouth: [["laecheln", "Lächeln"], ["neutral", "Neutral"], ["grinsen", "Grinsen"]],
+  outfit: [["anzug", "Anzug & Krawatte"], ["hemd", "Hemd offen"], ["rolli", "Rollkragen"], ["pulli", "Pullover"], ["hoodie", "Hoodie"], ["blazer", "Blazer & Shirt"]],
+  outCol: ["#1f2a44", "#2b2b2b", "#5a2a82", "#7a1f2b", "#2d5a3d", "#8a6d3b", "#e5e5e5", "#2563eb"],
+  bg: ["#7c3aed", "#e0218a", "#0ea5e9", "#16a34a", "#f59e0b", "#334155"],
+};
+const LOOK_DEFAULT = { skin: 2, hair: "scheitel", hairCol: 1, beard: "ohne", eyes: 0, glasses: "ohne", brows: "normal", mouth: "laecheln", outfit: "anzug", outCol: 0, bg: 0, photo: null };
+function randomLook() { const pk = a => a[Math.floor(Math.random() * a.length)]; return { skin: ri(0, 6), hair: pk(LOOK_OPTS.hair)[0], hairCol: ri(0, 7), beard: pk(LOOK_OPTS.beard)[0], eyes: ri(0, 4), glasses: pk(LOOK_OPTS.glasses)[0], brows: pk(LOOK_OPTS.brows)[0], mouth: pk(LOOK_OPTS.mouth)[0], outfit: pk(LOOK_OPTS.outfit)[0], outCol: ri(0, 7), bg: ri(0, 5), photo: null }; }
+function lookSvg(L, size = 120) {
+  L = { ...LOOK_DEFAULT, ...(L || {}) };
+  if (L.photo) return `<img class="avatar photo" src="${L.photo}" alt="" style="width:${size}px;height:${size}px;object-fit:cover">`;
+  const sk = LOOK_OPTS.skin[L.skin] || LOOK_OPTS.skin[2], hc = LOOK_OPTS.hairCol[L.hairCol] || "#3b2618", ey = LOOK_OPTS.eyes[L.eyes] || "#4a3426", oc = LOOK_OPTS.outCol[L.outCol] || "#1f2a44", bg = LOOK_OPTS.bg[L.bg] || "#7c3aed";
+  const shade = "rgba(0,0,0,.12)";
+  // Kleidung
+  const body = { anzug: `<path d="M14 120 Q16 92 42 86 L60 100 L78 86 Q104 92 106 120Z" fill="${oc}"/><path d="M50 88 L60 100 L70 88 L66 120 L54 120Z" fill="#f4f4f4"/><path d="M57 97 L63 97 L65 120 L55 120Z" fill="#b91c1c"/>`,
+    hemd: `<path d="M14 120 Q16 92 42 86 L60 104 L78 86 Q104 92 106 120Z" fill="${oc}"/><path d="M48 87 L60 104 L72 87 L68 92 L60 100 L52 92Z" fill="${sk}"/>`,
+    rolli: `<path d="M14 120 Q16 94 42 88 Q60 96 78 88 Q104 94 106 120Z" fill="${oc}"/><rect x="47" y="80" width="26" height="12" rx="6" fill="${oc}"/><rect x="47" y="80" width="26" height="12" rx="6" fill="${shade}"/>`,
+    pulli: `<path d="M14 120 Q16 92 42 87 Q60 96 78 87 Q104 92 106 120Z" fill="${oc}"/><path d="M48 87 Q60 97 72 87" stroke="${shade}" stroke-width="4" fill="none"/>`,
+    hoodie: `<path d="M12 120 Q14 90 40 86 Q60 98 80 86 Q106 90 108 120Z" fill="${oc}"/><path d="M40 86 Q60 108 80 86" stroke="${shade}" stroke-width="5" fill="none"/><line x1="54" y1="98" x2="53" y2="112" stroke="#eee" stroke-width="1.6"/><line x1="66" y1="98" x2="67" y2="112" stroke="#eee" stroke-width="1.6"/>`,
+    blazer: `<path d="M14 120 Q16 92 42 86 L52 120Z M106 120 Q104 92 78 86 L68 120Z" fill="${oc}"/><path d="M42 86 Q60 96 78 86 L68 120 L52 120Z" fill="#f1f1f1"/>` }[L.outfit] || "";
+  // Haare (hinten / vorne)
+  const hb = { lang: `<path d="M30 52 Q28 96 40 100 L80 100 Q92 96 90 52Z" fill="${hc}"/>`, zopf: `<ellipse cx="60" cy="24" rx="10" ry="8" fill="${hc}"/><path d="M84 58 Q98 78 88 96" stroke="${hc}" stroke-width="8" fill="none" stroke-linecap="round"/>`, dutt: `<circle cx="60" cy="16" r="10" fill="${hc}"/>` }[L.hair] || "";
+  const hf = { kurz: `<path d="M34 50 Q34 22 60 22 Q86 22 86 50 Q80 36 60 36 Q40 36 34 50Z" fill="${hc}"/>`,
+    scheitel: `<path d="M34 52 Q32 20 62 20 Q88 22 86 50 Q82 34 66 32 Q48 30 34 52Z" fill="${hc}"/><path d="M50 26 Q56 32 66 32" stroke="${shade}" stroke-width="2" fill="none"/>`,
+    locken: `<g fill="${hc}">${[[38, 38], [46, 28], [56, 24], [66, 24], [76, 28], [84, 38], [36, 48], [86, 48]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="9"/>`).join("")}</g>`,
+    lang: `<path d="M32 56 Q30 20 60 20 Q90 20 88 56 Q84 34 60 32 Q38 32 32 56Z" fill="${hc}"/>`,
+    dutt: `<path d="M34 50 Q34 24 60 24 Q86 24 86 50 Q78 34 60 34 Q42 34 34 50Z" fill="${hc}"/>`,
+    buzz: `<path d="M35 48 Q36 25 60 25 Q84 25 85 48 Q78 36 60 35 Q42 36 35 48Z" fill="${hc}" opacity=".7"/>`,
+    halbglatze: `<path d="M34 54 Q34 40 40 36 L40 52Z M86 54 Q86 40 80 36 L80 52Z" fill="${hc}"/>`,
+    glatze: "", zopf: `<path d="M34 52 Q34 22 60 22 Q86 22 86 52 Q80 34 60 34 Q40 34 34 52Z" fill="${hc}"/>` }[L.hair] || "";
+  const beard = { ohne: "", stoppel: `<path d="M40 64 Q42 86 60 88 Q78 86 80 64 Q76 78 60 80 Q44 78 40 64Z" fill="${hc}" opacity=".35"/>`,
+    kinn: `<path d="M52 78 Q60 90 68 78 Q60 82 52 78Z" fill="${hc}"/>`, schnauzer: `<path d="M48 70 Q60 64 72 70 Q60 68 48 70Z" fill="${hc}" stroke="${hc}" stroke-width="3"/>`,
+    voll: `<path d="M38 60 Q38 90 60 92 Q82 90 82 60 Q78 76 70 76 Q60 70 50 76 Q42 76 38 60Z" fill="${hc}"/>` }[L.beard] || "";
+  const bw = { normal: 2.4, kraeftig: 3.6, schmal: 1.4 }[L.brows] || 2.4;
+  const mouth = { laecheln: `<path d="M52 72 Q60 78 68 72" stroke="#7a3b2e" stroke-width="2.4" fill="none" stroke-linecap="round"/>`, neutral: `<line x1="53" y1="73" x2="67" y2="73" stroke="#7a3b2e" stroke-width="2.4" stroke-linecap="round"/>`, grinsen: `<path d="M51 70 Q60 80 69 70 Z" fill="#fff" stroke="#7a3b2e" stroke-width="2"/>` }[L.mouth] || "";
+  const gl = { ohne: "", rund: `<g fill="none" stroke="#222" stroke-width="2"><circle cx="50" cy="56" r="7"/><circle cx="70" cy="56" r="7"/><line x1="57" y1="56" x2="63" y2="56"/></g>`,
+    eckig: `<g fill="none" stroke="#222" stroke-width="2"><rect x="42" y="50" width="15" height="11" rx="2"/><rect x="63" y="50" width="15" height="11" rx="2"/><line x1="57" y1="55" x2="63" y2="55"/></g>`,
+    horn: `<g fill="none" stroke="#3b2414" stroke-width="3.4"><rect x="41" y="49" width="16" height="12" rx="4"/><rect x="63" y="49" width="16" height="12" rx="4"/><line x1="57" y1="54" x2="63" y2="54"/></g>`,
+    sonne: `<g><rect x="41" y="49" width="16" height="11" rx="4" fill="#111"/><rect x="63" y="49" width="16" height="11" rx="4" fill="#111"/><line x1="57" y1="53" x2="63" y2="53" stroke="#111" stroke-width="2"/></g>` }[L.glasses] || "";
+  const eyes = L.glasses === "sonne" ? "" : `<circle cx="50" cy="56" r="2.8" fill="${ey}"/><circle cx="70" cy="56" r="2.8" fill="${ey}"/><circle cx="51" cy="55" r=".9" fill="#fff"/><circle cx="71" cy="55" r=".9" fill="#fff"/>`;
+  return `<svg class="avatar look" viewBox="0 0 120 120" width="${size}" height="${size}" aria-hidden="true"><clipPath id="avc${size}"><circle cx="60" cy="60" r="60"/></clipPath><g clip-path="url(#avc${size})"><rect width="120" height="120" fill="${bg}"/>${hb}${body}
+    <rect x="52" y="74" width="16" height="16" rx="6" fill="${sk}"/><rect x="52" y="78" width="16" height="6" fill="${shade}"/>
+    <ellipse cx="34" cy="58" rx="5" ry="7" fill="${sk}"/><ellipse cx="86" cy="58" rx="5" ry="7" fill="${sk}"/><ellipse cx="60" cy="56" rx="26" ry="30" fill="${sk}"/>
+    ${beard}<path d="M44 48 Q50 45 56 48" stroke="${hc}" stroke-width="${bw}" fill="none" stroke-linecap="round"/><path d="M64 48 Q70 45 76 48" stroke="${hc}" stroke-width="${bw}" fill="none" stroke-linecap="round"/>
+    ${eyes}<path d="M60 58 Q57 66 61 67" stroke="${shade}" stroke-width="2" fill="none"/>${mouth}${gl}${hf}</g></svg>`;
+}
+const myLook = () => (G && G.avatar && G.avatar.look) || AV.look || LOOK_DEFAULT;
+function lookEditor(L, ctx) {
+  const row = (k, title, opts, swatch) => `<div class="look-row"><span class="muted">${title}</span><div class="pills">${opts.map((o, i) => { const v = swatch ? i : o[0], on = L[k] === v; return swatch ? `<button class="sw ${on ? "on" : ""}" style="background:${o}" data-act="look" data-k="${k}" data-v="${v}" data-x="${ctx}" aria-label="${title} ${i + 1}"></button>` : `<button class="${on ? "on" : ""}" data-act="look" data-k="${k}" data-v="${v}" data-x="${ctx}">${o[1]}</button>`; }).join("")}</div></div>`;
+  return `<div class="look-ed"><div class="look-prev">${lookSvg(L, 150)}<div class="actions" style="justify-content:center"><button class="btn small" data-act="lookRnd" data-x="${ctx}">🎲 Zufall</button><label class="btn small">📷 Eigenes Foto<input type="file" accept="image/*" id="lookPhoto" data-x="${ctx}" hidden></label>${L.photo ? `<button class="btn small" data-act="lookNoPhoto" data-x="${ctx}">Foto entfernen</button>` : ""}</div><p class="fine" style="text-align:center">Das Foto bleibt nur in Ihrem lokalen Spielstand.</p></div>
+    <div class="look-opts">${row("skin", "Hautton", LOOK_OPTS.skin, true)}${row("hair", "Frisur", LOOK_OPTS.hair)}${row("hairCol", "Haarfarbe", LOOK_OPTS.hairCol, true)}${row("brows", "Augenbrauen", LOOK_OPTS.brows)}${row("eyes", "Augenfarbe", LOOK_OPTS.eyes, true)}${row("beard", "Bart", LOOK_OPTS.beard)}${row("glasses", "Brille", LOOK_OPTS.glasses)}${row("mouth", "Mimik", LOOK_OPTS.mouth)}${row("outfit", "Kleidung", LOOK_OPTS.outfit)}${row("outCol", "Farbe Kleidung", LOOK_OPTS.outCol, true)}${row("bg", "Hintergrund", LOOK_OPTS.bg, true)}</div></div>`;
+}
+// Profilangaben wie im FM: Herkunft, Werdegang, Lieblingsgenre – nur Text, keine Spielwerte
+const AV_BIO = [["home", "Herkunft (Stadt/Region)", "z. B. Landshut"], ["past", "Bisheriger Werdegang", "z. B. Redakteur, Produzent, Quereinsteiger"], ["genre", "Lieblingsgenre", "z. B. Krimi, Show, Doku"]];
+function lookTarget(ctx) { if (ctx === "game" && G && G.avatar) { G.avatar.look = G.avatar.look || { ...LOOK_DEFAULT }; return G.avatar.look; } AV.look = AV.look || { ...LOOK_DEFAULT }; return AV.look; }
+function lookRefresh(ctx) { if (ctx === "game") openLookGame(); else showAvatar(); }
+function openLookGame() {
+  const A = G.avatar; A.look = A.look || { ...LOOK_DEFAULT };
+  openModal(`<header><h2>Ihr Avatar</h2><button class="btn" data-act="close">Fertig</button></header><div class="dbody">
+    <label class="fgrid-l">Name<input type="text" class="search" id="avNameG" maxlength="40" value="${esc(A.name || "")}"></label>
+    ${AV_BIO.map(([k, n, ph]) => `<label class="fgrid-l">${n}<input type="text" class="search" data-avbio="${k}" maxlength="60" value="${esc((A.bio || {})[k] || "")}" placeholder="${esc(ph)}"></label>`).join("")}
+    ${lookEditor(A.look, "game")}</div>`);
+}
+document.addEventListener("change", e => {
+  const t = e.target; if (!t) return;
+  if (t.id === "lookPhoto" && t.files && t.files[0]) {
+    const ctx = t.dataset.x, f = t.files[0], rd = new FileReader();
+    rd.onload = () => { const img = new Image(); img.onload = () => { const c = document.createElement("canvas"), s = 160, m = Math.min(img.width, img.height); c.width = c.height = s;
+      c.getContext("2d").drawImage(img, (img.width - m) / 2, (img.height - m) / 2, m, m, 0, 0, s, s); lookTarget(ctx).photo = c.toDataURL("image/jpeg", 0.82); lookRefresh(ctx); if (G) render(); }; img.src = rd.result; };
+    rd.readAsDataURL(f);
+  }
+  if (t.dataset && t.dataset.avbio && G && G.avatar) { G.avatar.bio = G.avatar.bio || {}; G.avatar.bio[t.dataset.avbio] = t.value.trim().slice(0, 60); }
+  if (t.dataset && t.dataset.avbio && !G) { AV.bio = AV.bio || {}; AV.bio[t.dataset.avbio] = t.value.trim().slice(0, 60); }
+  if (t.id === "avNameG" && G && G.avatar) { G.avatar.name = t.value.trim().slice(0, 40) || G.avatar.name; render(); }
+});
+// =====================================================================
 // Formatprofil: Quotenverlauf, Publikum, Analyse und Maßnahmen je Sendung
 // =====================================================================
 // Affinität zur Zielgruppe 14–49 (Spielwerte): Sender-Image × Genre
@@ -10453,6 +10550,8 @@ function showAvatar() {
   openModal(`<header><h2>Ihr Medienmogul</h2><button class="btn" data-act="back">Zurück</button></header><div class="dbody">
     <p class="lead">Bevor Sie einen Sender übernehmen: Wer sind Sie? Name, Auftreten und Büro bestimmen Ihre Startvoraussetzungen. Verteilen Sie ${avPoints()} Punkte auf drei Fähigkeiten.</p>
     <label class="fgrid-l">Name<input type="text" class="search" id="avName" maxlength="40" value="${esc(AV.name)}" placeholder="z. B. Alex Berger"></label>
+    ${AV_BIO.map(([k, n, ph]) => `<label class="fgrid-l">${n}<input type="text" class="search" data-avbio="${k}" maxlength="60" value="${esc((AV.bio || {})[k] || "")}" placeholder="${esc(ph)}"></label>`).join("")}
+    <div class="card"><div class="card-h"><h3>Aussehen</h3><span class="muted">rein optisch – ohne Einfluss auf Spielwerte</span></div>${lookEditor(AV.look || (AV.look = { ...LOOK_DEFAULT }), "new")}</div>
     <div class="card"><div class="card-h"><h3>Auftreten</h3></div><div class="seg-big">${AV_STYLES.map(([k, n, d]) => `<button data-act="avSet" data-k="style" data-v="${k}" class="${AV.style === k ? "on" : ""}"><b>${n}</b><span>${d}</span></button>`).join("")}</div></div>
     <div class="card"><div class="card-h"><h3>Chef-Büro</h3></div><div class="seg-big">${AV_OFFICES.map(([k, n, d]) => `<button data-act="avSet" data-k="office" data-v="${k}" class="${AV.office === k ? "on" : ""}"><b>${n}</b><span>${d}</span></button>`).join("")}</div></div>
     <div class="card"><div class="card-h"><h3>Fähigkeiten</h3><span class="chip ${left ? "warn" : "good"}">${left} Punkte frei</span></div>
@@ -10568,7 +10667,7 @@ function rivalsPage(P) {
       <div class="pad"><p class="muted" style="margin:0 0 8px">Chef von ${sname(SIDX[id])} · gilt als ${esc(r.trait)}</p>
       <div class="relbar"><i style="left:${(r.rel + 100) / 2}%"></i></div><div class="kv"><span>Beziehung</span><b class="${r.rel <= -50 ? "down" : r.rel >= 50 ? "up" : ""}">${r.rel > 0 ? "+" : ""}${r.rel}</b></div>
       ${r.log.length ? `<ul class="plans" style="padding-left:18px;margin-top:8px">${r.log.map(x => `<li>${esc(x)}</li>`).join("")}</ul>` : '<p class="fine">Noch keine Vorfälle.</p>'}</div></section>`; }).join("")}</div>
-    ${G.avatar ? `<section class="panel" style="margin-top:14px"><div class="ph"><h2>Ihr Avatar: ${esc(G.avatar.name)}</h2><span class="aside">${esc((AV_STYLES.find(s => s[0] === G.avatar.style) || [])[1] || "")} · ${esc((AV_OFFICES.find(o => o[0] === G.avatar.office) || [])[1] || "")}</span></div><div class="slist">${AV_SKILLS.map(([k, n, d]) => `<div class="srow"><b>${n}</b><em>${av(k)}</em><span>${d}</span></div>`).join("")}</div></section>` : ""}`;
+    ${G.avatar ? `<section class="panel" style="margin-top:14px"><div class="ph">${lookSvg(myLook(), 34)}<h2>Ihr Avatar: ${esc(G.avatar.name)}</h2><button class="btn small" data-act="lookEdit">Bearbeiten</button><span class="aside">${esc((AV_STYLES.find(s => s[0] === G.avatar.style) || [])[1] || "")} · ${esc((AV_OFFICES.find(o => o[0] === G.avatar.office) || [])[1] || "")}</span></div><div class="slist">${AV_SKILLS.map(([k, n, d]) => `<div class="srow"><b>${n}</b><em>${av(k)}</em><span>${d}</span></div>`).join("")}</div></section>` : ""}`;
 }
 // =====================================================================
 // Filmrechte-Markt (Content-Akquisition): Studios, Verwertungsfenster, Pakete, Filmmärkte, Bieterverfahren
