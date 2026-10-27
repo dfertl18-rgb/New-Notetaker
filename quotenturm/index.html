@@ -6846,7 +6846,9 @@ function firstSlot(F, d, r) {
   return idx.find(k => !d.cast[k]) ?? idx[0];
 }
 // Frei lizenzierte Fotos echter Personen (nur private Version, Wikimedia Commons mit Fotograf und Lizenz)
-const realPhoto = p => { const m = typeof window !== "undefined" && window.MM_PHOTOS; return m && p && p.name && (isReal(p) || p.partei) ? m[p.name.trim().toLowerCase().replace(/\s+/g, " ")] || null : null; };
+// Zuordnung über die Wikidata-ID (Personen-Code), sonst über den Namen; Bilddateien liegen neben dem Spiel (Ordner photos/)
+const realPhoto = p => { const m = typeof window !== "undefined" && window.MM_PHOTOS; if (!m || !p || !p.name || !(isReal(p) || p.partei)) return null;
+  return (p.code && m[p.code]) || m["n:" + p.name.trim().toLowerCase().replace(/\s+/g, " ")] || null; };
 // Avatar mit Initialen, Farbe aus dem Namen
 function avatar(p, size = 40) {
   const ph = (p.code && PHOTO.get(p.code)) || (realPhoto(p) || {}).src;

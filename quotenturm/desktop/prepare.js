@@ -33,6 +33,9 @@ if (!share && fs.existsSync(privLogos)) { html = html.replace("<script>", () => 
 fs.writeFileSync(path.join(out, "index.html"), html);
 fs.copyFileSync(path.join(__dirname, "build", "icon.png"), path.join(out, "icon.png"));
 
+// Fotos echter Personen (Wikimedia Commons, mit Fotograf und Lizenz) nur in der privaten Version
+const photos = path.join(src, "privat", "photos");
+if (!share && fs.existsSync(photos)) { fs.cpSync(photos, path.join(out, "photos"), { recursive: true }); console.log("Personenfotos kopiert:", fs.readdirSync(photos).length); }
 // Realistische Menschenmodelle (MakeHuman/MPFB2, CC0) für Avatare, Wohnzimmer und Zwischensequenzen
 const human = path.join(src, "human");
 if (fs.existsSync(human)) { fs.cpSync(human, path.join(out, "human"), { recursive: true }); console.log("Menschenmodelle kopiert."); }
