@@ -430,6 +430,8 @@ textarea[data-draft] { font: inherit; color: inherit; background: transparent; b
 .dv-rs { position: absolute; left: 0; right: 0; bottom: 0; height: 8px; cursor: ns-resize; } .dv-b:hover .dv-rs { background: color-mix(in srgb, var(--hot) 35%, transparent); }
 .dv-b.adblk { background: repeating-linear-gradient(135deg, color-mix(in srgb, #eab308 14%, var(--panel)) 0 6px, var(--panel) 6px 12px); border-left-color: #eab308; }
 #room svg.room { width: 100%; height: auto; display: block; border-radius: 8px; }
+#roomDock { position: fixed; right: 16px; bottom: 16px; width: min(380px, calc(100vw - 32px)); z-index: 40; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 12px 40px rgba(0,0,0,.45); padding: 8px; }
+#roomDock .rd-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; } #roomDock #roomCap { margin: 6px 2px 0; } #roomDock.min #room, #roomDock.min #roomCap { display: none; }
 .rm-bob { animation: rmBob 2.6s ease-in-out infinite; } .rm-laugh { animation: rmLaugh .5s ease-in-out infinite; } .rm-cheer { animation: rmJump .7s ease-in-out infinite; }
 .rm-tense { animation: rmLean 3s ease-in-out infinite; } .rm-slump { transform: translateY(4px) rotate(-4deg); animation: rmBob 5s ease-in-out infinite; } .rm-sleep { transform: rotate(14deg) translateY(3px); }
 .rm-arms { animation: rmWave .35s ease-in-out infinite alternate; transform-origin: 0 -18px; } .rm-blink { animation: rmBlink 4s infinite; transform-box: fill-box; transform-origin: center; }
@@ -3357,7 +3359,7 @@ function liveTick(now) {
     renderTop();
     if (G.min >= 24 * 60) { endDay(); return; }
   }
-  if (page === "live" && now - wobT > 450) { wobT = now; wobble(); roomUpdate(); }
+  if (now - wobT > 450) { wobT = now; if (page === "live") wobble(); roomUpdate(); }
   requestAnimationFrame(liveTick);
 }
 // Tagesprogramm im Zeitraffer bis zur Primetime überspringen
@@ -3692,7 +3694,7 @@ function applyClubColors() {
 }
 function render(top) {
   if (!G) return;
-  renderNav(); renderTop();
+  renderNav(); renderTop(); try { roomDock(); } catch (e) {}
   const pages = { overview, inbox, plan: planPage, archiv, market, filmmarket: filmMarketPage, chiefs: rivalsPage, adsales: adsalesPage, spielplan: spielplanPage, formatmarkt: formatMarketPage, wochenplan: weekPlanPage, formatdev: formatDevPage, personal: staffPage, backroom: backroomPage, rentab: rentPage, network: networkPage, karriere: careerPage, social: socialPage, svhq: svPage, talent: talentPage, kino: cinePage, hof: hofPage, settings: settingsPage, bank: bankPage, mediaana: maPage, politik: politicsPage, stream: streamPage, catalog, smarket, rights: rightsPage, myrights, contracts, agency, ticker, table: tablePage, ratings, landscape, board, finance, jury, rivals, live: livePage, studio, newprod: newProdPage, casting, newsroom, export: exportPage };
   const sc = $("content").scrollTop;
   $("content").innerHTML = (pages[page] || overview)(me());
@@ -4162,7 +4164,6 @@ function livePage(P) {
         <button class="btn hot" data-act="swap" data-i="${next}" ${canSwap ? "" : "disabled"}>Notfall-Wiederholung</button>
         <button class="btn ${G.adBreak[next] ? "violet" : ""}" data-act="adbreak" data-i="${next}" ${canBreak ? "" : "disabled"}>${G.adBreak[next] ? "Zusatz-Werbeblock geplant" : "Zusatz-Werbeblock"}</button></div>
       <p class="fine pad">Werbeblock: sofort Geld, aber rund 15 % weniger Zuschauer in dieser Stunde. Wiederholung: ein einstündiges Archivprogramm ersetzt die nächste Stunde.</p></section>
-    <section class="panel"><div class="ph"><h2>Wohnzimmer</h2><span class="aside">So schaut Deutschland gerade Ihr Programm</span></div><div class="pad"><div id="room"></div><p class="fine" id="roomCap" style="margin:6px 0 0"></p></div></section>
     <section class="panel"><div class="ph"><h2>Live-Ticker</h2><span class="aside">${(G.dayFeed || []).length} Meldungen</span></div><div class="msgs" style="max-height:320px;overflow:auto">${(G.dayFeed || []).map(x => `<div class="msg"><span class="txt ${x.cls === "good" ? "up" : x.cls === "bad" ? "down" : ""}">${esc(x.txt)}</span></div>`).join("") || '<div class="msg"><span class="txt muted">Der Sendetag beginnt um 8 Uhr.</span></div>'}</div></section>
     <section class="panel"><div class="ph"><h2>Quotenkurve</h2><span class="aside">Marktanteil in %, 0–24 Uhr</span></div><div class="pad">${lineChart()}</div></section>
     <section class="panel"><div class="ph"><h2>Ereignisse</h2></div><div class="msgs">${feed.map(l => `<div class="msg new"><span class="from">${esc(l.from)}</span><span class="chip tag">${esc(l.tag)}</span><span class="txt">${msgLink(l)}</span><time>${l.t}</time></div>`).join("") || '<div class="msg"><span class="txt muted">Noch keine Ereignisse.</span></div>'}</div></section>
@@ -4515,6 +4516,7 @@ function act(b) {
     case "moveCancel": moveSrc = null; break;
     case "clash": { const [d, ...rest] = b.dataset.k.split("|"), ch = rest.pop(); const err = clashDecide(P, +d, rest.join("|"), ch); toast(err || (ch === "konf" ? "Konferenz eingeplant." : ch === "stream" ? "Das Spiel läuft im Livestream." : "Sublizenz verkauft.")); break; }
     case "lookEdit": openLookGame(); return;
+    case "roomMin": roomMin = !roomMin; roomKey = ""; roomUpdate(true); b.textContent = roomMin ? "+" : "–"; return;
     case "asstT": { const A = asst(); A[b.dataset.k] = !A[b.dataset.k]; if (b.dataset.k === "ads") G.adAuto = A.ads; toast(`${ASST.find(x => x[0] === b.dataset.k)[1]}-Assistent ${A[b.dataset.k] ? "an" : "aus"}.`); break; }
     case "clearDlg": { const d = +b.dataset.k; openModal(`<header><h2>Kalender leeren</h2><button class="btn" data-act="close">Abbrechen</button></header><div class="dbody">
       <p class="lead">Geplante Sendungen werden entfernt, damit Sie neu planen können. Live-Events bleiben immer stehen, der laufende Sendetag ist gesperrt.</p>
@@ -10297,9 +10299,10 @@ const ROOM_TYPES = {
 };
 function roomState() {
   const P = me(), i = Math.floor(G.min / 60) % 24, cur = nowOn(P, G.min), r = G.today[i] && G.today[i][G.me];
-  const ma = r ? r.ma : null, ratio = r && r.exp ? r.v / r.exp : 1, p = cur.p || null;
+  const wob = 1 + 0.05 * Math.sin(G.min * 0.9 + G.me * 1.7) + 0.02 * Math.sin(G.min * 3.1 + G.me), live = r ? r.ma * wob * (cur.ad ? 0.86 : 1) : null;
+  const ma = live, ratio = r && r.exp ? r.v * wob / r.exp : 1, p = cur.p || null;
   const young = p ? clamp(youthIdx(P, p) / 4, 0.05, 0.75) : 0.2;
-  const n = cur.gap ? 0 : ma == null ? 3 : clamp(Math.round(ma / 3) + 1, 1, 6);
+  const n = cur.gap ? 0 : ma == null ? 3 : clamp(Math.round(ma / 2.6 + 0.6), 1, 6);
   let mood = ratio > 1.15 ? "happy" : ratio < 0.85 ? "bored" : "neutral";
   if (p && p.kind === "sport") mood = ratio >= 0.95 ? "cheer" : "tense";
   else if (p && (p.genre === "Komödie" || p.genre === "Sitcom" || SATIRE_RX.test(p.title)) && mood !== "bored") mood = "laugh";
@@ -10334,9 +10337,17 @@ function roomSvg(s) {
     <rect width="360" height="200" fill="${glow}" opacity=".12" class="rm-flicker"/>
     ${s.gap ? `<text x="180" y="110" text-anchor="middle" font-size="14" fill="#e2e8f0">Testbild – alle sind weg</text>` : ""}</svg>`;
 }
-let roomKey = "";
+let roomKey = "", roomMin = false;
+function roomDock() {
+  let d = document.getElementById("roomDock");
+  if (!d) { d = document.createElement("div"); d.id = "roomDock"; d.innerHTML = `<div class="rd-head"><b>📺 Wohnzimmer · live</b><button class="btn small" data-act="roomMin" aria-label="Wohnzimmer ein- oder ausklappen">–</button></div><div id="room"></div><p class="fine" id="roomCap"></p>`; document.body.appendChild(d); }
+  const show = !!G && G.phase === "live" && page === "live";
+  d.hidden = !show; d.classList.toggle("min", roomMin);
+  return show;
+}
 function roomUpdate(force) {
-  const el = document.getElementById("room"); if (!el || !G || G.phase !== "live") return;
+  if (!roomDock()) return;
+  const el = document.getElementById("room"); if (!el || roomMin) return;
   const s = roomState(), key = [s.n, s.mood, s.ad, s.gap, s.late, s.seed, s.genre].join("|");
   if (force || key !== roomKey) { roomKey = key; el.innerHTML = roomSvg(s); }
   const cap = document.getElementById("roomCap"); if (cap) cap.textContent = `${s.title}${s.ma != null ? ` · ${pct(s.ma)} Marktanteil` : ""} · ${s.n} ${s.n === 1 ? "Person" : "Personen"} auf dem Sofa`;
@@ -10375,8 +10386,9 @@ function figSvg(L0, o = {}) {
   const mode = o.mode || "full", mood = o.mood || (L.mouth === "grinsen" ? "laugh" : L.mouth === "neutral" ? "neutral" : "happy");
   const sk = LOOK_OPTS.skin[L.skin] || LOOK_OPTS.skin[2], hc = L.age === "aelter" && L.hairCol < 5 ? hexMix(LOOK_OPTS.hairCol[L.hairCol] || "#3b2618", "#b8b8b8", 0.55) : LOOK_OPTS.hairCol[L.hairCol] || "#3b2618";
   const oc = LOOK_OPTS.outCol[L.outCol] || "#1f2a44", pc = FIG_OPTS.pants[L.pants] || "#1f2328", ey = LOOK_OPTS.eyes[L.eyes] || "#4a3426";
-  const sw = { schlank: 38, normal: 44, kraeftig: 52 }[L.build] || 44, cx = 100, sh = 122;
+  const sw = { schlank: 38, normal: 44, kraeftig: 52 }[L.build] || 44, cx = 100, sh = 114;
   const defs = `<defs>
+    <radialGradient id="${id}i" cx="40%" cy="35%" r="70%"><stop offset="0" stop-color="${lighten(ey, .45)}"/><stop offset=".7" stop-color="${ey}"/><stop offset="1" stop-color="${darken(ey, .45)}"/></radialGradient>
     <radialGradient id="${id}s" cx="42%" cy="38%" r="70%"><stop offset="0" stop-color="${lighten(sk, .18)}"/><stop offset=".65" stop-color="${sk}"/><stop offset="1" stop-color="${darken(sk, .28)}"/></radialGradient>
     <linearGradient id="${id}h" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${lighten(hc, .22)}"/><stop offset=".6" stop-color="${hc}"/><stop offset="1" stop-color="${darken(hc, .35)}"/></linearGradient>
     <linearGradient id="${id}c" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="${lighten(oc, .22)}"/><stop offset=".45" stop-color="${oc}"/><stop offset="1" stop-color="${darken(oc, .4)}"/></linearGradient>
@@ -10420,15 +10432,17 @@ function figSvg(L0, o = {}) {
     halbglatze: `<path d="M77 ${hy + 2} Q76 ${hy - 20} 82 ${hy - 26} L84 ${hy - 2}Z M123 ${hy + 2} Q124 ${hy - 20} 118 ${hy - 26} L116 ${hy - 2}Z" fill="url(#${id}h)"/>`,
     glatze: `<ellipse cx="94" cy="${hy - 30}" rx="9" ry="5" fill="#fff" opacity=".18"/>`,
     zopf: `<path d="M77 ${hy - 4} Q76 ${hy - 46} 100 ${hy - 47} Q124 ${hy - 46} 123 ${hy - 4} Q118 ${hy - 30} 100 ${hy - 32} Q82 ${hy - 30} 77 ${hy - 4}Z" fill="url(#${id}h)"/>` }[L.hair] || "";
+  const strands = ["glatze", "halbglatze", "buzz"].includes(L.hair) ? "" : `<g stroke="${lighten(hc, .35)}" stroke-width="1" fill="none" opacity=".3" stroke-linecap="round"><path d="M86 ${hy - 40} Q94 ${hy - 33} 98 ${hy - 26}"/><path d="M100 ${hy - 44} Q106 ${hy - 36} 110 ${hy - 30}"/><path d="M112 ${hy - 40} Q117 ${hy - 32} 119 ${hy - 22}"/></g><ellipse cx="96" cy="${hy - 40}" rx="9" ry="3" fill="#fff" opacity=".18"/>`;
   const beard = { ohne: "", stoppel: `<path d="M81 ${hy + 6} Q84 ${hy + 32} 100 ${hy + 33} Q116 ${hy + 32} 119 ${hy + 6} Q114 ${hy + 22} 100 ${hy + 24} Q86 ${hy + 22} 81 ${hy + 6}Z" fill="${hc}" opacity=".3"/>`,
     kinn: `<path d="M92 ${hy + 22} Q100 ${hy + 36} 108 ${hy + 22} Q100 ${hy + 27} 92 ${hy + 22}Z" fill="url(#${id}h)"/>`, schnauzer: `<path d="M90 ${hy + 13} Q100 ${hy + 7} 110 ${hy + 13} Q100 ${hy + 11} 90 ${hy + 13}Z" fill="url(#${id}h)" stroke="${hc}" stroke-width="2.4"/>`,
     voll: `<path d="M79 ${hy} Q78 ${hy + 36} 100 ${hy + 38} Q122 ${hy + 36} 121 ${hy} Q118 ${hy + 16} 110 ${hy + 16} Q100 ${hy + 10} 90 ${hy + 16} Q82 ${hy + 16} 79 ${hy}Z" fill="url(#${id}h)"/>` }[L.beard] || "";
   const bw = { normal: 2.4, kraeftig: 3.4, schmal: 1.5 }[L.brows] || 2.4;
   const eyeY = hy - 6, closed = mood === "sleep" || mood === "laugh";
   const eyes = L.glasses === "sonne" ? "" : closed ? `<path d="M86 ${eyeY} Q90 ${eyeY + 3} 94 ${eyeY} M106 ${eyeY} Q110 ${eyeY + 3} 114 ${eyeY}" stroke="#2a1a14" stroke-width="1.6" fill="none"/>`
-    : `<g class="rm-blink">${[90, 110].map(x => `<ellipse cx="${x}" cy="${eyeY}" rx="5" ry="3.2" fill="#fbfbfb"/><circle cx="${x + 0.4}" cy="${eyeY}" r="2.4" fill="${ey}"/><circle cx="${x + 0.4}" cy="${eyeY}" r="1.1" fill="#111"/><circle cx="${x + 1.2}" cy="${eyeY - 1}" r=".6" fill="#fff"/><path d="M${x - 5.4} ${eyeY - .6} Q${x} ${eyeY - 4.4} ${x + 5.4} ${eyeY - .6}" stroke="${darken(sk, .5)}" stroke-width="1.2" fill="none"/>`).join("")}</g>`;
+    : `<g class="rm-blink">${[90, 110].map(x => `<ellipse cx="${x}" cy="${eyeY}" rx="7.2" ry="5.4" fill="#fdfdfd"/><circle cx="${x + 0.5}" cy="${eyeY + .4}" r="4.2" fill="url(#${id}i)"/><circle cx="${x + 0.5}" cy="${eyeY + .4}" r="1.9" fill="#0d0d0d"/><circle cx="${x + 2}" cy="${eyeY - 1.4}" r="1.3" fill="#fff"/><circle cx="${x - .8}" cy="${eyeY + 1.4}" r=".5" fill="#fff" opacity=".8"/>
+      <path d="M${x - 7.6} ${eyeY - .2} Q${x} ${eyeY - 7.4} ${x + 7.6} ${eyeY - .2}" stroke="#241510" stroke-width="2.1" fill="none" stroke-linecap="round"/><path d="M${x + (x < 100 ? -6.6 : 6.6)} ${eyeY - .4} l${x < 100 ? -1.8 : 1.8} -1.4" stroke="#241510" stroke-width="1.2"/><path d="M${x - 5} ${eyeY + 4.2} Q${x} ${eyeY + 5.8} ${x + 5} ${eyeY + 4.2}" stroke="${darken(sk, .25)}" stroke-width=".8" fill="none" opacity=".7"/>`).join("")}</g>`;
   const mouthY = hy + 16, lip = hexMix(darken(sk, .25), "#b4544a", .45);
-  const mouth = { happy: `<path d="M92 ${mouthY} Q100 ${mouthY + 6} 108 ${mouthY}" stroke="${lip}" stroke-width="2.6" fill="none" stroke-linecap="round"/>`, neutral: `<path d="M93 ${mouthY + 1} Q100 ${mouthY + 2} 107 ${mouthY + 1}" stroke="${lip}" stroke-width="2.4" fill="none" stroke-linecap="round"/>`,
+  const mouth = { happy: `<path d="M91 ${mouthY - 1} Q100 ${mouthY + 8} 109 ${mouthY - 1} Q100 ${mouthY + 3} 91 ${mouthY - 1}Z" fill="#fff" stroke="${lip}" stroke-width="2" stroke-linejoin="round"/><path d="M93 ${mouthY + 4.6} Q100 ${mouthY + 8.6} 107 ${mouthY + 4.6}" stroke="${lip}" stroke-width="1.6" fill="none" opacity=".7"/>`, neutral: `<path d="M93 ${mouthY + 1} Q100 ${mouthY + 2} 107 ${mouthY + 1}" stroke="${lip}" stroke-width="2.4" fill="none" stroke-linecap="round"/>`,
     laugh: `<path d="M91 ${mouthY - 1} Q100 ${mouthY + 11} 109 ${mouthY - 1}Z" fill="#5a1d1d"/><path d="M93 ${mouthY} H107" stroke="#fff" stroke-width="2"/>`, cheer: `<ellipse cx="100" cy="${mouthY + 3}" rx="6" ry="6.5" fill="#5a1d1d"/>`,
     tense: `<path d="M94 ${mouthY + 2} H106" stroke="${lip}" stroke-width="2.6" stroke-linecap="round"/>`, bored: `<path d="M93 ${mouthY + 3} Q100 ${mouthY - 1} 107 ${mouthY + 3}" stroke="${lip}" stroke-width="2.4" fill="none" stroke-linecap="round"/>`, sleep: `<ellipse cx="100" cy="${mouthY + 2}" rx="3" ry="2" fill="#5a1d1d"/>` }[mood] || "";
   const glasses = { ohne: "", rund: `<g fill="none" stroke="#2b2b2b" stroke-width="1.8"><circle cx="90" cy="${eyeY}" r="7.5"/><circle cx="110" cy="${eyeY}" r="7.5"/><path d="M97.5 ${eyeY} H102.5 M82.5 ${eyeY - 1} L78 ${eyeY - 3} M117.5 ${eyeY - 1} L122 ${eyeY - 3}"/></g>`,
@@ -10438,11 +10452,11 @@ function figSvg(L0, o = {}) {
   const wrinkles = L.age === "aelter" ? `<path d="M90 ${hy - 24} Q100 ${hy - 26} 110 ${hy - 24} M88 ${hy - 20} Q100 ${hy - 22} 112 ${hy - 20} M89 ${hy + 4} Q87 ${hy + 12} 90 ${hy + 16} M111 ${hy + 4} Q113 ${hy + 12} 110 ${hy + 16}" stroke="${darken(sk, .3)}" stroke-width="1" fill="none" opacity=".6"/>` : "";
   const head = `${back}<rect x="91" y="${hy + 22}" width="18" height="${sh - hy - 22}" rx="6" fill="url(#${id}s)"/><rect x="91" y="${hy + 26}" width="18" height="8" fill="${darken(sk, .22)}" opacity=".6"/>
     <ellipse cx="77" cy="${hy - 2}" rx="5" ry="9" fill="${darken(sk, .08)}"/><ellipse cx="123" cy="${hy - 2}" rx="5" ry="9" fill="${darken(sk, .08)}"/>
-    <path d="${face}" fill="url(#${id}s)"/>${wrinkles}${beard}
+    <path d="${face}" fill="url(#${id}s)"/><ellipse cx="87" cy="${hy + 8}" rx="6.5" ry="4" fill="#ff7a7a" opacity=".16"/><ellipse cx="113" cy="${hy + 8}" rx="6.5" ry="4" fill="#ff7a7a" opacity=".16"/><ellipse cx="95" cy="${hy - 26}" rx="11" ry="5" fill="#fff" opacity=".13"/>${wrinkles}${beard}
     <path d="M84 ${eyeY - 9} Q90 ${eyeY - 12} 96 ${eyeY - 9}" stroke="${darken(hc, .1)}" stroke-width="${bw}" fill="none" stroke-linecap="round"/><path d="M104 ${eyeY - 9} Q110 ${eyeY - 12} 116 ${eyeY - 9}" stroke="${darken(hc, .1)}" stroke-width="${bw}" fill="none" stroke-linecap="round"/>
-    ${eyes}<path d="M100 ${eyeY + 2} Q96 ${hy + 8} 98 ${hy + 9} Q101 ${hy + 10} 104 ${hy + 8}" stroke="${darken(sk, .3)}" stroke-width="1.5" fill="none"/>${mouth}${glasses}${front}`;
-  const figure = `${legs}${L.outfit === "hoodie" ? details : ""}<path d="${torso}" fill="${fill}"/>${L.outfit !== "hoodie" ? details : ""}${arm(-1)}${arm(1)}${head}`;
-  const box = mode === "portrait" ? "52 18 96 96" : mode === "seat" ? "40 10 120 150" : "20 0 160 380";
+    ${eyes}<path d="M101 ${eyeY + 1} Q97 ${hy + 7} 97 ${hy + 9} Q100 ${hy + 11} 104 ${hy + 9}" stroke="${darken(sk, .32)}" stroke-width="1.6" fill="none" stroke-linecap="round"/><ellipse cx="100.5" cy="${hy + 6}" rx="1.6" ry="2.4" fill="#fff" opacity=".22"/>${mouth}${glasses}${front}${strands}`;
+  const figure = `${legs}${L.outfit === "hoodie" ? details : ""}<path d="${torso}" fill="${fill}"/><path d="M${cx - sw + 8} ${sh + 20} Q${cx - sw + 14} ${sh + 60} ${cx - sw + 10} ${sh + 104}" stroke="#fff" stroke-width="6" opacity=".09" fill="none"/>${L.outfit !== "hoodie" ? details : ""}${arm(-1)}${arm(1)}<g transform="translate(100 ${hy + 30}) scale(1.16) translate(-100 ${-(hy + 30)})">${head}</g>`;
+  const box = mode === "portrait" ? "40 2 120 120" : mode === "seat" ? "40 10 120 150" : "20 0 160 380";
   const bgEl = mode === "portrait" ? `<rect x="0" y="0" width="200" height="400" fill="url(#${id}bg)"/>` : mode === "full" ? `<ellipse cx="100" cy="${sh + 252}" rx="54" ry="8" fill="#000" opacity=".35"/>` : "";
   if (o.raw) return `${defs}${bgEl}${figure}`;
   const w = o.w || (mode === "full" ? 160 : 96), h = o.h || (mode === "full" ? 380 : 96);
