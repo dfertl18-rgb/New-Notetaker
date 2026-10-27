@@ -27,12 +27,15 @@ const share = process.argv.includes("--share"); // Weitergabe-Version: ohne priv
 if (!share && fs.existsSync(priv)) { html = html.replace("<script>", () => "<script>\n" + fs.readFileSync(priv, "utf8") + "</script>\n<script>"); console.log("Private Daten eingebettet."); }
 // Echte Senderlogos (Markenrechte) ebenfalls nur in der privaten Version
 // Titeldatenbank (Wikidata + IMDb-Datensätze, nur private Nutzung) ebenfalls nur privat
-for (const extra of ["titles.js", "extra.js", "besetzung.js"]) { const fp = path.join(src, "privat", extra); if (!share && fs.existsSync(fp)) { html = html.replace("<script>", () => "<script>\n" + fs.readFileSync(fp, "utf8") + "</script>\n<script>"); console.log("Private Datei eingebettet:", extra); } }
+for (const extra of ["titles.js", "extra.js", "besetzung.js", "photos.js"]) { const fp = path.join(src, "privat", extra); if (!share && fs.existsSync(fp)) { html = html.replace("<script>", () => "<script>\n" + fs.readFileSync(fp, "utf8") + "</script>\n<script>"); console.log("Private Datei eingebettet:", extra); } }
 const privLogos = path.join(src, "privat", "logos.js");
 if (!share && fs.existsSync(privLogos)) { html = html.replace("<script>", () => "<script>\n" + fs.readFileSync(privLogos, "utf8") + "</script>\n<script>"); console.log("Private Logos eingebettet."); }
 fs.writeFileSync(path.join(out, "index.html"), html);
 fs.copyFileSync(path.join(__dirname, "build", "icon.png"), path.join(out, "icon.png"));
 
+// Realistische Menschenmodelle (MakeHuman/MPFB2, CC0) für Avatare, Wohnzimmer und Zwischensequenzen
+const human = path.join(src, "human");
+if (fs.existsSync(human)) { fs.cpSync(human, path.join(out, "human"), { recursive: true }); console.log("Menschenmodelle kopiert."); }
 const logos = path.join(src, "logos");
 if (fs.existsSync(logos)) fs.cpSync(logos, path.join(out, "logos"), { recursive: true });
 console.log("App vorbereitet:", out);
