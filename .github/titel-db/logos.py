@@ -4,6 +4,11 @@ UA = {"User-Agent": "Medienmanager2027-private-build/1.0 (non-commercial)"}
 ITEMS = {"ard": ["Das Erste"], "dritte": ["WDR Fernsehen", "NDR Fernsehen", "BR Fernsehen"], "kabel1": ["Kabel eins"], "zdfneo": ["ZDFneo"], "nitro": ["Nitro", "RTL Nitro"],
   "arte": ["Arte"], "prime": ["Amazon Prime Video", "Prime Video"], "disney": ["Disney+"], "rtlplus": ["RTL+"], "wow": ["WOW"], "joyn": ["Joyn"], "mediathek": ["ARD Mediathek", "ZDFmediathek"],
   "rtl2": ["RTL Zwei"], "vox": ["VOX"], "sat1": ["Sat.1"], "pro7": ["ProSieben"], "rtl": ["RTL"], "zdf": ["ZDF"], "netflix": ["Netflix"], "paramount": ["Paramount+"], "dazn": ["DAZN"]}
+# Neue Sender: eindeutig über den Titel des deutschen Wikipedia-Artikels
+WIKI = {"sat1gold": "Sat.1 Gold", "rtlup": "RTLup", "welt": "Welt (Fernsehsender)", "ntv": "n-tv", "superrtl": "Super RTL", "dmax": "DMAX (Fernsehsender)",
+  "k1doku": "Kabel Eins Doku", "pro7maxx": "ProSieben Maxx", "voxup": "VOXup", "tele5": "Tele 5", "n24doku": "N24 Doku", "sixx": "Sixx", "tlc": "TLC (Fernsehsender)",
+  "disneych": "Disney Channel (Deutschland)", "sport1": "Sport1", "eurosport": "Eurosport 1", "skysport": "Sky Sport (Fernsehsender)", "euronews": "Euronews",
+  "kabel1": "Kabel eins", "nitro": "Nitro (Fernsehsender)"}
 def get(url, tries=3):
     for i in range(tries):
         try:
@@ -11,7 +16,23 @@ def get(url, tries=3):
         except Exception as e: print("Fehler", url, e, file=sys.stderr); time.sleep(5 * (i + 1))
     return None, None
 out = {}
+def fetch(sid, res, lab):
+    url = res.replace("http://", "https://")
+    data, ct = get(url + ("&" if "?" in url else "?") + "width=256")
+    if not data: data, ct = get(url)
+    if not data: return False
+    ct = "image/svg+xml" if url.lower().endswith(".svg") and "svg" in (ct or "svg") else (ct or "image/png").split(";")[0]
+    out[sid] = f"data:{ct};base64," + base64.b64encode(data).decode()
+    print(sid, lab, url, len(data), file=sys.stderr); return True
+for sid, art in WIKI.items():
+    q = f'SELECT ?logo WHERE {{ ?a schema:about ?i ; schema:isPartOf <https://de.wikipedia.org/> ; schema:name "{art}"@de . ?i wdt:P154 ?logo }} LIMIT 1'
+    b, _ = get("https://query.wikidata.org/sparql?format=json&query=" + urllib.parse.quote(q))
+    rows = json.loads(b)["results"]["bindings"] if b else []
+    if rows: fetch(sid, rows[0]["logo"]["value"], art)
+    else: print("kein Logo", sid, art, file=sys.stderr)
+    time.sleep(1)
 for sid, labels in ITEMS.items():
+    if sid in out: continue
     for lab in labels:
         q = f'SELECT ?logo WHERE {{ ?i rdfs:label "{lab}"@de . ?i wdt:P154 ?logo . ?i wdt:P17 wd:Q183 }} LIMIT 3'
         q2 = f'SELECT ?logo WHERE {{ ?i rdfs:label "{lab}"@de . ?i wdt:P154 ?logo }} LIMIT 3'
