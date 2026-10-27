@@ -724,7 +724,28 @@ const STATIONS = [
   { id: "rtl2", name: "RTLZWEI", short: "RTL2", type: "privat", share: 2.2, color: "#94d82d", profile: ["Reality", "Soap", "Action"], streamer: "rtlplus" },
   { id: "nitro", name: "Nitro", short: "NIT", type: "privat", share: 1.4, color: "#845ef7", profile: ["Action", "Krimi", "Science-Fiction"], streamer: "rtlplus" },
   { id: "arte", name: "ARTE", short: "arte", type: "oer", share: 1.2, color: "#ffc078", profile: ["Kultur", "Doku"], streamer: "mediathek" },
+  // Spartensender und kleinere Vollprogramme (Marktanteile 2025 gerundet; mit * markierte sind Schätzwerte)
+  { id: "sat1gold", name: "Sat.1 Gold", short: "GOLD", type: "privat", share: 2.4, color: "#c9a86a", profile: ["Krimi", "Reality", "Serie"], streamer: "joyn" },
+  { id: "rtlup", name: "RTLup", short: "UP", type: "privat", share: 2.3, color: "#ff6b6b", profile: ["Show", "Reality", "Soap", "Krimi"], streamer: "rtlplus" },
+  { id: "welt", name: "WELT", short: "WELT", type: "privat", share: 1.4, color: "#1c3d5a", profile: ["Nachrichten", "Doku", "Magazin"], streamer: "", only: ["Nachrichten", "Doku", "Magazin", "Talk", "Teleshopping"] },
+  { id: "ntv", name: "ntv", short: "ntv", type: "privat", share: 1.3, color: "#c92a2a", profile: ["Nachrichten", "Doku", "Magazin"], streamer: "rtlplus", only: ["Nachrichten", "Doku", "Magazin", "Talk", "Teleshopping"] },
+  { id: "superrtl", name: "Super RTL", short: "SRTL", type: "privat", share: 1.2, color: "#e8590c", profile: ["Kinder", "Sitcom", "Doku", "Krimi"], streamer: "rtlplus" },
+  { id: "dmax", name: "DMAX", short: "DMAX", type: "privat", share: 1.0, color: "#2b6b68", profile: ["Doku", "Reality", "Action"], streamer: "" },
+  { id: "k1doku", name: "kabel eins Doku", short: "K1D", type: "privat", share: 1.0, color: "#0ca678", profile: ["Doku"], streamer: "joyn", only: ["Doku", "Magazin", "Reality", "Teleshopping"] },
+  { id: "pro7maxx", name: "ProSieben Maxx", short: "MAXX", type: "privat", share: 0.9, color: "#343a40", profile: ["Sitcom", "Action", "Science-Fiction", "Sport"], streamer: "joyn" },
+  { id: "voxup", name: "VOXup", short: "VUP", type: "privat", share: 0.9, color: "#9c36b5", profile: ["Reality", "Serie", "Show"], streamer: "rtlplus" }, // *
+  { id: "tele5", name: "Tele 5", short: "T5", type: "privat", share: 0.8, color: "#5f3dc4", profile: ["Science-Fiction", "Action", "Komödie", "Krimi"], streamer: "" },
+  { id: "n24doku", name: "N24 Doku", short: "N24D", type: "privat", share: 0.7, color: "#364fc7", profile: ["Doku"], streamer: "", only: ["Doku", "Magazin", "Nachrichten", "Teleshopping"] }, // *
+  { id: "sixx", name: "sixx", short: "sixx", type: "privat", share: 0.6, color: "#e64980", profile: ["Serie", "Reality", "Liebesfilm", "Sitcom"], streamer: "joyn" },
+  { id: "tlc", name: "TLC", short: "TLC", type: "privat", share: 0.6, color: "#d6336c", profile: ["Reality", "Doku"], streamer: "", only: ["Reality", "Doku", "Magazin", "Teleshopping"] }, // *
+  { id: "disneych", name: "Disney Channel", short: "DIS", type: "privat", share: 0.5, color: "#3b5bdb", profile: ["Kinder", "Sitcom", "Komödie"], streamer: "disney", only: ["Kinder", "Sitcom", "Komödie"], kids: true }, // *
+  { id: "sport1", name: "SPORT1", short: "S1+", type: "privat", share: 0.5, color: "#1864ab", profile: ["Sport", "Reality"], streamer: "", only: ["Sport", "Reality", "Talk", "Magazin", "Teleshopping"] },
+  { id: "eurosport", name: "Eurosport 1", short: "EURO", type: "privat", share: 0.5, color: "#1971c2", profile: ["Sport"], streamer: "", only: ["Sport", "Magazin"] }, // *
+  { id: "skysport", name: "Sky Sport (Pay-TV)", short: "SKY", type: "privat", pay: true, share: 0.3, color: "#212529", profile: ["Sport"], streamer: "wow", only: ["Sport", "Magazin"] }, // *
+  { id: "euronews", name: "Euronews (deutsch)", short: "EN", type: "privat", share: 0.1, color: "#4dabf7", profile: ["Nachrichten", "Doku"], streamer: "", only: ["Nachrichten", "Doku", "Magazin"] }, // *
 ];
+const SHARE_SUM = STATIONS.reduce((a, s) => a + s.share, 0);
+const stAllow = (st, g) => { const o = STATIONS[st.i].only; return !o || o.includes(g); };
 const SIDX = Object.fromEntries(STATIONS.map((s, i) => [s.id, i]));
 
 // Streamingdienste (Abonnenten in Mio. sind Spielwerte, grob angelehnt)
@@ -744,7 +765,7 @@ const GENRES = {
   "Liebesfilm": [20, 21], "Action": [20, 21, 22], "Monumental": [20], "Komödie": [20, 21], "Drama": [20, 21], "Krimi": [20, 21],
   "Kultur": [21, 22, 23], "Show": [20, 21], "Science-Fiction": [20, 21, 22], "Serie": [20, 21], "Sitcom": [17, 18, 19, 23],
   "Soap": [17, 18, 19], "Doku": [20, 21, 22], "Reality": [14, 15, 16, 17, 19], "Nachrichten": [6, 7, 19, 20, 22],
-  "Magazin": [6, 7, 8, 9, 12, 18], "Talk": [22, 23], "Teleshopping": [0, 1, 2, 3, 4, 5], "Sport": HOURS,
+  "Magazin": [6, 7, 8, 9, 12, 18], "Talk": [22, 23], "Teleshopping": [0, 1, 2, 3, 4, 5], "Sport": HOURS, "Kinder": [6, 7, 8, 14, 15, 16, 17, 18],
 };
 // Spielfilme mit Originaltitel: [Titel, Genre, Spielwert, Länge in Std., FSK]
 const FILM_DB = [
@@ -784,6 +805,8 @@ const SERIES_DB = [
   ["Mein Lokal, Dein Lokal", "Reality", 54, 0, "kabel1"], ["Achtung Kontrolle!", "Reality", 56, 0, "kabel1"], ["Abenteuer Leben", "Doku", 50, 0, "kabel1"],
   ["Berlin – Tag & Nacht", "Soap", 60, 0, "rtl2"], ["Die Geissens", "Reality", 56, 0, "rtl2"], ["Frauentausch", "Reality", 50, 0, "rtl2"], ["RTLZWEI News", "Nachrichten", 46, 0, "rtl2"],
   ["ARTE Journal", "Nachrichten", 58, 0, "arte"], ["ARTE-Themenabend", "Kultur", 66, 0, "arte"], ["Opernabend live", "Kultur", 62, 0, "arte"], ["Xenius", "Doku", 54, 0, "arte"],
+  ["Steel Buddies – Stahlharte Geschäfte", "Reality", 58, 0, "dmax"], ["Asphalt-Cowboys", "Reality", 52, 0, "dmax"], ["Die Ludolfs – 4 Brüder auf'm Schrottplatz", "Reality", 54, 40, "dmax"],
+  ["SchleFaZ – Die schlechtesten Filme aller Zeiten", "Komödie", 56, 0, "tele5"], ["Telebörse", "Magazin", 50, 0, "ntv"], ["Doppelpass", "Talk", 62, 0, "sport1"], ["Woozle Goozle", "Kinder", 50, 0, "superrtl"],
   // frei lizenzierbare Serien (Programmhandel)
   ["Navy CIS", "Krimi", 82, 24, ""], ["Criminal Minds", "Krimi", 78, 22, ""], ["CSI: Miami", "Krimi", 72, 24, ""], ["Bones – Die Knochenjägerin", "Krimi", 70, 22, ""],
   ["Castle", "Krimi", 70, 24, ""], ["The Mentalist", "Krimi", 72, 23, ""], ["Monk", "Krimi", 74, 16, ""], ["Blue Bloods", "Krimi", 68, 22, ""], ["Hawaii Five-0", "Action", 66, 24, ""],
@@ -794,6 +817,22 @@ const SERIES_DB = [
   ["Die Simpsons", "Sitcom", 80, 22, ""], ["Young Sheldon", "Sitcom", 76, 22, ""], ["King of Queens", "Sitcom", 74, 24, ""], ["Modern Family", "Sitcom", 68, 24, ""], ["Malcolm mittendrin", "Sitcom", 66, 22, ""],
   ["Doctor's Diary", "Komödie", 66, 24, ""], ["Danni Lowinski", "Komödie", 64, 13, ""], ["Hinter Gittern", "Serie", 58, 26, ""], ["Der Bulle von Tölz", "Krimi", 64, 20, ""],
 ];
+// Lizenzware, die zum Start bei genau diesem Sender läuft
+const START_LIC = {
+  sixx: [["Charmed – Zauberhafte Hexen", "Serie", 62, 22, ""]],
+  pro7maxx: [["One Piece", "Action", 60, 26, ""], ["Naruto Shippuden", "Action", 56, 26, ""], ["Futurama", "Sitcom", 66, 20, ""]],
+  disneych: [["Phineas und Ferb", "Kinder", 62, 26, ""], ["Micky Maus Wunderhaus", "Kinder", 50, 26, ""], ["Miraculous – Geschichten von Ladybug und Cat Noir", "Kinder", 60, 26, ""]],
+  tlc: [["Sag ja zum Kleid", "Reality", 56, 20, ""], ["90 Day Fiancé", "Reality", 58, 16, ""], ["Mein Leben mit 300 kg", "Reality", 54, 14, ""]],
+  dmax: [["Goldrausch in Alaska", "Doku", 58, 20, ""], ["Fang des Lebens – Der gefährlichste Job Alaskas", "Doku", 56, 20, ""]],
+};
+// Lizenzserien laufen zum Start bei ihrem deutschen Ausstrahlungssender (Erst- oder Stammsender); der Rest liegt im Programmhandel
+const START_HOME = {
+  pro7: ["The Big Bang Theory", "Die Simpsons", "Two and a Half Men", "Young Sheldon", "How I Met Your Mother", "Malcolm mittendrin", "Desperate Housewives", "Lost", "9-1-1 Notruf L.A.", "Grey's Anatomy"],
+  sat1: ["Navy CIS", "Criminal Minds", "The Mentalist", "Hawaii Five-0", "Danni Lowinski", "Der Bulle von Tölz"],
+  kabel1: ["Castle", "King of Queens"], rtl: ["Dr. House", "Monk", "Bones – Die Knochenjägerin", "Doctor's Diary", "Hinter Gittern"],
+  vox: ["CSI: Miami", "Chicago Fire", "Law & Order: Special Victims Unit"], tele5: ["Star Trek: Das nächste Jahrhundert"],
+};
+const START_HOME_OF = Object.fromEntries(Object.entries(START_HOME).flatMap(([id, l]) => l.map(t => [t, id])));
 // Erweiterte Titeldatenbank: weitere Spielfilme und lizenzierbare Serien (Titel, Genre, Qualität, Länge in Std. bzw. Folgen, FSK/Heimatsender)
 const FILM_MORE = [
   // Blockbuster & Action
@@ -1323,6 +1362,18 @@ const FILLERS = {
   "Talk": ["Talk am Abend", "Nachtcafé-Runde"], "Kultur": ["Konzert des Monats", "Museumsnacht"], "Show": ["Quiz am Vorabend", "Musikshow"],
   "Krimi": ["Krimi-Wiederholung"], "Serie": ["Serien-Wiederholung"], "Sitcom": ["Sitcom-Wiederholung"], "Soap": ["Soap-Wiederholung"], "Action": ["Action-Wiederholung"],
   "Science-Fiction": ["Sci-Fi-Wiederholung"], "Komödie": ["Komödien-Wiederholung"], "Nachrichten": ["Nachrichten"],
+  "Kinder": ["Zeichentrick am Morgen", "Kinderserie", "Trickfilm-Klassiker"], "Sport": ["Sport-Magazin", "Motorsport-Magazin", "Sport-Wiederholung"],
+};
+// Senderspezifische Füllware (generische Sendungsnamen)
+const FILLERS_ST = {
+  sport1: { Sport: ["Darts live", "Sport-Talk am Abend", "Basketball live", "Motorsport live", "Fußball-Highlights"], Reality: ["Doku-Soap am Nachmittag"], Magazin: ["Sport-Clips", "Fußball-Magazin"] },
+  eurosport: { Sport: ["Snooker live", "Radsport live", "Tennis live", "Wintersport live"], Magazin: ["Eurosport-Magazin", "Wintersport-Magazin"] },
+  skysport: { Sport: ["Golf live", "Tennis live", "Fußball-Talk", "Formel-1-Magazin"], Magazin: ["Sky Sport News", "Transfer-Update"] },
+  ntv: { Doku: ["Doku am Abend", "Technik-Doku", "Kriegs- und Geschichtsdoku"], Magazin: ["Wirtschaftsmagazin", "Wissen-Magazin"] },
+  welt: { Doku: ["Doku am Abend", "Maschinen-Doku", "Geschichts-Doku"], Magazin: ["Wirtschaftsmagazin"] },
+  n24doku: { Doku: ["Mega-Bauwerke", "Flugzeug-Doku", "Natur-Doku", "Geschichts-Doku"] },
+  k1doku: { Doku: ["Abenteuer Wildnis", "Mega-Maschinen", "Reise-Doku", "Tier-Doku"] },
+  euronews: { Doku: ["Europa-Reportage"], Magazin: ["Europa-Magazin"] },
 };
 
 // Sportrechte (Free-TV-Pakete). Inhaber zum Start nach der Marktübersicht; Termine vereinfacht.
@@ -1519,7 +1570,7 @@ function fromDB0(row) {
     price: r1000((q * q * 45 + 15000) * Math.max(1, eps / 10) * rnd(0.9, 1.15)) };
 }
 function makeFiller(genre, st) {
-  const names = FILLERS[genre] || [genre];
+  const names = (FILLERS_ST[st.id] || {})[genre] || FILLERS[genre] || [genre];
   const title = genre === "Nachrichten" ? `${st.name} Nachrichten` : pick(names);
   return { id: uid(), title, genre, kind: "show", q: genre === "Teleshopping" ? 18 : ri(32, 56), len: 1, topic: 1, fsk: 0, real: false, filler: true, price: 0, aired: 0 };
 }
@@ -1561,8 +1612,8 @@ function openTender(r) {
   r.tender = { close: G.day + (act ? 21 : 14) };
   logMsg("Rechteagentur", "Sport", `Ausschreibung: „${d.name}“ für ${rightYears(r)} ${rightYears(r) > 1 ? "Jahre" : "Jahr"}${act ? ` ab ${dateShort(G.day + r.days)}` : " ab sofort"} – Gebote bis ${dateShort(r.tender.close)}, Mindestgebot ${meur(r.price)} pro Jahr (Gesamt-DACH).`);
 }
-// Sonstige Sender + Streaming: 2025 rund 29 % (die zwölf Spielsender kommen real auf gut 71 %), Fragmentierung wächst etwa einen Punkt pro Jahr
-const otherShare = () => Math.min(0.42, 0.285 + 0.01 * (G.day - 1) / 365 + (G.stream ? G.stream.subs * 0.001 : 0));
+// Sonstige Sender + Streaming: der Rest zu den Spielsendern (2025 knapp 12 %), Fragmentierung wächst etwa einen Punkt pro Jahr
+const otherShare = () => Math.min(0.3, 1 - SHARE_SUM / 100 + 0.01 * (G.day - 1) / 365 + (G.stream ? G.stream.subs * 0.001 : 0));
 
 function newGame(stationId) {
   G = { day: 1, min: 8 * 60, phase: "plan", idc: 0, market: [], adOffers: [], newsOffers: [], log: [], over: null, today: HOURS.map(() => null), yesterday: null, record: null,
@@ -1573,17 +1624,18 @@ function newGame(stationId) {
     last: HOURS.map(() => 0), hist: [], wins: 0, maSum: 0, maDays: 0, dayMA: 0, favor: 0, fin: {}, moneyStart: 0,
   }));
   const films = shuffle(FILM_DB.slice());
-  const pool = shuffle(SERIES_DB.filter(r => !r[4]));
   for (const st of G.stations) {
     SERIES_DB.filter(r => r[4] === st.id).forEach(r => st.progs.push(fromDB(r)));
-    const nf = isMe(st) ? 14 : 8;
-    for (let k = 0; k < nf && films.length; k++) st.progs.push(realFilm(films.pop()));
-    for (let k = 0; k < (isMe(st) ? 4 : st.type === "privat" ? 2 : 1) && pool.length; k++) st.progs.push(fromDB(pool.pop()));
-    if (st.type === "privat" && st.base < 6 && pool.length) st.progs.push(fromDB(pool.pop()));
-    if (!st.progs.some(p => p.genre === "Nachrichten")) st.progs.push(makeFiller("Nachrichten", st));
-    if (st.type === "privat") st.progs.push(makeFiller("Teleshopping", st));
-    else st.progs.push(makeFiller("Doku", st));
-    while (st.progs.length < 22) st.progs.push(makeFiller(pick(STATIONS[st.i].profile.concat(["Magazin", "Reality", "Doku"])), st));
+    const D = STATIONS[st.i], ok = g => stAllow(st, g);
+    (START_LIC[st.id] || []).forEach(r => st.progs.push(fromDB(r)));
+    SERIES_DB.filter(r => START_HOME_OF[r[0]] === st.id).forEach(r => st.progs.push(fromDB(r)));
+    const nf = isMe(st) ? 14 : st.base < 1.5 ? 5 : 8;
+    for (let k = 0, tries = 0; k < nf && films.length && tries < 60; tries++) { const fi = films.findIndex(x => ok(x[1]) && (!D.kids || x[4] <= 6)); if (fi < 0) break; st.progs.push(realFilm(films.splice(fi, 1)[0])); k++; }
+    if (!st.progs.some(p => p.genre === "Nachrichten") && ok("Nachrichten") && !D.kids) st.progs.push(makeFiller("Nachrichten", st));
+    if (st.type === "privat" && ok("Teleshopping") && !D.pay) st.progs.push(makeFiller("Teleshopping", st));
+    else if (ok("Doku")) st.progs.push(makeFiller("Doku", st));
+    const fg = D.profile.concat(["Magazin", "Reality", "Doku"]).filter(ok);
+    while (st.progs.length < 22) st.progs.push(makeFiller(pick(fg), st));
     dbArchive(st);
   }
   // Startbestand: eingekaufte Lizenzen laufen unterschiedlich lange
@@ -1932,7 +1984,8 @@ function attractiveness(st, i) {
   const am = adMinH(st, i); if (am > 6) A *= 1 - (am - 6) * 0.01; // hohe Werbelast vertreibt Zuschauer
   return { p, c, A, parts };
 }
-const ST_CAL = { zdf: 0.98, ard: 1.0, dritte: 1.18, rtl: 1.1, sat1: 1.12, vox: 1.18, pro7: 1.3, kabel1: 1.1, zdfneo: 1.36, rtl2: 1.27, nitro: 1.28, arte: 1.2 };
+const ST_CAL = { zdf: 0.91, ard: 0.94, dritte: 1.18, rtl: 1.1, sat1: 1.2, vox: 1.3, pro7: 1.3, kabel1: 1.0, zdfneo: 1.28, rtl2: 1.32, nitro: 1.28, arte: 1.2,
+  sat1gold: 1.65, rtlup: 1.3, welt: 1.9, ntv: 1.75, superrtl: 1.4, dmax: 1.25, k1doku: 2.4, pro7maxx: 1.08, voxup: 1.35, tele5: 1.37, n24doku: 2.1, sixx: 1.2, tlc: 1.8, disneych: 1.2, sport1: 1.5, eurosport: 1.5, skysport: 0.72, euronews: 0.4 };
 function attrCell(st, i, c) {
   const p = c.p ? progOf(st, c.p) : null;
   const newsMult = 1 + Math.min(st.news.reduce((a, n) => a + n.q, 0) / 3, 100) / 1250;
@@ -2060,7 +2113,8 @@ const stageAllowed = n => n !== 2 || STATIONS[G.me].type !== "oer";
 const sFree = S => S.stage < 2 || S.model === "free";
 function streamBrand() {
   const sid = STATIONS[G.me].streamer;
-  return sid === "mediathek" ? `${me().name} Mediathek` : STREAMERS.find(x => x.id === sid).name;
+  const d = STREAMERS.find(x => x.id === sid);
+  return sid === "mediathek" ? `${me().name} Mediathek` : d ? d.name : `${me().name}+`;
 }
 function startProject(n) {
   const P = me(), s = STAGES[n];
@@ -2631,7 +2685,9 @@ const SCHEMA = {
 };
 // Passt die Senderangabe einer importierten Person zum Sender des Formats?
 const ST_ALIAS = { ard: ["ard", "das erste"], zdf: ["zdf"], dritte: ["wdr", "ndr", "br", "swr", "mdr", "hr", "rbb", "sr ", "dritte"], rtl: ["rtl"], sat1: ["sat.1", "sat1", "sat 1"], vox: ["vox"], pro7: ["prosieben", "pro7", "pro 7"],
-  kabel1: ["kabel eins", "kabel1"], zdfneo: ["zdfneo", "zdf neo"], rtl2: ["rtlzwei", "rtl zwei", "rtl2", "rtl ii"], nitro: ["nitro"], arte: ["arte"] };
+  kabel1: ["kabel eins", "kabel1"], zdfneo: ["zdfneo", "zdf neo"], rtl2: ["rtlzwei", "rtl zwei", "rtl2", "rtl ii"], nitro: ["nitro"], arte: ["arte"],
+  sat1gold: ["sat.1 gold", "sat1 gold"], rtlup: ["rtlup", "rtl up", "rtlplus (linear)"], welt: ["welt", "n24"], ntv: ["ntv", "n-tv"], superrtl: ["super rtl", "toggo"], dmax: ["dmax"], k1doku: ["kabel eins doku"], pro7maxx: ["prosieben maxx", "pro7 maxx"],
+  voxup: ["voxup"], tele5: ["tele 5", "tele5"], n24doku: ["n24 doku"], sixx: ["sixx"], tlc: ["tlc"], disneych: ["disney channel"], sport1: ["sport1", "dsf"], eurosport: ["eurosport"], skysport: ["sky sport", "sky"], euronews: ["euronews"] };
 function stationFits(p, stId) {
   const at = String(p.knownAt || "").toLowerCase();
   if (!at) return true;
@@ -3320,14 +3376,14 @@ function startDay() {
 function aiTurn(st) {
   // Bietergefecht um begehrte Titel: reiche Sender schnappen Topware schnell weg
   let bought = false;
-  const hot = G.market.filter(p => isHot(p) && (p.mdays || 0) >= 1).sort((a, b) => (b.pull || 0) + b.q / 100 - (a.pull || 0) - a.q / 100)[0];
-  if (hot && st.money > hot.price * 1.5 && Math.random() < 0.18 * (st.base / 8 + 0.5)) {
+  const hot = G.market.filter(p => isHot(p) && (p.mdays || 0) >= 1 && stAllow(st, p.genre)).sort((a, b) => (b.pull || 0) + b.q / 100 - (a.pull || 0) - a.q / 100)[0];
+  if (hot && st.money > hot.price * 1.5 && Math.random() < 0.18 * (Math.min(st.base, 15) / 8 + (st.base < 2 ? 0.1 : 0.5))) {
     G.market = G.market.filter(x => x !== hot); applyLicense(hot, pick([1, 2])); st.progs.push(hot);
     logMsg("Branchendienst", "Konkurrenz", `Bietergefecht entschieden: ${st.name} sichert sich ${hot.kind === "film" ? "den begehrten Film" : "die begehrte Serie"} „${hot.title}“${hot.imdb ? ` (IMDb ${hot.imdb[0].toLocaleString("de-DE")})` : ""}.`);
     bought = true;
   }
   if (!bought && st.type === "privat" && Math.random() < 0.3) {
-    const cands = G.market.filter(p => STATIONS[st.i].profile.includes(p.genre)).sort((a, b) => b.q - a.q);
+    const cands = G.market.filter(p => STATIONS[st.i].profile.includes(p.genre) && stAllow(st, p.genre) && p.price < st.money * 0.5).sort((a, b) => b.q - a.q);
     if (cands[0]) { G.market = G.market.filter(x => x !== cands[0]); applyLicense(cands[0], pick([1, 2])); st.progs.push(cands[0]); logMsg("Branchendienst", "Konkurrenz", `${st.name} sichert sich ${cands[0].kind === "film" ? "den Film" : "die Lizenz für"} „${cands[0].title}“.`); }
   }
   st.progs = st.progs.filter(p => !(p.kind === "film" && p.runs >= p.maxRuns) && !(p.kind === "serie" && !p.own && p.ep >= (p.maxEp || p.eps * 2)) && !(p.until && p.until < G.day));
@@ -5490,10 +5546,13 @@ const blMagazine = p => p && ["Sportschau", "das aktuelle sportstudio"].includes
 const ZN = ["Z1 · 14–29", "Z2 · 30–49", "Z3 · 50–64", "Z4 · 65+"];
 const ZPOP = [0.14, 0.26, 0.27, 0.33]; // Anteil am linearen TV-Publikum
 const ZBAR = { ard: [0.55, 0.8, 1.15, 1.4], zdf: [0.5, 0.75, 1.15, 1.45], dritte: [0.35, 0.6, 1.1, 1.45], rtl: [1.05, 1.15, 1, 0.42], sat1: [0.95, 1.1, 1, 0.5], vox: [1.1, 1.15, 0.9, 0.4],
-  pro7: [1.55, 1.2, 0.55, 0.2], kabel1: [0.9, 1.1, 1, 0.55], zdfneo: [0.8, 1, 1, 0.8], rtl2: [1.35, 1.1, 0.65, 0.3], nitro: [0.9, 1.1, 1, 0.55], arte: [0.55, 0.9, 1.1, 1] };
+  pro7: [1.55, 1.2, 0.55, 0.2], kabel1: [0.9, 1.1, 1, 0.55], zdfneo: [0.8, 1, 1, 0.8], rtl2: [1.35, 1.1, 0.65, 0.3], nitro: [0.9, 1.1, 1, 0.55], arte: [0.55, 0.9, 1.1, 1],
+  sat1gold: [0.4, 0.75, 1.15, 1.25], rtlup: [0.6, 0.95, 1.15, 1.0], welt: [0.6, 0.9, 1.1, 1.1], ntv: [0.65, 0.95, 1.1, 1.05], superrtl: [1.2, 1.15, 0.85, 0.5], dmax: [1.3, 1.25, 0.85, 0.45],
+  k1doku: [0.85, 1.05, 1.05, 0.85], pro7maxx: [1.7, 1.2, 0.5, 0.2], voxup: [0.8, 1.05, 1.05, 0.9], tele5: [0.9, 1.05, 1.05, 0.8], n24doku: [0.85, 1.05, 1.05, 0.85], sixx: [1.6, 1.25, 0.6, 0.3],
+  tlc: [1.4, 1.2, 0.7, 0.4], disneych: [1.2, 1.2, 0.7, 0.4], sport1: [1.1, 1.15, 0.95, 0.75], eurosport: [0.8, 1.0, 1.1, 0.9], skysport: [1.2, 1.2, 0.95, 0.55], euronews: [0.6, 0.9, 1.1, 1.0] };
 const ZGEN = { Nachrichten: [0.25, 0.5, 0.8, 0.95], Magazin: [0.3, 0.5, 0.7, 0.8], Krimi: [0.25, 0.55, 0.85, 0.9], Serie: [0.45, 0.65, 0.65, 0.55], Soap: [0.6, 0.55, 0.45, 0.4], Sitcom: [0.85, 0.6, 0.3, 0.15],
   Show: [0.55, 0.65, 0.6, 0.6], Reality: [0.85, 0.6, 0.35, 0.2], Talk: [0.2, 0.45, 0.7, 0.8], Doku: [0.3, 0.5, 0.7, 0.75], Kultur: [0.15, 0.3, 0.55, 0.65], Liebesfilm: [0.35, 0.5, 0.6, 0.7],
-  Drama: [0.35, 0.55, 0.65, 0.6], Komödie: [0.6, 0.6, 0.55, 0.5], Action: [0.8, 0.75, 0.45, 0.25], "Science-Fiction": [0.85, 0.7, 0.35, 0.15], Monumental: [0.4, 0.6, 0.6, 0.5], Teleshopping: [0.05, 0.15, 0.3, 0.45], Sport: [0.6, 0.75, 0.85, 0.8] };
+  Drama: [0.35, 0.55, 0.65, 0.6], Komödie: [0.6, 0.6, 0.55, 0.5], Action: [0.8, 0.75, 0.45, 0.25], "Science-Fiction": [0.85, 0.7, 0.35, 0.15], Monumental: [0.4, 0.6, 0.6, 0.5], Teleshopping: [0.05, 0.15, 0.3, 0.45], Sport: [0.6, 0.75, 0.85, 0.8], Kinder: [0.35, 0.45, 0.15, 0.1] };
 const ZFMT = { "Das Traumschiff": [0.05, 0.1, 0.35, 0.9], "Immer wieder sonntags": [0.03, 0.1, 0.45, 0.95], "Tatort": [0.35, 0.65, 0.9, 0.9], "Wer wird Millionär?": [0.35, 0.6, 0.8, 0.85], "Let's Dance": [0.55, 0.7, 0.65, 0.6],
   "Ich bin ein Star – Holt mich hier raus!": [0.85, 0.8, 0.5, 0.3], "The Masked Singer": [0.75, 0.75, 0.45, 0.3], "Joko & Klaas gegen ProSieben": [0.95, 0.6, 0.2, 0.05], "Germany's Next Topmodel": [0.95, 0.5, 0.2, 0.08],
   "Bares für Rares": [0.15, 0.35, 0.8, 0.95], "Der Bergdoktor": [0.15, 0.4, 0.8, 0.95], "Die Rosenheim-Cops": [0.1, 0.35, 0.8, 0.95], "Sportschau": [0.5, 0.7, 0.85, 0.8], "Galileo": [0.8, 0.6, 0.35, 0.2],
@@ -5548,6 +5607,15 @@ const SCHED = {
   kabel1: [[MF, 18, "Achtung Kontrolle!", 1080], [MF, 19, "Mein Lokal, Dein Lokal", 1140], [[6, 0], 19, "Abenteuer Leben", 1140]],
   arte: [[MF, 19, "ARTE Journal", 1140], [MF, 20, "ARTE-Themenabend", 1215], [[6, 0], 20, "Opernabend live", 1215]],
   dritte: [[[0, 1, 2, 3, 4, 5, 6], 19, "Nachrichten aus der Region", 1170], [MF, 18, "Landesschau", 1080], [[2], 21, "Visite", 1260]],
+  dmax: [[[2], 20, "Steel Buddies – Stahlharte Geschäfte", 1215], [[4], 20, "Goldrausch in Alaska", 1215], [[1], 20, "Asphalt-Cowboys", 1215]],
+  tele5: [[[5], 20, "SchleFaZ – Die schlechtesten Filme aller Zeiten", 1215]],
+  ntv: [[MF, 17, "Telebörse", 1050]],
+  sport1: [[[0], 11, "Doppelpass", 660]],
+  tlc: [[MF, 20, "Sag ja zum Kleid", 1215], [[0], 20, "90 Day Fiancé", 1215]],
+  sixx: [[MF, 20, "Charmed – Zauberhafte Hexen", 1215]],
+  pro7maxx: [[MF, 15, "One Piece", 900], [MF, 16, "Naruto Shippuden", 960], [MF, 19, "Futurama", 1140]],
+  disneych: [[MF, 7, "Micky Maus Wunderhaus", 420], [MF, 17, "Phineas und Ferb", 1020], [MF, 18, "Miraculous – Geschichten von Ladybug und Cat Noir", 1080]],
+  superrtl: [[[6, 0], 8, "Woozle Goozle", 480]],
 };
 // Saisonformate laufen nur in ihren Monaten (z. B. Dschungelcamp im Januar)
 const SEASONAL = (() => { const m = {}; for (const list of Object.values(SCHED)) for (const [, , title, , cond] of list) if (cond && cond.m) m[title] = (m[title] || []).concat(cond.m); return m; })();
@@ -7983,7 +8051,7 @@ function titleDB() {
   return TDB;
 }
 // Senderarchiv aus der Datenbank: Eigen- und Auftragsproduktionen, die der Sender erstausgestrahlt hat (Rechte im Haus)
-const ARCH_MAX = { ard: 140, zdf: 140, dritte: 80, rtl: 100, sat1: 80, pro7: 80, vox: 50, rtl2: 45, kabel1: 25, zdfneo: 50, arte: 60, nitro: 20 };
+const ARCH_MAX = { ard: 140, zdf: 140, dritte: 80, rtl: 100, sat1: 80, pro7: 80, vox: 50, rtl2: 45, kabel1: 25, zdfneo: 50, arte: 60, nitro: 20, rtlup: 20, sat1gold: 20, dmax: 15, tlc: 10, sixx: 10, tele5: 10, voxup: 10, superrtl: 10, pro7maxx: 10, k1doku: 5, n24doku: 5, welt: 5, ntv: 5, disneych: 5, sport1: 3, eurosport: 3, skysport: 3, euronews: 2 };
 function dbArchive(st) {
   const db = titleDB(); if (!db) return 0;
   const have = new Set(st.progs.map(p => normT(p.title))), base = [...have].filter(x => x.length >= 5), dup = n => have.has(n) || base.some(x => n.startsWith(x + " "));
@@ -10208,7 +10276,8 @@ function quotaPanel(P) {
 // Zwei Tagessieger (Gesamtpublikum und 14–49), Frische-Index, Publikumsalter je Sender
 // Ankerwerte: DWDL/AGF 2022–2026 (Durchschnittsalter H1 2022, Monats- und Tageswerte 2026)
 // =====================================================================
-const ST_AGE = { zdf: 65, ard: 64, dritte: 66, rtl: 55, sat1: 54, vox: 54, pro7: 44, kabel1: 53, zdfneo: 60, rtl2: 51, nitro: 50, arte: 62 };
+const ST_AGE = { zdf: 65, ard: 64, dritte: 66, rtl: 55, sat1: 54, vox: 54, pro7: 44, kabel1: 53, zdfneo: 60, rtl2: 51, nitro: 50, arte: 62,
+  sat1gold: 66, rtlup: 62, welt: 63, ntv: 62, superrtl: 42, dmax: 50, k1doku: 55, pro7maxx: 38, voxup: 58, tele5: 54, n24doku: 56, sixx: 40, tlc: 46, disneych: 30, sport1: 52, eurosport: 57, skysport: 47, euronews: 60 };
 function dayWinners() {
   const segs = (G.daySeg || []).filter(s => s.min >= 20 && s.bs > 0);
   // Tagessieger nach Zuschauerzahl (wie in den Quotenmeldungen), 14–49 nach Zuschauern der Zielgruppe (MA × Nutzung)
@@ -10466,8 +10535,9 @@ function figSvg(L0, o = {}) {
 // Formatprofil: Quotenverlauf, Publikum, Analyse und Maßnahmen je Sendung
 // =====================================================================
 // Affinität zur Zielgruppe 14–49 (Spielwerte): Sender-Image × Genre
-const ST_YOUNG = { zdf: 0.2, ard: 0.39, dritte: 0.3, rtl: 0.92, sat1: 0.97, vox: 1.16, pro7: 4.4, kabel1: 1.15, zdfneo: 0.8, rtl2: 1.6, nitro: 1.0, arte: 0.5 };
-const G_YOUNG = { Reality: 1.35, Sitcom: 1.4, Soap: 1.25, "Science-Fiction": 1.3, Action: 1.2, Show: 1.05, Komödie: 1.1, Talk: 0.8, Nachrichten: 0.75, Magazin: 0.8, Krimi: 0.8, Doku: 1.0, Kultur: 0.7, Liebesfilm: 0.95, Drama: 0.9, Serie: 1.0, Monumental: 0.9, Teleshopping: 0.5 };
+const ST_YOUNG = { zdf: 0.2, ard: 0.39, dritte: 0.3, rtl: 0.92, sat1: 0.97, vox: 1.16, pro7: 4.4, kabel1: 1.15, zdfneo: 0.8, rtl2: 1.6, nitro: 1.0, arte: 0.5,
+  sat1gold: 0.63, rtlup: 0.83, welt: 0.8, ntv: 0.85, superrtl: 1.33, dmax: 1.7, k1doku: 1.1, pro7maxx: 2.6, voxup: 0.95, tele5: 0.88, n24doku: 1.1, sixx: 2.0, tlc: 1.6, disneych: 1.5, sport1: 1.2, eurosport: 0.9, skysport: 1.4, euronews: 0.8 };
+const G_YOUNG = { Reality: 1.35, Sitcom: 1.4, Soap: 1.25, "Science-Fiction": 1.3, Action: 1.2, Show: 1.05, Komödie: 1.1, Talk: 0.8, Nachrichten: 0.75, Magazin: 0.8, Krimi: 0.8, Doku: 1.0, Kultur: 0.7, Liebesfilm: 0.95, Drama: 0.9, Serie: 1.0, Monumental: 0.9, Teleshopping: 0.5, Kinder: 0.6, Sport: 1.0 };
 const SATIRE_RX = /heute-show|magazin royale|satire|comedy|late night|late-night|kabarett|anstalt|tv total|neo magazin/i;
 const youthIdx = (st, p) => { const z = zMix(st, p); return clamp((z[0] + z[1]) / 0.4, 0.2, 2.5) * (1 + ((p && p.young) || 0) / 100) * (p && SATIRE_RX.test(`${p.title} ${p.sub || ""}`) ? 1.8 : 1) * (p && p.kind === "sport" ? 1.5 : 1); };
 const AGE_GROUPS = ZN.map(n => [n]);
@@ -11261,8 +11331,8 @@ function seedImportedTitles() {
   const T = loadTitles(); if (!T.length) return 0;
   const pool = T.slice().sort((a, b) => b.pop - a.pop), used = new Set(G.stations.flatMap(s => s.progs.map(p => p.title)));
   let n = 0;
-  for (const st of G.stations.filter(s => !isMe(s))) {
-    const oer = st.type === "oer", take = pool.filter(t => !used.has(t.title) && OER_GENRES.includes(t.genre) === oer).slice(0, 10);
+  for (const st of G.stations.filter(s => !isMe(s) && !STATIONS[s.i].only && !STATIONS[s.i].kids)) {
+    const oer = st.type === "oer", take = pool.filter(t => !used.has(t.title) && OER_GENRES.includes(t.genre) === oer).slice(0, st.base < 2 ? 3 : 10);
     for (const t of take) { used.add(t.title); st.progs.push(t.tv ? fromDB([t.title, t.genre === "Komödie" ? "Sitcom" : t.genre === "Drama" ? "Serie" : t.genre, t.q, t.eps, st.id]) : realFilm([t.title, t.genre, t.q, t.q >= 80 ? 3 : 2, t.fsk])); n++; }
   }
   return n;
