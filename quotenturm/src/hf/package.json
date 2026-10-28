@@ -1,0 +1,7 @@
+{
+  "name": "mm-humanforge-bundle",
+  "private": true,
+  "description": "Baut hf.iife.js (three.js + HumanForge als window.THREE / window.HF) für das Spiel",
+  "scripts": { "build": "esbuild entry.js --bundle --minify --format=iife --outfile=hf.iife.js" },
+  "devDependencies": { "esbuild": "0.20.2", "three": "0.160.0", "fflate": "0.8.3" }
+}
