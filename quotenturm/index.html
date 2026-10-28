@@ -13597,7 +13597,10 @@ function careerProfile(P) {
 // Echte Moderation und Besetzung ersetzen die erfundene; fehlende Personen werden mit Namen und Rolle angelegt (keine erfundenen Daten).
 // =====================================================================
 function linkCastDB() {
-  const M = typeof window !== "undefined" && window.MM_PRIVATE, C = M && M.cast; if (!C || !G) return 0;
+  const M = typeof window !== "undefined" && window.MM_PRIVATE; if (!M || !G) return 0;
+  // Besetzungsliste aus Wikidata (Moderation nur aktuell, Besetzung mit Rollennamen) nach Titel und Alternativtiteln
+  if (!M.cast && Array.isArray(M.castList)) { M.cast = {}; for (const e of M.castList) for (const t of [e.n, ...(e.alt || [])]) { const k = normT(t); if (k && !M.cast[k]) M.cast[k] = e; } }
+  const C = M.cast; if (!C) return 0;
   const byName = new Map(G.people.map(q => [normName(q.name), q]));
   let n = 0;
   for (const st of G.stations) for (const prog of st.progs) {

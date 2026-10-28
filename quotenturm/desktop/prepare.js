@@ -21,15 +21,17 @@ html = html.replace(/<link rel="preconnect"[^>]*>\n?/g, "").replace(/<link rel="
 fs.mkdirSync(path.join(out, "vendor"), { recursive: true });
 fs.copyFileSync(path.join(__dirname, "node_modules", "xlsx", "dist", "xlsx.full.min.js"), path.join(out, "vendor", "xlsx.full.min.js"));
 html = html.replace("https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js", "vendor/xlsx.full.min.js");
-// Private Daten (echte Personen) nur, wenn lokal vorhanden – der Ordner privat/ wird nicht ins Repository übernommen
-const priv = path.join(src, "privat", "realdata.js");
+// Private Daten (echte Personen, Titel, Logos, Besetzung, Fotos) nur, wenn lokal vorhanden – der Ordner privat/ wird nicht ins Repository übernommen.
+// Alles in EINEM Skriptblock und in fester Reihenfolge (realdata zuerst, da es window.MM_PRIVATE anlegt).
 const share = process.argv.includes("--share"); // Weitergabe-Version: ohne private Daten
-if (!share && fs.existsSync(priv)) { html = html.replace("<script>", () => "<script>\n" + fs.readFileSync(priv, "utf8") + "</script>\n<script>"); console.log("Private Daten eingebettet."); }
-// Echte Senderlogos (Markenrechte) ebenfalls nur in der privaten Version
-// Titeldatenbank (Wikidata + IMDb-Datensätze, nur private Nutzung) ebenfalls nur privat
-for (const extra of ["titles.js", "extra.js", "besetzung.js", "photos.js"]) { const fp = path.join(src, "privat", extra); if (!share && fs.existsSync(fp)) { html = html.replace("<script>", () => "<script>\n" + fs.readFileSync(fp, "utf8") + "</script>\n<script>"); console.log("Private Datei eingebettet:", extra); } }
-const privLogos = path.join(src, "privat", "logos.js");
-if (!share && fs.existsSync(privLogos)) { html = html.replace("<script>", () => "<script>\n" + fs.readFileSync(privLogos, "utf8") + "</script>\n<script>"); console.log("Private Logos eingebettet."); }
+if (!share) {
+  const parts = [];
+  for (const name of ["realdata.js", "titles.js", "extra.js", "besetzung.js", "photos.js", "logos.js"]) {
+    const fp = path.join(src, "privat", name);
+    if (fs.existsSync(fp)) { parts.push(fs.readFileSync(fp, "utf8")); console.log("Private Datei eingebettet:", name); }
+  }
+  if (parts.length) html = html.replace("<script>", () => "<script>\n" + parts.join("\n;\n") + "</script>\n<script>");
+}
 fs.writeFileSync(path.join(out, "index.html"), html);
 fs.copyFileSync(path.join(__dirname, "build", "icon.png"), path.join(out, "icon.png"));
 
