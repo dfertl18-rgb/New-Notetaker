@@ -2,12 +2,10 @@ name: Komplett-Installer (eine EXE mit KI)
 
 # Baut eine einzige selbstentpackende EXE: privater Installer (verschlüsselt, Passwort beim Besitzer)
 # + KI-Modell Qwen2.5-7B-Instruct (Apache-2.0). Ergebnis als Artefakt zum Herunterladen.
+# Stillgelegt: eine EXE mit eingebetteter KI ist größer als 4 GB und startet unter Windows nicht.
+# Stattdessen: normaler Installer, die KI lädt das Spiel bei Bedarf in den Einstellungen nach.
 on:
   workflow_dispatch:
-  push:
-    paths:
-      - ".github/workflows/komplett-installer.yml"
-      - "quotenturm/desktop/komplett/**"
 
 jobs:
   build:
